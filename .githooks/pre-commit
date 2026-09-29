@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Hook de git pre-commit: se ejecuta en cada commit, lo haga un humano, Claude Code, Codex u OpenCode.
+# Instalar con: make instalar-hooks   (configura core.hooksPath=.githooks)
+set -uo pipefail
+
+ERRORES=0
+fallar() { echo "✗ $1" >&2; ERRORES=1; }
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$STAGED" ] && exit 0
+
+# 1. Nunca subir secretos
+while IFS= read -r f; do
+  case "$f" in
+    .env|*/.env|.env.*|*/.env.*)
+      [[ "$f" == *.env.example ]] || fallar "No se permite commitear '$f' (puede contener secretos)." ;;
+    *.pem|*.key|secrets/*) fallar "No se permite commitear '$f' (posible secreto)." ;;
+  esac
+done <<< "$STAGED"
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner >/dev/null 2>&1 || fallar "gitleaks detectó posibles secretos. Revisa con: gitleaks protect --staged -v"
+fi
+
+# 2. Kit compartido: los archivos que vienen del submódulo del kit deben coincidir con él
+KIT_OK=0
+if [ -f .kit-manifest.json ]; then
+  RUTA_KIT=$(bash scripts/ruta-kit.sh)
+  if [ ! -f "$RUTA_KIT/scripts/instalar_kit.py" ]; then
+    fallar "El submódulo $RUTA_KIT/ no está inicializado. Ejecuta: git submodule update --init"
+  elif python3 "$RUTA_KIT/scripts/instalar_kit.py" --verificar >/dev/null 2>&1; then
+    KIT_OK=1
+  else
+    fallar "Los archivos del kit no coinciden con $RUTA_KIT/ (editados a mano o sin instalar). Detalle: make verificar-kit"
+  fi
+fi
+
+# 3. La constitución solo cambia con aprobación explícita (agregarla por primera vez está permitido).
+#    Si llega por una actualización del kit, ya fue aprobada en el repositorio del kit.
+if git diff --cached --name-only --diff-filter=MRD | grep -qx ".specify/memory/constitution.md" \
+   && [ "$KIT_OK" != "1" ] && [ "${APROBADO_CONSTITUCION:-}" != "1" ]; then
+  fallar "La constitución cambió. Requiere aprobación de la dirección técnica: APROBADO_CONSTITUCION=1 git commit ..."
+fi
+
+# 4. Migraciones ya versionadas no se modifican
+MODIFICADAS=$(git diff --cached --name-only --diff-filter=MRD -- 'backend/migrations/*.sql')
+[ -n "$MODIFICADAS" ] && fallar "No modifiques migraciones existentes; crea una nueva: $(echo $MODIFICADAS)"
+
+# 5. Formato de Go
+GO_FILES=$(echo "$STAGED" | grep -E '\.go$' || true)
+if [ -n "$GO_FILES" ] && command -v gofmt >/dev/null 2>&1; then
+  SIN_FORMATO=$(gofmt -l $GO_FILES)
+  [ -n "$SIN_FORMATO" ] && fallar "Archivos Go sin formato (ejecuta gofmt -w): $SIN_FORMATO"
+fi
+
+# 6. Formato del frontend
+FE_FILES=$(echo "$STAGED" | grep -E '^frontend/.*\.(ts|tsx|js|jsx|css)$' || true)
+PRETTIER=frontend/node_modules/.bin/prettier
+if [ -n "$FE_FILES" ] && [ -x "$PRETTIER" ]; then
+  "$PRETTIER" --check $FE_FILES >/dev/null 2>&1 || fallar "Archivos del frontend sin formato (ejecuta: cd frontend && npx prettier --write .)"
+fi
+
+# 7. Archivos generados al día
+FUENTE=$(echo "$STAGED" | grep -E '^(AGENTS\.md|equipo/|\.agents/skills/|CLAUDE\.md|\.claude/|\.codex/|\.opencode/|opencode\.json)' || true)
+if [ -n "$FUENTE" ]; then
+  python3 scripts/sincronizar.py --verificar >/dev/null 2>&1 || fallar "La configuración de agentes está desactualizada. Ejecuta: make sincronizar"
+fi
+
+if [ "$ERRORES" -ne 0 ]; then
+  echo "Commit bloqueado por los controles del proyecto." >&2
+  exit 1
+fi
+exit 0

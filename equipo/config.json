@@ -1,0 +1,47 @@
+{
+  "_comentario": "Configuración del generador (scripts/sincronizar.py). Ver equipo/MODELOS.md. Prioridad del modelo de cada agente: 'agentes' > 'niveles' > modelo de la sesión (vacío). Después de cambiar este archivo: make sincronizar && make modelos.",
+
+  "herramientas": ["opencode"],
+
+  "modelos": {
+    "claude": {
+      "orquestador": "",
+      "niveles": { "alto": "opus", "medio": "sonnet", "bajo": "haiku" },
+      "agentes": {}
+    },
+
+    "codex": {
+      "niveles": { "alto": "", "medio": "", "bajo": "" },
+      "agentes": {}
+    },
+
+    "opencode": {
+      "_comentario": "Ejemplo con la suscripción OpenCode Go. Confirma los IDs disponibles con: opencode models opencode-go",
+      "orquestador": "opencode-go/glm-5.3",
+      "ligero": "opencode-go/glm-5.3-flash",
+      "niveles": {
+        "alto": "opencode-go/kimi-k3",
+        "medio": "opencode-go/glm-5.3",
+        "bajo": "opencode-go/glm-5.3-flash"
+      },
+      "agentes": {
+        "dev-backend": "opencode-go/kimi-k2.7-code",
+        "dev-frontend": "opencode-go/kimi-k2.7-code",
+        "revisor-codigo": "opencode-go/deepseek-v4-pro",
+        "seguridad": "opencode-go/qwen3.8-max"
+      },
+      "temperatura": {
+        "_comentario": "Cada agente trae su temperatura por defecto en equipo/agentes/<rol>.md. Aquí solo van excepciones. 'sin_temperatura': modelos que exigen su propia temperatura (revisa la ficha de cada modelo); a los agentes que los usen no se les envía.",
+        "agentes": {},
+        "sin_temperatura": []
+      }
+    }
+  },
+
+  "esfuerzo_codex": { "alto": "high", "medio": "medium", "bajo": "low" },
+
+  "kit": {
+    "_comentario": "Solo aplica si el kit está como submódulo en .bowser-spec-kit-ai/. Rutas del kit que este proyecto quiere mantener con su propia versión (make instalar-kit no las tocará). Una carpeta termina en '/'.",
+    "excluir": []
+  }
+}

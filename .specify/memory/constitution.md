@@ -1,50 +1,52 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Constitución de la empresa
 
-## Core Principles
+Principios no negociables para todos los proyectos. Todos los agentes deben cumplirlos.
+Niveles: **DEBE** (obligatorio), **DEBERÍA** (recomendado), **PUEDE** (opcional).
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+## I. La especificación manda
+- La spec aprobada es la fuente de verdad. El código DEBE implementar la spec, no interpretarla.
+- Todo cambio de comportamiento DEBE reflejarse primero en `spec.md`.
+- Cada requisito DEBE tener criterios de aceptación verificables.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+## II. Arquitectura
+- Monorepo con `backend/` (Go), `frontend/` (React + TypeScript) y `backend/migrations/` (PostgreSQL).
+- El backend DEBE seguir arquitectura por capas: `handler → service → repository`. Los handlers no acceden a la base de datos directamente.
+- La comunicación frontend-backend DEBE ser una API REST JSON documentada en OpenAPI (`backend/api/openapi.yaml`). El contrato se escribe antes que el código.
+- Las dependencias externas DEBERÍAN minimizarse; toda dependencia nueva requiere justificación en `plan.md`.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+## III. Pruebas (test-first)
+- Toda tarea de implementación DEBE incluir sus pruebas.
+- Backend: cobertura mínima DEBE ser 80% en `service/`. Pruebas de repositorio contra PostgreSQL real (testcontainers o el contenedor de CI).
+- Frontend: componentes con lógica DEBEN tener pruebas (Vitest + Testing Library). Flujos críticos DEBERÍAN tener pruebas end-to-end (Playwright).
+- Ningún cambio se integra con pruebas fallando.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+## IV. Seguridad
+- DEBE prevenirse inyección SQL: solo consultas parametrizadas (`pgx` / `sqlc`), nunca concatenación de strings. (CWE-89)
+- DEBE validarse toda entrada en el backend, aunque el frontend ya valide. (CWE-20)
+- DEBE evitarse XSS: nada de `dangerouslySetInnerHTML` sin sanitizar. (CWE-79)
+- Contraseñas DEBEN guardarse con bcrypt o argon2. Nunca en texto plano. (CWE-256)
+- Secretos DEBEN venir de variables de entorno; nunca en el repositorio. (CWE-798)
+- Endpoints protegidos DEBEN verificar autenticación y autorización en el servidor. (CWE-862)
+- Dependencias DEBEN pasar `govulncheck` y `npm audit` sin vulnerabilidades altas o críticas.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+## V. Calidad de código
+- Go: `gofmt`, `go vet` y `golangci-lint` sin errores. Errores envueltos con contexto (`fmt.Errorf("...: %w", err)`).
+- TypeScript en modo `strict`. Sin `any` salvo justificación.
+- Funciones cortas y con una sola responsabilidad. Nombres descriptivos en inglés dentro del código.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## VI. Base de datos
+- Todo cambio de esquema DEBE hacerse con migraciones versionadas (up y down).
+- Nunca se modifica una migración ya aplicada; se crea una nueva.
+- Tablas con `id`, `created_at`, `updated_at`. Claves foráneas e índices explícitos.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+## VII. Observabilidad y operación
+- El backend DEBE usar logs estructurados (`log/slog`) y exponer `/healthz`.
+- La configuración DEBE venir de variables de entorno.
+- Todo servicio DEBE poder levantarse con `docker compose up`.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## VIII. Gobierno
+- La spec y el plan requieren aprobación humana antes de implementar.
+- Los despliegues a producción requieren aprobación humana.
+- Esta constitución solo se modifica con aprobación de la dirección técnica.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
-
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
-
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Versión:** 1.0.0

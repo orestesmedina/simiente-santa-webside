@@ -1,0 +1,7 @@
+# Aprobación obligatoria para archivos críticos (activa "Require review from Code Owners" en la rama main).
+# Reemplaza @tu-org/direccion-tecnica por el usuario o equipo de GitHub correspondiente.
+/.specify/memory/constitution.md   @tu-org/direccion-tecnica
+/AGENTS.md                         @tu-org/direccion-tecnica
+/equipo/                           @tu-org/direccion-tecnica
+/.agents/skills/                   @tu-org/direccion-tecnica
+/.github/workflows/                @tu-org/direccion-tecnica

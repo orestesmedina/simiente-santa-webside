@@ -1,0 +1,33 @@
+# >>> bowser-spec-kit-ai (gestionado por make instalar-kit; no editar este bloque)
+# Secretos
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Go
+backend/bin/
+backend/coverage.out
+*.test
+
+# Node / React
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Sistema y editores
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Claude Code (configuración personal)
+.claude/settings.local.json
+
+# Respaldos de make instalar-kit
+.kit-respaldo/
+# <<< bowser-spec-kit-ai

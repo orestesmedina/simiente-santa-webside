@@ -1,0 +1,3 @@
+[submodule ".bowser-spec-kit-ai"]
+	path = .bowser-spec-kit-ai
+	url = https://github.com/orestesmedina/bowser-spec-kit-ai.git

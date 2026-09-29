@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Hook de git commit-msg: exige Conventional Commits (feat:, fix:, test:, docs:, refactor:, chore:, ci:, perf:, build:, style:, revert:).
+MSG=$(head -n1 "$1")
+PATRON='^(feat|fix|test|docs|refactor|chore|ci|perf|build|style|revert)(\([a-z0-9._-]+\))?!?: .{3,}'
+if [[ "$MSG" =~ ^(Merge|Revert\ \") ]] || [[ "$MSG" =~ $PATRON ]]; then
+  exit 0
+fi
+echo "✗ Mensaje de commit inválido: \"$MSG\"" >&2
+echo "  Usa Conventional Commits, por ejemplo: feat(users): registro con email" >&2
+exit 1
