@@ -46,9 +46,34 @@ opcional "gitleaks"               gitleaks
 echo "Agente de código (al menos uno)"
 AGENTES=0
 for a in claude codex opencode; do
-  if command -v "$a" >/dev/null 2>&1; then verde "$a"; AGENTES=$((AGENTES+1)); fi
+  ruta=$(command -v "$a" 2>/dev/null) || continue
+  if [[ "$ruta" == /mnt/* ]]; then
+    rojo "$a es la versión de Windows ($ruta): instálalo dentro de Ubuntu (ver docs/GUIA-INICIO.md, 3.1.2)"
+  else
+    verde "$a ($ruta)"; AGENTES=$((AGENTES+1))
+  fi
 done
-[ "$AGENTES" -eq 0 ] && rojo "No hay ningún agente instalado (Claude Code, Codex u OpenCode)"
+[ "$AGENTES" -eq 0 ] && rojo "No hay ningún agente instalado en este sistema (Claude Code, Codex u OpenCode)"
+
+# En WSL, Ubuntu también ve los programas de Windows. Si una herramienta de desarrollo resuelve a /mnt/...,
+# se está usando la de Windows por error.
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  echo "WSL"
+  DE_WINDOWS=""
+  for c in git go node npm python3 make jq docker uv specify; do
+    ruta=$(command -v "$c" 2>/dev/null) || continue
+    [[ "$ruta" == /mnt/* ]] && DE_WINDOWS="$DE_WINDOWS $c"
+  done
+  if [ -n "$DE_WINDOWS" ]; then
+    rojo "Se están usando versiones de Windows de:$DE_WINDOWS. Instálalas en Ubuntu (ver docs/GUIA-INICIO.md, 3.1.2)"
+  else
+    verde "Las herramientas de desarrollo son las de Ubuntu"
+  fi
+  case "$PWD" in
+    /mnt/*) ambar "El proyecto está en el disco de Windows ($PWD). Muévelo a Ubuntu (ej. ~/proyectos/) para evitar lentitud y problemas de permisos" ;;
+    *) verde "El proyecto está dentro de Ubuntu" ;;
+  esac
+fi
 
 echo "Proyecto"
 if docker info >/dev/null 2>&1; then verde "Docker está corriendo"; else rojo "Docker no está corriendo"; fi

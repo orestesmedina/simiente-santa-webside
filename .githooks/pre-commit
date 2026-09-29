@@ -6,6 +6,15 @@ set -uo pipefail
 ERRORES=0
 fallar() { echo "✗ $1" >&2; ERRORES=1; }
 
+# 0. Los controles necesitan python3. Si no está, casi siempre es git de Windows (VS Code abierto fuera de WSL).
+if ! python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" >/dev/null 2>&1; then
+  echo "✗ No se encontró python3 (3.9 o superior), que necesitan los controles del proyecto." >&2
+  echo "  Si usas Windows: estás haciendo el commit desde Windows y no desde Ubuntu (WSL)." >&2
+  echo "  En VS Code, instala la extensión WSL y abre el proyecto con 'code .' desde la terminal de Ubuntu" >&2
+  echo "  (abajo a la izquierda debe decir 'WSL: Ubuntu'). Detalle: docs/GUIA-INICIO.md, sección 3.1.1." >&2
+  exit 1
+fi
+
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 [ -z "$STAGED" ] && exit 0
 

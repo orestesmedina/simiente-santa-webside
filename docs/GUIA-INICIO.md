@@ -108,11 +108,66 @@ Pide esto a tu líder antes de empezar:
 ### 3.1 Sistema operativo
 
 - **macOS** o **Linux**: funcionan directamente.
-- **Windows**: instala **WSL2 con Ubuntu** y trabaja siempre dentro de WSL. Los hooks y scripts son de bash.
-  ```powershell
-  wsl --install -d Ubuntu
-  ```
-  Desde aquí, todos los comandos se ejecutan en la terminal de Ubuntu.
+- **Windows**: se trabaja dentro de **WSL2 con Ubuntu**. Lee la sección 3.1.1 completa antes de instalar nada: la mayoría de los problemas en Windows vienen de mezclar los dos "mundos".
+
+#### 3.1.1 Windows: cómo funciona WSL (importante)
+
+En Windows con WSL conviven **dos sistemas separados, cada uno con sus propios programas**:
+
+| | Windows | Ubuntu (WSL) |
+|---|---|---|
+| Qué va aquí | Navegador, DBeaver, Docker Desktop, VS Code (la ventana) | `make`, `python3`, `jq`, Go, Node, Spec Kit, git, **el agente de código** y **los proyectos** |
+| Terminal | PowerShell | Terminal "Ubuntu" |
+
+Un programa instalado en uno **no existe** en el otro. Por eso la regla es: **todo lo del desarrollo se instala y se ejecuta dentro de Ubuntu**.
+
+**Pasos:**
+
+1. Instala WSL con Ubuntu (PowerShell como administrador) y reinicia:
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+2. Abre la terminal **Ubuntu**. Desde aquí, **todos** los comandos de esta guía se ejecutan en esa terminal, salvo que se diga lo contrario.
+3. **Guarda los proyectos dentro de Ubuntu**, por ejemplo en `~/proyectos/`. No trabajes en `/mnt/c/...` (el disco de Windows visto desde Ubuntu): es mucho más lento y da problemas con los permisos de los scripts.
+4. **Docker:** instala [Docker Desktop](https://www.docker.com/products/docker-desktop/) en Windows y actívalo para Ubuntu en **Settings → Resources → WSL Integration → Ubuntu → Apply & Restart**. Docker Desktop debe estar abierto cuando trabajes. Verifica en Ubuntu con `docker version`.
+5. **VS Code:** instala la extensión **WSL** de Microsoft y abre siempre los proyectos desde la terminal de Ubuntu:
+   ```bash
+   cd ~/proyectos/mi-proyecto
+   code .
+   ```
+   Abajo a la izquierda debe decir **"WSL: Ubuntu"**. Si abres la carpeta desde Windows, VS Code usa el Git de Windows y los commits fallan con mensajes confusos, porque ahí no hay `python3` ni `jq`.
+6. **El agente de código** (Claude Code, Codex u OpenCode) se instala y se ejecuta **en Ubuntu** (sección 3.3). El agente ejecuta comandos como `make test` o `git commit`, y los ejecuta en el sistema donde está instalado. Si ya lo tenías instalado en Windows, lee la sección 3.1.2.
+7. **PostgreSQL:** **no** instales PostgreSQL en Windows; el proyecto lo levanta con Docker. Si ya tienes uno instalado, ocupa el puerto 5432 y tu cliente se conectará a ese en lugar del de Docker (ver problemas comunes).
+8. **Cliente de base de datos:** usa uno actualizado que soporte PostgreSQL 16, como [DBeaver Community](https://dbeaver.io/download/) (gratuito) o pgAdmin 4. Los clientes viejos (por ejemplo Navicat 11) no pueden autenticarse con PostgreSQL moderno.
+
+#### 3.1.2 Windows: cuando Ubuntu usa por error un programa de Windows
+
+WSL agrega por defecto las rutas de Windows al `PATH` de Ubuntu. Por eso, si tenías un programa instalado en Windows (por ejemplo OpenCode, Node o Git instalados con npm o con un instalador de Windows), **Ubuntu lo encuentra y lo usa aunque no esté instalado en Ubuntu**. Parece que funciona, pero cuando ese programa ejecuta comandos, lo hace del lado de Windows, donde no están `make`, `python3` ni el resto de herramientas.
+
+`make doctor` lo detecta y lo marca con ✗. Para revisarlo a mano:
+
+```bash
+which -a opencode      # o claude, codex, node, git...
+```
+
+- Rutas que empiezan con `/home/...` o `/usr/...` son de **Ubuntu** (bien).
+- Rutas que empiezan con `/mnt/c/...` son de **Windows** (mal, si es la primera de la lista).
+
+**Cómo corregirlo (ejemplo con OpenCode):**
+
+1. Instálalo dentro de Ubuntu:
+   ```bash
+   curl -fsSL https://opencode.ai/install | bash
+   ```
+2. Cierra y vuelve a abrir la terminal, y verifica que la **primera** línea de `which -a opencode` empiece con `/home/`. Si sigue apareciendo primero la de Windows, pon la carpeta que indicó el instalador (normalmente `~/.opencode/bin`) al inicio del `PATH`:
+   ```bash
+   echo 'export PATH="$HOME/.opencode/bin:$PATH"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+3. **Vuelve a iniciar sesión / configurar el proveedor.** La instalación de Ubuntu no comparte configuración con la de Windows: abre el agente en tu proyecto y conecta tu cuenta de nuevo (en OpenCode, con `/connect`; en Claude Code y Codex, al iniciar te pide entrar).
+4. **Opcional:** si no usas ese programa desde Windows, desinstálalo de Windows para evitar confusiones (por ejemplo, en PowerShell: `npm uninstall -g opencode-ai`).
+
+No desactives la integración de rutas de Windows en WSL: de ella depende, entre otras cosas, que `code .` abra VS Code desde Ubuntu.
 
 ### 3.2 Herramientas base
 
@@ -122,14 +177,19 @@ brew install git go node@22 python@3.12 jq make gh gitleaks golang-migrate
 brew install --cask docker        # Docker Desktop; ábrelo una vez para que arranque
 ```
 
-**Ubuntu / WSL2:**
+**Ubuntu / WSL2** (en la terminal de Ubuntu):
 ```bash
-sudo apt update && sudo apt install -y git jq make curl build-essential python3 python3-pip
+sudo apt update && sudo apt install -y git jq make unzip curl build-essential python3 python3-pip
 # Go 1.23+ : https://go.dev/doc/install
 # Node 22  : https://github.com/nvm-sh/nvm  →  nvm install 22
-# Docker   : https://docs.docker.com/engine/install/ubuntu/  (o Docker Desktop con integración WSL)
+# Docker   : en Windows, Docker Desktop con integración WSL (ver 3.1.1)
+#            en Linux nativo: https://docs.docker.com/engine/install/ubuntu/
 # GitHub CLI: https://github.com/cli/cli/blob/trunk/docs/install_linux.md
 ```
+
+`jq` lee archivos JSON y lo usan los hooks que protegen archivos; `make` ejecuta los comandos del proyecto (`make up`, `make doctor`…). Sin ellos, los controles no funcionan.
+
+**Antes de seguir, ejecuta el diagnóstico** desde la carpeta de un proyecto que ya tenga el kit instalado: `make doctor` (o `bash scripts/doctor.sh` si todavía no tienes `make`). Te muestra de una vez todo lo que falta.
 
 **uv y Spec Kit** (todos los sistemas):
 ```bash
@@ -148,7 +208,7 @@ Asegúrate de que `$(go env GOPATH)/bin` esté en tu `PATH`.
 
 ### 3.3 El agente de código
 
-Instala **el que use el equipo** (revisa `"herramientas"` en `equipo/config.json`):
+Instala **el que use el equipo** (revisa `"herramientas"` en `equipo/config.json`). En Windows, **instálalo en la terminal de Ubuntu**, no en Windows (ver 3.1.1):
 
 | Herramienta | Instalación | Primer inicio |
 |---|---|---|
@@ -181,6 +241,21 @@ cp .env.example .env         # y completa los valores que te entregaron
 make up                      # levanta PostgreSQL
 make doctor                  # verifica que todo esté listo
 ```
+
+> **Importante:** ajusta la contraseña en `.env` **antes** del primer `make up`. PostgreSQL solo la toma al crear la base; si la cambias después, hay que recrearla con `docker compose down -v && make up` (borra los datos locales).
+
+#### Conectarte a la base de datos local
+
+Con un cliente como DBeaver o pgAdmin 4 (ver 3.1.1 si estás en Windows):
+
+| Campo | Valor |
+|---|---|
+| Host | `localhost` |
+| Puerto | `POSTGRES_PORT` de tu `.env` (por defecto `5432`) |
+| Base de datos | `POSTGRES_DB` (por defecto `app`) |
+| Usuario / contraseña | `POSTGRES_USER` / `POSTGRES_PASSWORD` de tu `.env` |
+
+Para comprobarlo desde la terminal: `docker compose exec db psql -U app -d app -c "select version();"`
 
 `make doctor` debe terminar con **"Todo listo para trabajar"**. Si marca problemas, revisa la [sección 8](#8-problemas-comunes).
 
@@ -369,6 +444,14 @@ Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las
 | `make actualizar-kit` se detiene por archivos modificados | Alguien cambió localmente un archivo del kit | Consulta a dirección técnica: llevarlo al kit, excluirlo en `equipo/config.json` o descartarlo con `FORZAR=1` |
 | El CI falla al descargar el submódulo | El repositorio del kit es privado | Configura el secreto `KIT_TOKEN` en el repositorio del proyecto |
 | `make: command not found` | Falta `make` (común en Ubuntu/WSL) | `sudo apt install -y make build-essential` |
+| `make: *** No rule to make target 'up'` | Estás en otra carpeta (por ejemplo, la terminal se abrió en tu carpeta personal) | `cd` a la carpeta del proyecto; `ls Makefile` debe encontrarlo |
+| `make: docker: No such file or directory` | Docker no está instalado en Ubuntu, o falta la integración WSL | Docker Desktop con **WSL Integration → Ubuntu** activado (ver 3.1.1) y reabre la terminal |
+| `make doctor` dice que falta `jq` | No está instalado | `sudo apt install -y jq` |
+| El commit falla **desde VS Code** pero funciona desde la terminal, con varios ✗ a la vez (kit, constitución, agentes) | VS Code abrió el proyecto desde Windows y usa el Git de Windows, donde no hay `python3` | Instala la extensión **WSL** y abre el proyecto con `code .` desde Ubuntu; abajo a la izquierda debe decir "WSL: Ubuntu" |
+| El agente no puede ejecutar `make`, `go` o `git`, o `which opencode` muestra `/mnt/c/...` | Ubuntu está usando la versión de Windows del agente | Instálalo en Ubuntu, verifica con `which -a` y vuelve a iniciar sesión (sección 3.1.2) |
+| `make doctor` dice "Se están usando versiones de Windows de: …" | Esas herramientas no están instaladas en Ubuntu y se toman las de Windows | Instálalas en Ubuntu (sección 3.2) y verifica con `which -a <herramienta>` |
+| `authentication method 10 not supported` | El cliente de base de datos es demasiado viejo para PostgreSQL 16 (por ejemplo Navicat 11) | Usa DBeaver Community o pgAdmin 4, o actualiza tu cliente |
+| Error de autenticación **en español** ("la autentificación password falló…") | Te estás conectando a un PostgreSQL instalado en Windows, no al de Docker (el de Docker responde en inglés) | Desinstala o detén el PostgreSQL de Windows (`Get-Service *postgres*` en PowerShell), o cambia el puerto del de Docker |
 | "Configuración de agentes desactualizada" | Alguien cambió `equipo/` o `.agents/` sin regenerar | `make sincronizar` y commit |
 | El commit se rechaza por "Mensaje de commit inválido" | No sigue Conventional Commits | Usa `feat: …`, `fix: …`, `docs: …`, etc. |
 | El commit se rechaza por la constitución | Se modificó `constitution.md` | Revierte el cambio; solo dirección técnica puede aprobarlo |
@@ -377,7 +460,8 @@ Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las
 | El agente no usa los subagentes | Configuración no generada o herramienta sin soporte | `make sincronizar`; si no hay soporte, el orquestador asume los roles en secuencia |
 | "Docker no está corriendo" | Docker Desktop cerrado | Ábrelo y espera a que arranque |
 | Error de conexión a la base de datos | PostgreSQL no levantó o `.env` incorrecto | `make up`, `docker compose ps`, revisa `DATABASE_URL` en `.env` |
-| El puerto 5432 está ocupado | Hay otro PostgreSQL local | Detén el otro o cambia el puerto en `docker-compose.yml` y `.env` |
+| La contraseña de `.env` no funciona | PostgreSQL solo toma la contraseña al crear la base por primera vez; se cambió `.env` después | `docker compose down -v && make up` (**borra los datos locales**) |
+| El puerto 5432 está ocupado | Hay otro PostgreSQL local | Detén el otro, o pon otro puerto en `POSTGRES_PORT` dentro de `.env` (ej. `5433`) y ajusta `DATABASE_URL` |
 | `golangci-lint` o `migrate`: "command not found" | `GOPATH/bin` no está en el `PATH` | Agrega `export PATH="$PATH:$(go env GOPATH)/bin"` a tu `~/.zshrc` o `~/.bashrc` |
 | El agente da vueltas sin terminar una tarea | Instrucción ambigua o tarea muy grande | Detenlo, divide la tarea o da una instrucción concreta |
 

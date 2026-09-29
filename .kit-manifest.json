@@ -1,6 +1,6 @@
 {
   "_comentario": "Generado por make instalar-kit. Lista los archivos que vienen del kit (.bowser-spec-kit-ai/) y su hash.",
-  "version": "d9c18b2",
+  "version": "46f5ee5",
   "ruta_kit": ".bowser-spec-kit-ai",
   "archivos": {
     ".agents/skills/equipo-bug/SKILL.md": "5f053fa80c89345aa30d4146b32e35cb8a783826109aafebd20fbeffba2fd033",
@@ -10,12 +10,12 @@
     ".agents/skills/postgres-db/SKILL.md": "9aebc6e625e2095f88f747e1f18ecd887ebd415a7d43390ac70138dd43332043",
     ".agents/skills/react-frontend/SKILL.md": "da0c352c79e7bbb275639499399cd1dc1e88bb6f25a84260dcd28bc9e4d4a2d0",
     ".githooks/commit-msg": "5bc8ce4e36adae5d898c950ae34e25a4b13414d3706fe0e31da7294b08c3ccdd",
-    ".githooks/pre-commit": "12c7f6ac08df255b0140aec465a08e0a6462c606d9916c0bd5819a5bf8ee9a90",
+    ".githooks/pre-commit": "cdf39a7478a806660a1e49d9e1ca31f935560e19df0ad63a968c87b1c2ba9459",
     ".github/workflows/ci.yml": "3dfca349c66146b2dc357f576a50f9b7b6c617c08ef2961fe58e546116a43fd2",
     ".specify/memory/constitution.md": "a734bca34e234a6bd58b377193a3034be9ec53c424b1d2bd0fa71980f7b0b83b",
     "AGENTS.md": "112dab6370d0a0f374fb4970a6248aaecc40e2baccb3eaf8aad827de424c8a68",
     "Makefile": "41ff90d5d9b6fb79073a551e6c7116205b8954d6d40b7ecb2f22abcff88b9be1",
-    "docs/GUIA-INICIO.md": "4aa014d6237a865efe0dd962c106f7dfee48869368a89a5ff67ef281ff6abcc0",
+    "docs/GUIA-INICIO.md": "b44df93fbce0603f063dabddfba17452dc644652a7418470a188850728f6c9b4",
     "equipo/MODELOS.md": "206e155b613f6492888ab094e860ecb7e9f2378cc4ebdc3e1727013d96be0ee2",
     "equipo/adaptadores/claude/hooks/formatear.sh": "5f7ec9c0a83692fa60586ecd98ac0c0ff47e903747747851730592265d2ea989",
     "equipo/adaptadores/claude/hooks/proteger-archivos.sh": "7f62fe79115cb2349c9e2be0ddb3c8e957be272288f875f6258801e163c0fdf7",
@@ -31,7 +31,7 @@
     "equipo/agentes/qa-tester.md": "2b00021a9da1c0ad9588267964fa9b99e280f524e114e0d2aa2a44a3ed665736",
     "equipo/agentes/revisor-codigo.md": "f995b3a4059734e72ef1a187604aa241aadaabbdde794595d66e0e2338133bbd",
     "equipo/agentes/seguridad.md": "bba48332df17cff7a9b524dc6f83551fafb9405d2d0ed39b9a22fc1abf27a7b8",
-    "scripts/doctor.sh": "ccc0068585cce324590ab35198815963692e340d78307610d470644f2c958a13",
+    "scripts/doctor.sh": "569283e64bcd0662da5aa4cf17b560a08ec7f5d0155ac076b18e19469b310632",
     "scripts/ruta-kit.sh": "5c2adc730782aa2a0cb87ba721a101fb9ae18a1a82d1de2481ac617dcad19e96",
     "scripts/sincronizar.py": "3573e84b64f8192de5e82f179110071c94e7c836bbf65dbd5630ec5a217cd4f4"
   }
