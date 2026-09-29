@@ -271,6 +271,26 @@ Luego lee, en este orden:
 
 Solo lo hace quien tenga autorización. Sigue la sección **Instalación** del `README.md` del kit: instalar Spec Kit, `specify init`, `git submodule add … .bowser-spec-kit-ai` y `make -f .bowser-spec-kit-ai/Makefile instalar-kit`.
 
+### De la idea a la primera funcionalidad (proyecto nuevo)
+
+No le pidas al agente "hazme la aplicación". Primero se convierte la idea en una lista de funcionalidades pequeñas, y luego se construyen una por una con el flujo de la sección 5.
+
+1. **Escribe la idea en una página, tú mismo:**
+   ```bash
+   mkdir -p docs/producto
+   cp docs/plantillas/idea.md docs/producto/idea.md
+   ```
+   Complétala sin IA: problema, usuarios, qué sería un éxito, lo mínimo que debe hacer, qué queda fuera y restricciones. Si no puedes llenar una sección, es una pregunta para el cliente.
+2. **Pide el MVP dividido en funcionalidades:**
+   > Lee docs/producto/idea.md. Propón el MVP más pequeño y divídelo en funcionalidades independientes, en orden de dependencia. La primera debe ser la estructura base del proyecto. Guárdalo en docs/producto/roadmap.md. No escribas specs todavía.
+
+   Revisa y ajusta la lista: ese orden es el plan del proyecto.
+3. **Primera funcionalidad, el esqueleto:**
+   > Usa la skill equipo-feature: estructura base del proyecto. Backend en Go con endpoint /healthz conectado a PostgreSQL, frontend React que muestre el estado del backend, Docker Compose levantando todo, y CI en verde.
+
+   Los agentes copian los patrones del código existente, así que un esqueleto limpio y aprobado hace que todo lo siguiente salga consistente.
+4. **Sigue con el roadmap**, una funcionalidad a la vez, integrando cada una antes de empezar la siguiente.
+
 ### Actualizar el kit en un proyecto
 
 Cuando dirección técnica publique una mejora del kit:
