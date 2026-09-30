@@ -1,6 +1,6 @@
 # Roadmap — Sitio web de la Iglesia Simiente Santa
 
-**Fuente:** `docs/producto/idea.md` · **Estado:** borrador v0.4, listo para aprobación · **Fecha:** 2026-09-28
+**Fuente:** `docs/producto/idea.md` · **Estado:** v1.0 — aprobado por el cliente el 2026-09-29 · **Fecha:** 2026-09-28
 
 Este documento divide el producto en funcionalidades independientes, en orden de dependencia. No es una especificación: cada funcionalidad tendrá su propia spec en `specs/` cuando se apruebe.
 
@@ -75,5 +75,5 @@ Ninguna pendiente: todas las que fueron surgiendo se resolvieron y están regist
 
 ## 9. Próximos pasos
 
-1. Aprobar este roadmap.
+1. Aprobado por el cliente el 2026-09-29 ✅
 2. Empezar F1 (estructura base) con el flujo de la skill `equipo-feature`, y seguir el roadmap una funcionalidad a la vez, integrando cada una antes de empezar la siguiente.
