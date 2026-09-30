@@ -34,7 +34,7 @@ Tu trabajo no es escribir código. Es:
 
 ### El equipo de agentes
 
-Trabajas con un agente principal (el **orquestador**) que coordina a 10 especialistas:
+Trabajas con un agente principal (el **orquestador**) que coordina a 10 especialistas. **El orquestador es el agente con el que hablas** al abrir la herramienta en la carpeta del proyecto (en OpenCode aparece con el nombre `orquestador`). Le hablas con naturalidad ("construyamos la funcionalidad 2 del roadmap", "hay un error al guardar"), y él decide qué flujo seguir, usa Spec Kit y delega en los especialistas:
 
 | Rol | Qué hace | Puede escribir código |
 |---|---|---|

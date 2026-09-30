@@ -69,6 +69,25 @@ Este reparto es un **punto de partida**, no una recomendación probada. Midan re
 
 Revisa la política de datos de cada modelo antes de usarlo con código de clientes. Según la documentación de OpenCode Go, la mayoría no retiene datos, pero hay excepciones: algunos modelos usan los datos para entrenamiento y otros guardan registros durante un tiempo. **No asignes esos modelos a proyectos de clientes** sin su autorización. La lista actualizada está en [opencode.ai/docs/go](https://opencode.ai/docs/go/).
 
+## El orquestador en OpenCode
+
+En OpenCode, el kit crea un agente principal llamado **`orquestador`** y lo deja como **agente por defecto** al abrir OpenCode (`default_agent`). Los integrados `build` y `plan` siguen disponibles con la tecla `Tab`. Sus instrucciones están en `equipo/orquestador.md` (su manual: Spec Kit, el kit, los flujos y las reglas) más `AGENTS.md`, y usa el modelo de `"orquestador"`. En Claude Code, el mismo manual se carga desde `CLAUDE.md`; en Codex, `AGENTS.md` indica leerlo.
+
+```json
+"opencode": {
+  "orquestador": "opencode-go/glm-5.3",
+  "agente_principal": {
+    "nombre": "orquestador",
+    "ocultar": [],
+    "temperatura": 0.2
+  }
+}
+```
+
+- Si falta la sección `agente_principal`, se activa igual con estos valores.
+- `"ocultar": ["build", "plan"]` esconde los agentes integrados.
+- `"nombre": ""` desactiva el orquestador y vuelve a los agentes integrados de OpenCode.
+
 ## Temperatura
 
 La temperatura controla cuánto azar usa el modelo: baja (0–0.2) da respuestas consistentes y repetibles; media (0.3–0.6) da más variedad. Hoy solo **OpenCode** permite fijarla por subagente; en Claude Code y Codex se omite.

@@ -184,8 +184,9 @@ def generar_claude(agentes: list[dict], config: dict) -> dict[str, bytes]:
 
     salida["CLAUDE.md"] = (
         f"<!-- {AVISO.format(fuente='AGENTS.md')} -->\n"
-        "Las instrucciones de este proyecto están en AGENTS.md (compartido con otras herramientas):\n\n"
-        "@AGENTS.md\n"
+        "Las instrucciones de este proyecto están en AGENTS.md (compartido con otras herramientas), "
+        "y tu manual de trabajo como orquestador en equipo/orquestador.md:\n\n"
+        "@AGENTS.md\n\n@equipo/orquestador.md\n"
     ).encode()
 
     herramientas_por_acceso = {
@@ -265,17 +266,58 @@ def generar_opencode(agentes: list[dict], config: dict) -> dict[str, bytes]:
         texto = "\n".join(cab) + f"\n<!-- {AVISO.format(fuente=a['fuente'])} -->\n\n{a['instrucciones']}\n"
         salida[f".opencode/agents/{a['nombre']}.md"] = texto.encode()
 
-    # opencode.json: modelo del orquestador y modelo ligero, sobre la base del adaptador si existe.
+    # Agente principal propio (reemplaza a los integrados build/plan en la interfaz de OpenCode).
+    principal = config_principal_opencode(config)
+    if principal["nombre"]:
+        cab = ["---", f"description: {yaml_texto('Orquestador del equipo: coordina Spec Kit y los subagentes según AGENTS.md.')}",
+               "mode: primary"]
+        if modelos["orquestador"]:
+            cab.append(f"model: {modelos['orquestador']}")
+        if principal["temperatura"] is not None:
+            cab.append(f"temperature: {principal['temperatura']:g}")
+        cab += ["permission:", "  edit: allow", "  bash: allow", "  webfetch: allow", "  task: allow", "  skill: allow", "---"]
+        cuerpo = (RAIZ / principal["fuente"]).read_text(encoding="utf-8").strip()
+        texto = "\n".join(cab) + f"\n<!-- {AVISO.format(fuente=principal['fuente'])} -->\n\n{cuerpo}\n"
+        salida[f".opencode/agents/{principal['nombre']}.md"] = texto.encode()
+
+    # opencode.json: modelos y agentes integrados ocultos, sobre la base del adaptador si existe.
     base_ruta = RAIZ / "equipo/adaptadores/opencode/opencode.json"
     base = json.loads(base_ruta.read_text(encoding="utf-8")) if base_ruta.exists() else {}
-    if modelos["orquestador"] or modelos["ligero"] or base:
+    ocultar = principal["ocultar"] if principal["nombre"] else []
+    if modelos["orquestador"] or modelos["ligero"] or base or principal["nombre"]:
         datos = {"$schema": "https://opencode.ai/config.json", **base}
         if modelos["orquestador"]:
             datos["model"] = modelos["orquestador"]
         if modelos["ligero"]:
             datos["small_model"] = modelos["ligero"]
+        if principal["nombre"]:
+            datos["default_agent"] = principal["nombre"]   # el orquestador es el agente al abrir OpenCode
+        if ocultar:
+            agentes_cfg = dict(datos.get("agent", {}))
+            for nombre in ocultar:
+                agentes_cfg[nombre] = {**agentes_cfg.get(nombre, {}), "disable": True}
+            datos["agent"] = agentes_cfg
         salida["opencode.json"] = json_bytes(datos)
     return salida
+
+
+def config_principal_opencode(config: dict) -> dict:
+    """Sección opcional modelos.opencode.agente_principal:
+      "agente_principal": {
+        "nombre": "orquestador",            # "" = usar los agentes integrados de OpenCode (por defecto: orquestador)
+        "ocultar": [],                      # agentes integrados que no se muestran (ej. ["build", "plan"])
+        "temperatura": 0.2                  # opcional
+      }
+    Las instrucciones salen de equipo/orquestador.md.
+    """
+    crudo = (config.get("modelos", {}).get("opencode", {}) or {}).get("agente_principal", {}) or {}
+    temp = crudo.get("temperatura")
+    return {
+        "nombre": crudo.get("nombre", "orquestador"),   # por defecto activo; "" lo desactiva
+        "ocultar": list(crudo.get("ocultar", [])),
+        "temperatura": float(temp) if isinstance(temp, (int, float)) else None,
+        "fuente": "equipo/orquestador.md",
+    }
 
 
 GENERADORES = {"claude": generar_claude, "codex": generar_codex, "opencode": generar_opencode}
@@ -302,7 +344,11 @@ def informe_modelos(agentes: list[dict], config: dict, activas: list[str]) -> in
         t = config_temperatura(config, h)
         soporta = h in SOPORTA_TEMPERATURA
         print(f"\n{h}" + ("" if soporta else "   (temperatura no configurable en esta herramienta)"))
-        print(f"  {'orquestador':<20} {m['orquestador'] or '(modelo de la sesión)'}")
+        etiqueta = "orquestador"
+        if h == "opencode" and config_principal_opencode(config)["nombre"]:
+            p = config_principal_opencode(config)
+            etiqueta = f"{p['nombre']} (principal)"
+        print(f"  {etiqueta:<20} {m['orquestador'] or '(modelo de la sesión)'}")
         if h == "opencode" and m["ligero"]:
             print(f"  {'(tareas ligeras)':<20} {m['ligero']}")
         for a in agentes:
