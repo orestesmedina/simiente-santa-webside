@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-29
 
-**Status**: Draft
+**Status**: Approved (2026-09-29)
 
 **Input**: User description: "F1 — Estructura base del proyecto (roadmap §3, `docs/producto/roadmap.md`): la base técnica sobre la que se construye todo lo demás. Backend en Go con un endpoint de estado (`/healthz`) que verifica la conexión a PostgreSQL; frontend en React que muestra el estado del backend; todo (backend, frontend, base de datos) se levanta con Docker Compose con un solo comando; y un pipeline de CI (GitHub Actions) que valida cada cambio (pruebas, linters) antes de integrarse. Para el visitante final aún no hay funcionalidad visible: es el esqueleto del proyecto."
 

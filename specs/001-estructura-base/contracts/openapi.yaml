@@ -1,0 +1,94 @@
+# ============================================================================
+# BORRADOR DE DISEÑO — Spec Kit (fase /speckit.plan de F1)
+#
+# Documento vivo: backend/api/openapi.yaml (constitución §II).
+# La primera tarea de implementación copia ESTE archivo verbatim a esa ruta;
+# a partir de ahí, ese es el único contrato fuente y se edita antes que el
+# código. Este snapshot de specs/ NO se vuelve a editar (ver plan.md,
+# "Contrato OpenAPI: dónde vive y cómo se mantiene").
+# ============================================================================
+openapi: 3.1.0
+info:
+  title: API — Iglesia Simiente Santa
+  version: 0.1.0
+  description: |
+    API REST del sitio web de la Iglesia Simiente Santa.
+    En F1 expone únicamente el endpoint de estado del sistema (`/healthz`),
+    público y sin autenticación. Los módulos de negocio (usuarios, eventos,
+    grupos, ministerios, donaciones…) se agregan en funcionalidades futuras.
+  contact:
+    name: Equipo del proyecto
+servers:
+  - url: http://localhost:8080
+    description: Entorno local de desarrollo (Docker Compose)
+tags:
+  - name: status
+    description: Estado y operación del sistema
+paths:
+  /healthz:
+    get:
+      tags: [status]
+      operationId: getSystemStatus
+      summary: Estado del sistema
+      description: |
+        Informa si el backend está vivo y si su conexión con la base de datos
+        está establecida **en el momento de la consulta** (no es un estado
+        memorizado del arranque; spec FR-003).
+
+        - `200 OK`: el servicio está vivo y la base de datos conectada.
+        - `503 Service Unavailable`: el servicio está vivo (sigue
+          respondiendo, spec FR-004) pero la base de datos **no** está
+          conectada.
+
+        Distinción para el cliente: si la petición falla a nivel de red
+        (sin respuesta HTTP), es el backend el que no está disponible.
+      security: []
+      responses:
+        "200":
+          description: Servicio vivo y base de datos conectada.
+          headers:
+            Cache-Control:
+              description: El estado nunca debe ser cacheado por intermediarios.
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+              example:
+                status: ok
+                database: connected
+        "503":
+          description: Servicio vivo, base de datos NO conectada.
+          headers:
+            Cache-Control:
+              description: El estado nunca debe ser cacheado por intermediarios.
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStatus"
+              example:
+                status: degraded
+                database: disconnected
+components:
+  schemas:
+    SystemStatus:
+      type: object
+      description: Estado del backend y de su conexión a la base de datos.
+      required: [status, database]
+      properties:
+        status:
+          type: string
+          description: Estado del proceso backend.
+          enum: [ok, degraded]
+          example: ok
+        database:
+          type: string
+          description: Estado de la conexión con PostgreSQL en el momento de la consulta.
+          enum: [connected, disconnected]
+          example: connected
+      additionalProperties: false
