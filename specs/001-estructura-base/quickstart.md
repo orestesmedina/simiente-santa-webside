@@ -5,7 +5,7 @@ Guía ejecutable para validar F1 de punta a punta. Cada escenario referencia los
 ## Prerequisitos
 
 - Máquina con **Docker** (y Docker Compose v2) en ejecución. Es el único prerequisito (FR-001).
-- Clon del repositorio en la rama `001-estructura-base` (o `master`/`main` tras integrar).
+- Clon del repositorio en la rama `001-estructura-base` (o en `main` tras integrar; la rama por defecto se renombra `master` → `main` en T032).
 - En clonos nuevos, una vez: `make instalar-hooks` (activa los hooks de git; ver R3 de `plan.md`).
 - Opcional (desarrollo fuera de Docker): **Go 1.27**, Node 22, y las herramientas `migrate`, `sqlc`, `openapi-typescript` — verificables con `make doctor`. Las versiones exactas están en el `README.md`.
 
@@ -118,7 +118,7 @@ make db-migrate   # aplica 000001_baseline (no-op) → esquema en versión 1
 
 ## 9. Verificación de la receta (US5, FR-014, FR-015, SC-007)
 
-> **Quién lo hace**: una persona del equipo que **no** participó en la creación de la receta (SC-007). Si no hay otra persona disponible, escala al humano (R13 de `plan.md`).
+> **Quién lo hace**: **el humano** (confirmación 3), siguiendo la receta **solo** desde `docs/tecnico/arquitectura.md` §8. El *Independent Test* de **US5** añade la exigencia de que sea una persona del equipo que **no** participó en la creación de la receta (y sin consultar decisiones de arquitectura); si no hay otra persona disponible se aplica la válvula de escape de R13 de `plan.md` (validación humana explícita del ejercicio) y así queda registrado en la checklist.
 
 La receta está en `docs/tecnico/arquitectura.md` §8 (10 pasos). Este ejercicio la sigue de principio a fin para agregar un **área de práctica** nueva:
 
@@ -129,7 +129,7 @@ La receta está en `docs/tecnico/arquitectura.md` §8 (10 pasos). Este ejercicio
 5. **Comprobar el aislamiento** (FR-015): `git diff main --stat` muestra **solo archivos nuevos** del área de práctica y la línea de cableado en `cmd/api/main.go`; ninguna área existente (`status`, `platform/`) cambia ni de comportamiento.
 6. **Verificación funcional**: `make up` y comprobar que `GET /api/v1/muestra` responde con el sobre de éxito y que `/healthz` sigue funcionando igual (las áreas existentes están intactas).
 7. Rellenar la checklist de SC-007 con las evidencias (salida de `make ci`, `git diff --stat`, resultado del paso 6).
-8. **Descartar la rama**: `git checkout master && git branch -D practica/receta-001` (la tabla de práctica nunca llega a `main`: F1 cierra con 0 tablas de negocio).
+8. **Descartar la rama**: `git checkout main && git branch -D practica/receta-001` (la tabla de práctica nunca llega a `main`: F1 cierra con 0 tablas de negocio).
 
 **Esperado (SC-007)**: el proceso se completa sin tomar decisiones de arquitectura (cada paso está indicado), sin modificar las áreas existentes y con las validaciones automáticas en verde.
 
@@ -142,4 +142,4 @@ docker compose images   # → postgres:16.4-alpine (ver nota)
 make ci                 # incluye govulncheck y npm audit sin altas/críticas
 ```
 
-**Esperado**: todas las tecnologías de la tabla de versiones de `plan.md` ("Métricas del plan") dentro de su periodo de soporte de seguridad vigente. Dos apuntes ya registrados como pendientes (US7 esc. 2): el minor `postgres:16.4` acumula CVEs corregidos en minors posteriores (propuesta: `postgres:16-alpine`) y Node 22 deja de recibir soporte en abril de 2027 (propuesta al repositorio del kit).
+**Esperado**: todas las tecnologías de la tabla de versiones de `plan.md` ("Métricas del plan") dentro de su periodo de soporte de seguridad vigente. Cuatro apuntes ya registrados como **pendientes de actualización** (US7 esc. 2; el registro completo está en `plan.md`): el minor `postgres:16.4` acumula CVEs corregidos en minors posteriores (propuesta: `postgres:16-alpine` — plan R10/T034); Node 22 deja de recibir soporte en abril de 2027 (plan R11/T035); la imagen `postgres:16.4-alpine` del servicio del `ci.yml` del kit acumula los mismos CVEs; y `docs/GUIA-INICIO.md` del kit aún recomienda «Go 1.23+», una rama en fin de vida desde 2025-08-12. Los dos últimos pertenecen al kit (no editable aquí): se tratan como plan R11 — identificados, propuestos al repositorio del kit y gestionados por el humano (T035).

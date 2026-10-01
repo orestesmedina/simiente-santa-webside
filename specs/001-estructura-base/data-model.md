@@ -12,7 +12,7 @@ La spec lo establece sin ambigüedad:
 Por tanto:
 
 - **No se crea ninguna tabla, índice ni restricción de negocio en F1.**
-- La base de datos (servicio `db` de `docker-compose.yml`, PostgreSQL 16.4-alpine, ya provisto por el kit) solo debe **existir y aceptar conexiones** para que `GET /healthz` pueda verificar la conectividad con `Ping`.
+- La base de datos (servicio `db` de `docker-compose.yml`, PostgreSQL 16.4-alpine, ya provisto por el kit — imagen con nota de **pendiente de actualización**: el minor 16.4 acumula CVEs corregidos en minors posteriores; R10 del plan / T034, igual que en el resto de documentos) solo debe **existir y aceptar conexiones** para que `GET /healthz` pueda verificar la conectividad con `Ping`.
 - El primer esquema de negocio llegará con **F2 (Acceso y gestión de usuarios)**, que diseñará su propio `data-model.md` (tabla `users`, `sessions`, roles, permisos…) siguiendo la skill `postgres-db`.
 - El **ejercicio de práctica de la receta** (`quickstart.md` §9) sí crea una tabla (`sample_items`, ejemplo sugerido), pero vive en una rama de práctica que **se descarta**: nunca llega a `main`, que cierra F1 con cero tablas.
 

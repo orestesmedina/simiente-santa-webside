@@ -59,7 +59,7 @@ registro**; las tres diferencias conocidas están en D-A3 (sqlc como capa de dat
   verificables. La constitución (§II) exige capas y minimizar dependencias.
 - **Decisión.** Arquitectura por capas (`handler → service → repository`) en cada dominio, más una
   **plataforma interna propia** en `internal/platform/` (`config`, `logger`, `apperr`,
-  `httpserver`, `middleware`, `database`, `migrate`, `validate`, `paginate`, `testing`) que
+  `httpserver`, `middleware`, `database`, `migrate`, `validate`, `paginate`, `testutil`) que
   concentra lo transversal. Es el "casi framework" del proyecto: pequeño, escrito aquí, sin
   dependencias de terceros. Reglas completas y árbol de carpetas en
   [arquitectura.md](./arquitectura.md) §1–§2.

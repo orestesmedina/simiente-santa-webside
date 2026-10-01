@@ -86,7 +86,7 @@ backend/
 │       ├── migrate/
 │       ├── validate/
 │       ├── paginate/
-│       └── testing/
+│       └── testutil/
 ├── migrations/                      # NNNNNN_nombre.up.sql / .down.sql (golang-migrate)
 ├── api/
 │   └── openapi.yaml                 # CONTRATO VIVO (constitución §II)
@@ -108,14 +108,14 @@ conexiones (infraestructura); `internal/db/` es **código generado por sqlc** a 
 |---|---|---|
 | `config/` | Carga de variables de entorno con valores por defecto y **validación al arrancar** (falla rápido con mensaje claro si algo obligatorio falta o es inválido). `Load() (Config, error)`. | **F1** |
 | `logger/` | Constructor de `*slog.Logger` en **JSON** con nivel desde `LOG_LEVEL`, y **logger por petición** (hij con `request_id`, ruta y método). | **F1** (la parte de petición llega con `middleware/request-id`) |
-| `apperr/` | Errores tipados de dominio: `Invalid` (400), `Unauthenticated` (401), `Forbidden` (403), `NotFound` (404), `Conflict` (409), `Internal` (500). Llevan `Message` (seguro para el cliente), detalle de campos opcional y el error interno **envuelto** (`%w`), que nunca se serializa. | **F1** (los kinds que usa `/healthz` + `Internal`; crecen bajo demanda) |
+| `apperr/` | Errores tipados de dominio: `Invalid` (400), `Unauthenticated` (401), `Forbidden` (403), `NotFound` (404), `MethodNotAllowed` (405), `Conflict` (409), `Internal` (500), `DatabaseUnavailable` (503) y `RateLimited` (429, con `rate-limit` en F2+). Llevan `Message` (seguro para el cliente), detalle de campos opcional y el error interno **envuelto** (`%w`), que nunca se serializa. | **F1** implementa solo los kinds que F1 emite: `NotFound` (404 del fallback del router), `MethodNotAllowed` (405 del fallback, p. ej. `POST /healthz`), `DatabaseUnavailable` (503 de `/healthz`, D7 del plan) e `Internal` (500); el resto **crecen bajo demanda** con F2+ |
 | `httpserver/` | Servidor HTTP con timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`) y **apagado ordenado** (`signal.NotifyContext` + `Shutdown` con periodo de gracia); la interfaz `Registrar` y el tipo `Middleware` (§4); helpers `WriteJSON` y `WriteError` (§5.11). | **F1** |
 | `middleware/` | Cadena transversal: `request-id`, `recover`, `logging`, `CORS`, `rate-limit`, `authn`, `authz` por módulo, `CSRF`. | **F1**: `request-id`, `recover`, `logging`, `CORS` mínimo (una cabecera, sin dependencias — D12 del plan). **Se difiere**: `rate-limit` y `CSRF` con el primer endpoint público escribible; `authn`/`authz` con **F2** (usuarios y permisos) |
 | `database/` | Construcción del `*pgxpool.Pool` desde `DATABASE_URL`, helper `WithTx(ctx, fn)` para transacciones y helper de salud (`Ping` con timeout) usado por `/healthz`. | **F1** |
 | `migrate/` | Runner de migraciones **embebidas** (`//go:embed`), **opt-in por entorno** (`RUN_MIGRATIONS=true`). | **Se difiere**: en F1 mandan el CLI `golang-migrate` (target `make db-migrate` y el paso "Migraciones" del CI). El runner embebido llega cuando un entorno desplegado necesite auto-migrar sin CLI — decisión del plan de esa funcionalidad |
 | `validate/` | Validación de DTOs a partir de sus etiquetas (`required`, `max`, `email`…), produciendo `apperr.Invalid` con detalle por campo. | **Se difiere a F2** (primera vez que hay entradas de usuario de verdad). El mecanismo concreto (librería vs. implementación propia mínima) se decide en el plan de F2 — ver "Preguntas abiertas" de `decisiones.md` |
 | `paginate/` | Parseo y topes de paginación desde query string (`limit`, `offset` con máximos) y helper de cursor opaco para listados grandes (convención `postgres-db`). | **Se difiere a F2** (primer listado del panel) |
-| `testing/` | Helpers compartidos de prueba: conexión a `DATABASE_URL_TEST` con *skip* automático si no hay BD, builders/fixtures de dominio, utilidades de `httptest`. | **F1** (lo mínimo que use la prueba de `/healthz`; crece con las pruebas) |
+| `testutil/` | Helpers compartidos de prueba: conexión a `DATABASE_URL_TEST` con *skip* automático si no hay BD, builders/fixtures de dominio, utilidades de `httptest`. El paquete se llama **`testutil`** y no `testing` para no chocar con el paquete `testing` de la stdlib en cada `_test.go` (lo señalan también los linters): es el único paquete con ese conflicto. | **F1** (lo mínimo que use la prueba de `/healthz`; crece con las pruebas) |
 
 Fuera de `platform` pero igual de normativo: `internal/db/` (sqlc, §5.3) y `backend/migrations/`
 (convenciones de la skill `postgres-db`: numeración secuencial, `up`/`down` completos, **nunca**
@@ -136,7 +136,7 @@ Prohibido `any`; sesión en cookie `HttpOnly`, nunca en `localStorage`.
 | | F1 (estructura base) | Después |
 |---|---|---|
 | Dominios | `internal/status/` (solo `/healthz`) | `contacto`, `usuarios`… siguiendo §5 |
-| Platform | `config`, `logger`, `apperr`, `httpserver`, `middleware` (request-id, recover, logging, CORS), `database`, `testing` | `validate`, `paginate`, `migrate` (F2); `authn`/`authz`/`CSRF`/`rate-limit` (F2); i18n (**F3**) |
+| Platform | `config`, `logger`, `apperr`, `httpserver`, `middleware` (request-id, recover, logging, CORS), `database`, `testutil` | `validate`, `paginate`, `migrate` (F2); `authn`/`authz`/`CSRF`/`rate-limit` (F2); i18n (**F3**) |
 | Datos | pool `pgx` + `Ping` (sin tablas de negocio; migración baseline `000001`) | sqlc con la primera consulta de negocio (§5.3) |
 | Contrato | `backend/api/openapi.yaml` con `/healthz` | deltas por funcionalidad fusionados en el documento vivo |
 
@@ -887,9 +887,12 @@ func main() {
 }
 ```
 
-Variables de entorno que toca este cableado (todas documentadas en `.env.example`, valores por
-defecto de desarrollo): `HTTP_ADDR`/`HTTP_PORT`, `DATABASE_URL`, `LOG_LEVEL`,
-`CORS_ALLOWED_ORIGINS`, `RUN_MIGRATIONS` (opt-in). Ningún secreto en el repo (constitución §IV).
+Variables de entorno que toca este cableado (lista **canónica** que lee `platform/config`, la misma
+que documenta `.env.example`, valores por defecto de desarrollo): `APP_ENV`, `HTTP_PORT`,
+`DATABASE_URL`, `LOG_LEVEL`, `CORS_ALLOWED_ORIGINS`. `HTTP_PORT` es la única variable de
+dirección/puerto (el servidor escucha en `:$HTTP_PORT`, en todas las interfaces: dentro del
+contenedor `localhost` no es el host); `RUN_MIGRATIONS` solo la leerá el runner diferido
+`platform/migrate` (opt-in). Ningún secreto en el repo (constitución §IV).
 
 ### 5.10 Frontend del ejemplo
 
@@ -967,8 +970,10 @@ códigos de error a mano nunca.
 
 ```go
 // internal/platform/apperr (esquema): Error{Kind, Code, Message, Details, Err}
-//   Invalid → KindInvalid · NotFound → KindNotFound · Conflict → KindConflict
-//   Unauthenticated · Forbidden · Internal (envuelve el error interno con %w)
+//   Invalid → KindInvalid · NotFound → KindNotFound · MethodNotAllowed → KindMethodNotAllowed
+//   Conflict → KindConflict · Unauthenticated · Forbidden · Internal
+//   DatabaseUnavailable → KindDatabaseUnavailable · RateLimited (F2+, con rate-limit)
+//   (todos envuelven el error interno con %w)
 
 // internal/platform/httpserver/error.go
 // WriteError es el ÚNICO punto donde un error de dominio se traduce a HTTP.
@@ -981,8 +986,18 @@ func WriteError(ctx context.Context, w http.ResponseWriter, logger *slog.Logger,
 | `Unauthenticated` | 401 | `unauthenticated` | del dominio | — |
 | `Forbidden` | 403 | `forbidden` | del dominio | — |
 | `NotFound` | 404 | `not_found` | del dominio | — |
+| `MethodNotAllowed` | 405 | `method_not_allowed` | del dominio | — |
 | `Conflict` | 409 | `conflict` | del dominio | — |
+| `RateLimited` | 429 | `rate_limited` | del dominio | — |
+| `DatabaseUnavailable` | 503 | `database_unavailable` | del dominio (p. ej. "La base de datos no está conectada") | — (`details` seguro viaja en la respuesta: `{"database":"disconnected"}`) |
 | cualquier otro error | 500 | `internal` | `"Error interno del servidor"` (genérico) | **solo en log**, con `request_id` |
+
+Esta tabla es el registro cerrado del contrato (`error.code` en `backend/api/openapi.yaml`).
+**Kinds que F1 implementa**: `NotFound`, `MethodNotAllowed`, `DatabaseUnavailable` e `Internal`
+(el 404/405 del fallback del router, el 503 de `/healthz` con la BD no conectada — D7 del plan — y
+el fallback 500). `MethodNotAllowed` y `DatabaseUnavailable` son los que produce F1 y que antes no
+figuraban aquí; el resto (`Invalid`, `Unauthenticated`, `Forbidden`, `Conflict`, `RateLimited`) se
+añaden con su productor, **bajo demanda**, en F2+.
 
 Sobre de error estándar (convención de la skill `go-backend`), con `details` opcional para
 errores de validación por campo:
