@@ -1,7 +1,7 @@
 ---
 description: "Usar después de cada implementación para verificar el código contra los criterios de aceptación de spec.md, escribiendo y ejecutando pruebas de integración y end-to-end. No arregla código de producción."
 mode: subagent
-model: opencode-go/glm-5.3
+model: opencode-go/glm-5.3-flash
 temperature: 0.1
 permission:
   edit: allow

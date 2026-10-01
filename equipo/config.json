@@ -17,18 +17,18 @@
 
     "opencode": {
       "_comentario": "Ejemplo con la suscripción OpenCode Go. Confirma los IDs disponibles con: opencode models opencode-go",
-      "orquestador": "opencode-go/glm-5.3",
-      "ligero": "opencode-go/glm-5.3-flash",
+      "orquestador": "opencode-go/deepseek-v4.1-flash",
+      "ligero": "opencode-go/mimo-v2.6-flash",
       "niveles": {
-        "alto": "opencode-go/kimi-k3",
-        "medio": "opencode-go/glm-5.3",
-        "bajo": "opencode-go/glm-5.3-flash"
+        "alto":  "opencode-go/mimo-v2.6-pro",
+        "medio": "opencode-go/glm-5.3-flash",
+        "bajo":  "opencode-go/mimo-v2.6-flash"
       },
       "agentes": {
-        "dev-backend": "opencode-go/kimi-k2.7-code",
-        "dev-frontend": "opencode-go/kimi-k2.7-code",
-        "revisor-codigo": "opencode-go/deepseek-v4-pro",
-        "seguridad": "opencode-go/qwen3.8-max"
+        "dev-backend":    "opencode-go/deepseek-v4.1-flash",
+        "dev-frontend":   "opencode-go/deepseek-v4.1-flash",
+        "revisor-codigo": "opencode-go/mimo-v2.6-pro",
+        "seguridad":      "opencode-go/glm-5.3"
       },
       "temperatura": {
         "_comentario": "Cada agente trae su temperatura por defecto en equipo/agentes/<rol>.md. Aquí solo van excepciones. 'sin_temperatura': modelos que exigen su propia temperatura (revisa la ficha de cada modelo); a los agentes que los usen no se les envía.",

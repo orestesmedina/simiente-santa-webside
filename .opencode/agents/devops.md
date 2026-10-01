@@ -1,7 +1,7 @@
 ---
 description: "Usar para crear o mantener Docker, Docker Compose, pipelines de CI/CD en GitHub Actions, configuración de entornos y despliegues. Nunca despliega a producción sin aprobación humana."
 mode: subagent
-model: opencode-go/glm-5.3
+model: opencode-go/glm-5.3-flash
 temperature: 0.1
 permission:
   edit: allow

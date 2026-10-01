@@ -1,7 +1,7 @@
 ---
 description: "Usar al inicio de cada funcionalidad para convertir la idea del cliente en una especificación (spec.md) con historias de usuario y criterios de aceptación. También para aclarar ambigüedades de una spec existente."
 mode: subagent
-model: opencode-go/kimi-k3
+model: opencode-go/mimo-v2.6-pro
 temperature: 0.4
 permission:
   edit: allow

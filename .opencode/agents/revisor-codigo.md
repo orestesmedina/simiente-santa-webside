@@ -1,7 +1,7 @@
 ---
 description: "Usar después de cada implementación (y tras /speckit.tasks para verificar coherencia) para revisar calidad, apego al plan y a la constitución. Solo lee; nunca edita."
 mode: subagent
-model: opencode-go/deepseek-v4-pro
+model: opencode-go/mimo-v2.6-pro
 temperature: 0.1
 permission:
   edit: deny

@@ -1,7 +1,7 @@
 ---
 description: "Usar para implementar tareas marcadas [backend] o [db] de tasks.md en Go y PostgreSQL, siempre con sus pruebas."
 mode: subagent
-model: opencode-go/kimi-k2.7-code
+model: opencode-go/deepseek-v4.1-flash
 temperature: 0.1
 permission:
   edit: allow

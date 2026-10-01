@@ -1,7 +1,7 @@
 ---
 description: "Orquestador del equipo: coordina Spec Kit y los subagentes según AGENTS.md."
 mode: primary
-model: opencode-go/glm-5.3
+model: opencode-go/deepseek-v4.1-flash
 permission:
   edit: allow
   bash: allow

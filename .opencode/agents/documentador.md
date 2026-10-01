@@ -1,7 +1,7 @@
 ---
 description: "Usar al cerrar cada funcionalidad para actualizar README, documentación de API, changelog y notas de entrega para el cliente."
 mode: subagent
-model: opencode-go/glm-5.3-flash
+model: opencode-go/mimo-v2.6-flash
 temperature: 0.3
 permission:
   edit: allow
