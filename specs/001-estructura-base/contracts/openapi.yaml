@@ -1,21 +1,53 @@
 # ============================================================================
-# BORRADOR DE DISEÑO — Spec Kit (fase /speckit.plan de F1)
+# BORRADOR DE DISEÑO — Spec Kit (fase /speckit.plan de F1, reescrito 2026-09-30)
 #
 # Documento vivo: backend/api/openapi.yaml (constitución §II).
 # La primera tarea de implementación copia ESTE archivo verbatim a esa ruta;
 # a partir de ahí, ese es el único contrato fuente y se edita antes que el
 # código. Este snapshot de specs/ NO se vuelve a editar (ver plan.md,
 # "Contrato OpenAPI: dónde vive y cómo se mantiene").
+#
+# Formato uniforme de respuestas (FR-012/FR-013, D13 del plan):
+#   - 2xx  → sobre de éxito: el DTO documentado de la operación
+#            (objeto JSON, campos camelCase, additionalProperties: false).
+#   - 4xx/5xx → sobre de error: siempre ErrorEnvelope {"error":{code,message,details?}}.
+# Ninguna respuesta expone información interna (FR-013): el detalle interno se
+# registra en el log estructurado con su request_id.
 # ============================================================================
 openapi: 3.1.0
 info:
   title: API — Iglesia Simiente Santa
-  version: 0.1.0
+  version: 0.2.0
   description: |
     API REST del sitio web de la Iglesia Simiente Santa.
+
     En F1 expone únicamente el endpoint de estado del sistema (`/healthz`),
     público y sin autenticación. Los módulos de negocio (usuarios, eventos,
-    grupos, ministerios, donaciones…) se agregan en funcionalidades futuras.
+    grupos, ministerios, donaciones…) se agregan en funcionalidades futuras
+    con su propio *delta* de contrato.
+
+    ## Formato uniforme de respuestas (FR-012)
+
+    - **Éxito (2xx)**: el DTO documentado de la operación (sobre de éxito).
+    - **Error (4xx/5xx)**: siempre `ErrorEnvelope` (sobre de error), también para
+      los fallos previsibles (p. ej. la base de datos no conectada).
+
+    Quien consume la API implementa el manejo de respuestas **una sola vez**:
+    2xx → tipo generado de la operación; resto → `ApiError` con `ErrorEnvelope`.
+
+    ## Códigos que F1 puede devolver
+
+    | HTTP | `error.code` | Cuándo |
+    |---|---|---|
+    | 200 | — | `GET /healthz` con la base de datos conectada |
+    | 404 | `not_found` | ruta no documentada (el fallback del router, no la stdlib) |
+    | 405 | `method_not_allowed` | método no documentado sobre una ruta existente (p. ej. `POST /healthz`) |
+    | 500 | `internal` | error inesperado o `panic` recuperado: mensaje genérico, detalle solo en log |
+    | 503 | `database_unavailable` | `GET /healthz` con la base de datos no conectada |
+
+    El registro de `error.code` (ver `ErrorBody`) es el de toda la API; los
+    códigos de F2+ (`invalid`, `unauthenticated`, `forbidden`, `conflict`,
+    `rate_limited`) se añaden con el delta de cada funcionalidad.
   contact:
     name: Equipo del proyecto
 servers:
@@ -35,10 +67,11 @@ paths:
         está establecida **en el momento de la consulta** (no es un estado
         memorizado del arranque; spec FR-003).
 
-        - `200 OK`: el servicio está vivo y la base de datos conectada.
+        - `200 OK`: el servicio está vivo y la base de datos conectada
+          (sobre de éxito `SystemStatus`).
         - `503 Service Unavailable`: el servicio está vivo (sigue
           respondiendo, spec FR-004) pero la base de datos **no** está
-          conectada.
+          conectada (sobre de error `database_unavailable`, fallo previsible).
 
         Distinción para el cliente: si la petición falla a nivel de red
         (sin respuesta HTTP), es el backend el que no está disponible.
@@ -60,35 +93,134 @@ paths:
                 status: ok
                 database: connected
         "503":
-          description: Servicio vivo, base de datos NO conectada.
-          headers:
-            Cache-Control:
-              description: El estado nunca debe ser cacheado por intermediarios.
-              schema:
-                type: string
-                enum: [no-store]
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SystemStatus"
-              example:
-                status: degraded
-                database: disconnected
+          $ref: "#/components/responses/DatabaseUnavailable"
+        "500":
+          $ref: "#/components/responses/Internal"
 components:
   schemas:
     SystemStatus:
       type: object
-      description: Estado del backend y de su conexión a la base de datos.
+      description: |
+        Sobre de éxito del endpoint de estado: informe del sistema en el
+        momento de la consulta. F1 lo emite únicamente como `200`; si algo
+        está degradado, la respuesta es un error con su sobre (p. ej. `503`
+        `database_unavailable`), de modo que todo cliente maneja un solo
+        formato de error (FR-012).
       required: [status, database]
       properties:
         status:
           type: string
-          description: Estado del proceso backend.
-          enum: [ok, degraded]
-          example: ok
+          const: ok
+          description: |
+            Estado del proceso backend. En F1 el único valor posible es `ok`
+            (un `200` siempre significa "servicio sano"). El campo se mantiene
+            por FR-002 (la respuesta indica el estado del servicio) y admite
+            valores futuros si se agregan más chequeos.
         database:
           type: string
-          description: Estado de la conexión con PostgreSQL en el momento de la consulta.
-          enum: [connected, disconnected]
-          example: connected
+          const: connected
+          description: |
+            Conexión con PostgreSQL establecida en el momento de la consulta
+            (FR-003). El caso "no conectada" se comunica como `503` con
+            `error.code = database_unavailable` y
+            `error.details.database = "disconnected"`.
       additionalProperties: false
+    ErrorEnvelope:
+      type: object
+      description: |
+        Sobre de error estándar de la API (FR-012/FR-013). Todo 4xx/5xx lo
+        usa; es el único formato de error que quien consume debe implementar.
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+      additionalProperties: false
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: |
+            Código estable y accionable de la API (snake_case). Registro cerrado;
+            F1 puede emitir: `not_found`, `method_not_allowed`,
+            `database_unavailable`, `internal`.
+          enum:
+            - invalid
+            - unauthenticated
+            - forbidden
+            - not_found
+            - method_not_allowed
+            - conflict
+            - rate_limited
+            - database_unavailable
+            - internal
+        message:
+          type: string
+          description: |
+            Mensaje seguro y comprensible (español). Nunca contiene nombres
+            internos, trazas de error, SQL ni datos de infraestructura (FR-013).
+            Para `internal` es siempre el genérico "Error interno del servidor".
+          example: La base de datos no está conectada
+        details:
+          type: object
+          description: |
+            Detalle opcional y seguro: por campo en validaciones (F2+) o datos
+            de diagnóstico del caso (p. ej. `{"database":"disconnected"}`).
+            Nunca información interna del sistema.
+          additionalProperties: true
+      additionalProperties: false
+  responses:
+    NotFound:
+      description: Ruta no documentada. El fallback del router responde este sobre (la stdlib respondería texto).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: not_found
+              message: Recurso no encontrado
+    MethodNotAllowed:
+      description: Método no documentado para la ruta (p. ej. `POST /healthz`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: method_not_allowed
+              message: Método no permitido
+    Internal:
+      description: |
+        Error inesperado. El mensaje es genérico a propósito (FR-013): el
+        detalle interno queda registrado en el log estructurado con su
+        `request_id` para diagnóstico.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: internal
+              message: Error interno del servidor
+    DatabaseUnavailable:
+      description: |
+        Servicio vivo, base de datos NO conectada (fallo previsible de
+        `/healthz`; FR-004). La respuesta llega en ≤2 s por el timeout del ping.
+      headers:
+        Cache-Control:
+          description: El estado nunca debe ser cacheado por intermediarios.
+          schema:
+            type: string
+            enum: [no-store]
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: database_unavailable
+              message: La base de datos no está conectada
+              details:
+                database: disconnected
