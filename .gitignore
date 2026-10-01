@@ -31,3 +31,6 @@ frontend/test-results/
 # Respaldos de make instalar-kit
 .kit-respaldo/
 # <<< bowser-spec-kit-ai
+
+# Proyecto (fuera del bloque del kit)
+.obsidian/
