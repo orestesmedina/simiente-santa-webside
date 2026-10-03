@@ -1,0 +1,50 @@
+# Todo lo que no hace falta para compilar ./cmd/api (build reproducible,
+# imagen mínima y sin filtraciones de contexto — constitución §IV).
+# Análogo del .gitignore: nada de secretos, SO ni artefactos de build.
+
+# Control de versiones
+.git
+.gitignore
+.gitattributes
+.githooks/
+
+# Especificaciones y documentación del repositorio
+**/*.md
+!backend/go.mod
+specs/
+docs/
+
+# Módulos/dependencias IDE y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Artefactos de Go y del proyecto
+api/
+internal/**/*_test.go
+sqlc.yaml
+coverage.out
+coverage/
+bin/
+*.test
+tmp/
+
+# Otros runtimes / artefactos de otro stack (nunca deben copiarse al build Go)
+node_modules/
+frontend/
+dist/
+vendor/          # si alguien popularizara vendor/, al Dockerfile no entra
+
+# Docker (auto-referencias y orquestación del repo)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# CI y entorno
+.env
+.env.*
+!.env.example
+.github/
+.kit-respaldo/
+.bowser-spec-kit-ai/
