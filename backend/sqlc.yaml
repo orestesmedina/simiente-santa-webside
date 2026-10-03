@@ -1,0 +1,30 @@
+# sqlc — capa de datos del backend (D6 / D-A3 del plan).
+#
+# Verificación del riesgo R5 del plan (2026-10-03, sqlc v1.31.1):
+#   Con `internal/db/queries/` VACÍO (el caso real de F1, sin consultas de negocio)
+#   `make sqlc-gen` (cd backend && sqlc generate) FALLA y NO genera artefacto alguno:
+#
+#     # package db
+#     error parsing queries: no queries contained in paths <repo>/backend/internal/db/queries
+#     make: *** [proyecto.mk: sqlc-gen] Error 1
+#
+#   Por tanto el CLI EXIGE al menos una consulta. En consecuencia:
+#   - `backend/internal/db/` queda SIN código generado hasta el primer `sqlc generate`
+#     real (el ejercicio de práctica de la receta, quickstart §9; la primera consulta
+#     de negocio llega con F2).
+#   - Cuando exista la primera consulta, su código generado se COMMITEA (`make sqlc-gen`),
+#     tal como fija R4/R20.
+#   - `make sqlc-verify` (proyecto.mk) omite la regeneración mientras no haya `*.sql` en
+#     `internal/db/queries/` (no hay nada que verificar) y, en cuanto exista la primera
+#     consulta, regenera y exige `git diff --exit-code` (sin deriva). Así el target queda
+#     en verde en F1 sin inventar consultas de negocio.
+version: "2"
+sql:
+  - schema: "migrations"
+    queries: "internal/db/queries"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "db"
+        out: "internal/db"
+        sql_package: "pgx/v5"
