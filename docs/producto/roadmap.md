@@ -16,30 +16,29 @@ Con eso se cumple lo esencial de los criterios de éxito (`idea.md` §4): canal 
 
 **Fuera del MVP (decisión 2):** las noticias/galería de eventos recientes y los medios (prédicas y podcasts) quedan para la **fase 2**; ministerios y donaciones entran al MVP (F6 y F7) porque el cliente así lo decidió.
 
-## 3. Fase 1 — MVP núcleo
+## 3. Funcionalidades comprometidas (F1–F9)
 
-| # | Funcionalidad | Qué hace para el usuario | Depende de |
-|---|---|---|---|
-| F1 | **Estructura base** | Para el visitante aún nada visible: monta el proyecto (Go + React + PostgreSQL) con Docker Compose y CI, y una primera página muestra que el backend y la base de datos están vivos. Es el terreno sobre el que se construye todo lo demás. | — |
-| F2 | **Acceso y gestión de usuarios** | El equipo de la iglesia inicia sesión en un panel de administración; los administradores crean usuarios, los activan o desactivan, y crean roles con los permisos por módulo que necesiten (p. ej., un rol de contenido, un rol de ministerios). | F1 |
-| F3 | **Portada e información general** | Cualquier visitante ve una portada con la identidad de la iglesia, quiénes somos, horario de servicios, canales de WhatsApp y redes sociales, en español e inglés; el equipo edita esa información desde el panel. | F2 |
-| F4 | **Eventos y actividades** | El visitante descubre lo que viene: **eventos** periódicos de la iglesia (noche de aposentos, vigilia) y **actividades** puntuales (repartir comida, predicar en tal lugar), con fecha, lugar y detalle; el equipo administra ambos por separado. Es el corazón del problema: que nadie se quede sin enterarse. | F2, F3 |
-| F5 | **Grupos de conexión** | El visitante conoce el catálogo de talleres y clases (maquillaje, fotografía, inglés, asados…) con horario, lugar y el contacto del encargado para inscribirse; el equipo administra el catálogo desde el panel. | F2, F3 |
-| F6 | **Ministerios** | El visitante conoce cada ministerio, su encargado y el enlace al grupo de WhatsApp para unirse; el equipo administra el listado desde el panel. | F2, F3 |
-| F7 | **Donaciones** | El visitante ve cómo apoyar a la iglesia: cuentas IBAN y SINPE Móvil, y en qué se usan las donaciones; el equipo administra esa información desde el panel. | F2, F3 |
+La columna **Fase** indica el orden de construcción: `1` = MVP núcleo, `2` = después del MVP. La columna **Estado** la mantiene el orquestador (`pendiente → en curso → en revisión → terminada`; `make estado` lee esta tabla) y **Rama / PR** enlaza la funcionalidad en curso.
 
-F4, F5, F6 y F7 son independientes entre sí y pueden trabajarse en paralelo.
+| # | Funcionalidad | Qué hace para el usuario | Fase | Depende de | Estado | Rama / PR |
+|---|---|---|---|---|---|---|
+| F1 | Estructura base | Para el visitante aún nada visible: monta el proyecto (Go + React + PostgreSQL) con Docker Compose y CI, y una primera página muestra que el backend y la base de datos están vivos. Es el terreno sobre el que se construye todo lo demás. | 1 · MVP núcleo | — | en curso | 001-estructura-base |
+| F2 | Acceso y gestión de usuarios | El equipo de la iglesia inicia sesión en un panel de administración; los administradores crean usuarios, los activan o desactivan, y crean roles con los permisos por módulo que necesiten (p. ej., un rol de contenido, un rol de ministerios). | 1 · MVP núcleo | F1 | pendiente | |
+| F3 | Portada e información general | Cualquier visitante ve una portada con la identidad de la iglesia, quiénes somos, horario de servicios, canales de WhatsApp y redes sociales, en español e inglés; el equipo edita esa información desde el panel. | 1 · MVP núcleo | F2 | pendiente | |
+| F4 | Eventos y actividades | El visitante descubre lo que viene: **eventos** periódicos de la iglesia (noche de aposentos, vigilia) y **actividades** puntuales (repartir comida, predicar en tal lugar), con fecha, lugar y detalle; el equipo administra ambos por separado. Es el corazón del problema: que nadie se quede sin enterarse. | 1 · MVP núcleo | F2, F3 | pendiente | |
+| F5 | Grupos de conexión | El visitante conoce el catálogo de talleres y clases (maquillaje, fotografía, inglés, asados…) con horario, lugar y el contacto del encargado para inscribirse; el equipo administra el catálogo desde el panel. | 1 · MVP núcleo | F2, F3 | pendiente | |
+| F6 | Ministerios | El visitante conoce cada ministerio, su encargado y el enlace al grupo de WhatsApp para unirse; el equipo administra el listado desde el panel. | 1 · MVP núcleo | F2, F3 | pendiente | |
+| F7 | Donaciones | El visitante ve cómo apoyar a la iglesia: cuentas IBAN y SINPE Móvil, y en qué se usan las donaciones; el equipo administra esa información desde el panel. | 1 · MVP núcleo | F2, F3 | pendiente | |
+| F8 | Noticias y galería | El visitante ve qué ha pasado últimamente: noticias de eventos recientes con imágenes y videos, administradas por el equipo. | 2 · Después del MVP | F2, F3 | pendiente | |
+| F9 | Medios: prédicas y podcasts | El visitante escucha o ve las grabaciones publicadas en YouTube y Spotify desde el propio sitio, sin instalar esas aplicaciones; el equipo administra los episodios. | 2 · Después del MVP | F2, F3 | pendiente | |
+
+F4, F5, F6 y F7 son independientes entre sí y pueden trabajarse en paralelo. F8 y F9 también son paralelas entre sí.
 
 Aplica a todo el sitio público (fases 1 y 2): es bilingüe, español e inglés, con selección de idioma desde la portada, y cada contenido puede ingresarse en ambos idiomas o solo en español (decisiones 6 y 8); usuarios y contenido tienen estados (decisión 4): usuarios activo/inactivo en F2, contenido borrador/publicado en las funcionalidades de contenido.
 
 ## 4. Fase 2 — después del MVP
 
-Completa el alcance del MVP original de `idea.md` §5 con lo que quedó fuera por la decisión 2. Ambas dependen de que existan el panel y el sitio público (F2, F3) y son paralelas entre sí.
-
-| # | Funcionalidad | Qué hace para el usuario | Depende de |
-|---|---|---|---|
-| F8 | **Noticias y galería** | El visitante ve qué ha pasado últimamente: noticias de eventos recientes con imágenes y videos, administradas por el equipo. | F2, F3 |
-| F9 | **Medios: prédicas y podcasts** | El visitante escucha o ve las grabaciones publicadas en YouTube y Spotify desde el propio sitio, sin instalar esas aplicaciones; el equipo administra los episodios. | F2, F3 |
+Completa el alcance del MVP original de `idea.md` §5 con lo que quedó fuera por la decisión 2. F8 y F9 dependen de que existan el panel y el sitio público (F2, F3) y son paralelas entre sí (ver tabla de §3).
 
 ## 5. Fase 3 — ideas futuras (ninguna confirmada)
 
