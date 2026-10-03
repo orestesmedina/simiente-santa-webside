@@ -85,7 +85,7 @@ func New(mux *http.ServeMux, opts Options, logger *slog.Logger, mws ...Middlewar
 // de error, envuelto por los middlewares en el orden recibido (el primero, el
 // más externo). Lo usan New y las pruebas del stack HTTP.
 func NewHandler(mux *http.ServeMux, logger *slog.Logger, mws ...Middleware) http.Handler {
-	var handler http.Handler = envelopeFallback(mux, logger)
+	var handler = envelopeFallback(mux, logger)
 	for i := len(mws) - 1; i >= 0; i-- {
 		handler = mws[i](handler)
 	}
