@@ -140,5 +140,11 @@ func logError(ctx context.Context, logger *slog.Logger, domainErr *apperr.Error)
 		logger.Error("error interno", attrs...)
 		return
 	}
+	// El 503 database_unavailable es previsible (no es un 500), pero su causa
+	// —DNS, timeout, credenciales— es clave para diagnosticar; va SOLO al log,
+	// nunca al cuerpo de la respuesta (FR-013).
+	if domainErr.Kind == apperr.KindDatabaseUnavailable {
+		attrs = append(attrs, slog.String("error", domainErr.Error()))
+	}
 	logger.Warn("error de dominio", attrs...)
 }

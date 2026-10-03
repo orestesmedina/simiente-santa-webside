@@ -227,6 +227,34 @@ func TestWriteErrorInternalLogsDetailWithRequestID(t *testing.T) {
 	}
 }
 
+func TestWriteErrorDatabaseUnavailableLogsCauseNotInBody(t *testing.T) {
+	const cause = "dial tcp 127.0.0.1:5432: connection refused"
+	store := &memStore{}
+	logger := slog.New(newMemHandler(store))
+	ctx := ContextWithRequestID(context.Background(), "req-db")
+	rec := httptest.NewRecorder()
+
+	WriteError(ctx, rec, logger, apperr.DatabaseUnavailable(
+		"La base de datos no está conectada",
+		apperr.WithCause(errors.New(cause)),
+	))
+
+	record, ok := store.find(slog.LevelWarn)
+	if !ok {
+		t.Fatal("no se registró el 503 en el log a nivel warn")
+	}
+	if record.attrs["code"] != "database_unavailable" {
+		t.Errorf("code = %v, se esperaba database_unavailable", record.attrs["code"])
+	}
+	detail, _ := record.attrs["error"].(string)
+	if !strings.Contains(detail, cause) {
+		t.Errorf("el log no incluye la causa interna: %v", record.attrs)
+	}
+	if strings.Contains(rec.Body.String(), cause) || strings.Contains(rec.Body.String(), "connection refused") {
+		t.Errorf("la respuesta filtra la causa interna: %s", rec.Body.String())
+	}
+}
+
 func TestWriteErrorUsesRequestLoggerFromContext(t *testing.T) {
 	store := &memStore{}
 	perRequest := slog.New(newMemHandler(store)).With(slog.String("request_id", "req-ctx"))
