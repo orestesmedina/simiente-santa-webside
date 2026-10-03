@@ -23,8 +23,10 @@ const HeaderRequestID = "X-Request-ID"
 
 // RequestID toma el X-Request-ID del cliente o genera uno, lo publica en la
 // respuesta y lo guarda en el contexto para que lo usen logging y WriteError.
-// Va el primero de la cadena.
-var RequestID httpserver.Middleware = func(next http.Handler) http.Handler {
+// Va el primero de la cadena. Es una función —no una variable de paquete— para
+// respetar R6 (sin estado global); se pasa como httpserver.Middleware por
+// asignabilidad.
+func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimSpace(r.Header.Get(HeaderRequestID))
 		if id == "" {
