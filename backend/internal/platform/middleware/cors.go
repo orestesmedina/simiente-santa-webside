@@ -17,7 +17,7 @@ const (
 	headerMaxAge        = "Access-Control-Max-Age"
 	headerRequestMethod = "Access-Control-Request-Method"
 	headerVary          = "Vary"
-	allowMethodsValue   = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+	allowMethodsValue   = "GET, OPTIONS"
 	allowHeadersValue   = "Content-Type, X-Request-ID"
 	allowMaxAgeValue    = "600"
 )

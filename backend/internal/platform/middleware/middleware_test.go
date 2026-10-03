@@ -298,8 +298,13 @@ func TestCORSPreflight(t *testing.T) {
 		if got := rec.Header().Get(headerAllowOrigin); got != allowedOrigin {
 			t.Errorf("Allow-Origin = %q, se esperaba %q", got, allowedOrigin)
 		}
-		if rec.Header().Get(headerAllowMethods) == "" {
-			t.Error("falta Access-Control-Allow-Methods en el preflight permitido")
+		if got := rec.Header().Get(headerAllowMethods); got != "GET, OPTIONS" {
+			t.Errorf("Allow-Methods = %q, se esperaba \"GET, OPTIONS\" (solo lo registrado)", got)
+		}
+		for _, verb := range []string{"POST", "PUT", "PATCH", "DELETE"} {
+			if strings.Contains(rec.Header().Get(headerAllowMethods), verb) {
+				t.Errorf("Allow-Methods no debe pre-conceder el verbo %s: %q", verb, rec.Header().Get(headerAllowMethods))
+			}
 		}
 	})
 
