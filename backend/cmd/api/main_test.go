@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"simiente-santa/backend/internal/platform/httpserver"
+	"simiente-santa/backend/internal/platform/middleware"
 	"simiente-santa/backend/internal/platform/testutil"
 )
 
@@ -46,7 +47,7 @@ func TestHealthzSmoke(t *testing.T) {
 			srv := httptest.NewServer(httpserver.NewHandler(
 				newMux(fakeRepository{err: tt.repoErr}, logger),
 				logger,
-				middlewareChain(logger, []string{"http://localhost:5173"})...,
+				middleware.Chain(logger, []string{"http://localhost:5173"})...,
 			))
 			t.Cleanup(srv.Close)
 

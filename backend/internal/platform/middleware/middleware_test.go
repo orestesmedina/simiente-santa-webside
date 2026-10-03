@@ -279,6 +279,28 @@ func TestWriteErrorUsesPerRequestLoggerWithContext(t *testing.T) {
 	}
 }
 
+func TestChainWiresTransversalMiddlewares(t *testing.T) {
+	const allowedOrigin = "http://localhost:5173"
+	logger, store := captureLogger()
+	mux := muxWithHandler(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	handler := httpserver.NewHandler(mux, logger, Chain(logger, []string{allowedOrigin})...)
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set(headerOrigin, allowedOrigin)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if got := rec.Header().Get(HeaderRequestID); got == "" {
+		t.Error("Chain no montó request-id (falta X-Request-ID)")
+	}
+	if got := rec.Header().Get(headerAllowOrigin); got != allowedOrigin {
+		t.Errorf("Chain no montó CORS: Allow-Origin = %q", got)
+	}
+	if _, ok := store.find(slog.LevelInfo); !ok {
+		t.Error("Chain no montó logging (sin registro de acceso)")
+	}
+}
+
 func TestLoggingEmitsFiveFields(t *testing.T) {
 	logger, store := captureLogger()
 	mux := muxWithHandler(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })

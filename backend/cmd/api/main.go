@@ -44,7 +44,7 @@ func main() {
 	srv := httpserver.New(newMux(status.NewRepository(pool), appLog),
 		httpserver.Options{Addr: cfg.Addr()},
 		appLog,
-		middlewareChain(appLog, cfg.CORSAllowedOrigins)...,
+		middleware.Chain(appLog, cfg.CORSAllowedOrigins)...,
 	)
 
 	if err := srv.Run(ctx); err != nil {
@@ -61,15 +61,4 @@ func newMux(repo status.Repository, appLog *slog.Logger) *http.ServeMux {
 	root := httpserver.NewMuxRegistrar(mux)
 	status.RegisterPublic(root, status.NewHandler(status.NewService(repo), appLog))
 	return mux
-}
-
-// middlewareChain arma la cadena transversal de F1 en el orden aprobado (el
-// primero, el más externo): request-id → recover → logging → CORS.
-func middlewareChain(appLog *slog.Logger, allowedOrigins []string) []httpserver.Middleware {
-	return []httpserver.Middleware{
-		middleware.RequestID,
-		middleware.Recover(appLog),
-		middleware.Logging(appLog),
-		middleware.CORS(allowedOrigins),
-	}
 }

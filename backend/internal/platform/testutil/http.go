@@ -13,14 +13,10 @@ import (
 )
 
 // Chain arma la cadena de middlewares de F1 en el orden aprobado:
-// request-id → recover → logging → CORS.
+// request-id → recover → logging → CORS. Delega en el único constructor
+// (middleware.Chain) para que las pruebas no diverjan de la cadena real.
 func Chain(logger *slog.Logger, allowedOrigins []string) []httpserver.Middleware {
-	return []httpserver.Middleware{
-		middleware.RequestID,
-		middleware.Recover(logger),
-		middleware.Logging(logger),
-		middleware.CORS(allowedOrigins),
-	}
+	return middleware.Chain(logger, allowedOrigins)
 }
 
 // NewServer levanta un httptest.Server sobre el mux con los middlewares
