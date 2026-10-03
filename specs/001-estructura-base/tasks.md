@@ -78,7 +78,7 @@
 
 ## Fase 1 — Preparación, contrato, herramientas y migración baseline
 
-- [ ] T001 · Contrato vivo `backend/api/openapi.yaml` · `[backend]` `[P1]`
+- [X] T001 · Contrato vivo `backend/api/openapi.yaml` · `[backend]` `[P1]`
 
 - **Archivos**: `backend/api/openapi.yaml` (NUEVO). *No* se toca `specs/001-estructura-base/contracts/openapi.yaml` (snapshot inmutable).
 - **Qué hace**: copia **verbatim** el contrato aprobado `specs/001-estructura-base/contracts/openapi.yaml` a `backend/api/openapi.yaml`, que desde este commit es el **documento vivo** (D9, plan §"Contrato OpenAPI"): `/healthz` con `getSystemStatus`, `SystemStatus` (200), `ErrorEnvelope`/`ErrorBody` (404/405/500/503) y `DatabaseUnavailable` con `details.database`. Sin ediciones de contenido.
@@ -86,7 +86,7 @@
 - **Criterio de terminado**: los dos archivos son idénticos byte a byte; el contrato queda como única fuente para el código y para `npm run api:gen` (T022).
 - **Commit sugerido**: `docs(api): crear backend/api/openapi.yaml como contrato vivo`
 
-- [ ] T002 · Módulo Go 1.27 y carpetas base · `[backend]` `[P1]`
+- [X] T002 · Módulo Go 1.27 y carpetas base · `[backend]` `[P1]`
 
 - **Archivos**: `backend/go.mod` (NUEVO, `module simiente-santa/backend`, `go 1.27`), `backend/go.sum` (NUEVO), `backend/internal/db/queries/.gitkeep` (NUEVO).
 - **Qué hace**: crea el módulo Go con la versión **1.27** (D5/D-A5: el CI del kit lee `backend/go.mod`) y añade la única dependencia de runtime de F1: `github.com/jackc/pgx/v5` (D22/D-A8). Crea la carpeta `internal/db/queries/` (vacía en F1; ver `data-model.md`). El path del módulo es provisional `simiente-santa/backend` hasta que exista el remoto (plan R1). El `go.sum` se puebla **sin `go mod tidy`** (ver nota de secuenciación): con el `require` escrito en `go.mod`, `go mod download github.com/jackc/pgx/v5` descarga el módulo y escribe sus hashes en `go.sum`; `go mod download all` cubre las dependencias transitivas del grafo del módulo (los `require … // indirect` se escriben en T010, con el primer import).
@@ -94,7 +94,7 @@
 - **Criterio de terminado**: `go build ./...` no falla (paquete vacío válido) y la versión de Go declarada es 1.27. **Decisión de entorno (2026-10-03)**: la máquina tiene Go **1.26.8** y el plan fija **1.27**; el humano decidió **instalar Go 1.27** antes de ejecutar esta tarea, sin cambiar el plan. Acción previa: instalar el toolchain 1.27 (o `GOTOOLCHAIN=auto` como paliativo). **Nota de secuenciación**: `go mod tidy` **no** se ejecuta en esta tarea (eliminaría `pgx` sin ningún import todavía; por eso el `go.sum` se puebla con `go mod download`, nunca con `tidy`); la consolidación de `go.mod`/`go.sum` ocurre en T010, donde `platform/database` importa `pgx` por primera vez. **Nota de CI**: esta tarea viaja en el **mismo PR que T005** (o después de ella) — el job `backend` del CI se dispara en cuanto existe `backend/go.mod` y su paso "Migraciones" necesita `backend/migrations/` (nota 2).
 - **Commit sugerido**: `chore(backend): crear módulo Go 1.27 con pgx/v5`
 
-- [ ] T003 · `proyecto.mk` con los targets propios · `[infra]` `[P1]`
+- [X] T003 · `proyecto.mk` con los targets propios · `[infra]` `[P1]`
 
 - **Archivos**: `proyecto.mk` (NUEVO, raíz; incluido por el `Makefile` del kit — **no se edita el Makefile**).
 - **Qué hace**: define los targets de extensión previstos en D19: `api-gen` (`cd frontend && npm run api:gen`), `sqlc-gen` (`cd backend && sqlc generate`), `sqlc-verify` (regenera y exige `git diff --exit-code` sobre los artefactos generados — plan R4 / research R20), y `e2e` (`cd frontend && npx playwright test --config e2e/playwright.config.ts`, ejecución local, D17). Todos con `.PHONY` y descripción `##` para que aparezcan en `make help`.
@@ -102,7 +102,7 @@
 - **Criterio de terminado**: los cuatro targets existen, `make help` los muestra y ningún archivo del kit fue modificado (`git status` solo muestra `proyecto.mk`). `api-gen` y `e2e` no son ejecutables hasta T022/T027 (target definido antes que su contenido: aceptado y documentado aquí).
 - **Commit sugerido**: `build(mk): agregar proyecto.mk con api-gen, sqlc-gen, sqlc-verify y e2e`
 
-- [ ] T004 · `.env.example` con variables opcionales de puertos · `[infra]` `[P1]`
+- [X] T004 · `.env.example` con variables opcionales de puertos · `[infra]` `[P1]`
 
 - **Archivos**: `.env.example` (EDITABLE; no está en `.kit-manifest.json`).
 - **Qué hace**: agrega las variables opcionales de puertos que usará compose (T026): `DB_PORT` (5432), `WEB_PORT` (5173); confirma que ya están documentadas `POSTGRES_*`, `DATABASE_URL`, `DATABASE_URL_TEST`, `APP_ENV`, `HTTP_PORT` (8080), `LOG_LEVEL`, `CORS_ALLOWED_ORIGINS`, `SESSION_SECRET`, `VITE_API_URL`. La lista **canónica** que lee `platform/config` (T007) es exactamente `APP_ENV`, `HTTP_PORT`, `DATABASE_URL`, `LOG_LEVEL`, `CORS_ALLOWED_ORIGINS`, y `.env.example` debe documentar **esa** lista sin variaciones (sin `HTTP_ADDR`); el resto de variables del archivo tienen otro consumidor: `POSTGRES_*` y `DB_PORT`/`WEB_PORT` (compose, T026), `DATABASE_URL_TEST` (pruebas de integración), `SESSION_SECRET` (F2 — el backend de F1 no la consume) y `VITE_API_URL` (frontend). **Sin secretos reales** (FR-008): solo valores de ejemplo de desarrollo.
@@ -110,7 +110,7 @@
 - **Criterio de terminado**: `.env.example` documenta **exactamente** las cinco variables que lee `platform/config` (T007) y las que consume compose (T026), con su valor por defecto de desarrollo; ninguna variable sin consumidor y ningún consumidor sin su variable documentada.
 - **Commit sugerido**: `chore(env): documentar variables opcionales de puertos en .env.example`
 
-- [ ] T005 · Migración baseline `000001` (no-op) · `[db]` `[P2]`
+- [X] T005 · Migración baseline `000001` (no-op) · `[db]` `[P2]`
 
 - **Archivos**: `backend/migrations/000001_baseline.up.sql` (NUEVO), `backend/migrations/000001_baseline.down.sql` (NUEVO).
 - **Qué hace**: crea la migración baseline **no-op** (solo un comentario) que fija la convención `NNNNNN_descripcion.{up,down}.sql` de la skill `postgres-db` y ejercita el toolchain de punta a punta (D10, `data-model.md`). Sin tablas de negocio: F1 cierra con cero tablas de negocio. `schema_migrations` es la tabla de control de `golang-migrate`, no cuenta.
