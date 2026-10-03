@@ -34,9 +34,10 @@ type service struct {
 	repo Repository
 }
 
-// NewService construye el servicio del dominio status. La interfaz Service que
-// declara handler.go (quien la consume) la cumple el valor devuelto.
-func NewService(repo Repository) *service {
+// NewService construye el servicio del dominio status y devuelve la interfaz
+// Service que declara handler.go (quien la consume, arq. R3): así el patrón de
+// referencia (arq. §5.5) no expone el tipo concreto no exportado.
+func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
 
