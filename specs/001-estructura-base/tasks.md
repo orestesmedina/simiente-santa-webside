@@ -242,7 +242,7 @@
 
 ## Fase 5 — Imagen Docker del backend
 
-- [ ] T019 · `backend/Dockerfile` multi-stage · `[infra]`
+- [X] T019 · `backend/Dockerfile` multi-stage · `[infra]`
 
 - **Archivos**: `backend/Dockerfile` (NUEVO), `backend/.dockerignore` (NUEVO).
 - **Qué hace**: build multi-stage: `FROM golang:1.27` (D5) como etapa de compilación (`go mod download` con `go.mod`/`go.sum` copiados antes del resto para cachear, `CGO_ENABLED=0 go build ./cmd/api`) → imagen **mínima** de ejecución (alpine mínima o distroless; la elección concreta la justifica `devops` en el PR) con usuario no-root, `EXPOSE 8080` y solo el binario + certificados. `.dockerignore` evita copiar `.git`, `node_modules`, etc.
@@ -254,7 +254,7 @@
 
 ## Fase 6 — Frontend
 
-- [ ] T020 · Scaffold: Vite + React + TypeScript `strict` · `[frontend]` `[P5]`
+- [X] T020 · Scaffold: Vite + React + TypeScript `strict` · `[frontend]` `[P5]`
 
 - **Archivos**: `frontend/package.json`, `frontend/package-lock.json`, `frontend/vite.config.ts`, `frontend/tsconfig.json`, `frontend/tailwind.config.*`, configuración de ESLint + Prettier, `frontend/src/main.tsx`, `frontend/src/index.css` (Tailwind), carpetas `frontend/src/{app,api,components,features,lib}/` (NUEVOS).
 - **Qué hace**: monta el proyecto según la skill `react-frontend`: React 19, TypeScript con `strict: true` (prohibido `any`), Vite, Tailwind CSS, Vitest + Testing Library + MSW, y los scripts `dev`, `build`, `lint`, `typecheck`, `test`, **`api:gen`** (`openapi-typescript ../backend/api/openapi.yaml --output src/api/schema.d.ts`) y `e2e` (consumido por `make e2e`, T003). Dependencias justificadas en el PR (D22): React, React Router, TanStack Query, Tailwind, Vitest, Testing Library, MSW, Playwright (T027), `openapi-typescript` (herramienta de desarrollo, D-A8). **No** se instala shadcn/ui (diferido a F3, D14).
@@ -262,7 +262,7 @@
 - **Criterio de terminado**: `npm ci && npm run lint && npm run typecheck && npm test -- --run && npm run build` pasan desde `frontend/`; el árbol de carpetas coincide con el de `plan.md` (Project Structure).
 - **Commit sugerido**: `feat(frontend): scaffold Vite + React + TypeScript strict con Tailwind y pruebas`
 
-- [ ] T021 · Router, providers y layout · `[frontend]` `[P6]`
+- [X] T021 · Router, providers y layout · `[frontend]` `[P6]`
 
 - **Archivos**: `frontend/src/app/router.tsx`, `frontend/src/app/providers.tsx`, `frontend/src/app/layout.tsx` + tests (NUEVOS).
 - **Qué hace**: React Router con la ruta inicial `/` (destino: `StatusPage`, T024), `QueryClientProvider` de TanStack Query como único proveedor de datos del servidor (D14) y un layout mínimo con `main`/`nav` semánticos y foco visible (accesibilidad de la skill). Los datos se consultan **al montar + `refetch` a demanda** (sin auto-refresco en F1).
@@ -270,7 +270,7 @@
 - **Criterio de terminado**: `npm test -- --run` y `npm run typecheck` en verde; ningún componente hace `fetch` directo (regla de oro de la skill; lo revisa `revisor-codigo`).
 - **Commit sugerido**: `feat(frontend): router, providers y layout de la aplicación`
 
-- [ ] T022 · Tipos generados desde el contrato · `[frontend]` `[P6]`
+- [X] T022 · Tipos generados desde el contrato · `[frontend]` `[P6]`
 
 - **Archivos**: `frontend/src/api/schema.d.ts` (GENERADO y commiteado).
 - **Qué hace**: ejecuta `npm run api:gen` (`openapi-typescript`) contra **`backend/api/openapi.yaml`** (nunca contra el snapshot de `specs/`, D15) y commitea el resultado. Establece la regla anti-deriva (plan R4 / research R20): quien cambia el contrato regenera `schema.d.ts` en el mismo PR.
@@ -278,7 +278,7 @@
 - **Criterio de terminado**: `schema.d.ts` commiteado, reproducible desde el contrato y usado como única fuente de tipos de la API en el frontend.
 - **Commit sugerido**: `build(frontend): generar tipos de la API desde backend/api/openapi.yaml`
 
-- [ ] T023 · Cliente HTTP único: `apiFetch<T>` + `ApiError` · `[frontend]`
+- [X] T023 · Cliente HTTP único: `apiFetch<T>` + `ApiError` · `[frontend]`
 
 - **Archivos**: `frontend/src/api/client.ts`, `frontend/src/api/status.ts`, `frontend/src/api/client.test.ts` (NUEVOS).
 - **Qué hace**: el **único** mecanismo de manejo de respuestas (D13, FR-012): `apiFetch<T>()` resuelve 2xx con el DTO directo (tipado con `schema.d.ts`) y convierte todo 4xx/5xx en `ApiError` con el `ErrorEnvelope`; timeout de **5 s** con `AbortController` (D20); error de red, timeout, JSON inválido o respuesta que no cumple el sobre → error de tipo *inaccesible*. `status.ts` expone `getSystemStatus()` (único lugar que consulta el estado). URL base desde `import.meta.env.VITE_API_URL`.
@@ -286,7 +286,7 @@
 - **Criterio de terminado**: `npm test -- --run` en verde; no existe ningún otro `fetch` en el código fuente (búsqueda de `fetch(` fuera de `client.ts` = 0 coincidencias).
 - **Commit sugerido**: `feat(frontend): apiFetch con manejo único del sobre y timeout de 5 s`
 
-- [ ] T024 · Feature `status`: página, hook e indicadores · `[frontend]`
+- [X] T024 · Feature `status`: página, hook e indicadores · `[frontend]`
 
 - **Archivos**: `frontend/src/features/status/pages/StatusPage.tsx`, `frontend/src/features/status/hooks/useSystemStatus.ts`, `frontend/src/features/status/components/` (indicadores de estado), `frontend/src/features/status/status.test.tsx` (NUEVOS).
 - **Qué hace**: la página inicial («PaginaEstado» de `ux.md`): consulta el estado al montar vía `useSystemStatus` (TanStack Query sobre `getSystemStatus`, con botón **«Volver a consultar el estado»** que dispara `refetch`) y presenta los estados de forma comprensible (FR-005, SC-005). **Mapeo confirmado** (`ux.md` §3.1; plan, sección «Ajustes en ux.md» 1): `200` + `SystemStatus` → *conectado*; `503` + `error.code = "database_unavailable"` → *bd-no-conectada* (error A, texto de `ux.md` §6); timeout/red/respuesta malformada → *inaccesible* (error B, «No se pudo consultar el estado del sistema»). `error.message` del sobre puede usarse como explicación de apoyo del error A; los literales de `ux.md` mandan si difieren. Estados cubiertos: cargando, conectado, error A, error B.
@@ -294,7 +294,7 @@
 - **Criterio de terminado**: `npm test -- --run` y `npm run typecheck` en verde; la página muestra el estado sin acciones adicionales en <3 s (SC-005, se comprueba en e2e T027 y manualmente en `quickstart.md` §4); los textos respetan `ux.md`.
 - **Commit sugerido**: `feat(frontend): feature status con página, hook y estados de la interfaz`
 
-- [ ] T025 · `frontend/nginx.conf` y `frontend/Dockerfile` · `[infra]`
+- [X] T025 · `frontend/nginx.conf` y `frontend/Dockerfile` · `[infra]`
 
 - **Archivos**: `frontend/nginx.conf` (NUEVO), `frontend/Dockerfile` (NUEVO), `frontend/.dockerignore` (NUEVO).
 - **Qué hace**: imagen multi-stage `FROM node:22` (versión que fija el `ci.yml` del kit — plan R11) con `npm ci && npm run build` → `FROM nginx:alpine` sirviendo `dist/` con **SPA fallback** (`try_files $uri /index.html`) y cabeceras de caché razonables para `index.html` (sin caché) y assets con hash. `VITE_API_URL` se hornea en build time vía `ARG` (plan R6, por defecto `http://localhost:8080`): documentado en el README (T028).
@@ -306,7 +306,7 @@
 
 ## Fase 7 — Docker Compose y pruebas end-to-end
 
-- [ ] T026 · `docker-compose.yml` completo · `[infra]`
+- [X] T026 · `docker-compose.yml` completo · `[infra]`
 
 - **Archivos**: `docker-compose.yml` (EDITABLE: no está en `.kit-manifest.json`).
 - **Qué hace**: descomenta y configura los servicios `backend` y `frontend` (D2/D3): **sin `env_file` obligatorio** (el entorno local funciona en clon limpio con los valores por defecto, FR-001); puertos **parametrizados** `${DB_PORT:-5432}:5432`, `${HTTP_PORT:-8080}:8080`, `${WEB_PORT:-5173}:80`; `DATABASE_URL` del contenedor backend **construido desde `POSTGRES_*` apuntando al host `db`** (nunca el `localhost` del host — plan R9); `depends_on: db: condition: service_healthy` y `frontend` depende de `backend` (plan R7); volúmenes y healthcheck del `db` del kit intactos. **Imagen de PostgreSQL**: queda el punto de decisión plan R10 (T034) — si el humano ya decidió `postgres:16-alpine`, se aplica aquí; si no, se mantiene `postgres:16.4-alpine` con la nota de "pendiente de actualización" (US7 esc. 2).
@@ -314,7 +314,7 @@
 - **Criterio de terminado**: los tres servicios levantan con un solo comando desde un clon limpio (FR-001, SC-001 < 15 min medidos con `quickstart.md` §0); ningún archivo del kit fue modificado.
 - **Commit sugerido**: `build(compose): servicios backend y frontend con puertos parametrizados`
 
-- [ ] T027 · Pruebas end-to-end con Playwright · `[frontend]`
+- [X] T027 · Pruebas end-to-end con Playwright · `[frontend]`
 
 - **Archivos**: `frontend/e2e/playwright.config.ts`, `frontend/e2e/status.spec.ts`, `frontend/package.json` (devDependency `@playwright/test`) (NUEVOS).
 - **Qué hace**: configura Playwright para ejecución **local** (D17; el `ci.yml` del kit no se edita) con `baseURL` `http://localhost:5173` y el e2e del flujo de estado: abrir la página inicial y verificar que muestra el estado del sistema (conectado) sin acciones adicionales y en <3 s (SC-005). Los escenarios de error A/B se validan manualmente con `quickstart.md` §4 (detener `db` / `backend`): se documentan como pasos manuales del quickstart, no como e2e que manipule contenedores.
@@ -326,7 +326,7 @@
 
 ## Fase 8 — Documentación
 
-- [ ] T028 · `README.md` del proyecto · `[docs]`
+- [X] T028 · `README.md` del proyecto · `[docs]`
 
 - **Archivos**: `README.md` (NUEVO, raíz).
 - **Qué hace**: la documentación para levantar el entorno sin ayuda (FR-009, D18): qué es la F1; prerequisito único (Docker); **quickstart** (`make up`, puertos 5173/8080/5432 y cómo cambiarlos con `DB_PORT`/`HTTP_PORT`/`WEB_PORT`, `.env` opcional); comandos (`make up/down/test/lint/security/ci/db-migrate/doctor/e2e/api-gen/sqlc-gen/sqlc-verify`, `make instalar-hooks` una vez por clon — plan R3); herramientas de desarrollo opcionales con **versiones fijadas** (Go 1.27, Node 22, `golang-migrate`, `sqlc`, `openapi-typescript` — plan R4: generación reproducible); **tabla de versiones y soporte de seguridad** (FR-016, SC-010) con el registro de pendientes ya conocidos (US7 esc. 2): PostgreSQL `16.4` acumula CVEs corregidos en minors posteriores (plan R10, T034), Node 22 deja de recibir soporte en abril de 2027 (plan R11, T035) y los dos pendientes del **kit** (no editables aquí; se tratan como plan R11: identificados, propuestos al repo del kit y gestionados por el humano): la imagen `postgres:16.4-alpine` del servicio del `ci.yml` del kit y el «Go 1.23+» que aún recomienda `docs/GUIA-INICIO.md` del kit (Go 1.23 está en fin de vida desde 2025-08-12); notas operativas: `VITE_API_URL` se hornea en build (plan R6) y regeneración de artefactos generados (`make api-gen` / `make sqlc-gen`, regla de revisión plan R4). Enlaces a `specs/001-estructura-base/quickstart.md`, `docs/tecnico/arquitectura.md` (§8 = receta) y `docs/GUIA-INICIO.md` (kit).
@@ -334,7 +334,7 @@
 - **Criterio de terminado**: el quickstart es ejecutable de punta a punta siguiendo **solo** el README; toda variable de entorno usada por el código aparece documentada.
 - **Commit sugerido**: `docs(readme): quickstart, puertos, comandos y versiones del proyecto`
 
-- [ ] T029 · Checklist de verificación de la receta (SC-007) · `[docs]` `[P7]`
+- [X] T029 · Checklist de verificación de la receta (SC-007) · `[docs]` `[P7]`
 
 - **Archivos**: `specs/001-estructura-base/checklists/receta.md` (NUEVO).
 - **Qué hace**: plantilla de checklist alineada con `quickstart.md` §9 y `docs/tecnico/arquitectura.md` §8: casillas para cada paso (rama creada, 10 pasos de la receta, artefactos regenerados, `make ci` en verde, `git diff main --stat` sin cambios en áreas existentes, verificación funcional de `GET /api/v1/muestra` e integridad de `/healthz`, decisión de descarte de la rama) con campos de evidencia (quién verifica y fecha, salida adjunta de `make ci`, diff, resultado funcional).

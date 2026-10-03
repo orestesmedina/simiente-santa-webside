@@ -12,9 +12,9 @@ La fuente de verdad de la ejecución es tasks.md; el alto nivel, docs/producto/r
 |---|---|
 | Rama | 001-estructura-base |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar |
+| Fase | 7/9 · Validar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 5 de `tasks.md`: **T019** (`backend/Dockerfile` multi-stage) → luego frontend (T020–T024) y T025 |
+| Próximo paso | Fase 7 (`equipo-revision: qa-tester + revisor-codigo + seguridad`) → luego T030–T035 (humanas) y entrega (PR) |
 | Bloqueado por | — (entorno completo: Go 1.27.1, Node/npm Linux, calidad y cgo con `-race`) |
 | Actualizado | 2026-10-03 |
 
