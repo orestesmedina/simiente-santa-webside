@@ -87,6 +87,8 @@ Los modelos DeepSeek cuestan el **doble en hora pico**: 01:00–04:00 y 06:00–
 | `analista-producto`, `arquitecto` (alto) | `mimo-v2.6-pro` | La mejor calidad con capacidad razonable |
 | `documentador` (bajo), tareas ligeras | `mimo-v2.6-flash` | El más barato |
 
+**En un proyecto ya instalado**, esta distribución no se aplica sola al actualizar el kit (tu `equipo/config.json` se respeta). Para adoptar la recomendada por la versión actual del kit: `make actualizar-modelos` (muestra los cambios y pide confirmación; conserva temperaturas, agente principal y exclusiones).
+
 Si el presupuesto sigue agotándose rápido, revisa primero el orquestador: abre una sesión nueva por funcionalidad y verifica que esté delegando en los subagentes.
 
 ### Cómo medir

@@ -85,6 +85,8 @@ Si la spec y el plan están bien, la implementación casi siempre sale bien. **L
 | `equipo/agentes/*.md` | Definición de cada rol | Solo con aprobación de dirección técnica |
 | `.agents/skills/` | Convenciones del stack y flujos | Solo con aprobación de dirección técnica |
 | `specs/<número>-<feature>/` | Spec, plan y tareas de cada funcionalidad | Sí, es tu día a día |
+| `specs/<número>-<feature>/estado.md` | Fase, aprobaciones, hallazgos, decisiones y próximo paso de la funcionalidad | Lo mantiene el orquestador; puedes corregirlo |
+| `docs/producto/roadmap.md` | Funcionalidades del producto y su estado | Tú decides orden y alcance; el orquestador actualiza el estado |
 | `CLAUDE.md`, `.claude/`, `.codex/`, `.opencode/`, `opencode.json` | Archivos generados | **Nunca** a mano |
 | `.bowser-spec-kit-ai/` y `.kit-manifest.json` | El kit compartido (submódulo) y la lista de archivos que vienen de él | **Nunca** a mano; se actualizan con `make actualizar-kit` |
 | `proyecto.mk` | Comandos de `make` propios del proyecto | Sí |
@@ -282,14 +284,14 @@ No le pidas al agente "hazme la aplicación". Primero se convierte la idea en un
    ```
    Complétala sin IA: problema, usuarios, qué sería un éxito, lo mínimo que debe hacer, qué queda fuera y restricciones. Si no puedes llenar una sección, es una pregunta para el cliente.
 2. **Pide el MVP dividido en funcionalidades:**
-   > Lee docs/producto/idea.md. Propón el MVP más pequeño y divídelo en funcionalidades independientes, en orden de dependencia. La primera debe ser la estructura base del proyecto. Guárdalo en docs/producto/roadmap.md. No escribas specs todavía.
+   > Lee docs/producto/idea.md. Propón el MVP más pequeño y divídelo en funcionalidades independientes, en orden de dependencia. La primera debe ser la estructura base del proyecto. Guárdalo en docs/producto/roadmap.md con el formato de docs/plantillas/roadmap.md. No escribas specs todavía.
 
    Revisa y ajusta la lista: ese orden es el plan del proyecto.
 3. **Primera funcionalidad, el esqueleto:**
    > Usa la skill equipo-feature: estructura base del proyecto. Backend en Go con endpoint /healthz conectado a PostgreSQL, frontend React que muestre el estado del backend, Docker Compose levantando todo, y CI en verde.
 
    Los agentes copian los patrones del código existente, así que un esqueleto limpio y aprobado hace que todo lo siguiente salga consistente.
-4. **Sigue con el roadmap**, una funcionalidad a la vez, integrando cada una antes de empezar la siguiente.
+4. **Sigue con el roadmap**, una funcionalidad a la vez, integrando cada una antes de empezar la siguiente. La columna **Estado** del roadmap muestra en todo momento qué está terminado, en curso o pendiente.
 
 ### Actualizar el kit en un proyecto
 
@@ -297,8 +299,11 @@ Cuando dirección técnica publique una mejora del kit:
 
 ```bash
 make actualizar-kit
+make actualizar-modelos   # solo si el paso anterior avisó "el kit recomienda modelos distintos"
 git add . && git commit -m "chore: actualiza kit de desarrollo"
 ```
+
+Los modelos de cada agente viven en `equipo/config.json`, que es del proyecto: actualizar el kit no los cambia. `make actualizar-modelos` te muestra qué cambiaría, pide confirmación y regenera la configuración de agentes (incluido `.opencode/`). Después reinicia OpenCode (o tu herramienta) para que tome los modelos nuevos.
 
 Si el comando se detiene porque un archivo del kit fue modificado en el proyecto, no uses `FORZAR=1` sin consultar: ese cambio local podría ser importante.
 
@@ -314,8 +319,9 @@ Usaremos un ejemplo: **"Los clientes pueden registrarse con email y contraseña.
 git checkout main && git pull
 make up
 make doctor
+make estado      # qué está en curso y qué sigue en el roadmap
 ```
-Abre tu agente en la carpeta del proyecto (`claude`, `codex` u `opencode`).
+Abre tu agente en la carpeta del proyecto (`claude`, `codex` u `opencode`). Lo primero que hace el orquestador es decirte dónde quedó el trabajo.
 
 ### Paso 1 — Pedir la funcionalidad
 
@@ -434,6 +440,19 @@ Para cambios triviales (un texto, un color, un error de ortografía) no hace fal
 
 **Regla:** si el cambio afecta comportamiento, datos o API, **no es pequeño**. Usa el flujo completo.
 
+### Retomar el trabajo (otra sesión, otro día u otra persona)
+
+El estado no depende de la memoria del agente: vive en `docs/producto/roadmap.md` y en `specs/<rama>/estado.md`, versionados en git.
+
+1. Cámbiate a la rama de la funcionalidad (`git checkout 003-registro-usuarios`) y ejecuta `make estado`. Verás la fase, las aprobaciones, las tareas hechas, los hallazgos abiertos y el próximo paso.
+2. Abre el agente. El orquestador te dice dónde quedaron y pregunta si sigue. También puedes pedirlo:
+   > ¿Por dónde quedamos?
+3. Confirma que el resumen es correcto antes de que continúe. Si falta una aprobación registrada, te la va a pedir: léela antes de aprobar, no la des por hecha.
+
+**Antes de dejar el trabajo**, dile al orquestador "lo dejamos por hoy": actualiza `estado.md` con el próximo paso y lo guarda en un commit. Si quedan cambios de código sin commit, te avisa.
+
+Si una funcionalidad se empezó sin `estado.md` (por ejemplo, antes de que existiera este flujo), pide "retomemos": el orquestador lo reconstruye a partir de los archivos y de git, y te pide confirmar las aprobaciones.
+
 ### Cambiar la especificación de algo ya construido
 
 Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las tareas; después el código. **Nunca al revés.**
@@ -462,6 +481,9 @@ Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las
 | "Submódulo .bowser-spec-kit-ai/ sin inicializar" o la carpeta `.bowser-spec-kit-ai/` está vacía | Se clonó sin `--recursive` | `git submodule update --init` |
 | "Los archivos del kit no coinciden con .bowser-spec-kit-ai/" al hacer commit | Se editó a mano un archivo del kit, o se actualizó `.bowser-spec-kit-ai/` sin instalar | `make verificar-kit` para ver cuál; luego revierte el cambio o ejecuta `make instalar-kit` |
 | `make actualizar-kit` se detiene por archivos modificados | Alguien cambió localmente un archivo del kit | Consulta a dirección técnica: llevarlo al kit, excluirlo en `equipo/config.json` o descartarlo con `FORZAR=1` |
+| Actualicé el kit pero `.opencode/` (o los modelos) siguen iguales | Los modelos salen de `equipo/config.json` del proyecto, que el kit no sobrescribe | `make actualizar-modelos` y reinicia OpenCode |
+| `make estado` avisa "cambió después de estado.md" o "aprobación no registrada" | El estado no se actualizó en la última sesión | Pide al orquestador "¿por dónde quedamos?": compara con los archivos, corrige `estado.md` y te pide confirmar lo que falte |
+| ⚠ "sin actualizar estado.md" al hacer commit | Cambió spec, plan o tareas y el estado no | Es un aviso, no bloquea. Actualiza `estado.md` y agrégalo al commit |
 | El CI falla al descargar el submódulo | El repositorio del kit es privado | Configura el secreto `KIT_TOKEN` en el repositorio del proyecto |
 | `make: command not found` | Falta `make` (común en Ubuntu/WSL) | `sudo apt install -y make build-essential` |
 | `make: *** No rule to make target 'up'` | Estás en otra carpeta (por ejemplo, la terminal se abrió en tu carpeta personal) | `cd` a la carpeta del proyecto; `ls Makefile` debe encontrarlo |
@@ -502,6 +524,8 @@ Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las
 - **PR (Pull Request):** solicitud para integrar cambios a la rama principal.
 - **Migración:** archivo versionado que cambia el esquema de la base de datos.
 - **Conventional Commits:** formato de mensajes de commit (`feat:`, `fix:`…).
+- **Roadmap:** lista ordenada de funcionalidades del producto con el estado de cada una.
+- **estado.md:** archivo de cada funcionalidad donde el orquestador anota fase, aprobaciones, hallazgos, decisiones y próximo paso, para retomar en cualquier sesión.
 
 ---
 
@@ -514,7 +538,8 @@ Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las
 - [ ] Leer la constitución y `AGENTS.md`.
 
 **Día 2**
-- [ ] Leer las specs y planes de 2 funcionalidades ya terminadas.
+- [ ] Leer las specs y planes de 2 funcionalidades ya terminadas, con su `estado.md`.
+- [ ] Ejecutar `make estado` y entender el roadmap del proyecto.
 - [ ] Leer las definiciones de los roles en `equipo/agentes/`.
 - [ ] Hacer un cambio pequeño (sección 6) y abrir un PR acompañado de un senior.
 

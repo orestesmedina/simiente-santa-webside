@@ -8,6 +8,8 @@ coordinas a los subagentes del equipo siguiendo el proceso de Spec Kit.
 
 **Tu manual de trabajo completo está en `equipo/orquestador.md`: léelo al iniciar cada sesión y síguelo.**
 
+**Al iniciar cada sesión, antes de responder**, revisa dónde quedó el trabajo (`make estado`, o `docs/producto/roadmap.md` y `specs/<rama>/estado.md`) y díselo al usuario en pocas líneas (skill `equipo-retomar`).
+
 ## Stack oficial
 - **Frontend:** React + TypeScript + Vite (carpeta `frontend/`)
 - **Backend:** Go (carpeta `backend/`)
@@ -18,8 +20,10 @@ Las reglas no negociables están en `.specify/memory/constitution.md`. Léela an
 
 ## Dónde está cada cosa
 - `equipo/agentes/` — definición de cada subagente (fuente única; los formatos por herramienta se generan con `make sincronizar`).
-- `.agents/skills/` — conocimiento reutilizable: convenciones del stack (`go-backend`, `react-frontend`, `postgres-db`) y flujos del equipo (`equipo-feature`, `equipo-revision`, `equipo-bug`).
+- `.agents/skills/` — conocimiento reutilizable: convenciones del stack (`go-backend`, `react-frontend`, `postgres-db`) y flujos del equipo (`equipo-feature`, `equipo-revision`, `equipo-bug`, `equipo-retomar`).
 - `specs/<feature>/` — spec, plan, tareas y reportes de cada funcionalidad.
+- `specs/<feature>/estado.md` — fase, aprobaciones, hallazgos abiertos, decisiones y próximo paso (lo mantiene el orquestador).
+- `docs/producto/roadmap.md` — funcionalidades del producto y su estado.
 
 ## Proceso: fase de Spec Kit → subagente responsable
 
@@ -49,6 +53,7 @@ El usuario te habla con naturalidad; tú decides qué flujo aplicar:
 | Reporta un error o algo que no funciona | Aplica la skill **`equipo-bug`** |
 | Pide revisar cambios, un PR o una rama | Aplica la skill **`equipo-revision`** |
 | Pide un cambio trivial sin impacto en comportamiento, datos ni API (un texto, un color, una errata) | Hazlo directo y luego aplica `equipo-revision` |
+| Pregunta por dónde iban, qué falta, o quiere retomar | Aplica la skill **`equipo-retomar`** |
 | Pregunta algo, pide una explicación o trabaja documentos de producto (`docs/producto/idea.md`, `roadmap.md`) | Responde o hazlo directamente, sin Spec Kit |
 
 Si no está claro cuál aplica, pregunta antes de empezar. Nunca escribas código de producción sin una spec y un plan aprobados.
@@ -64,3 +69,4 @@ Si no está claro cuál aplica, pregunta antes de empezar. Nunca escribas códig
 8. **No edites archivos generados** (`CLAUDE.md`, `.claude/`, `.codex/`, `.opencode/`, `opencode.json`). Cambia la fuente en `equipo/` o `.agents/` y ejecuta `make sincronizar`.
 9. Si la spec es ambigua, pregunta antes de inventar.
 10. **No edites el kit compartido.** Ni la carpeta `.bowser-spec-kit-ai/` (submódulo) ni los archivos listados en `.kit-manifest.json`: se reemplazan al actualizar el kit. Si algo del kit debe cambiar, propónlo al humano para llevarlo al repositorio del kit.
+11. **Mantén el estado al día.** Actualiza `specs/<feature>/estado.md` y el roadmap en cada cambio de fase, puerta, ciclo de corrección y al cerrar la sesión. Una aprobación solo se registra si el humano la dio explícitamente.
