@@ -5,8 +5,6 @@
 **Input**: plan aprobado el 2026-09-30 (`plan.md`, D1–D23) · arquitectura y decisiones aprobadas (`docs/tecnico/arquitectura.md`, `docs/tecnico/decisiones.md`) · `data-model.md` · `contracts/openapi.yaml` · `quickstart.md` · constitución (`.specify/memory/constitution.md`) · skills `go-backend`, `postgres-db`, `react-frontend` · kit del proyecto (Makefile, `docker-compose.yml`, `proyecto.mk`, `.env.example`, `.github/workflows/ci.yml`).
 
 > **Regla de ejecución**: **un commit por tarea** (Conventional Commits; los hooks del kit lo validan). Toda tarea de código **incluye sus pruebas** en el mismo commit (constitución §III). Quien escribe no aprueba: cada tarea pasa por `qa-tester`, `revisor-codigo` y `seguridad` antes de integrarse (flujo de entrega del orquestador).
->
-> **ID de tarea en el mensaje (adoptado el 2026-10-03)**: el asunto del commit termina con el identificador de la tarea entre paréntesis, por ejemplo `feat(backend): añade platform/config con validación al arranque (T007)`. Es lo que permite **derivar el progreso del historial** de git en vez de marcar casillas a mano, y es el habilitador de la propuesta «Estado derivado y verificable» llevada al repositorio del kit (`docs/tecnico/propuestas-al-kit.md`). Los mensajes sugeridos de cada tarea se leen con este sufijo.
 
 ## Confirmaciones del humano aplicadas (2026-09-30)
 

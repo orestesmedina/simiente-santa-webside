@@ -18,8 +18,6 @@ Si prefieres ser explícito: *«Retoma F1 en la fase 6 (implementación), empeza
 
 **Antes de retomar**, comprueba el entorno con `make doctor` (sección 5).
 
-> **Nota (2026-10-03)**: este documento se mantiene **a mano** por ahora. La propuesta para que el kit lo **derive y lo verifique automáticamente** está redactada en [`docs/tecnico/propuestas-al-kit.md`](docs/tecnico/propuestas-al-kit.md) (propuesta 1) y pendiente de llevar al repositorio del kit. Mientras tanto, si algo de este documento contradice la evidencia, **manda la evidencia** (`git log`, `tasks.md`, `make doctor`).
-
 ---
 
 ## 2. Dónde estamos (fases del proceso)
@@ -46,7 +44,7 @@ Si prefieres ser explícito: *«Retoma F1 en la fase 6 (implementación), empeza
 
 Reglas de ejecución que aplican desde la primera tarea (están en `tasks.md` y en la constitución):
 
-- **Un commit por tarea**, con Conventional Commits y **el ID de la tarea al final del asunto** (`feat(backend): … (T007)`), adoptado el 2026-10-03 para poder derivar el progreso del historial.
+- **Un commit por tarea**, con Conventional Commits.
 - **Toda tarea de código incluye sus pruebas** en el mismo commit (constitución §III).
 - **Quien escribe no aprueba**: QA, revisión y seguridad validan antes de integrar.
 - **Ningún archivo del kit se edita** (regla 10; ver `tasks.md` § «Regla 10»).
@@ -74,7 +72,6 @@ Reglas de ejecución que aplican desde la primera tarea (están en `tasks.md` y 
 | 6 | **Imagen de PostgreSQL** | `postgres:16.4-alpine` acumula CVEs de minors posteriores; propuesta `postgres:16-alpine` | T034, antes de T026 |
 | 7 | **Vencimientos del kit** | Node 22 (abril de 2027) y el «Go 1.23+» de `docs/GUIA-INICIO.md` del kit: proponer las mejoras al repositorio del kit | T035 |
 | 8 | **Verificación de la receta (SC-007)** | Seguir solo `docs/tecnico/arquitectura.md` §8 en una rama descartable | T030, al cerrar F1 |
-| 9 | **Llevar las propuestas al repositorio del kit** | Siete propuestas redactadas en `docs/tecnico/propuestas-al-kit.md` (estado derivado y verificable, ID de tarea en `commit-msg`, job e2e, umbral de cobertura, artefactos generados, versiones en fin de vida y lectura del estado al iniciar sesión) | Cuando puedas; no bloquea F1 |
 
 ---
 
@@ -91,7 +88,6 @@ Reglas de ejecución que aplican desde la primera tarea (están en `tasks.md` y 
 
 - **Árbol limpio**; todos los cambios commiteados (`git log --oneline` cuenta la historia completa con Conventional Commits).
 - **Hooks de git activos** (`make instalar-hooks` ejecutado). Son por clon: un clon nuevo debe ejecutarlo.
-- **Regla adoptada**: el asunto del commit incluye el ID de la tarea (`T0NN`); es el habilitador del estado derivado (propuesta 1 al kit).
 - **Kit** en `ca93b38`, `make verificar-kit` en OK; configuración de agentes sincronizada.
 - **`make doctor`**: 16 correctos, 6 avisos y 1 problema (el `npm` de Windows, sección 5).
 
@@ -105,7 +101,6 @@ Reglas de ejecución que aplican desde la primera tarea (están en `tasks.md` y 
 | Spec, plan, tareas y diseño de F1 | `specs/001-estructura-base/` |
 | Progreso de las tareas | `specs/001-estructura-base/tasks.md` § «Estado de ejecución» |
 | Arquitectura y decisiones técnicas | `docs/tecnico/arquitectura.md`, `docs/tecnico/decisiones.md` |
-| Propuestas para el repositorio del kit | `docs/tecnico/propuestas-al-kit.md` |
 | Proceso del equipo y reglas | `AGENTS.md`, `equipo/orquestador.md`, `docs/GUIA-INICIO.md` |
 | Reglas no negociables del código | `.specify/memory/constitution.md` |
 | Convenciones del stack | `.agents/skills/` (`go-backend`, `postgres-db`, `react-frontend`) |
@@ -117,4 +112,3 @@ Reglas de ejecución que aplican desde la primera tarea (están en `tasks.md` y 
 | Fecha | Cambio |
 |---|---|
 | 2026-10-03 | Creación: fases 1–5 cerradas, fase 6 como punto de continuación, acciones humanas y decisiones abiertas registradas |
-| 2026-10-03 | Se adopta el ID de tarea en el asunto del commit y se añade `docs/tecnico/propuestas-al-kit.md` (incluida la propuesta de estado derivado y verificable) |
