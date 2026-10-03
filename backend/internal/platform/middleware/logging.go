@@ -17,20 +17,24 @@ const (
 )
 
 // Logging registra al terminar la petición: método, ruta, status, duración y
-// request_id (los cinco campos de D12).
+// request_id (los cinco campos de D12). Además publica el logger por petición
+// (hij con request_id, método y ruta) en el contexto, para que los handlers y
+// WriteError registren con esos mismos campos (arq. §2.1/§6).
 func Logging(logger *slog.Logger) httpserver.Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 
-			next.ServeHTTP(rec, r)
-
 			base := logger
 			if base == nil {
 				base = slog.Default()
 			}
 			requestLog := applogger.Request(base, httpserver.RequestIDFromContext(r.Context()), r.Method, r.URL.Path)
+			r = r.WithContext(httpserver.ContextWithRequestLogger(r.Context(), requestLog))
+
+			next.ServeHTTP(rec, r)
+
 			requestLog.Info("petición atendida",
 				slog.Int(statusKey, rec.status),
 				slog.Int64(durationKey, time.Since(start).Milliseconds()),

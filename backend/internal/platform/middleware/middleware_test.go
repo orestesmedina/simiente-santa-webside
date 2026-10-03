@@ -11,6 +11,7 @@ import (
 	"sync"
 	"testing"
 
+	"simiente-santa/backend/internal/platform/apperr"
 	"simiente-santa/backend/internal/platform/httpserver"
 )
 
@@ -246,6 +247,35 @@ func TestRecoverTurnsPanicInto500(t *testing.T) {
 	detail, _ := record.attrs["error"].(string)
 	if !strings.Contains(detail, "boom interno") {
 		t.Errorf("el log no contiene el detalle del panic: %v", record.attrs)
+	}
+}
+
+func TestWriteErrorUsesPerRequestLoggerWithContext(t *testing.T) {
+	logger, store := captureLogger()
+	mux := muxWithHandler(func(w http.ResponseWriter, r *http.Request) {
+		httpserver.WriteError(r.Context(), w, logger, apperr.NotFound("Recurso no encontrado"))
+	})
+	handler := httpserver.NewHandler(mux, logger, RequestID, Logging(logger))
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	req.Header.Set(HeaderRequestID, "req-ctx-456")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	record, ok := store.find(slog.LevelWarn)
+	if !ok {
+		t.Fatal("WriteError no emitió el registro del error de dominio")
+	}
+	want := map[string]any{
+		"request_id": "req-ctx-456",
+		"method":     "GET",
+		"path":       "/healthz",
+		"code":       "not_found",
+	}
+	for key, value := range want {
+		if record.attrs[key] != value {
+			t.Errorf("campo %q = %v, se esperaba %v", key, record.attrs[key], value)
+		}
 	}
 }
 
