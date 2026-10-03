@@ -1,7 +1,13 @@
+import { BrowserRouter } from 'react-router-dom';
+import { AppProviders } from './providers';
+import { AppRoutes } from './router';
+
 export function App() {
   return (
-    <div>
-      <h1>Estado del sistema</h1>
-    </div>
+    <AppProviders>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AppProviders>
   );
 }
