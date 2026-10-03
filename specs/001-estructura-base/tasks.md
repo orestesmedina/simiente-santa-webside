@@ -122,7 +122,7 @@
 
 ## Fase 2 — Capa de datos: sqlc
 
-- [ ] T006 · `backend/sqlc.yaml` y verificación de R5 del plan · `[db]`
+- [X] T006 · `backend/sqlc.yaml` y verificación de R5 del plan · `[db]`
 
 - **Archivos**: `backend/sqlc.yaml` (NUEVO). *(Toca `internal/db/` solo si la verificación de R5 del plan genera código.)*
 - **Qué hace**: configura sqlc (D6/D-A3): `schema: migrations` · `queries: internal/db/queries` · `out: internal/db`, `engine: postgresql`. A continuación **verifica el riesgo R5 del plan**: ejecuta `make sqlc-gen` con `internal/db/queries/` **vacío** (el caso real de `main` en F1) y registra el comportamiento observado como comentario en el propio `sqlc.yaml`: si el CLI genera artefactos vacíos, se commitean; si exige al menos una consulta, se documenta así y `internal/db/` queda sin generar hasta el primer `sqlc generate` del ejercicio de práctica (flujo normal del paso 3 de la receta).
@@ -136,7 +136,7 @@
 
 > Reglas de `docs/tecnico/arquitectura.md` §1.2: `cmd → dominio → platform`; `platform` **no conoce dominios**; sin estado global ni `init()` con lógica (arq. R6). Toda la fase cumple §V (`gofmt`, `go vet`, `golangci-lint`, errores con `%w`, nombres en inglés en código).
 
-- [ ] T007 · `platform/config` — variables de entorno con validación al arrancar · `[backend]` `[P3]`
+- [X] T007 · `platform/config` — variables de entorno con validación al arrancar · `[backend]` `[P3]`
 
 - **Archivos**: `backend/internal/platform/config/config.go`, `backend/internal/platform/config/config_test.go` (NUEVOS).
 - **Qué hace**: `Load() (Config, error)` con `os.Getenv` + validación al arrancar y valores por defecto de desarrollo (D12/D-A6, sin Viper). **Lista canónica de variables que lee `platform/config`** (la misma que documenta `.env.example`, T004): `APP_ENV`, `HTTP_PORT`, `DATABASE_URL`, `LOG_LEVEL`, `CORS_ALLOWED_ORIGINS`. Se fija `HTTP_PORT` y **no** `HTTP_ADDR`: el servidor escucha en todas las interfaces con `:$HTTP_PORT`, que es lo que necesita el contenedor (dentro de él `localhost` no es el host), y coincide con `.env.example` y el compose del kit. Todas con valores por defecto de desarrollo (`APP_ENV=development` identifica el entorno y viaja en los logs). Falla rápido con mensaje claro si algo obligatorio falta o es inválido (puerto no numérico, `LOG_LEVEL` desconocido). Ningún secreto en el código (FR-008).
@@ -144,7 +144,7 @@
 - **Criterio de terminado**: `go test ./internal/platform/config/` en verde; un entorno sin `.env` produce una `Config` válida de desarrollo (requisito de `make up` en clon limpio, FR-001).
 - **Commit sugerido**: `feat(platform): config por variables de entorno con validación al arrancar`
 
-- [ ] T008 · `platform/logger` — `slog` JSON y logger por petición · `[backend]` `[P3]`
+- [X] T008 · `platform/logger` — `slog` JSON y logger por petición · `[backend]` `[P3]`
 
 - **Archivos**: `backend/internal/platform/logger/logger.go`, `backend/internal/platform/logger/logger_test.go` (NUEVOS).
 - **Qué hace**: constructor de `*slog.Logger` con handler **JSON** y nivel desde `LOG_LEVEL`; helper para el **logger por petición** (hij con `request_id`, método y ruta) que usará `middleware/request-id` (D12). Mismo formato y severidad en todo el sistema (US4 esc. 3).
@@ -152,7 +152,7 @@
 - **Criterio de terminado**: `go test ./internal/platform/logger/` en verde; toda línea emitida es JSON parseable y lleva su nivel.
 - **Commit sugerido**: `feat(platform): logger slog JSON con logger por petición`
 
-- [ ] T009 · `platform/apperr` — errores de dominio tipados · `[backend]` `[P3]`
+- [X] T009 · `platform/apperr` — errores de dominio tipados · `[backend]` `[P3]`
 
 - **Archivos**: `backend/internal/platform/apperr/apperr.go`, `backend/internal/platform/apperr/apperr_test.go` (NUEVOS).
 - **Qué hace**: los tipos de error que **F1 emite** (el registro del contrato, cerrado, se completa bajo demanda): `NotFound` (404, `not_found` — fallback de ruta no documentada), `MethodNotAllowed` (405, `method_not_allowed` — fallback de método no documentado, el que exige el contrato con `POST /healthz`), **`DatabaseUnavailable` (503, code `database_unavailable`)** — el kind que usa `/healthz` (D7) — e `Internal` (500, `internal` — error inesperado o `panic` recuperado); cumple D11: "los kinds que usa `/healthz` + `Internal`; crecen bajo demanda". El resto del registro (`Invalid` 400, `Unauthenticated` 401, `Forbidden` 403, `Conflict` 409, `RateLimited` 429) **no** se implementa en F1: ningún código de F1 los produce y se añaden con su productor en F2+ (su traducción ya queda fijada en la tabla de §5.11 de `arquitectura.md`; hasta entonces `WriteError` los resolvería como `internal`). Cada error lleva `Message` (seguro para el cliente, en español), detalle opcional (`Details`) y el error interno **envuelto con `%w`**, que nunca se serializa (FR-013). Incluye la tabla de traducción de §5.11 de `arquitectura.md` (kind → status HTTP → `error.code`) que consumirá `WriteError`, para los cuatro kinds de F1 más el fallback `internal`.
@@ -160,7 +160,7 @@
 - **Criterio de terminado**: `go test ./internal/platform/apperr/` en verde; ningún método de `apperr` expone el error interno (lo verifica también `seguridad`).
 - **Commit sugerido**: `feat(platform): apperr con kinds de dominio y traducción a HTTP`
 
-- [ ] T010 · `platform/database` — pool `pgx`, `Ping` con timeout y `WithTx` · `[backend]` `[P3]`
+- [X] T010 · `platform/database` — pool `pgx`, `Ping` con timeout y `WithTx` · `[backend]` `[P3]`
 
 - **Archivos**: `backend/internal/platform/database/database.go`, `backend/internal/platform/database/database_test.go`, `backend/internal/platform/database/database_integration_test.go` (`//go:build integration`) (NUEVOS). *Consolida `go.mod`/`go.sum`.*
 - **Qué hace**: construcción del `*pgxpool.Pool` desde `DATABASE_URL` (pool **perezoso**: no bloquea ni falla si la BD tarda — plan R7), helper de salud `Ping(ctx)` con `context.WithTimeout` de **2 s** (D8: estado real por petición, `/healthz` responde en ≤2 s aunque la BD esté caída) y `WithTx(ctx, pool, fn)` para transacciones (D-A3). Primer import real de `pgx/v5` → aquí se ejecuta `go mod tidy` y se consolida `go.sum` (ver T002).
@@ -168,7 +168,7 @@
 - **Criterio de terminado**: `go test ./...` y `go test -tags=integration ./...` (con la BD del kit) en verde; `go mod tidy` deja `go.sum` consistente sin perder `pgx/v5`.
 - **Commit sugerido**: `feat(platform): pool pgx con Ping por petición y WithTx`
 
-- [ ] T011 · `platform/httpserver` — `Registrar`, sobres de respuesta y servidor · `[backend]`
+- [X] T011 · `platform/httpserver` — `Registrar`, sobres de respuesta y servidor · `[backend]`
 
 - **Archivos**: `backend/internal/platform/httpserver/registrar.go`, `error.go`, `server.go` y sus `*_test.go` (NUEVOS).
 - **Qué hace**: (a) la interfaz `Registrar` (`Handle(method, path, h)`, `Group(prefix, mws...)`) y el tipo `Middleware = func(http.Handler) http.Handler` tal como están en `arquitectura.md` §4, con el adaptador `muxRegistrar` sobre `net/http` (patrones `GET /ruta` de Go 1.22+; D4/D-A4) incluido el fallback 404/405 del router convertido a **sobre de error** (SC-008: la stdlib respondería texto); (b) `WriteJSON` (sobre de éxito = DTO directo, confirmación 1) y `WriteError` (**único** punto de traducción de `apperr` a HTTP, §5.11; `internal` responde mensaje genérico y el detalle interno solo va al log con `request_id`); (c) `New`/`Run`: servidor con `ReadHeaderTimeout`/`ReadTimeout`/`WriteTimeout`/`IdleTimeout` y **apagado ordenado** (`signal.NotifyContext` + `Shutdown` con periodo de gracia).
@@ -176,7 +176,7 @@
 - **Criterio de terminado**: `go test ./internal/platform/httpserver/` en verde; ningún handler puede escribir errores fuera de `WriteError` (revisión de `revisor-codigo`).
 - **Commit sugerido**: `feat(platform): httpserver con Registrar, WriteJSON/WriteError y apagado ordenado`
 
-- [ ] T012 · `platform/middleware` — cadena transversal en orden aprobado · `[backend]`
+- [X] T012 · `platform/middleware` — cadena transversal en orden aprobado · `[backend]`
 
 - **Archivos**: `backend/internal/platform/middleware/{requestid,recover,logging,cors}.go` + `middleware_test.go` (NUEVOS).
 - **Qué hace**: los cuatro middlewares de F1 (D11/D12): `request-id` (toma `X-Request-ID` del cliente o genera uno; lo guarda en el `context` y crea el logger por petición), `recover` (todo `panic` → 500 vía `WriteError`; el proceso nunca cae), `logging` (al terminar: método, ruta, status, duración, `request_id`) y `CORS` mínimo escrito a mano (una cabecera para un `GET` simple sin credenciales; responde los preflight `OPTIONS` y los corta ahí; orígenes desde `CORS_ALLOWED_ORIGINS`) — D16, sin dependencias. Orden de montaje en `httpserver.New`: `request-id → recover → logging → CORS → handler` (F2+ añadirá `rate-limit → [authn → authz → CSRF]`; **no** se implementan ahora, ver "Fuera de F1").
@@ -184,7 +184,7 @@
 - **Criterio de terminado**: `go test ./internal/platform/middleware/` en verde; la cadena de F1 queda montada exactamente en el orden documentado (SC-006: las capacidades transversales existen una sola vez, aquí).
 - **Commit sugerido**: `feat(platform): middleware request-id, recover, logging y CORS`
 
-- [ ] T013 · `platform/testutil` — helpers compartidos de prueba · `[backend]`
+- [X] T013 · `platform/testutil` — helpers compartidos de prueba · `[backend]`
 
 - **Archivos**: `backend/internal/platform/testutil/{db,http,log}.go` + `testutil_test.go` (NUEVOS). *Se llama `testutil` y no `testing` para no chocar con el paquete `testing` de la stdlib en cada `_test.go` (y porque hay linters que lo señalan); es el único paquete con ese conflicto.*
 - **Qué hace**: helpers que usarán las pruebas (D11): conexión a `DATABASE_URL_TEST` con *skip* automático si no hay BD (y creación del esquema de prueba cuando aplique), utilidades `httptest` (recorders, servidor con la cadena completa — por eso depende de `httpserver` y `middleware`, T011/T012) y captura de logs (handler `slog` en memoria) para las aserciones de SC-009.
@@ -198,7 +198,7 @@
 
 > Es el **primer área real construida con la receta** de `docs/tecnico/arquitectura.md` §8 (D21): mismos archivos y convenciones que copiarán F2–F9. Contrato ya fijado en `backend/api/openapi.yaml` (T001) — regla arq. R8.
 
-- [ ] T014 · `status`: modelo y servicio · `[backend]` `[P4]`
+- [X] T014 · `status`: modelo y servicio · `[backend]` `[P4]`
 
 - **Archivos**: `backend/internal/status/model.go`, `service.go`, `service_test.go` (NUEVOS).
 - **Qué hace**: `model.go` con el DTO `SystemStatus` (`{"status":"ok","database":"connected"}`, espejo del contrato, `camelCase`, `additionalProperties: false`); `service.go` con la interfaz `Repository` (**la define quien la consume**, arq. R3: `Ping(ctx) error` con timeout ya aplicado en `platform/database`) y las reglas: conexión viva → `SystemStatus` ok; error de conexión → `apperr.DatabaseUnavailable` con `Details{"database":"disconnected"}` (confirmación 2: el 503 es sobre de error). Sin HTTP, sin SQL, sin `net/http` ni `pgx` (arq. R4).
@@ -206,7 +206,7 @@
 - **Criterio de terminado**: `go test ./internal/status/` en verde con cobertura del service **≥80 %** (`go test -cover`, umbral de §III).
 - **Commit sugerido**: `feat(status): modelo y servicio del estado del sistema`
 
-- [ ] T015 · `status`: repositorio sobre `pgxpool` · `[backend]`
+- [X] T015 · `status`: repositorio sobre `pgxpool` · `[backend]`
 
 - **Archivos**: `backend/internal/status/repository.go`, `repository_test.go` (`//go:build integration`) (NUEVOS).
 - **Qué hace**: implementación concreta de la interfaz `Repository` (definida en `service.go`): `Ping` por petición con timeout de 2 s sobre el `*pgxpool.Pool` compartido (D8: estado **real** en cada consulta, no memorizado — FR-003). Errores envueltos con `fmt.Errorf("ping database: %w", err)` (arq. R7). Sin SQL de negocio: F1 solo hace `Ping` (D6); el primer código generado por sqlc llega con el ejercicio de práctica.
@@ -214,7 +214,7 @@
 - **Criterio de terminado**: `go test -tags=integration ./internal/status/` en verde contra el servicio `db` del kit; el comportamiento "caída y recuperación sin reinicio" queda probado.
 - **Commit sugerido**: `feat(status): repositorio de estado sobre pgxpool`
 
-- [ ] T016 · `status`: handler HTTP de `/healthz` · `[backend]`
+- [X] T016 · `status`: handler HTTP de `/healthz` · `[backend]`
 
 - **Archivos**: `backend/internal/status/handler.go`, `handler_test.go` (NUEVOS).
 - **Qué hace**: la interfaz `Service` (quien la consume) + solo HTTP: `GetSystemStatus` responde **200** con el DTO `SystemStatus` (sobre de éxito = DTO directo, confirmación 1) o **503** con `WriteError(apperr.DatabaseUnavailable…)`, y fija `Cache-Control: no-store` en ambos (D7, contrato). Todos los errores salen por `httpserver.WriteError`; ningún código de estado escrito a mano (arq. R7).
@@ -222,7 +222,7 @@
 - **Criterio de terminado**: `go test ./internal/status/` en verde; la respuesta observada coincide **byte a byte** con los ejemplos de `contracts/openapi.yaml` y de `quickstart.md` §1–2.
 - **Commit sugerido**: `feat(status): handler de /healthz con sobres de respuesta 200/503`
 
-- [ ] T017 · Rutas del dominio y cableado en `cmd/api/main.go` · `[backend]`
+- [X] T017 · Rutas del dominio y cableado en `cmd/api/main.go` · `[backend]`
 
 - **Archivos**: `backend/internal/status/routes.go`, `backend/cmd/api/main.go`, `backend/cmd/api/main_test.go` (NUEVOS).
 - **Qué hace**: `RegisterPublic(r httpserver.Registrar, h *Handler)` publica `GET /healthz` (sin autenticación; la superficie pública queda auditable de un vistazo). `main.go` = composición **manual** de dependencias (D12/D-A6, sin wire/fx): `config.Load` → `logger.New` → `database.NewPool` → `status.NewRepository → NewService → NewHandler` → `RegisterPublic` → `httpserver.New(mux, Options{…}, logger, middleware.RequestID, middleware.Recover, middleware.Logging, middleware.CORS)` con la cadena en el orden aprobado (T012) → `srv.Run(ctx)` con apagado ordenado. Se extrae una función `nuevaApp(...)`/`nuevoMux(...)` testeable para no probar `main` directamente. Sin estado global (arq. R6).
@@ -230,7 +230,7 @@
 - **Criterio de terminado**: `go test ./...` en verde; `go run ./cmd/api` levanta y responde `/healthz` en `localhost:8080`; el proceso se apaga ordenadamente con SIGTERM (log de cierre presente).
 - **Commit sugerido**: `feat(api): cablear cmd/api/main.go y publicar GET /healthz`
 
-- [ ] T018 · Suite del sobre de respuestas (SC-008 / SC-009) · `[backend]`
+- [X] T018 · Suite del sobre de respuestas (SC-008 / SC-009) · `[backend]`
 
 - **Archivos**: `backend/internal/platform/httpserver/envelope_test.go` (NUEVO; suite de aceptación del sobre).
 - **Qué hace**: suite sobre el **stack completo** (router `Registrar` + cadena de middlewares + handlers, incluidos los reales de `status`) que verifica la cobertura del 100 % del formato uniforme (D13, SC-008) y la ausencia de filtraciones (SC-009). Provoca: éxito; error previsto; **error inesperado** (handler de prueba que devuelve un error interno con datos sensibles tipo `sql: conexión a db-interna falló`) y **`panic`** (recuperado por `recover`). *Limitación conocida (plan R12)*: en F1 no pueden provocarse errores inesperados contra la API viva porque `/healthz` no tiene entrada de usuario; la provocación es vía handlers de prueba sobre el mismo stack.

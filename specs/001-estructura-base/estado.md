@@ -14,7 +14,7 @@ La fuente de verdad de la ejecución es tasks.md; el alto nivel, docs/producto/r
 | Flujo | equipo-feature |
 | Fase | 6/9 · Implementar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 2 de `tasks.md`: **T006** (`sqlc.yaml` + verificación R5) → luego T007–T010 (grupo P3, en paralelo) |
+| Próximo paso | Fase 5 de `tasks.md`: **T019** (`backend/Dockerfile` multi-stage) → luego frontend (T020–T024) y T025 |
 | Bloqueado por | — (entorno completo: Go 1.27.1, Node/npm Linux, calidad y cgo con `-race`) |
 | Actualizado | 2026-10-03 |
 
@@ -53,6 +53,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-03 — **Backend de F1 completo (T006–T018):** sqlc (R5: el CLI exige ≥1 consulta → `internal/db/` sin generar en F1; v1.31.1), `platform` (config, logger, apperr, database, httpserver, middleware, testutil), dominio `status` + `GET /healthz` y suite del sobre (SC-008/SC-009). Commits T006 `5542b2a`, T007 `e2ba57b`, T008 `c1ef24f`, T009 `d4fda46`, T010 `aebbace`, T011 `a032e74`, T012 `7e5ab61`, T013 `dc962a7`, T014 `8628ec1`, T015 `ec24b76`, T016 `8bb6322`, T017 `4057959`, T018 `1262ba1`, más el fix `c43f000` (timeout de `Ping` → 503 en vez de 500, hallado por el humo de T017). `go test ./...` e integración en verde; service `status` 100 %. Próximo: T019 (Dockerfile backend) y frontend.
 - 2026-10-03 — **Fase 1 de `tasks.md` completada (T001–T005):** T003+T004 (`91c3cc3`, `28ff85b`), T001 (`5042cab`), T005 (`e1a40b4`), T002 (`4d45cc8`). Contrato vivo idéntico byte a byte; módulo Go 1.27 con pgx v5.11.0 (`go mod verify` OK, sin `go mod tidy`); migración baseline aplicada/revertida con el toolchain real (`\dt` solo `schema_migrations`). Próximo: T006 (sqlc) y grupo P3.
 - 2026-10-03 — Entorno completo: `build-essential`/`libc6-dev` instalados por el humano; verificados `go build` con cgo y `-race`. Ya no hay bloqueos para la fase 6.
 - 2026-10-03 — Herramientas de calidad instaladas en `~/.local/bin` (golangci-lint, govulncheck, golang-migrate con `postgres`, gitleaks v8.27.2). `make doctor` las da por buenas. Detectado: faltan cabeceras de C (`libc6-dev`) para cgo/`-race`.
