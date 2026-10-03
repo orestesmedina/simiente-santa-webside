@@ -10,5 +10,9 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/test/setup.ts',
     css: false,
+    // Las pruebas e2e de Playwright viven en `e2e/` y las ejecuta
+    // `make e2e`; excluirlas evita que Vitest intente cargar `@playwright/test`
+    // (sucesos con el mismo glob por defecto `**/*.spec.ts`).
+    exclude: ['node_modules', 'dist', 'e2e'],
   },
 });
