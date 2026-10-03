@@ -52,10 +52,16 @@ func TestServiceStatus(t *testing.T) {
 			wantCause: sentinel,
 		},
 		{
-			name:         "error inesperado del repositorio",
-			repoErr:      context.DeadlineExceeded,
+			name:      "el ping agota su timeout",
+			repoErr:   context.DeadlineExceeded,
+			wantCode:  "database_unavailable",
+			wantCause: context.DeadlineExceeded,
+		},
+		{
+			name:         "cancelación del repositorio (error inesperado)",
+			repoErr:      context.Canceled,
 			wantInternal: true,
-			wantCause:    context.DeadlineExceeded,
+			wantCause:    context.Canceled,
 		},
 	}
 

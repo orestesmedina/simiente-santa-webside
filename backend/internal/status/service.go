@@ -41,17 +41,18 @@ func NewService(repo Repository) *service {
 }
 
 // Status consulta el estado real de la conexión (FR-003) y lo traduce al DTO
-// del contrato. Un fallo del ping es el caso previsible "base de datos no
-// conectada" (apperr.DatabaseUnavailable → 503 con details); una cancelación
-// del contexto no es evidencia de que la base de datos esté caída, así que se
-// propaga envuelta y el handler la trata como error inesperado (500 internal).
+// del contrato. Un fallo del ping —incluido su timeout de 2 s, que indica que
+// la base de datos no responde— es el caso previsible "base de datos no
+// conectada" (apperr.DatabaseUnavailable → 503 con details). Solo una
+// cancelación del cliente se propaga envuelta: el handler la trata como error
+// inesperado (500 internal).
 func (s *service) Status(ctx context.Context) (SystemStatus, error) {
 	if err := ctx.Err(); err != nil {
 		return SystemStatus{}, fmt.Errorf("check system status: %w", err)
 	}
 
 	if err := s.repo.Ping(ctx); err != nil {
-		if isContextError(err) {
+		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 			return SystemStatus{}, fmt.Errorf("check system status: %w", err)
 		}
 		return SystemStatus{}, apperr.DatabaseUnavailable(
@@ -62,10 +63,4 @@ func (s *service) Status(ctx context.Context) (SystemStatus, error) {
 	}
 
 	return SystemStatus{Status: StatusOK, Database: DatabaseConnected}, nil
-}
-
-// isContextError distingue un fallo por cancelación o vencimiento del contexto
-// de un fallo de conexión con la base de datos.
-func isContextError(err error) bool {
-	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
