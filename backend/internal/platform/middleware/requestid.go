@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -21,15 +22,20 @@ import (
 // petición, tanto de entrada (la puede traer el cliente) como de salida.
 const HeaderRequestID = "X-Request-ID"
 
-// RequestID toma el X-Request-ID del cliente o genera uno, lo publica en la
-// respuesta y lo guarda en el contexto para que lo usen logging y WriteError.
-// Va el primero de la cadena. Es una función —no una variable de paquete— para
-// respetar R6 (sin estado global); se pasa como httpserver.Middleware por
-// asignabilidad.
+// requestIDPattern acota el X-Request-ID aceptado del cliente: solo caracteres
+// seguros para logs y cabeceras, con longitud máxima de 128 (mitiga entradas
+// arbitrariamente largas o extrañas; CWE-20).
+var requestIDPattern = regexp.MustCompile(`^[A-Za-z0-9-]{1,128}$`)
+
+// RequestID toma el X-Request-ID del cliente si es válido o genera uno, lo
+// publica en la respuesta y lo guarda en el contexto para que lo usen logging
+// y WriteError. Va el primero de la cadena. Es una función —no una variable de
+// paquete— para respetar R6 (sin estado global); se pasa como
+// httpserver.Middleware por asignabilidad.
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimSpace(r.Header.Get(HeaderRequestID))
-		if id == "" {
+		if !requestIDPattern.MatchString(id) {
 			id = newRequestID()
 		}
 		w.Header().Set(HeaderRequestID, id)

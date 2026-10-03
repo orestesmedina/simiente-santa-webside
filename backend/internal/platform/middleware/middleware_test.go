@@ -166,6 +166,38 @@ func TestRequestIDRespectedAndGenerated(t *testing.T) {
 			t.Errorf("el contexto no tiene el id generado: cuerpo=%q cabecera=%q", rec.Body.String(), id)
 		}
 	})
+
+	t.Run("descarta un X-Request-ID con caracteres raros", func(t *testing.T) {
+		const weird = "abc<script>\n\"';"
+		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+		req.Header.Set(HeaderRequestID, weird)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		got := rec.Header().Get(HeaderRequestID)
+		if got == weird {
+			t.Errorf("se aceptó el X-Request-ID inválido del cliente: %q", got)
+		}
+		if got == "" || rec.Body.String() != got {
+			t.Errorf("no se generó un id propio: cabecera=%q cuerpo=%q", got, rec.Body.String())
+		}
+	})
+
+	t.Run("descarta un X-Request-ID demasiado largo", func(t *testing.T) {
+		tooLong := strings.Repeat("a", 129)
+		req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+		req.Header.Set(HeaderRequestID, tooLong)
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		got := rec.Header().Get(HeaderRequestID)
+		if got == tooLong {
+			t.Error("se aceptó un X-Request-ID de 129 caracteres")
+		}
+		if len(got) > 128 || got == "" {
+			t.Errorf("el id propio no es válido: %q (len=%d)", got, len(got))
+		}
+	})
 }
 
 func TestGeneratedRequestIDReachesLog(t *testing.T) {
