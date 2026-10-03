@@ -380,7 +380,7 @@
 - **Criterio de terminado**: protección activa y verificados los dos escenarios (apto / no apto) con PRs reales.
 - **Commit sugerido**: — (sin commit)
 
-- [ ] T034 · **[humano]** Decidir la imagen de PostgreSQL (plan R10) · `[humano]` *(bloqueante para cerrar SC-010)*
+- [X] T034 · **[humano]** Decidir la imagen de PostgreSQL (plan R10) · `[humano]` *(bloqueante para cerrar SC-010)*
 
 - **Archivos**: `docker-compose.yml` (solo si la decisión cambia la imagen — mínima tarea de seguimiento `[infra]`).
 - **Qué hace**: decidir entre mantener `postgres:16.4-alpine` (reproducible pero con CVEs corregidos en minors posteriores) y pasar a `postgres:16-alpine` (rama 16 en soporte hasta noviembre de 2028, con parches de seguridad). La recomendación del plan (plan R10) es `postgres:16-alpine` para el entorno de desarrollo, separando reproducibilidad del build de la base de datos de desarrollo. La imagen `postgres:16.4-alpine` del **servicio del `ci.yml` del kit** es un pendiente aparte (ese archivo no se edita aquí, regla 10): queda en el registro de T028 y se propone al kit en T035.
