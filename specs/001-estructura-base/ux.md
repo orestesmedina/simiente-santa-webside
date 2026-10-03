@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-estructura-base`
 **Created**: 2026-09-29
-**Status**: Diseño de referencia para la fase `plan` — **actualizado el 2026-09-30** al formato uniforme de respuestas del plan aprobado (D7, D13, D20).
+**Status**: Diseño de referencia para la fase `plan` — **actualizado el 2026-09-30** al formato uniforme de respuestas del plan aprobado (D7, D13, D20) · **actualizado el 2026-10-03** con ajustes menores marcados «Ajuste (2026-10-03)» (hallazgos M3 y desviación 9 de la revisión de código; sin cambios de comportamiento).
 **Input**: [spec.md](./spec.md) — FR-005, User Stories 2 y 6, escenarios de aceptación 2.1–2.4 y casos límite · [contracts/openapi.yaml](./contracts/openapi.yaml) (contrato de `/healthz`).
 
 > **Nota de alcance**: este diseño es **meramente funcional**. La identidad de marca, los estilos, las animaciones y el bilingüismo están fuera de alcance en F1 (llegan en F3, según "Out of Scope" de la spec). Aquí se define estructura, contenido, estados y textos. Donde el desarrollador deba decidir algo visual, se indica; el estado **nunca** se comunica solo con color ni con animaciones.
@@ -22,6 +22,8 @@
 ## 1. Flujo de usuario
 
 Página única, pública, sin navegación ni autenticación (ambas llegan en F2/F3). Los "usuarios" reales de esta página son el equipo del proyecto y quien opera el sistema, pero los textos son comprensibles para cualquier persona (FR-005).
+
+**Ajuste (2026-10-03) — encabezado con navegación mínima**: existe un encabezado de aplicación (`<header>`) con un `<nav aria-label="Navegación principal">` y un único enlace **«Inicio»** (`frontend/src/app/layout.tsx`), **fuera** del área de estado. Es el shell de la aplicación (semántico y accesible) pensado para F2/F3; en F1 no hay más rutas ni secciones, así que el flujo de arriba no cambia. La regla de §2 se mantiene: dentro del área de estado, las acciones disponibles siguen siendo **exactamente una** (volver a consultar). La autenticación sigue sin existir.
 
 **Flujo principal:**
 
@@ -46,20 +48,23 @@ Página única, pública, sin navegación ni autenticación (ambas llegan en F2/
 | # | Elemento | Contenido |
 |---|---|---|
 | 1 | Título de página (`<title>`) | "Estado del sistema · Iglesia Simiente Santa" |
-| 2 | `<h1>` | "Estado del sistema" |
-| 3 | Párrafo introductorio | Qué es esta página y nota de sitio en construcción (texto en §6) |
-| 4 | Encabezado `<h2>` | "Estado actual" |
-| 5 | **Región de estado** (en vivo, `aria-live`) | Según el estado de la vista (§3): veredicto, detalle de los dos componentes (servidor, base de datos) y hora de la última consulta |
-| 6 | Botón | "Volver a consultar el estado" |
+| 2 | Encabezado `<header>` con `<nav aria-label="Navegación principal">` | Enlace único **«Inicio»** — **Ajuste (2026-10-03)**: navegación mínima, **fuera** del área de estado (ver el ajuste de §1) |
+| 3 | `<h1>` | "Estado del sistema" |
+| 4 | Párrafo introductorio | Qué es esta página y nota de sitio en construcción (texto en §6) |
+| 5 | Encabezado `<h2>` | "Estado actual" |
+| 6 | **Región de estado** (en vivo, `aria-live`) | Según el estado de la vista (§3): veredicto, detalle de los dos componentes (servidor, base de datos) y hora de la última consulta |
+| 7 | Botón | "Volver a consultar el estado" |
 
 **Detalle de los dos componentes** (visible en todos los estados salvo *Consultando* inicial): una lista de definición (`<dl>`) con dos entradas — *Servidor* y *Base de datos* —, cada una con su palabra de estado ("en marcha", "conectada", "no conectada", "sin respuesta", "no se pudo comprobar"). Dos reglas fijas:
 
 - En el estado *No se pudo consultar*, la base de datos figura como **"no se pudo comprobar"**, nunca como "no conectada": sin una respuesta interpretable no hay forma de saberlo, y la spec exige distinguir ambos fallos.
 - En la variante *respuesta inesperada* de ese mismo estado (§3.3), el **servidor** también figura como "no se pudo comprobar": respondió, pero no con un estado utilizable.
 
-**Hora de la última consulta**: se muestra siempre que hay un resultado (éxito o error), con la hora exacta. Hace visible que lo mostrado es el estado *del momento de esa consulta* (FR-003), y sirve al equipo para saber si lo que ve es fresco o antiguo.
+**Hora de la última consulta**: se muestra siempre que hay un resultado (éxito o error), con la hora exacta **del intento que produjo ese resultado** — la marca del éxito o del fallo que se está viendo, nunca la del último éxito anterior. Hace visible que lo mostrado es el estado *del momento de esa consulta* (FR-003), y sirve al equipo para saber si lo que ve es fresco o antiguo.
 
 **Acciones disponibles**: exactamente una — volver a consultar. No hay navegación, enlaces, formularios ni autenticación.
+
+**Ajuste (2026-10-03)**: el encabezado de la aplicación sí incluye una navegación mínima (el enlace **«Inicio»** descrito en §1, fuera del área de estado y de su región `aria-live`). **Dentro** del área de estado no cambia nada: las acciones siguen siendo exactamente una (volver a consultar) y no hay enlaces, formularios ni autenticación.
 
 **Nota de sitio en construcción**: el párrafo introductorio incluye una frase que explica que el sitio está en construcción y que por ahora solo existe esta página. Evita confusión si un miembro de la iglesia llega aquí por error. Es una decisión de contenido del diseño (no está pedida literalmente en la spec); debe ser trivial de quitar o reemplazar en F3.
 
@@ -67,7 +72,9 @@ Página única, pública, sin navegación ni autenticación (ambas llegan en F2/
 
 ### 3.1 Mapeo respuesta → estado (formato uniforme de respuestas, D7/D13/D20)
 
-La respuesta de `/healthz` pasa por **una sola puerta**: `getSystemStatus()` en la capa `api/` (mecanismo único de `apiFetch<T>` + `ApiError`, D13), con `AbortController` y timeout de **5 s** (D20). Esa función valida lo que llega y **siempre** lo traduce a uno de los estados de `EstadoSistema` (§4): el resto de la página no ve nunca el cuerpo crudo, los códigos HTTP ni los códigos de error; solo estados.
+La respuesta de `/healthz` pasa por **una sola puerta de datos**: `getSystemStatus()` en la capa `api/` (mecanismo único de `apiFetch<T>` + `ApiError`, D13), con `AbortController` y timeout de **5 s** (D20). Esa función valida el cuerpo de éxito (`status === "ok"` y `database === "connected"`) y devuelve el DTO `SystemStatus` tipado, o **lanza** `ApiError` (sobre de error, red, timeout o cuerpo no conforme): no traduce a estados ni devuelve nunca un cuerpo crudo.
+
+**Ajuste (2026-10-03) — dónde vive la traducción**: la traducción de ese resultado a uno de los estados de `EstadoSistema` (§4) la hace la feature `status`, en `toEstadoSistema()`, invocada por el hook `useSystemStatus()`. El contrato de datos vive en `api/` y la traducción a estados en la feature; el invariante es el mismo de siempre: **el resto de la página no ve nunca el cuerpo crudo, los códigos HTTP ni los códigos de error; solo estados.** La tabla de mapeo de abajo describe el resultado final de esa cadena, sea cual sea el punto donde se decida.
 
 | Lo que llega | Condición | Estado resultante |
 |---|---|---|
@@ -108,20 +115,23 @@ Desde cualquier estado **con resultado**, el botón vuelve a `consultando`; el r
 
 ## 4. Componentes React
 
-No hay componentes existentes: este es el primer código del frontend. Lista mínima (mantenerla corta; no crear componentes de botón ni de tarjeta de diseño — eso llega con el sistema de diseño de F3). Alineada con la estructura del plan (D14): la página vive en `features/status/pages/StatusPage.tsx`, el hook en `features/status/hooks/useSystemStatus.ts` y el fetch en `api/status.ts`.
+No hay componentes existentes: este es el primer código del frontend. Lista mínima (mantenerla corta; no crear componentes de botón ni de tarjeta de diseño — eso llega con el sistema de diseño de F3). Alineada con la estructura del plan (D14): la página vive en `features/status/pages/StatusPage.tsx`, el hook en `features/status/hooks/useSystemStatus.ts`, el fetch en `api/status.ts` y la traducción a estados en `features/status/toEstadoSistema.ts` (**Ajuste 2026-10-03**: ver fila `toEstadoSistema`).
 
 | Componente / unidad | Responsabilidad | Props principales |
 |---|---|---|
+| `AppLayout` (`app/layout.tsx`, shell de la aplicación) | **Ajuste (2026-10-03)**: encabezado con `<nav aria-label="Navegación principal">` y enlace único **«Inicio»**, más la región `<main>` donde renderiza la ruta activa. Vive **fuera** del área de estado y de su región `aria-live`; no añade acciones a la pantalla de §2 | — (renderiza `<Outlet>`) |
 | `PaginaEstado` (será `StatusPage.tsx`) | Página completa: título, intro, región de estado en vivo y el único botón. **No hace `fetch`** (prohibido por la skill): consulta al montar vía el hook y al pulsar el botón vía `refetch`. Deshabilita el botón mientras hay consulta en curso (primera o de reconsulta) | — (la URL la resuelve la capa `api/`; no es prop) |
-| `useSystemStatus` (hook) | TanStack Query sobre `getSystemStatus()`: **consulta al montar + refetch manual, sin auto-refresco** (D14); expone resultado (`EstadoSistema`), hora de la consulta y bandera de consulta en curso | — |
-| `getSystemStatus` (función, `api/status.ts`) | Único lugar del fetch: `AbortController` con timeout de **5 s** (D20); valida y traduce la respuesta al formato uniforme y devuelve **siempre** un `EstadoSistema` según la tabla §3.1 (nunca un cuerpo crudo) | — |
+| `useSystemStatus` (hook) | TanStack Query sobre `getSystemStatus()`: **consulta al montar + refetch manual, sin auto-refresco** (D14); traduce cada resultado con `toEstadoSistema` y expone resultado (`EstadoSistema`), hora de **ese intento** (éxito o error) y bandera de consulta en curso | — |
+| `getSystemStatus` (función, `api/status.ts`) | Único punto de entrada del fetch: `AbortController` con timeout de **5 s** (D20) vía `apiFetch`; valida el cuerpo de éxito y devuelve el DTO `SystemStatus` tipado **o lanza** `ApiError` (**Ajuste 2026-10-03**: no traduce a estados; nunca devuelve un cuerpo crudo) | — |
+| `toEstadoSistema` (función, `features/status/toEstadoSistema.ts`) | **Ajuste (2026-10-03)**: traduce el resultado de `getSystemStatus()` (éxito o `ApiError`) a **siempre** un `EstadoSistema` según la tabla §3.1; cero ramas sin estado | `result: { ok: true; value: SystemStatus } \| { ok: false; error: unknown }` |
 | `ResultadoEstado` | Renderiza el estado actual: veredicto, detalle de los dos componentes, hora de última consulta y explicación del error si lo hay | `estado: EstadoSistema`, `fechaConsulta?: Date`, `actualizando: boolean` |
 | `ItemVerificacion` | Una fila del detalle: término + palabra de estado | `nombre: string`, `valor: 'ok' \| 'error' \| 'sin-respuesta' \| 'no-comprobable'` |
 
 **Tipos compartidos** (los define `dev-frontend` junto al contrato; el mapeo respuesta → estado se registra aquí, como pide el plan):
 
 ```ts
-// La respuesta de /healthz se mapea SIEMPRE a uno de estos (tabla §3.1).
+// La respuesta de /healthz se mapea SIEMPRE a uno de estos (tabla §3.1),
+// mediante `toEstadoSistema` (feature `status`; ver Ajuste 2026-10-03 en §3.1).
 // El `motivo` de `inaccesible` es interno: guía pruebas y diagnóstico;
 // frente a la persona solo cambia la palabra del detalle del servidor,
 // nunca aparecen códigos HTTP ni códigos de error (§3.1, §6).
@@ -140,7 +150,7 @@ El botón es un `<button>` nativo dentro de `PaginaEstado`; no se justifica un c
 - **Idioma y semántica**: `<html lang="es">`; `<title>` descriptivo; un único `<h1>`; detalle como `<dl>`; hora de consulta como `<time>`; `<meta name="viewport" content="width=device-width, initial-scale=1">` (imprescindible para móvil).
 - **Región en vivo**: el área de estado usa `role="status"` + `aria-live="polite"` para que los cambios de estado — incluidas las transiciones conectado → no conectada, conectado → *No se pudo consultar* y entre las dos variantes del error B — se anuncien a lectores de pantalla sin recargar. El botón queda **fuera** de esa región para no ensuciar los anuncios.
 - **Estructura de lectura constante**: los cuatro estados comparten el mismo orden — veredicto → detalle → hora → explicación —, de modo que la lectura visual y el anuncio del lector de pantalla sean previsibles en cualquier estado.
-- **Teclado**: la página es navegable por teclado con el orden natural del documento; el único control es el botón. No interceptar teclas ni capturar foco. Mantener el contorno de foco por defecto del navegador. Con el botón deshabilitado durante la consulta, el foco no se pierde: la deshabilitación es de *pulsación*, no de visibilidad.
+- **Teclado**: la página es navegable por teclado con el orden natural del documento; dentro del área de estado el único control es el botón, y antes en el orden aparece el enlace **«Inicio»** del encabezado (**Ajuste 2026-10-03**; también queda fuera de la región en vivo, igual que el botón). No interceptar teclas ni capturar foco. Mantener el contorno de foco por defecto del navegador. Con el botón deshabilitado durante la consulta, el foco no se pierde: la deshabilitación es de *pulsación*, no de visibilidad.
 - **Estado ≠ color** (WCAG 1.4.1): el estado se comunica con **texto** (veredicto + palabras de estado). Si el desarrollo añade color o iconos como refuerzo, nunca serán el único medio, y en F1 no se piden.
 - **Contraste** (WCAG 1.4.3): con los estilos por defecto del navegador (texto negro sobre blanco) se cumple AA. Si se toca algo, mínimo 4.5:1 para texto.
 - **Zoom y reflow** (WCAG 1.4.4 / 1.4.10): sin estilos que fijen tamaños: la página debe verse y usarse a 200 % de zoom y en un viewport de 320 px de ancho (un móvil pequeño), con reflujo natural en una columna.
@@ -176,7 +186,7 @@ El botón es un `<button>` nativo dentro de `PaginaEstado`; no se justifica un c
 > **El sistema está en marcha, pero la base de datos no está conectada.**
 > Servidor: en marcha.
 > Base de datos: no conectada.
-> Última consulta: [hora exacta].
+> Última consulta: [hora exacta del intento].
 > El sitio web está corriendo, pero no puede leer ni guardar información por ahora. Esto suele ocurrir cuando la base de datos está detenida o todavía está arrancando.
 
 *(El texto de `error.message` del sobre no se muestra aquí: este literal propio ya lo dice en llano y mantiene el tono de toda la página — decisión en §7.)*
@@ -215,6 +225,8 @@ Decisiones tomadas aquí o resueltas por el plan aprobado (con referencia):
 6. **`error.message` del sobre no se muestra** (ajuste 2 del plan): el único uso del mensaje del sobre es ayudar a elegir el estado; frente a la persona mandan los literales de §6, que son llanos, constantes y del tono de toda la página. Un texto proveniente del servidor podría variar de tono en versiones futuras; con esta decisión la página nunca habla con jerga ni de forma impredecible.
 7. **`details` del 503 (`{"database":"disconnected"}`) no se muestra** (ajuste 3 del plan): no aporta una acción nueva (la acción es la misma: volver a consultar) y repite lo que el veredicto ya dice en llano. Es una decisión de contenido reversible: si quien opera quisiera verla, cabría un detalle técnico plegable en F2+.
 8. **Defensa activa ante versiones futuras**: el éxito exige validar el sobre de éxito completo, y solo `database_unavailable` es error A; cualquier código desconocido o cuerpo no conforme degrada a *No se pudo consultar* con mensaje genérico. Así, una versión futura del backend no puede hacer que la página muestre un estado falso ni deje de funcionar.
+9. **Navegación mínima en el encabezado** (**Ajuste 2026-10-03**, hallazgo M3 de la revisión de código): el shell (`AppLayout`, `app/layout.tsx`) sí lleva `<header>` + `<nav aria-label="Navegación principal">` con el enlace «Inicio», **fuera** del área de estado y de su región `aria-live`. Decisión: se documenta, no se quita (es semántico, accesible y prepara F2/F3). Dentro del área de estado no cambia nada: una sola acción (volver a consultar). Reflejado en §1, §2, §4 y §5.
+10. **Dónde se traduce la respuesta a estados** (**Ajuste 2026-10-03**, desviación 9 de la revisión de código): el contrato de datos vive en `api/` (`getSystemStatus()` devuelve `SystemStatus` o lanza `ApiError`) y la traducción a `EstadoSistema` en la feature (`toEstadoSistema()`, invocada por el hook). Decisión: se acepta la separación porque el invariante de §3.1 se conserva — la página solo ve estados, nunca cuerpos crudos, códigos HTTP ni `error.code`. Reflejado en §3.1 y §4.
 
 ### 7.2 Dudas abiertas (se reportan, no se suponen resueltas)
 
