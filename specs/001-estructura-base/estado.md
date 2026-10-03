@@ -12,9 +12,9 @@ La fuente de verdad de la ejecución es tasks.md; el alto nivel, docs/producto/r
 |---|---|
 | Rama | 001-estructura-base |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar |
-| Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 7 (`equipo-revision: qa-tester + revisor-codigo + seguridad`) → luego T030–T035 (humanas) y entrega (PR) |
+| Fase | 7/9 · Validar (ciclo 1 cerrado, validación aprobada) |
+| Ciclo de corrección | 1/3 (cerrado en verde) |
+| Próximo paso | **Aprobación humana del cierre**: T030 (receta SC-007), T031–T033 (remoto/`main`/protección), T034 (imagen Postgres), T035 (pendientes del kit) → luego fase 9 (entrega: PR) |
 | Bloqueado por | — (entorno completo: Go 1.27.1, Node/npm Linux, calidad y cgo con `-race`) |
 | Actualizado | 2026-10-03 |
 
@@ -33,7 +33,10 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- (ninguno)
+- (ninguno bloqueante) Menores abiertos tras el ciclo 1, registrados para F2/despliegue:
+  - **Despliegue:** nginx del frontend corre master como root (M1-seg); imágenes con etiquetas flotantes/`:latest` en distroless (N4/M2-seg); sin cabeceras de seguridad ni `server_tokens off` (M3/M4-seg); puertos de compose publicados en `0.0.0.0` (M9-seg).
+  - **F2:** `APP_ENV != development` debería exigir configuración explícita (M7-seg); límites de tamaño de cuerpo con el primer endpoint escribible; idioma de identificadores TS (N6); `WithTx` con `ctx` cancelado (N5); `NotFound`/`MethodNotAllowed` sin referenciar en el path de `/healthz` (N7).
+  - **Operación local:** `make up` no avisa si un puerto host está ocupado (H1-01); el healthcheck del `db` pasa aunque las credenciales del volumen estén desalineadas (H1-04); `app_test` no se crea en local (H1-05); e2e requiere librerías del navegador (H1-QE-01).
 
 ## Decisiones y aclaraciones
 
@@ -53,6 +56,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-03 — **Fase 7 (validar) cerrada — validación APROBADA (ciclo 1/3).** Veredictos iniciales: `revisor-codigo` RECHAZADO (B1 QF1011; M1/M2/M3) y `seguridad` RECHAZADO (B1 GO-2026-5970 en `x/text`), `qa-tester` sin bloqueantes. Ciclo 1 aplicado con aprobación del humano (B1 + menores baratos): `aa60f35` x/text→v0.39 (`govulncheck` exit 0), `87ed7e2` QF1011, `f20aa8a` M2 (logger por petición con productor), `ef2faca`+`1401aa0` M6, `f31c152` M5, `1c18315` M8, `af8a51d` N2, `d1cbd50` N3, `234d75b` M1 (frontend), `3e09619` M3 (`ux.md`). Revalidado: **`make ci` en verde verificado por el orquestador** (lint 0 issues, 25/25 frontend, `govulncheck` sin vulnerabilidades, `npm audit` 0). Reportes: `revision-2026-10-03-{qa,codigo,seguridad}.md`. Próximo: aprobaciones humanas de T030–T035 y entrega (PR).
 - 2026-10-03 — **Backend de F1 completo (T006–T018):** sqlc (R5: el CLI exige ≥1 consulta → `internal/db/` sin generar en F1; v1.31.1), `platform` (config, logger, apperr, database, httpserver, middleware, testutil), dominio `status` + `GET /healthz` y suite del sobre (SC-008/SC-009). Commits T006 `5542b2a`, T007 `e2ba57b`, T008 `c1ef24f`, T009 `d4fda46`, T010 `aebbace`, T011 `a032e74`, T012 `7e5ab61`, T013 `dc962a7`, T014 `8628ec1`, T015 `ec24b76`, T016 `8bb6322`, T017 `4057959`, T018 `1262ba1`, más el fix `c43f000` (timeout de `Ping` → 503 en vez de 500, hallado por el humo de T017). `go test ./...` e integración en verde; service `status` 100 %. Próximo: T019 (Dockerfile backend) y frontend.
 - 2026-10-03 — **Fase 1 de `tasks.md` completada (T001–T005):** T003+T004 (`91c3cc3`, `28ff85b`), T001 (`5042cab`), T005 (`e1a40b4`), T002 (`4d45cc8`). Contrato vivo idéntico byte a byte; módulo Go 1.27 con pgx v5.11.0 (`go mod verify` OK, sin `go mod tidy`); migración baseline aplicada/revertida con el toolchain real (`\dt` solo `schema_migrations`). Próximo: T006 (sqlc) y grupo P3.
 - 2026-10-03 — Entorno completo: `build-essential`/`libc6-dev` instalados por el humano; verificados `go build` con cgo y `-race`. Ya no hay bloqueos para la fase 6.
