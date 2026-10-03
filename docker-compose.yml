@@ -1,9 +1,10 @@
 services:
   db:
-    # Pendiente de actualización (plan R10 / T034, decisión humana): el minor
-    # 16.4 acumula CVEs corregidos en minors posteriores; la propuesta en
-    # el plan es postgres:16-alpine. NO cambiar sin la decisión de T034.
-    image: postgres:16.4-alpine
+    # Decisión humana T034 (plan R10, 2026-10-03): el entorno de desarrollo
+    # usa la rama `postgres:16-alpine` — en soporte hasta noviembre de 2028 y
+    # con parches de seguridad de la rama. La reproducibilidad estricta
+    # (minor/digest exacto) queda como pendiente para builds/despliegue.
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_dev_password}

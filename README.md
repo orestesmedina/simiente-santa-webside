@@ -150,16 +150,15 @@ Comprobado a **2026-09-30**:
 |---|---|---|
 | Go | 1.27 | Vigente (solo 1.26 y 1.27 reciben parches; 1.23 está en fin de vida desde 2025-08-12) |
 | Node.js | 22 | En mantenimiento hasta **abril de 2027** |
-| PostgreSQL | 16 (imagen `postgres:16.4-alpine`) | Rama 16 en soporte hasta noviembre de 2028; **el minor 16.4 acumula CVEs corregidos en minors posteriores** |
+| PostgreSQL | 16 (imagen `postgres:16-alpine` en desarrollo — **decisión del 2026-10-03**, T034/plan R10) | Rama 16 en soporte hasta noviembre de 2028 y recibe parches de seguridad; fijar un minor/digest exacto para reproducibilidad queda pendiente para builds/despliegue |
 | React / TypeScript / Vite | 19 / 5.x / actual | Mantenidas; vulnerabilidades vía `npm audit` |
 | `pgx/v5`, `sqlc`, `golang-migrate`, `openapi-typescript` | fijadas en `go.sum`, `package-lock.json` y este README | Herramientas de desarrollo; `govulncheck` y `npm audit` sin altas/críticas |
 
-**Pendientes de actualización conocidos** (US7 esc. 2; identificados, propuestos y gestionados por el humano, plan R10/R11 → T034/T035):
+**Pendientes de actualización conocidos** (US7 esc. 2; identificados, propuestos y gestionados por el humano):
 
-1. **`postgres:16.4-alpine` del servicio `db`** en `docker-compose.yml` (R10, decisión en T034): propuesta `postgres:16-alpine`.
-2. **`postgres:16.4-alpine` del servicio `postgres` del `ci.yml` del kit**: mismo caso; pertenece al kit, se propone a su repositorio (T035).
-3. **Node 22**, fijado por el `ci.yml` del kit (R11): soporte hasta abril de 2027 → proponer al kit una LTS vigente antes de esa fecha (T035).
-4. **«Go 1.23+»** que aún recomienda `docs/GUIA-INICIO.md` del kit (Go 1.23, fin de vida desde 2025-08-12): el proyecto usa Go 1.27 → propuesta al repo del kit (T035).
+1. **`postgres:16.4-alpine` del servicio `postgres` del `ci.yml` del kit**: mismo minor con CVEs corregidos en minors posteriores (R10); el compose ya usa `postgres:16-alpine` (decisión del 2026-10-03, T034) y para el CI se propone la misma imagen al repositorio del kit (T035).
+2. **Node 22**, fijado por el `ci.yml` del kit (R11): soporte hasta abril de 2027 → proponer al kit una LTS vigente antes de esa fecha (T035).
+3. **«Go 1.23+»** que aún recomienda `docs/GUIA-INICIO.md` del kit (Go 1.23, fin de vida desde 2025-08-12): el proyecto usa Go 1.27 → propuesta al repo del kit (T035).
 
 Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda funcionalidad que fije o actualice una versión revisa esta tabla; lo que deje de estar en soporte se registra como pendiente antes de seguir construyendo.
 
