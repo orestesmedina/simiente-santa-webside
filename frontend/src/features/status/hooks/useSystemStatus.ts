@@ -33,8 +33,14 @@ export function useSystemStatus(): UseSystemStatusResult {
       ? toEstadoSistema({ ok: false, error: query.error })
       : undefined;
 
+  // En TanStack Query v5 `dataUpdatedAt` solo avanza en el dispatch `success`;
+  // el fallo actualiza `errorUpdatedAt`. Usar la marca del intento hace que la
+  // hora sea la de este resultado (éxito o error) y no la del último éxito
+  // (FR-003: nunca un estado memorizado; ux.md §2/§6).
+  const marcaIntento = query.isError ? query.errorUpdatedAt : query.dataUpdatedAt;
+
   const fechaConsulta =
-    estado !== undefined && query.dataUpdatedAt > 0 ? new Date(query.dataUpdatedAt) : undefined;
+    estado !== undefined && marcaIntento > 0 ? new Date(marcaIntento) : undefined;
 
   return {
     estado,
