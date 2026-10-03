@@ -439,28 +439,3 @@
 10. **`ux.md` ya está ajustado** (2026-09-30): T024 usa el mapeo de estados de `ux.md` §3.1 (aplicado); si `ux.md` cambia, solo se actualizan literales de T024 (el mapeo y los tipos no cambian). Quedan al humano las dudas de contenido de `ux.md` §7.2.1–§7.2.2.
 11. **T031–T033 (remoto, rama `main`, protección)** son bloqueantes para SC-003/SC-004 y para que el CI corra; pueden ejecutarse en cuanto el código pase `make ci`, pero **deben estar completas antes del PR de cierre**.
 12. **Deriva de artefactos generados** (plan R4 / research R20): un PR que toque `migrations/` o `internal/db/queries/` debe tocar `internal/db/`; uno que toque `backend/api/openapi.yaml` debe tocar `frontend/src/api/schema.d.ts`. Es criterio de revisión de `revisor-codigo`.
-
-## Estado de ejecución
-
-> Lo actualiza el **orquestador** al cerrar cada fase; no se marca una fase hasta que sus tareas están commiteadas y `make ci` pasa. El estado de alto nivel (fase del proceso, pendientes humanos y decisiones abiertas) vive en [`ESTADO.md`](../../ESTADO.md), en la raíz del repositorio.
-
-| Fase | Tareas | Estado |
-|---|---|---|
-| 1 · Preparación, contrato, herramientas y migración baseline | T001–T005 | [ ] pendiente |
-| 2 · Capa de datos: sqlc | T006 | [ ] pendiente |
-| 3 · Plataforma interna (`backend/internal/platform/`) | T007–T013 | [ ] pendiente |
-| 4 · Dominio `status` y `GET /healthz` | T014–T018 | [ ] pendiente |
-| 5 · Imagen Docker del backend | T019 | [ ] pendiente |
-| 6 · Frontend | T020–T025 | [ ] pendiente |
-| 7 · Docker Compose y pruebas end-to-end | T026–T027 | [ ] pendiente |
-| 8 · Documentación | T028–T029 | [ ] pendiente |
-| 9 · Verificación de la receta y cierre | T030–T035 | [ ] pendiente |
-
-### Tareas `[humano]` (no las ejecuta ningún agente)
-
-- [ ] **T030** · Verificación de la receta (SC-007) siguiendo solo `docs/tecnico/arquitectura.md` §8, en rama `practica/receta-001` descartable
-- [ ] **T031** · Crear el repositorio remoto en GitHub y empujar
-- [ ] **T032** · Renombrar la rama por defecto `master` → `main`
-- [ ] **T033** · Activar la protección de rama con los checks del CI obligatorios *(bloqueante para SC-003/SC-004 y para el PR de cierre)*
-- [ ] **T034** · Decidir la imagen de PostgreSQL del compose (`16-alpine` frente a `16.4-alpine`) — plan R10, antes de T026
-- [ ] **T035** · Registrar el vencimiento de soporte de Node 22 y proponer al repositorio del kit las mejoras del `ci.yml` y el «Go 1.23+» de `docs/GUIA-INICIO.md` — plan R11
