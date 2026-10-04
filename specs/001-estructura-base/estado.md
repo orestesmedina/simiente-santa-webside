@@ -12,10 +12,10 @@ La fuente de verdad de la ejecución es tasks.md; el alto nivel, docs/producto/r
 |---|---|
 | Rama | 001-estructura-base |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (validación, kit, SC-007/T030 y T033 cerrados; falta descartar el PR de prueba y el merge humano) |
+| Fase | **Terminada** (F1 fusionada en `main`; PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) aprobado el 2026-10-03) |
 | Ciclo de corrección | 1/3 (cerrado en verde) |
-| Bloqueado por | **Nada técnico.** Las 35 tareas están hechas. T033 verificado con PRs reales (apto = PR #1 en verde; no apto = PR #2 con check rojo, bloqueado). Falta descartar el PR #2 de prueba y la aprobación humana del merge del PR #1. |
-| Próximo paso | El humano: (1) cierra el PR [#2](https://github.com/orestesmedina/simiente-santa-webside/pull/2) de prueba y borra su rama; (2) **aprueba y fusiona el PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1)**. Después: `make costos CERRAR=1` y marcar F1 como **terminada** en el roadmap. |
+| Bloqueado por | — (nada) |
+| Próximo paso | F1 cerrada. Siguiente: **F2 — Acceso y gestión de usuarios** (nueva spec con `equipo-feature`). |
 | Actualizado | 2026-10-03 |
 
 ## Aprobaciones
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-09-30 | `spec.md` — "Status: Approved (2026-09-30) … aprobada por el humano tras revisar el delta del 2026-09-30" |
 | Plan | aprobado | humano | 2026-09-30 | `tasks.md` — "plan aprobado el 2026-09-30" |
-| PR / merge | **pendiente de aprobación** | humano | 2026-10-03 | PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) abierto con el CI **en verde** (6/6 jobs) y SC-007/T030 cerrados. Pendiente: empujar, T033 (protección de rama) y la aprobación explícita del humano. |
+| PR / merge | **aprobado** | humano | 2026-10-03 | PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) fusionado por el humano (`orestesmedina`) con *Squash and merge*; commit `126a840` en `main`. CI 6/6 en verde y protección de `main` activa. |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -58,6 +58,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-03 — **F1 TERMINADA.** PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) fusionado por el humano (`orestesmedina`, *Squash and merge*) en `main`, commit `126a840`; PR #2 de prueba cerrado y ramas remotas borradas. CI 6/6 en verde y protección de `main` verificada (apto/no apto). Costo de la tarea **cerrado** con `make costos CERRAR=1`: **$7.14** equivalentes (141.3 M tokens). Roadmap: F1 → **terminada** (1/9). Siguiente: F2.
 
 - 2026-10-03 — **T033 verificado (protección de `main`).** Activada con PR + 6 checks obligatorios. Escenario **apto**: PR #1 en verde. Escenario **no apto**: PR #2 de prueba (`prueba/proteccion-main`, test rojo a propósito) → CI en rojo ([run 37174188570](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37174188570)) y *"Merging is blocked due to failing merge requirements"*. PR y rama de prueba a descartar. **35/35 tareas.** Falta fusionar el PR #1.
 
