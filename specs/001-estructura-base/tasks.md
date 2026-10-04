@@ -373,13 +373,14 @@
 - **Criterio de terminado**: la rama por defecto es `main` y un push a ella dispara el CI.
 - **Commit sugerido**: — (sin commit)
 
-- [ ] T033 · **[humano]** Activar la protección de la rama principal · `[humano]` *(bloqueante plan R1)*
+- [X] T033 · **[humano]** Activar la protección de la rama principal · `[humano]` *(bloqueante plan R1)*
 
 - **Archivos**: ninguno (acción en GitHub).
 - **Qué hace**: activar branch protection sobre `main` con los checks del workflow `CI` **obligatorios** (jobs: `agentes`, `controles`, `backend`, `frontend`, `secretos` según detecte el kit) y, al menos, "requiere PR antes de integrar". Es la garantía real de FR-007/SC-003 (los hooks locales son solo red de seguridad temprana, plan R3).
 - **Pruebas incluidas** (§III): — . Verificación: un PR con una prueba rota a propósito queda marcado **no apto** y no puede integrarse; uno limpio queda **apto** en <10 min (SC-003, SC-004 — `quickstart.md` §6).
 - **Criterio de terminado**: protección activa y verificados los dos escenarios (apto / no apto) con PRs reales.
 - **Commit sugerido**: — (sin commit)
+- **Cierre (2026-10-03)**: protección activada sobre `main` (requiere PR y los 6 checks del CI). Verificados los dos escenarios con PRs reales: **apto** = PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) con 6/6 checks en verde y mergeable; **no apto** = PR [#2](https://github.com/orestesmedina/simiente-santa-webside/pull/2) (`prueba/proteccion-main`, un test deliberadamente rojo) con el CI en rojo y GitHub mostrando *"Merging is blocked due to failing merge requirements"* ([run 37174188570](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37174188570)). PR y rama de prueba descartados.
 
 - [X] T034 · **[humano]** Decidir la imagen de PostgreSQL (plan R10) · `[humano]` *(bloqueante para cerrar SC-010)*
 

@@ -12,10 +12,10 @@ La fuente de verdad de la ejecución es tasks.md; el alto nivel, docs/producto/r
 |---|---|
 | Rama | 001-estructura-base |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (validación, kit y SC-007/T030 cerrados; faltan el push, T033 y el merge humano) |
+| Fase | 9/9 · Entregar (validación, kit, SC-007/T030 y T033 cerrados; falta descartar el PR de prueba y el merge humano) |
 | Ciclo de corrección | 1/3 (cerrado en verde) |
-| Bloqueado por | **Nada técnico.** CI del PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) en verde con el kit 1.6.4 (6/6 jobs). Faltan acciones humanas: empujar los commits locales, activar la protección de rama (`main`, T033) y aprobar el merge. |
-| Próximo paso | El humano: (1) empuja los commits locales; (2) activa la protección de la rama `main` (T033, checks del CI obligatorios); (3) **aprueba y fusiona el PR #1**. Después: `make costos CERRAR=1` y registrar F1 como terminada en el roadmap. |
+| Bloqueado por | **Nada técnico.** Las 35 tareas están hechas. T033 verificado con PRs reales (apto = PR #1 en verde; no apto = PR #2 con check rojo, bloqueado). Falta descartar el PR #2 de prueba y la aprobación humana del merge del PR #1. |
+| Próximo paso | El humano: (1) cierra el PR [#2](https://github.com/orestesmedina/simiente-santa-webside/pull/2) de prueba y borra su rama; (2) **aprueba y fusiona el PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1)**. Después: `make costos CERRAR=1` y marcar F1 como **terminada** en el roadmap. |
 | Actualizado | 2026-10-03 |
 
 ## Aprobaciones
@@ -58,6 +58,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-03 — **T033 verificado (protección de `main`).** Activada con PR + 6 checks obligatorios. Escenario **apto**: PR #1 en verde. Escenario **no apto**: PR #2 de prueba (`prueba/proteccion-main`, test rojo a propósito) → CI en rojo ([run 37174188570](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37174188570)) y *"Merging is blocked due to failing merge requirements"*. PR y rama de prueba a descartar. **35/35 tareas.** Falta fusionar el PR #1.
 
 - 2026-10-03 — **T030 cerrado: SC-007 registrado (R13).** Ejercicio de práctica `muestra` con 3 corridas de un agente fresco: 10 huecos de arquitectura en la receta original → §8.1 (`f81470f`); un defecto en esa corrección (tipo UUID de sqlc) → `28e4491`; la 3ª corrida sin decisiones de arquitectura. `make ci` verde, aislamiento limpio, `/api/v1/muestra` 200, `/healthz` intacto; rama descartada y BD local limpia (F1 con 0 tablas de negocio). Checklist `checklists/receta.md` firmada; validación humana **omedina** (R13). T035 resuelto por el kit 1.6.4. Pendiente solo T033, el push y el merge.
 
