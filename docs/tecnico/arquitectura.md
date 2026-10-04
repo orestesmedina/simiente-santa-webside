@@ -1,6 +1,8 @@
 # Arquitectura técnica — Sitio web de la Iglesia Simiente Santa
 
-**Estado:** documento fundacional · **Fecha:** 2026-09-30 · **Decisiones que lo respaldan:** [decisiones.md](./decisiones.md)
+**Estado:** documento fundacional · **Fecha:** 2026-09-30 · **Enmienda:** 2026-10-03 (§8.1: las
+convenciones que faltaban, cerradas tras el ejercicio de verificación T030/SC-007) ·
+**Decisiones que lo respaldan:** [decisiones.md](./decisiones.md)
 
 Este documento describe **cómo se construye** el sistema: reglas de dependencia entre capas,
 árbol de carpetas del backend, la interfaz que neutraliza el router, un ejemplo vertical completo
@@ -358,6 +360,11 @@ usan el sobre estándar de §5.11. Los nombres de esquema y operación van en in
 `SystemStatus`, `getSystemStatus`); los segmentos de URL en español cuando la superficie pública lo
 pide (`/api/v1/contacto`).
 
+`ContactList` es el sobre de éxito de un listado **con** paginación por parámetros de usuario
+(`items` + `total` + `limit` + `offset`). Las reglas completas de los listados —`items` siempre
+presente y nunca `null`, límites por defecto 20/tope 100, orden por defecto `created_at DESC,
+id DESC`— son convención del proyecto y están fijadas en §8.1 (puntos 2, 3 y 7).
+
 ### 5.2 Migración (`backend/migrations/`)
 
 Nunca se edita una migración aplicada: la siguiente libre (F1 ya usó `000001_baseline`).
@@ -417,11 +424,14 @@ Se ejecuta `sqlc generate` en desarrollo y **el código generado se commitea** (
 `frontend/src/api/schema.d.ts`: el CI no necesita la herramienta). Con `sqlc`, todo cambio de
 consulta o de esquema **falla en compilación** si el código no acompaña (D-A3).
 
-> **Dependencia de tipos UUID.** Por defecto sqlc emite `github.com/google/uuid` para las columnas
-> `uuid`. Es una entrada nueva en `go.mod` que habrá que justificar en el `plan.md` de la
-> funcionalidad que la introduzca (D-A8); si se quiere cero dependencias nuevas, basta un
-> *override* en `sqlc.yaml` para emitir `pgtype.UUID`, que ya viene dentro de `pgx/v5`. Decisión
-> del plan de F2.
+> **Tipos UUID (convención cerrada, §8.1 punto 1).** sqlc emite `github.com/google/uuid` para las
+> columnas `uuid`, que es también el tipo del dominio (`uuid.UUID` en §5.4). La entrada nueva en
+> `go.mod` es una **dependencia justificada** (D-A8: solo tipos, sin dependencias transitivas; no
+> deja que los tipos `pgtype` de `pgx` se cuelen en el dominio) y su justificación se repite en el
+> `plan.md` de la primera funcionalidad que cree una tabla con UUID. `sqlc.yaml` **no** necesita
+> ningún `override` de UUID. La alternativa `pgtype.UUID` vía `override` (cero dependencias nuevas)
+> queda descartada por los tipos torpes que arrastra al dominio. Esto cierra la pregunta abierta 5
+> de `decisiones.md`.
 
 ### 5.4 `model.go` — entidad y DTOs
 
@@ -680,20 +690,30 @@ func (r *repository) Count(ctx context.Context, f ListFilter) (int64, error) {
 	return total, nil
 }
 
-// mapRow traduce la fila generada por sqlc a la entidad de dominio.
+// mapRow traduce la fila generada por sqlc a la entidad de dominio. Los tipos
+// pgtype.* (de pgx) se convierten aquí y no salen de este archivo (§8.1 punto 6):
+// con sql_package: pgx/v5, TIMESTAMPTZ llega como pgtype.Timestamptz, no como time.Time.
 func mapRow(row gendb.Contact) Contact {
 	return Contact{
-		ID:        row.ID,
+		ID:        row.ID, // uuid.UUID (github.com/google/uuid) ya es el tipo del dominio
 		Name:      row.Name,
 		Email:     row.Email,
 		Phone:     row.Phone,
 		Message:   row.Message,
 		Status:    Status(row.Status),
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
 	}
 }
 ```
+
+> **Tipos que genera sqlc (pgx/v5) — no los asumas.** El tipo real de cada fila está en
+> `internal/db/models.go`: léelo antes de escribir `mapRow`. Lo habitual: `uuid` no anulable llega
+> como `uuid.UUID` (sin conversión), `timestamptz` como `pgtype.Timestamptz` (se toma `.Time`), y
+> las columnas **anulables** como `pgtype.X` (se mira `.Valid` antes de convertir). `pgtype.*` no
+> cruza a `model.go`, `service.go` ni `handler.go` (R4: el dominio no conoce `pgx`); la conversión
+> vive solo en `repository.go`. `sqlc.yaml` no usa `overrides` para evitarse este mapeo: una sola
+> regla, traducir en `mapRow`/params (§8.1 punto 6).
 
 Si la operación toca varias tablas, va en una transacción con `database.WithTx(ctx, pool, fn)` de
 `internal/platform/database/`. Los errores de integridad que el dominio conoce (p. ej.
@@ -1068,6 +1088,7 @@ En las rutas del panel, entre 2 y 3 ocurren `authn` (cookie `httpOnly` → sesi�
 | `handler` | Unitaria | `httptest.NewRecorder` + **fake** de `Service` | Decodificación, validación, códigos de estado, sobre de error, contenido de la respuesta | `internal/<dominio>/handler_test.go` |
 | `repository` | **Integración** | PostgreSQL real (`DATABASE_URL_TEST`), `//go:build integration` | SQL real, restricciones de la tabla, orden/paginación, traducción de errores | `internal/<dominio>/repository_test.go` |
 | `platform` | Unitaria | tabla de casos + `httptest` para middlewares | `apperr`, `validate`, `paginate`, cadena de middlewares, `Registrar` (incluido `Group`) | `internal/platform/*/**_test.go` |
+| `cmd/api` (cableado) | Humo de composición | `httptest` sobre `newMux` con **fakes** de las interfaces de los dominios | Que el cableado publica cada ruta nueva con su sobre de éxito y que las áreas existentes (`/healthz`) siguen respondiendo igual | `cmd/api/main_test.go` |
 | Frontend | Unitaria | Vitest + Testing Library + **MSW** | Comportamiento visible: estados cargando/vacío/error/éxito, formularios con errores de campo | `frontend/src/features/<feature>/*.test.tsx` |
 | E2E | End-to-end | **Playwright** | Flujos críticos contra el stack levantado (`make up`) | `frontend/e2e/*.spec.ts` |
 
@@ -1082,30 +1103,163 @@ Cobertura mínima exigida: **80 % en `service/`** (constitución §III); la veri
 
 ## 8. Receta: cómo agregar un área de negocio (10 pasos)
 
-1. **Contrato primero.** Redacta el delta (paths, esquemas, códigos de error) en
-   `specs/<N>-<feature>/contracts/` y fúndelo en `backend/api/openapi.yaml` **antes** de escribir
-   código (constitución §II). Regenera los tipos del frontend: `npm run api:gen`.
+> **La receta no abre decisiones.** Cada paso aplica las convenciones del §8.1 (cerradas tras el
+> ejercicio de verificación de SC-007, T030): si algo no está escrito aquí ni en §5, es un hueco
+> del documento y se pregunta antes de inventar. Nota operativa del entorno (base de datos
+> levantada, imágenes en caché): §8.1 punto 8.
+
+1. **Contrato primero** (constitución §II). Redacta el delta (paths, esquemas, códigos de error)
+   **antes** de escribir código:
+   - Con spec aprobada: en `specs/<N>-<feature>/contracts/`, fundido después en
+     `backend/api/openapi.yaml` al implementar.
+   - Sin carpeta de spec (ejercicio de práctica, área interna, cambio pequeño): **directamente**
+     en `backend/api/openapi.yaml` (el contrato vivo), siempre de forma aditiva.
+
+   En el mismo commit actualiza los metadatos del contrato (`info.version` y la prosa que deje de
+   ser cierta, §8.1 punto 10) y regenera los tipos del frontend: `make api-gen`
+   (`npm run api:gen`), dejando `frontend/src/api/schema.d.ts` commiteado.
 2. **Migración nueva** en `backend/migrations/`: `00000N_create_<tabla>.up.sql` + `.down.sql`
-   completo. **Nunca** edites una migración aplicada. Ejecuta `make db-migrate`.
+   completo. **Nunca** edites una migración aplicada. Esquema: PK `id UUID PRIMARY KEY DEFAULT
+   gen_random_uuid()` (§8.1 punto 1), `created_at`/`updated_at` `TIMESTAMPTZ NOT NULL DEFAULT
+   now()`, restricciones `CHECK` en la base e índice que refleje el orden del listado
+   (`created_at DESC, id DESC`, §8.1 punto 7). Aplica con `make db-migrate`, con la base
+   levantada y sana (§8.1 punto 8).
 3. **Consultas sqlc** en `internal/db/queries/<dominio>.sql`, siempre parametrizadas, sin
-   `SELECT *`; luego `sqlc generate` (código generado se commitea).
+   `SELECT *`, y todo listado con `ORDER BY` determinista y `LIMIT`/`OFFSET` (§8.1 puntos 3 y 7);
+   luego `make sqlc-gen` (el código generado se commitea). `sqlc.yaml` **sin `overrides`**: los
+   tipos `pgtype.*` que emita sqlc se traducen en `repository.go` (§8.1 punto 6).
 4. **`model.go`**: entidad, estados, DTOs de entrada/salida con sus etiquetas de validación y
-   límites (espejo del contrato).
+   límites (espejo del contrato). El dominio usa tipos Go propios (`uuid.UUID`, `time.Time`,
+   `string`…), **nunca** `pgtype.*` (§8.1 punto 6). El DTO de un listado lleva `items`
+   (§8.1 punto 2).
 5. **`repository.go`**: implementación concreta sobre `internal/db` + `pgxpool`, errores envueltos
-   con `%w`; integridad conocida → `apperr.Conflict`. (La interfaz la escribe el paso 6: si
-   compilas antes, deja el tipo pendiente y complétalo con el compilador de guía.)
+   con `%w`; integridad conocida → `apperr.Conflict`. `mapRow`/params convierte aquí los
+   `pgtype.*` (`.Time`, `.Valid`; el tipo real se lee en `internal/db/models.go`, §8.1 punto 6).
+   (La interfaz la escribe el paso 6: si compilas antes, deja el tipo pendiente y complétalo con
+   el compilador de guía.)
 6. **`service.go`**: la interfaz `Repository` (la define quien consume) + las reglas de negocio.
-   Sin HTTP, sin SQL. Inyecta el reloj si se usan fechas.
+   Sin HTTP, sin SQL. Inyecta el reloj si se usan fechas. El service **acota todo listado** aunque
+   nadie envíe parámetros: 20 por defecto, tope 100 (§8.1 punto 3).
 7. **`handler.go`**: la interfaz `Service` (la define quien consume) + decodificar, validar,
    delegar y responder. **Todos** los errores por `httpserver.WriteError`; ningún código de error
-   escrito a mano.
-8. **`routes.go`**: `RegisterPublic(...)` y `RegisterAdmin(...)` por separado, para que quede
-   auditable qué es público y qué exige permiso.
+   escrito a mano. El sobre de éxito de un listado es `{"items": […]}` (nunca `null`), con
+   `total`/`limit`/`offset` solo si el endpoint acepta paginación (§8.1 punto 2).
+8. **`routes.go`**: `RegisterPublic(...)` y `RegisterAdmin(...)` **por separado**, para que quede
+   auditable qué es público y qué exige permiso. Solo se escribe la función que publica al menos
+   una ruta: si el área no tiene superficie de panel, escribe **solo `RegisterPublic`** con un
+   comentario que lo haga constar; nunca una `RegisterAdmin` vacía (§8.1 punto 4).
 9. **Cableado en `cmd/api/main.go`**: `NewRepository(pool)` → `NewService(repo)` →
    `NewHandler(svc, logger)` → `RegisterPublic`/`RegisterAdmin(adminGroup, h)` (el grupo lleva
-   `authn`, `authz` por módulo y `CSRF`).
+   `authn`, `authz` por módulo y `CSRF` — F2). Las dependencias de los dominios entran en
+   `newMux` como **interfaces**, para que la prueba de humo pueda inyectar fakes (§8.1 punto 9).
 10. **Pruebas de las tres capas** (service con fake, handler con `httptest`, repository con
-    `//go:build integration`) + frontend con MSW si hay UI + `make ci` en verde.
+    `//go:build integration`) + frontend con MSW si hay UI + **prueba de humo del cableado** en
+    `cmd/api/main_test.go` + `make ci` en verde. Y la comprobación funcional contra el entorno
+    reconstruido (`curl -i` sobre la ruta nueva y sobre `/healthz`), §8.1 puntos 8 y 9.
+
+### 8.1 Convenciones cerradas (las 10 decisiones que la receta ya no deja al aire)
+
+El ejercicio de verificación de SC-007 (T030) demostró que los 10 pasos eran seguibles pero
+obligaban a tomar diez decisiones no escritas. Quedan cerradas aquí como **convención del
+proyecto**; ratifican lo ya decidido en F1 (el sobre de éxito es el DTO directo, **sin** wrapper
+`{"data": …}`; el sobre de error es `ErrorEnvelope`; pruebas de las tres capas y ~80 % de
+cobertura en `service/`, §7).
+
+1. **Clave primaria y tipos UUID.** Toda tabla de negocio nace con `id UUID PRIMARY KEY DEFAULT
+   gen_random_uuid()` (la alternativa `BIGINT GENERATED ALWAYS AS IDENTITY` solo con justificación
+   en el plan de la funcionalidad, como manda la skill `postgres-db`). En Go el identificador es
+   `uuid.UUID` (`github.com/google/uuid`) en la entidad y en los parámetros; en el JSON viaja como
+   `string` (§5.4). **Consecuencias**: la primera funcionalidad con una tabla de UUID añade
+   `github.com/google/uuid` a `go.mod` —dependencia nueva **justificada** según D-A8 (solo tipos,
+   sin dependencias transitivas; es lo que sqlc emite por defecto y evita que los `pgtype` de
+   `pgx` se cuelen en el dominio, R4)— y repite esa justificación en su `plan.md`. `sqlc.yaml`
+   **no** necesita ningún `override`. *Descartado*: `pgtype.UUID` vía `override` (cero
+   dependencias, pero tipos torpes que empujan `pgx` al dominio o conversiones a `string` a mano).
+   Cierra la pregunta abierta 5 de `decisiones.md`.
+2. **Sobre de éxito de un listado.** Todo listado responde un objeto con **`items`**: array JSON
+   que **nunca es `null`** (vacío es `[]`). En Go: campo `Items` con tipo `[]T` y etiqueta
+   `json:"items"`, inicializado con `make([]T, 0, n)` para que serialice `[]` y no `null`. Si el
+   endpoint acepta parámetros de paginación (`limit`/`offset`), el sobre
+   lleva además `total`, `limit` y `offset` (como `ContactList`, §5.1); si no los acepta, el sobre
+   es solo `{"items": […]}`. Nunca un array en raíz y nunca el wrapper `{"data": …}`.
+3. **Paginación por defecto.** Un listado **siempre** se acota, aunque nadie envíe parámetros:
+   ninguna consulta de listado va sin `LIMIT`/`OFFSET`. El service fija `defaultListLimit = 20`
+   cuando `Limit <= 0`, recorta a `maxListLimit = 100` y pone `Offset` mínimo en 0 (§5.5): un
+   listado público sin entradas de usuario sirve los 20 primeros del orden por defecto. Cuando el
+   endpoint acepte `limit`/`offset` de usuario (panel, F2+), el parseo y los topes viven en
+   `platform/paginate`; hasta entonces, las constantes del service. El contrato documenta el
+   límite en la descripción de la operación aunque no haya parámetros.
+4. **`RegisterAdmin` cuando el área no tiene panel.** Solo se escribe la función `Register…` que
+   publica al menos una ruta. Si el área no tiene rutas de panel (o las tendría pero dependen de
+   `authn`/`authz`, que llegan en F2), se escribe **solo `RegisterPublic`** y `routes.go` deja
+   constancia con un comentario:
+
+   ```go
+   // Sin rutas de panel todavía: RegisterAdmin aparecerá junto con la superficie
+   // de panel del área (authn/authz llegan en F2).
+   ```
+
+   Nunca una `RegisterAdmin` vacía (código muerto; los linters la marcan) ni un grupo
+   `/api/v1/admin` en `main.go` para un dominio que no lo usa. La regla es simétrica: un área solo
+   de panel escribe solo `RegisterAdmin`.
+5. **Ubicación del delta del contrato.** Con spec aprobada, el delta se escribe en
+   `specs/<N>-<feature>/contracts/openapi.yaml` y se funde en `backend/api/openapi.yaml` al
+   implementar. Sin carpeta de spec, el delta se aplica **directamente** en `backend/api/openapi.yaml`
+   (el contrato vivo), también **antes** que el código. En ambos casos es **aditivo** —nuevos
+   paths, esquemas, respuestas o `error.code`; nada existente se rompe, renombra ni cambia de tipo
+   sin una spec que lo autorice— y va en el mismo commit que el código, seguido de `make api-gen`
+   (deja `frontend/src/api/schema.d.ts` commiteado; el CI compila contra él).
+6. **Mapeo `pgtype` → dominio.** Con `sql_package: pgx/v5`, sqlc **no** emite `time.Time` para
+   `TIMESTAMPTZ`: emite `pgtype.Timestamptz`, y `pgtype.Text`, `pgtype.Int4`, `pgtype.Numeric`…
+   para las columnas anulables. `mapRow`/params (§5.6) convierte explícitamente y el tipo real
+   **se lee en `internal/db/models.go`**, nunca se asume:
+
+   | Columna PostgreSQL | Lo que emite sqlc (`pgx/v5`) | En la entidad de dominio |
+   |---|---|---|
+   | `uuid` no anulable | `uuid.UUID` (google/uuid) | `uuid.UUID`, sin conversión |
+   | `timestamptz` no anulable | `pgtype.Timestamptz` | `time.Time` con `row.CreatedAt.Time` |
+   | `text` / `int4`… **anulable** | `pgtype.Text` / `pgtype.Int4`… | `string` / `int32`… mirando `.Valid` |
+   | `text` / `int4`… no anulable | `string` / `int32`… | sin conversión |
+
+   `pgtype.*` no sale de `repository.go` (R4: el service no conoce `pgx`). `sqlc.yaml` **no** usa
+   `overrides` para evitarse este mapeo: una sola regla, traducir en el repository. Si un plan
+   llegara a necesitar un `override`, lo justifica ahí mismo y se documenta aquí.
+7. **Orden por defecto de un listado.** Toda consulta de listado lleva `ORDER BY` **explícito y
+   determinista**: sin criterio en el contrato, `created_at DESC, id DESC` (los más recientes
+   primero; `id` desempata, de modo que el orden es estable y la paginación no repite ni pierde
+   filas). Nunca un `ORDER BY` sin desempate. El índice del listado refleja ese orden (p. ej.
+   `(created_at DESC, id DESC)`, o con el filtro delante si lo hay).
+8. **Operativa del entorno local.** Dos comandos de la receta dan por hecho un entorno que hay que
+   preparar:
+   - `make db-migrate` (`migrate -path backend/migrations -database "$DATABASE_URL" up`) exige la
+     **base de datos levantada y sana**: `docker compose up -d db` (o `make up`) y esperar a que
+     `docker compose ps` la muestre `healthy`; y `DATABASE_URL` definida en el entorno (su forma
+     está en `.env.example`; para el host: `localhost:5432`).
+   - `make up` es `docker compose up -d` y **reutiliza la imagen en caché**: si cambió el código
+     de `backend/` o `frontend/`, puede seguir sirviendo código viejo. Tras cambiar código,
+     reconstruye con `docker compose up -d --build` (o `docker compose build` y luego `make up`).
+     Es la causa más frecuente de "el cambio no aparece" tras seguir la receta.
+9. **Comprobación del cableado (`cmd/api/main.go`).** Se verifica en dos niveles:
+   - **Prueba de humo** en `cmd/api/main_test.go` (patrón de F1, fila `cmd/api` de §7): un caso que
+     ejercite la ruta nueva a través de `newMux` con fakes de las interfaces del dominio y
+     compruebe su sobre de éxito **y** que `/healthz` sigue respondiendo igual (las áreas
+     existentes no cambian). Por eso las dependencias de los dominios entran en `newMux` como
+     interfaces.
+   - **Comprobación funcional** (evidencia de SC-007) sobre el entorno reconstruido (punto 8):
+     `curl -i http://localhost:8080/api/v1/<ruta>` → `200` con el sobre de éxito;
+     `curl -i http://localhost:8080/healthz` → intacto; y una ruta inexistente → `404` con
+     `ErrorEnvelope` (el fallback del router, §5.11).
+10. **Metadatos del contrato.** Todo delta actualiza `info` **en el mismo commit**:
+    - `info.version` (SemVer del contrato, **independiente** del prefijo `/api/v1` de las rutas):
+      sube **minor** al añadir operaciones, esquemas o respuestas (lo habitual en un delta
+      aditivo), **patch** si solo cambian prosa o ejemplos, y **major** solo ante un cambio
+      incompatible, que exige spec aprobada.
+    - La prosa de `info.description` se revisa en cada delta: se corrige cuando deja de ser cierta
+      (p. ej. "F1 expone únicamente `/healthz`") y la tabla de `error.code` se amplía con los
+      códigos nuevos. `info.title` y `contact` no se tocan.
+
+Con esto, los 10 pasos no abren ninguna decisión nueva: quien los sigue escribe lo que está
+escrito y pregunta cualquier hueco restante.
 
 El PR de cada tarea lleva sus pruebas (constitución §III) y pasa por `qa-tester`,
 `revisor-codigo` y `seguridad` antes de integrarse (quien escribe no aprueba).
