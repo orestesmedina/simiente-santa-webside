@@ -28,6 +28,9 @@ frontend/test-results/
 # Claude Code (configuración personal)
 .claude/settings.local.json
 
+# Python
+__pycache__/
+
 # Respaldos de make instalar-kit
 .kit-respaldo/
 # <<< bowser-spec-kit-ai

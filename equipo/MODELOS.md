@@ -93,13 +93,31 @@ Si el presupuesto sigue agotándose rápido, revisa primero el orquestador: abre
 
 ### Cómo medir
 
-1. Anota el % de **Rolling** y **Weekly** antes y después de construir una funcionalidad.
+`make costos` registra los tokens y el costo equivalente de cada agente y modelo por funcionalidad (`specs/<rama>/costos.json`), y `make costos TODO=1` los suma para todo el proyecto. Es la base para comparar configuraciones con datos reales.
+
+1. Anota el % de **Rolling** y **Weekly** antes y después de construir una funcionalidad, y compáralo con `make costos`.
 2. Si quieres comparar modelos, construye la misma funcionalidad pequeña con dos configuraciones y compara consumo, ciclos de corrección y hallazgos del revisor.
 3. Ajusta `equipo/config.json` y ejecuta `make sincronizar && make modelos`.
 
 ### Privacidad (importante con código de clientes)
 
 Revisa la política de datos de cada modelo antes de usarlo con código de clientes. Según la documentación de OpenCode Go, la mayoría no retiene datos, pero hay excepciones: algunos modelos usan los datos para entrenamiento y otros guardan registros durante un tiempo. **No asignes esos modelos a proyectos de clientes** sin su autorización. La lista actualizada está en [opencode.ai/docs/go](https://opencode.ai/docs/go/).
+
+### Precios para `make costos`
+
+Los precios salen de [models.dev](https://models.dev/providers/opencode-go/) (se consultan como máximo una vez por hora; sin internet se usa la última copia). Para un modelo que no esté ahí, o una tarifa negociada, se fijan a mano en `equipo/config.json` (USD por millón de tokens):
+
+```json
+"costos": {
+  "precios_manuales": {
+    "opencode-go/mi-modelo": { "input": 0.2, "output": 0.8, "cache_read": 0.02, "cache_write": 0 }
+  }
+}
+```
+
+La tarifa de hora pico viene configurada para DeepSeek (×2 de lunes a viernes, 01:00–04:00 y 06:00–10:00 UTC). Si cambia, se reemplaza con `"pico": [{"modelos": "opencode-go/deepseek-*", "multiplicador": 2, "dias": [0,1,2,3,4], "horas_utc": [[1,4],[6,10]]}]` dentro de `"costos"` (`dias`: 0 = lunes; `"pico": []` la desactiva).
+
+El costo se calcula igual que OpenCode: entrada sin caché, salida (el razonamiento se cobra como salida), lectura y escritura de caché. Un cambio de precio rige desde que `make costos` lo detecta (al iniciar cada sesión).
 
 ## El orquestador en OpenCode
 

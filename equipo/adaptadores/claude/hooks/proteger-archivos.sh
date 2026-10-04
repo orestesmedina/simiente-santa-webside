@@ -45,4 +45,12 @@ if [[ "$FILE" == */backend/migrations/*.sql ]] && [ -f "$FILE" ]; then
   fi
 fi
 
+# 5. costos.json lo escribe solo `make costos` (los agentes no lo editan a mano)
+case "$REL" in
+  specs/*costos.json)
+    echo "Bloqueado: '$REL' lo genera 'make costos'; no se edita a mano." >&2
+    exit 2
+    ;;
+esac
+
 exit 0

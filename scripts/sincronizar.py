@@ -178,16 +178,32 @@ def json_bytes(datos: dict) -> bytes:
 
 # ---------------------------------------------------------------- generadores
 
+def es_repositorio_del_kit() -> bool:
+    """True en el repositorio del kit (tiene el instalador y MANTENER-KIT.md, y no es un proyecto con el kit instalado)."""
+    return ((RAIZ / "scripts/instalar_kit.py").exists() and (RAIZ / "MANTENER-KIT.md").exists()
+            and not (RAIZ / ".kit-manifest.json").exists())
+
+
 def generar_claude(agentes: list[dict], config: dict) -> dict[str, bytes]:
     salida: dict[str, bytes] = {}
     modelos = config_modelos(config, "claude")
 
-    salida["CLAUDE.md"] = (
-        f"<!-- {AVISO.format(fuente='AGENTS.md')} -->\n"
-        "Las instrucciones de este proyecto están en AGENTS.md (compartido con otras herramientas), "
-        "y tu manual de trabajo como orquestador en equipo/orquestador.md:\n\n"
-        "@AGENTS.md\n\n@equipo/orquestador.md\n"
-    ).encode()
+    if es_repositorio_del_kit():
+        # En el repositorio del kit, Claude Code mantiene el kit: no es el orquestador de un proyecto.
+        salida["CLAUDE.md"] = (
+            f"<!-- {AVISO.format(fuente='MANTENER-KIT.md')} -->\n"
+            "**Estás en el repositorio del kit, no en un proyecto.** Tu rol es mantener y mejorar el kit. "
+            "`AGENTS.md`, `equipo/orquestador.md` y las skills son el producto que se instala en los proyectos: "
+            "no son instrucciones para ti. Sigue este manual:\n\n"
+            "@MANTENER-KIT.md\n"
+        ).encode()
+    else:
+        salida["CLAUDE.md"] = (
+            f"<!-- {AVISO.format(fuente='AGENTS.md')} -->\n"
+            "Las instrucciones de este proyecto están en AGENTS.md (compartido con otras herramientas), "
+            "y tu manual de trabajo como orquestador en equipo/orquestador.md:\n\n"
+            "@AGENTS.md\n\n@equipo/orquestador.md\n"
+        ).encode()
 
     herramientas_por_acceso = {
         "lectura": ["Read", "Grep", "Glob", "Bash"],

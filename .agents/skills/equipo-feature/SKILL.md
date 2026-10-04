@@ -48,6 +48,7 @@ Ejecuta `converge`. Si agrega tareas, vuelve a la Fase 4 solo para ellas.
 2. `documentador`: actualiza CHANGELOG, README y notas para el cliente.
 3. Abre un Pull Request con el resumen, las pruebas y los reportes de validación.
 4. **DETENTE.** El merge y el despliegue a producción los aprueba un humano.
-   📍 Roadmap → `en revisión` con el enlace al PR. Cuando el humano confirme el merge: Aprobaciones → PR `aprobado` y roadmap → `terminada`.
+   📍 Roadmap → `en revisión` con el enlace al PR.
+   📍 Cuando el humano **apruebe el PR**: Aprobaciones → PR `aprobado`, ejecuta `make costos CERRAR=1` y haz commit de `estado.md` y `costos.json` en la rama antes del merge. Cuando confirme el merge: roadmap → `terminada`.
 
-Termina con un resumen corto: qué se construyó, estado de las pruebas, riesgos abiertos y enlace al PR.
+Termina con un resumen corto: qué se construyó, estado de las pruebas, riesgos abiertos, costo de IA (total y por agente, de `make costos`) y enlace al PR.

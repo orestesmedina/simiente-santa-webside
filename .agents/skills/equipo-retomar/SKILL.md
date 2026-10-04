@@ -9,7 +9,7 @@ Este flujo **solo lee**; no cambia código. La única escritura permitida es cor
 
 ## Versión corta (al iniciar cada sesión)
 
-Ejecuta `make estado` y abre la conversación con 2 a 4 líneas:
+Ejecuta `make estado` y `make costos` (este último registra el consumo de sesiones anteriores y los cambios de precio) y abre la conversación con 2 a 4 líneas:
 
 ```
 Quedamos en: 003-registro-usuarios · Fase 6/9 (implementar) · 7/12 tareas

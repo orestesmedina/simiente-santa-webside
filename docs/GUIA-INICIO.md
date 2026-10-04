@@ -86,6 +86,7 @@ Si la spec y el plan están bien, la implementación casi siempre sale bien. **L
 | `.agents/skills/` | Convenciones del stack y flujos | Solo con aprobación de dirección técnica |
 | `specs/<número>-<feature>/` | Spec, plan y tareas de cada funcionalidad | Sí, es tu día a día |
 | `specs/<número>-<feature>/estado.md` | Fase, aprobaciones, hallazgos, decisiones y próximo paso de la funcionalidad | Lo mantiene el orquestador; puedes corregirlo |
+| `specs/<número>-<feature>/costos.json` | Tokens y costo de IA por agente y modelo | **Nunca** a mano: lo escribe `make costos` |
 | `docs/producto/roadmap.md` | Funcionalidades del producto y su estado | Tú decides orden y alcance; el orquestador actualiza el estado |
 | `CLAUDE.md`, `.claude/`, `.codex/`, `.opencode/`, `opencode.json` | Archivos generados | **Nunca** a mano |
 | `.bowser-spec-kit-ai/` y `.kit-manifest.json` | El kit compartido (submódulo) y la lista de archivos que vienen de él | **Nunca** a mano; se actualizan con `make actualizar-kit` |
@@ -175,15 +176,15 @@ No desactives la integración de rutas de Windows en WSL: de ella depende, entre
 
 **macOS** (con [Homebrew](https://brew.sh)):
 ```bash
-brew install git go node@22 python@3.12 jq make gh gitleaks golang-migrate
+brew install git go node@24 python@3.12 jq make gh gitleaks golang-migrate
 brew install --cask docker        # Docker Desktop; ábrelo una vez para que arranque
 ```
 
 **Ubuntu / WSL2** (en la terminal de Ubuntu):
 ```bash
 sudo apt update && sudo apt install -y git jq make unzip curl build-essential python3 python3-pip
-# Go 1.23+ : https://go.dev/doc/install
-# Node 22  : https://github.com/nvm-sh/nvm  →  nvm install 22
+# Go 1.26+ : https://go.dev/doc/install
+# Node 24  : https://github.com/nvm-sh/nvm  →  nvm install 24
 # Docker   : en Windows, Docker Desktop con integración WSL (ver 3.1.1)
 #            en Linux nativo: https://docs.docker.com/engine/install/ubuntu/
 # GitHub CLI: https://github.com/cli/cli/blob/trunk/docs/install_linux.md
@@ -200,11 +201,11 @@ uv tool install specify-cli
 specify --version
 ```
 
-**Herramientas de Go** (todos los sistemas):
+**Herramientas de Go** (todos los sistemas; las mismas versiones que fija el CI en `.github/workflows/ci.yml`):
 ```bash
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-go install golang.org/x/vuln/cmd/govulncheck@latest
-go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.20.1
 ```
 Asegúrate de que `$(go env GOPATH)/bin` esté en tu `PATH`.
 
@@ -302,6 +303,8 @@ make actualizar-kit
 make actualizar-modelos   # solo si el paso anterior avisó "el kit recomienda modelos distintos"
 git add . && git commit -m "chore: actualiza kit de desarrollo"
 ```
+
+Al terminar, `make actualizar-kit` muestra **qué cambió** entre tu versión y la nueva, y al final los **pasos manuales** si los hay: hazlos antes del commit. Para ver el historial completo en cualquier momento: `make novedades` (o `make novedades DESDE=1.4.0`).
 
 Los modelos de cada agente viven en `equipo/config.json`, que es del proyecto: actualizar el kit no los cambia. `make actualizar-modelos` te muestra qué cambiaría, pide confirmación y regenera la configuración de agentes (incluido `.opencode/`). Después reinicia OpenCode (o tu herramienta) para que tome los modelos nuevos.
 
@@ -453,6 +456,25 @@ El estado no depende de la memoria del agente: vive en `docs/producto/roadmap.md
 
 Si una funcionalidad se empezó sin `estado.md` (por ejemplo, antes de que existiera este flujo), pide "retomemos": el orquestador lo reconstruye a partir de los archivos y de git, y te pide confirmar las aprobaciones.
 
+### Costo de IA de cada funcionalidad
+
+Cada funcionalidad lleva su cuenta en `specs/<rama>/costos.json`: cuántos tokens gastó cada agente con cada modelo y cuánto equivale en dólares.
+
+- **Se registra solo.** El orquestador ejecuta `make costos` al iniciar y al cerrar cada sesión. Toma el consumo de las sesiones de OpenCode de tu computadora y lo guarda en la rama; como va en git, suma el trabajo de todas las personas que tocaron la funcionalidad.
+- **El precio de cada día queda guardado.** Los precios salen de [models.dev](https://models.dev). Si un precio cambia, la tarea agrega la versión nueva con su fecha, sin recalcular lo anterior: cada respuesta se cobra con el precio vigente cuando ocurrió. La tarifa de hora pico de DeepSeek se aplica según la hora de cada respuesta.
+- **Al aprobar el PR se cierra.** El orquestador ejecuta `make costos CERRAR=1` antes del merge. Desde ahí el costo de esa funcionalidad no cambia; el pre-commit bloquea cualquier modificación.
+- **Es un costo equivalente.** Con OpenCode Go pagas una suscripción: el dólar es lo que costaría a precio de API. Tu gasto real es el % de la consola.
+
+Comandos:
+
+```bash
+make costos              # tarea actual: tokens y $ por agente y modelo
+make costos TODO=1       # todo el proyecto: por funcionalidad, agente y modelo
+make costos PRECIOS=hoy  # cuánto costaría hoy (para cotizar; no guarda nada)
+```
+
+Si trabajaste en una sesión de OpenCode sin pasar por el orquestador, ejecuta `make costos` en la rama de la funcionalidad antes de cambiarte de rama: el consumo se asigna a la rama en la que estés al registrarlo.
+
 ### Cambiar la especificación de algo ya construido
 
 Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las tareas; después el código. **Nunca al revés.**
@@ -484,6 +506,11 @@ Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las
 | Actualicé el kit pero `.opencode/` (o los modelos) siguen iguales | Los modelos salen de `equipo/config.json` del proyecto, que el kit no sobrescribe | `make actualizar-modelos` y reinicia OpenCode |
 | `make estado` avisa "cambió después de estado.md" o "aprobación no registrada" | El estado no se actualizó en la última sesión | Pide al orquestador "¿por dónde quedamos?": compara con los archivos, corrige `estado.md` y te pide confirmar lo que falte |
 | ⚠ "sin actualizar estado.md" al hacer commit | Cambió spec, plan o tareas y el estado no | Es un aviso, no bloquea. Actualiza `estado.md` y agrégalo al commit |
+| `make costos` dice "No se encontró 'opencode'" | La terminal no es la de Ubuntu/WSL, o OpenCode no está instalado ahí | Abre la terminal de Ubuntu (sección 3.1.1) |
+| `make costos` dice "Aún no hay consumo registrado" aunque ya trabajaste | Kit anterior a la 1.6.3 con OpenCode 2.x, o las sesiones se hicieron en otra carpeta o con otra herramienta | `make actualizar-kit` y vuelve a ejecutar `make costos`; si avisa que OpenCode no devolvió sesiones, comprueba con `opencode session list` desde la carpeta del proyecto |
+| `make costos` dice "Sin precio para: …" | El modelo no está en models.dev | Agrega su precio en `equipo/config.json` → `costos.precios_manuales` (ver `equipo/MODELOS.md`) |
+| "El costo de … ya está cerrado" al hacer commit | Se modificó el `costos.json` de una funcionalidad terminada | Revierte el cambio (`git checkout -- <archivo>`). Solo dirección técnica puede autorizar una corrección |
+| El CI falla en `golangci-lint` con "the Go language version (…) used to build golangci-lint is lower than the targeted Go version" | El proyecto usa un Go más nuevo que el golangci-lint que fija el kit | `make actualizar-kit`; si el kit aún no lo trae, crea la variable `GOLANGCI_LINT_VERSION` (ej. `v2.14.0`) en GitHub → Settings → Secrets and variables → Actions → Variables |
 | El CI falla al descargar el submódulo | El repositorio del kit es privado | Configura el secreto `KIT_TOKEN` en el repositorio del proyecto |
 | `make: command not found` | Falta `make` (común en Ubuntu/WSL) | `sudo apt install -y make build-essential` |
 | `make: *** No rule to make target 'up'` | Estás en otra carpeta (por ejemplo, la terminal se abrió en tu carpeta personal) | `cd` a la carpeta del proyecto; `ls Makefile` debe encontrarlo |
@@ -525,6 +552,7 @@ Primero se actualiza `spec.md` y se aprueba; después se actualiza el plan y las
 - **Migración:** archivo versionado que cambia el esquema de la base de datos.
 - **Conventional Commits:** formato de mensajes de commit (`feat:`, `fix:`…).
 - **Roadmap:** lista ordenada de funcionalidades del producto con el estado de cada una.
+- **costos.json:** archivo de cada funcionalidad con los tokens y el costo equivalente de IA por agente y modelo, con los precios vigentes en cada fecha.
 - **estado.md:** archivo de cada funcionalidad donde el orquestador anota fase, aprobaciones, hallazgos, decisiones y próximo paso, para retomar en cualquier sesión.
 
 ---

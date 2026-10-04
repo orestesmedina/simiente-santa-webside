@@ -77,7 +77,9 @@ fi
 
 echo "Proyecto"
 if docker info >/dev/null 2>&1; then verde "Docker está corriendo"; else rojo "Docker no está corriendo"; fi
-if [ "$(git config core.hooksPath 2>/dev/null)" = ".githooks" ]; then verde "Hooks de git activos"; else rojo "Hooks de git inactivos (ejecuta: make instalar-hooks)"; fi
+if [ "$(git config core.hooksPath 2>/dev/null)" != ".githooks" ]; then rojo "Hooks de git inactivos (ejecuta: make instalar-hooks)"
+elif [ ! -x .githooks/pre-commit ] || [ ! -x .githooks/commit-msg ]; then rojo "Hooks de git sin permiso de ejecución: git los ignora (ejecuta: make instalar-hooks)"
+else verde "Hooks de git activos"; fi
 [ -f .env ] && verde "Archivo .env existe" || rojo "Falta .env (ejecuta: cp .env.example .env y completa valores)"
 if python3 scripts/sincronizar.py --verificar >/dev/null 2>&1; then verde "Configuración de agentes al día"; else rojo "Configuración de agentes desactualizada (ejecuta: make sincronizar)"; fi
 RUTA_KIT=$(bash scripts/ruta-kit.sh)

@@ -8,7 +8,7 @@ coordinas a los subagentes del equipo siguiendo el proceso de Spec Kit.
 
 **Tu manual de trabajo completo está en `equipo/orquestador.md`: léelo al iniciar cada sesión y síguelo.**
 
-**Al iniciar cada sesión, antes de responder**, revisa dónde quedó el trabajo (`make estado`, o `docs/producto/roadmap.md` y `specs/<rama>/estado.md`) y díselo al usuario en pocas líneas (skill `equipo-retomar`).
+**Al iniciar cada sesión, antes de responder**, ejecuta `make estado` y `make costos`, y dile al usuario en pocas líneas dónde quedó el trabajo (skill `equipo-retomar`).
 
 ## Stack oficial
 - **Frontend:** React + TypeScript + Vite (carpeta `frontend/`)
@@ -23,6 +23,7 @@ Las reglas no negociables están en `.specify/memory/constitution.md`. Léela an
 - `.agents/skills/` — conocimiento reutilizable: convenciones del stack (`go-backend`, `react-frontend`, `postgres-db`) y flujos del equipo (`equipo-feature`, `equipo-revision`, `equipo-bug`, `equipo-retomar`).
 - `specs/<feature>/` — spec, plan, tareas y reportes de cada funcionalidad.
 - `specs/<feature>/estado.md` — fase, aprobaciones, hallazgos abiertos, decisiones y próximo paso (lo mantiene el orquestador).
+- `specs/<feature>/costos.json` — tokens y costo de IA por agente y modelo (lo escribe solo `make costos`).
 - `docs/producto/roadmap.md` — funcionalidades del producto y su estado.
 
 ## Proceso: fase de Spec Kit → subagente responsable
@@ -70,3 +71,4 @@ Si no está claro cuál aplica, pregunta antes de empezar. Nunca escribas códig
 9. Si la spec es ambigua, pregunta antes de inventar.
 10. **No edites el kit compartido.** Ni la carpeta `.bowser-spec-kit-ai/` (submódulo) ni los archivos listados en `.kit-manifest.json`: se reemplazan al actualizar el kit. Si algo del kit debe cambiar, propónlo al humano para llevarlo al repositorio del kit.
 11. **Mantén el estado al día.** Actualiza `specs/<feature>/estado.md` y el roadmap en cada cambio de fase, puerta, ciclo de corrección y al cerrar la sesión. Una aprobación solo se registra si el humano la dio explícitamente.
+12. **Registra el costo.** `make costos` al iniciar y al cerrar cada sesión; `make costos CERRAR=1` cuando el humano aprueba el PR. Nunca edites `costos.json` a mano.

@@ -262,6 +262,16 @@ def main() -> int:
             avisos.append(f"Crea specs/{carpeta_actual.name}/estado.md: pide al orquestador \"retomemos\" (skill equipo-retomar).")
         if total:
             print(f"  Tareas:        {hechas}/{total} hechas" + (f" · siguiente: {sig_tarea[:90]}" if sig_tarea else ""))
+        costos_json = carpeta_actual / "costos.json"
+        if costos_json.exists():
+            try:
+                import json
+                c = json.loads(costos_json.read_text(encoding="utf-8"))
+                tot = c.get("totales") or {}
+                print(f"  Costo IA:      ${tot.get('costo', 0):,.2f} equivalente · {tot.get('tokens', 0) / 1e6:.1f} M tokens"
+                      f" ({c.get('estado', '?')}) · detalle: make costos")
+            except ValueError:
+                pass
         revisiones = sorted(carpeta_actual.glob("revision-*.md"))
         if revisiones:
             print(f"  Última revisión: {revisiones[-1].name}")
