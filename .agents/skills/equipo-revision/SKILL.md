@@ -17,3 +17,5 @@ Consolida los tres reportes en uno:
 - **Mejoras sugeridas** (no bloquean).
 
 Guarda el reporte en `specs/<feature>/revision-<fecha>.md`. No modifiques código en este flujo.
+
+Si existe `specs/<feature>/estado.md`, el orquestador actualiza ahí el `Ciclo de corrección` y los **Hallazgos abiertos** (solo los bloqueantes, con enlace al reporte).

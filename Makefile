@@ -1,7 +1,7 @@
 # Makefile del kit. En los proyectos lo gestiona `make instalar-kit`: no lo edites ahí.
 # Para agregar comandos propios de un proyecto, créalos en proyecto.mk (se incluye al final).
 
-.PHONY: help doctor modelos sincronizar verificar-agentes instalar-hooks instalar-kit actualizar-kit verificar-kit up down db-migrate test test-backend test-frontend lint security ci
+.PHONY: help estado costos novedades doctor modelos actualizar-modelos sincronizar verificar-agentes instalar-hooks instalar-kit actualizar-kit verificar-kit up down db-migrate test test-backend test-frontend lint security ci
 
 # Carpeta del submódulo del kit: la del `make -f <carpeta>/Makefile` usado, o la guardada al instalar,
 # o el nombre por defecto. Se puede forzar con `make ... KIT=<carpeta>`.
@@ -11,21 +11,33 @@ KIT ?= $(or $(KIT_INVOCADO),$(KIT_GUARDADO),.bowser-spec-kit-ai)
 FORZAR ?=
 
 help: ## Muestra los comandos disponibles
-	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 instalar-kit: ## Copia el kit (submódulo) a la raíz, regenera agentes y activa hooks
 	@test -f $(KIT)/scripts/instalar_kit.py || { echo "No existe $(KIT)/. Agrega el submódulo (git submodule add <url> $(KIT)) o ejecuta: git submodule update --init"; exit 1; }
-	python3 $(KIT)/scripts/instalar_kit.py $(if $(FORZAR),--forzar,)
-	python3 scripts/sincronizar.py
-	git config core.hooksPath .githooks
-	@echo "Listo. Revisa los cambios con 'git status' y haz commit (incluye .kit-manifest.json)."
+	@PREVIA=$$(python3 $(KIT)/scripts/instalar_kit.py --version-instalada) && \
+	NOVEDADES_AL_FINAL=1 python3 $(KIT)/scripts/instalar_kit.py $(if $(FORZAR),--forzar,) && \
+	python3 scripts/sincronizar.py && \
+	git config core.hooksPath .githooks && \
+	{ python3 scripts/actualizar_modelos.py --comprobar || true; } && \
+	python3 $(KIT)/scripts/instalar_kit.py --resumen-novedades "$$PREVIA" && \
+	echo "" && echo "Listo. Revisa los cambios con 'git status' y haz commit (incluye .kit-manifest.json)."
 
 actualizar-kit: ## Trae la última versión del kit y la instala
 	git submodule update --init --remote $(KIT)
 	@$(MAKE) --no-print-directory instalar-kit
 
+novedades: ## Historial de cambios del kit (DESDE=1.4.0 para ver desde una versión)
+	@python3 $(KIT)/scripts/instalar_kit.py --novedades $(if $(DESDE),--desde $(DESDE),)
+
 verificar-kit: ## Comprueba que la raíz coincida con la versión del submódulo del kit
 	python3 $(KIT)/scripts/instalar_kit.py --verificar
+
+estado: ## Por dónde vamos: roadmap, fase, aprobaciones, tareas y próximo paso
+	@python3 scripts/estado.py $(if $(TODO),--todo,)
+
+costos: ## Costo de IA de la tarea actual (TODO=1 proyecto, CERRAR=1 cierra, PRECIOS=hoy cotiza)
+	@python3 scripts/costos.py $(if $(TODO),--todo,) $(if $(CERRAR),--cerrar,) $(if $(filter hoy,$(PRECIOS)),--hoy,)
 
 doctor: ## Verifica que el entorno tenga todo lo necesario
 	@bash scripts/doctor.sh
@@ -36,12 +48,15 @@ sincronizar: ## Genera la configuración de Claude Code, Codex y OpenCode desde 
 modelos: ## Muestra qué modelo usa cada agente en cada herramienta
 	@python3 scripts/sincronizar.py --modelos
 
+actualizar-modelos: ## Aplica al proyecto los modelos recomendados por el kit (muestra los cambios antes)
+	@python3 scripts/actualizar_modelos.py $(if $(SI),--si,)
+
 verificar-agentes: ## Comprueba que la configuración generada esté al día
 	python3 scripts/sincronizar.py --verificar
 
 instalar-hooks: ## Activa los hooks de git del proyecto (una vez por clon)
 	git config core.hooksPath .githooks
-	chmod +x .githooks/*
+	chmod +x .githooks/* equipo/adaptadores/claude/hooks/*.sh
 	@echo "Hooks de git activados."
 
 up: ## Levanta el entorno local (PostgreSQL y servicios)

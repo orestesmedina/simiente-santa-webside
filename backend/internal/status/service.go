@@ -1,0 +1,67 @@
+package status
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"simiente-santa/backend/internal/platform/apperr"
+)
+
+// Mensaje y clave de detalle del 503 previsto por el contrato (FR-004, D7). Son
+// seguros para el cliente: nunca contienen el error interno, que viaja envuelto
+// solo para el log.
+const (
+	// MessageDatabaseUnavailable es el message del 503 database_unavailable.
+	MessageDatabaseUnavailable = "La base de datos no está conectada"
+	// DetailDatabaseKey es la clave de details que acompaña ese 503.
+	DetailDatabaseKey = "database"
+)
+
+// Repository es la interfaz que este servicio necesita del almacén de datos.
+// La define quien la consume (arq. R3) y la implementa repository.go sobre el
+// *pgxpool.Pool compartido. El timeout de la comprobación ya viene aplicado en
+// platform/database, así que el servicio no conoce pgx ni SQL (arq. R4).
+type Repository interface {
+	// Ping comprueba la conexión con la base de datos en cada llamada, para que
+	// el estado sea el real y no uno memorizado (FR-003).
+	Ping(ctx context.Context) error
+}
+
+// service implementa las reglas de negocio del estado del sistema. No conoce
+// net/http ni pgx (arq. R4).
+type service struct {
+	repo Repository
+}
+
+// NewService construye el servicio del dominio status y devuelve la interfaz
+// Service que declara handler.go (quien la consume, arq. R3): así el patrón de
+// referencia (arq. §5.5) no expone el tipo concreto no exportado.
+func NewService(repo Repository) Service {
+	return &service{repo: repo}
+}
+
+// Status consulta el estado real de la conexión (FR-003) y lo traduce al DTO
+// del contrato. Un fallo del ping —incluido su timeout de 2 s, que indica que
+// la base de datos no responde— es el caso previsible "base de datos no
+// conectada" (apperr.DatabaseUnavailable → 503 con details). Solo una
+// cancelación del cliente se propaga envuelta: el handler la trata como error
+// inesperado (500 internal).
+func (s *service) Status(ctx context.Context) (SystemStatus, error) {
+	if err := ctx.Err(); err != nil {
+		return SystemStatus{}, fmt.Errorf("check system status: %w", err)
+	}
+
+	if err := s.repo.Ping(ctx); err != nil {
+		if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+			return SystemStatus{}, fmt.Errorf("check system status: %w", err)
+		}
+		return SystemStatus{}, apperr.DatabaseUnavailable(
+			MessageDatabaseUnavailable,
+			apperr.WithDetails(map[string]any{DetailDatabaseKey: DatabaseDisconnected}),
+			apperr.WithCause(err),
+		)
+	}
+
+	return SystemStatus{Status: StatusOK, Database: DatabaseConnected}, nil
+}

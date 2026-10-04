@@ -1,7 +1,7 @@
 ---
 description: "Usar después de aprobar la spec para diseñar el plan técnico (plan.md, modelo de datos, contratos de API) y dividirlo en tareas (tasks.md). No escribe código de producción."
 mode: subagent
-model: opencode-go/kimi-k3
+model: opencode-go/mimo-v2.6-pro
 temperature: 0.2
 permission:
   edit: allow

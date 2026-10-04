@@ -1,0 +1,3 @@
+-- 000001_baseline (no-op)
+-- Reversión de la migración baseline: sin efecto, deja la base de datos como
+-- estaba (data-model.md; D10 del plan).

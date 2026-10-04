@@ -75,6 +75,22 @@ if [ -n "$FUENTE" ]; then
   python3 scripts/sincronizar.py --verificar >/dev/null 2>&1 || fallar "La configuración de agentes está desactualizada. Ejecuta: make sincronizar"
 fi
 
+# 8. El costo de una tarea cerrada no se modifica (specs/**/costos.json con "estado": "cerrado")
+for f in $(git diff --cached --name-only --diff-filter=MD -- 'specs/*costos.json'); do
+  if git show "HEAD:$f" 2>/dev/null | grep -q '"estado": *"cerrado"' && [ "${APROBADO_COSTOS:-}" != "1" ]; then
+    fallar "El costo de $(dirname "$f") ya está cerrado y no se modifica. Si dirección técnica lo autoriza: APROBADO_COSTOS=1 git commit ..."
+  fi
+done
+
+# 9. Estado de la funcionalidad (aviso, no bloquea): si cambian spec, plan o tareas, estado.md debería acompañarlos
+for dir in $(echo "$STAGED" | grep -E '^specs/.+/(spec|plan|tasks)\.md$' | xargs -r -n1 dirname | sort -u); do
+  if [ ! -f "$dir/estado.md" ]; then
+    echo "⚠ $dir/ no tiene estado.md. Créalo desde docs/plantillas/estado.md (o pide al orquestador: \"retomemos\")." >&2
+  elif ! echo "$STAGED" | grep -qx "$dir/estado.md"; then
+    echo "⚠ Cambió spec, plan o tareas en $dir/ sin actualizar estado.md (fase, próximo paso). Agrégalo al commit si corresponde." >&2
+  fi
+done
+
 if [ "$ERRORES" -ne 0 ]; then
   echo "Commit bloqueado por los controles del proyecto." >&2
   exit 1

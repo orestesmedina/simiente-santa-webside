@@ -1,0 +1,4 @@
+-- 000001_baseline (no-op)
+-- Migración baseline de F1: fija la convención NNNNNN_descripcion.{up,down}.sql
+-- y ejercita el toolchain de golang-migrate de punta a punta.
+-- No crea tablas de negocio (data-model.md; D10 del plan).

@@ -1,7 +1,7 @@
 ---
 description: "Usar después de cada implementación y antes de cada despliegue para auditar vulnerabilidades (OWASP Top 10), secretos expuestos, dependencias y control de acceso. Solo lee; nunca edita."
 mode: subagent
-model: opencode-go/qwen3.8-max
+model: opencode-go/glm-5.3
 temperature: 0.1
 permission:
   edit: deny

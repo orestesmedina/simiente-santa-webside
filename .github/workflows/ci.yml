@@ -9,17 +9,27 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Versiones de las herramientas: fijadas aquí (nada de `latest`). Este archivo lo gestiona el kit;
+# si tu proyecto necesita otra versión antes de que el kit se actualice (ej. un Go más nuevo),
+# crea una variable del repositorio en GitHub (Settings → Secrets and variables → Actions → Variables)
+# con el mismo nombre: GOLANGCI_LINT_VERSION, MIGRATE_VERSION, GOVULNCHECK_VERSION o NODE_VERSION.
+env:
+  GOLANGCI_LINT_VERSION: ${{ vars.GOLANGCI_LINT_VERSION || 'v2.14.0' }}
+  MIGRATE_VERSION: ${{ vars.MIGRATE_VERSION || 'v4.20.1' }}
+  GOVULNCHECK_VERSION: ${{ vars.GOVULNCHECK_VERSION || 'v1.8.0' }}
+  NODE_VERSION: ${{ vars.NODE_VERSION || '24' }}
+
 jobs:
   agentes:
     name: Kit y configuración de agentes al día
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           # Si el repositorio del kit es privado, crea el secreto KIT_TOKEN (token con lectura del kit).
           token: ${{ secrets.KIT_TOKEN || github.token }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Archivos del kit coinciden con su submódulo
@@ -33,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Migraciones existentes no se modifican
@@ -53,7 +63,7 @@ jobs:
       backend: ${{ steps.check.outputs.backend }}
       frontend: ${{ steps.check.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: check
         run: |
           echo "backend=$([ -f backend/go.mod ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
@@ -66,7 +76,7 @@ jobs:
     if: needs.detectar.outputs.backend == 'true'
     services:
       postgres:
-        image: postgres:16.4-alpine
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: app_ci_password
@@ -81,8 +91,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: backend/go.mod
       - name: Formato
@@ -90,18 +100,19 @@ jobs:
       - name: go vet
         run: go vet ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           working-directory: backend
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
       - name: Migraciones
         run: |
-          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+          go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@"$MIGRATE_VERSION"
           migrate -path migrations -database "$DATABASE_URL_TEST" up
       - name: Pruebas unitarias e integración
         run: go test -race -coverprofile=coverage.out ./... && go test -tags=integration ./...
       - name: Vulnerabilidades
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@"$GOVULNCHECK_VERSION"
           govulncheck ./...
 
   frontend:
@@ -113,10 +124,10 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
@@ -131,9 +142,9 @@ jobs:
     name: Búsqueda de secretos
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,7 @@
+# Artefacto generado por `npm run api:gen` (openapi-typescript): no se formatea ni se edita a mano.
+frontend/src/api/schema.d.ts
+
+# Dependencias y salidas de build del frontend.
+frontend/node_modules
+frontend/dist
+frontend/coverage

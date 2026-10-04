@@ -16,10 +16,10 @@ Además:
 
 ```json
 "opencode": {
-  "orquestador": "opencode-go/glm-5.3",
-  "ligero":      "opencode-go/glm-5.3-flash",
-  "niveles": { "alto": "opencode-go/kimi-k3", "medio": "opencode-go/glm-5.3", "bajo": "opencode-go/glm-5.3-flash" },
-  "agentes": { "revisor-codigo": "opencode-go/deepseek-v4-pro" }
+  "orquestador": "opencode-go/deepseek-v4.1-flash",
+  "ligero":      "opencode-go/mimo-v2.6-flash",
+  "niveles": { "alto": "opencode-go/mimo-v2.6-pro", "medio": "opencode-go/glm-5.3-flash", "bajo": "opencode-go/mimo-v2.6-flash" },
+  "agentes": { "revisor-codigo": "opencode-go/mimo-v2.6-pro" }
 }
 ```
 
@@ -34,7 +34,7 @@ make modelos       # muestra qué modelo usa cada agente y de dónde sale
 | Rol | Volumen de tokens | Qué necesita | Recomendación |
 |---|---|---|---|
 | `analista-producto`, `arquitecto` | Bajo | Razonamiento, criterio | El modelo más capaz. Se usan poco, así que el costo es bajo y un error aquí es el más caro. |
-| `dev-backend`, `dev-frontend` | **Muy alto** | Código, uso de herramientas | Un modelo especializado en código, con buen límite de uso. Aquí se va la mayor parte del consumo. |
+| `dev-backend`, `dev-frontend` | **Muy alto** | Código, uso de herramientas | Un modelo especializado en código y de bajo costo por token. Aquí se va la mayor parte del presupuesto. |
 | `qa-tester` | Alto | Código de pruebas | Modelo medio. |
 | `revisor-codigo`, `seguridad` | Medio | Detectar errores | Un modelo capaz **de una familia distinta a la de los desarrolladores**, para que no comparta sus puntos ciegos. |
 | `disenador-ux`, `devops` | Medio | Criterio práctico | Modelo medio. |
@@ -43,31 +43,81 @@ make modelos       # muestra qué modelo usa cada agente y de dónde sale
 
 **Regla clave: quien revisa no debería usar el mismo modelo que quien escribió.** Así como quien escribe no aprueba, un modelo tiende a no ver sus propios errores.
 
-## Ejemplo con OpenCode Go
+## OpenCode Go: cómo funciona el presupuesto
 
-El `config.json` del kit trae este ejemplo:
+Verificado con la consola de OpenCode y la [documentación](https://opencode.ai/docs/es/go/) (septiembre 2026):
 
-| Agente | Modelo | Motivo |
+- Hay **un solo presupuesto** que la consola muestra en porcentaje, con tres ventanas: **Rolling** (5 horas, 20% del mensual), **Weekly** (50%) y **Monthly** (100%).
+- Cada modelo tiene un **precio por token** y un **límite mensual** propio ($15, $30 o $60). Ambos determinan cuánto del presupuesto consume: un modelo caro y con límite bajo (ej. GLM-5.3, Kimi K3) lo agota muchísimo más rápido que uno barato con límite alto.
+- **Repartir el trabajo entre muchos modelos no da más capacidad.** Lo que la estira es usar modelos con buen **rendimiento por token** donde hay más volumen (orquestador, desarrolladores, QA).
+- **"Extra Usage"** en la consola: si tienes crédito, al agotar el presupuesto se cobra de ese crédito en lugar de bloquearse.
+
+### Rendimiento por modelo
+
+Tokens aproximados que rinde cada modelo en una ventana de 5 horas, con una carga típica de agente de código (60% lectura de caché, 32% entrada, 8% salida), y señales de calidad de programación de fuentes independientes (septiembre 2026):
+
+| Modelo | Tokens / 5 h | Calidad de código | Uso recomendado |
+|---|---|---|---|
+| `deepseek-v4.1-flash` | ~122 M fuera de pico · ~61 M en pico | La mejor del plan en uso real (KiloBench 75%), DeepSWE 74 | Orquestador, desarrolladores |
+| `mimo-v2.6-pro` | ~14 M | DeepSWE 72, Terminal-Bench 90 | Analista, arquitecto, revisor |
+| `glm-5.3-flash` | ~113 M | DeepSWE 63, Terminal-Bench 84 | QA, UX, DevOps |
+| `mimo-v2.6-flash` | ~174 M | DeepSWE 68; en pruebas prácticas falla más en ejecución real | Documentador, tareas ligeras |
+| `glm-5.3` | ~3 M | DeepSWE 67, Terminal-Bench 88 | Solo roles de muy poco volumen (seguridad) |
+| `kimi-k3` | ~1.3 M | La más alta en pruebas reales (KiloBench 73%) | Solo tareas cortas y críticas |
+| `kimi-k2.7-code` | ~16 M | Resultados inconsistentes entre benchmarks | No recomendado por costo |
+| `minimax-m3` | ~53 M | SWE-bench alto (dato del fabricante), bajo en uso real (KiloBench 48%) | No recomendado |
+
+Los benchmarks de modelos recientes son escasos y a veces contradictorios: úsalos como orientación y valida con tu propio proyecto.
+
+### Horario pico de DeepSeek
+
+Los modelos DeepSeek cuestan el **doble en hora pico**: 01:00–04:00 y 06:00–10:00 UTC, de lunes a viernes. En Costa Rica (UTC−6) eso es **7:00–10:00 p.m. y 12:00–4:00 a.m.** (de domingo a jueves en la noche); el horario laboral diurno es tarifa normal. Es el mismo ID de modelo; solo cambia el precio.
+
+**Recomendación:** hacer el trabajo pesado (implementación y validación) de día, y dejar para la noche lo liviano (revisar specs y planes, aprobar, escribir ideas y roadmaps). No hace falta cambiar de modelo por horario: incluso en pico, `deepseek-v4.1-flash` rinde más que las alternativas de calidad similar.
+
+### Distribución que trae el kit
+
+| Rol | Modelo | Motivo |
 |---|---|---|
-| orquestador | `glm-5.3` | Equilibrio entre costo y fiabilidad |
-| analista-producto, arquitecto | `kimi-k3` (nivel alto) | Máxima calidad donde el volumen es bajo |
-| dev-backend, dev-frontend | `kimi-k2.7-code` | Especializado en código |
-| qa-tester, disenador-ux, devops | `glm-5.3` (nivel medio) | Uso general |
-| revisor-codigo | `deepseek-v4-pro` | Familia distinta a los desarrolladores |
-| seguridad | `qwen3.8-max` | Otra familia distinta, segunda opinión independiente |
-| documentador | `glm-5.3-flash` (nivel bajo) | Barato y rápido |
+| Orquestador | `deepseek-v4.1-flash` | Mejor en uso real y mucha capacidad para el rol de más volumen |
+| `dev-backend`, `dev-frontend` | `deepseek-v4.1-flash` | Mejor calidad por costo para programar |
+| `qa-tester`, `devops`, `disenador-ux` (medio) | `glm-5.3-flash` | Barato y fiable para trabajo repetitivo |
+| `revisor-codigo` | `mimo-v2.6-pro` | Alta calidad y otra familia que los desarrolladores |
+| `seguridad` | `glm-5.3` | Poco volumen; tercera familia para una revisión independiente |
+| `analista-producto`, `arquitecto` (alto) | `mimo-v2.6-pro` | La mejor calidad con capacidad razonable |
+| `documentador` (bajo), tareas ligeras | `mimo-v2.6-flash` | El más barato |
 
-Este reparto es un **punto de partida**, no una recomendación probada. Midan resultados y ajusten.
+**En un proyecto ya instalado**, esta distribución no se aplica sola al actualizar el kit (tu `equipo/config.json` se respeta). Para adoptar la recomendada por la versión actual del kit: `make actualizar-modelos` (muestra los cambios y pide confirmación; conserva temperaturas, agente principal y exclusiones).
 
-### Límites de uso de OpenCode Go
+Si el presupuesto sigue agotándose rápido, revisa primero el orquestador: abre una sesión nueva por funcionalidad y verifica que esté delegando en los subagentes.
 
-- La suscripción da un límite de gasto por modelo, dividido en ventanas de 5 horas (20%), semanal (50%) y mensual (100%).
-- Los modelos caros tienen un límite más bajo. Por eso el modelo más potente va en los roles de poco volumen (analista, arquitecto) y **no** en los desarrolladores.
-- Si un modelo agota su límite, cambia ese nivel o agente a otro modelo y ejecuta `make sincronizar`.
+### Cómo medir
+
+`make costos` registra los tokens y el costo equivalente de cada agente y modelo por funcionalidad (`specs/<rama>/costos.json`), y `make costos TODO=1` los suma para todo el proyecto. Es la base para comparar configuraciones con datos reales.
+
+1. Anota el % de **Rolling** y **Weekly** antes y después de construir una funcionalidad, y compáralo con `make costos`.
+2. Si quieres comparar modelos, construye la misma funcionalidad pequeña con dos configuraciones y compara consumo, ciclos de corrección y hallazgos del revisor.
+3. Ajusta `equipo/config.json` y ejecuta `make sincronizar && make modelos`.
 
 ### Privacidad (importante con código de clientes)
 
 Revisa la política de datos de cada modelo antes de usarlo con código de clientes. Según la documentación de OpenCode Go, la mayoría no retiene datos, pero hay excepciones: algunos modelos usan los datos para entrenamiento y otros guardan registros durante un tiempo. **No asignes esos modelos a proyectos de clientes** sin su autorización. La lista actualizada está en [opencode.ai/docs/go](https://opencode.ai/docs/go/).
+
+### Precios para `make costos`
+
+Los precios salen de [models.dev](https://models.dev/providers/opencode-go/) (se consultan como máximo una vez por hora; sin internet se usa la última copia). Para un modelo que no esté ahí, o una tarifa negociada, se fijan a mano en `equipo/config.json` (USD por millón de tokens):
+
+```json
+"costos": {
+  "precios_manuales": {
+    "opencode-go/mi-modelo": { "input": 0.2, "output": 0.8, "cache_read": 0.02, "cache_write": 0 }
+  }
+}
+```
+
+La tarifa de hora pico viene configurada para DeepSeek (×2 de lunes a viernes, 01:00–04:00 y 06:00–10:00 UTC). Si cambia, se reemplaza con `"pico": [{"modelos": "opencode-go/deepseek-*", "multiplicador": 2, "dias": [0,1,2,3,4], "horas_utc": [[1,4],[6,10]]}]` dentro de `"costos"` (`dias`: 0 = lunes; `"pico": []` la desactiva).
+
+El costo se calcula igual que OpenCode: entrada sin caché, salida (el razonamiento se cobra como salida), lectura y escritura de caché. Un cambio de precio rige desde que `make costos` lo detecta (al iniciar cada sesión).
 
 ## El orquestador en OpenCode
 
@@ -75,7 +125,7 @@ En OpenCode, el kit crea un agente principal llamado **`orquestador`** y lo deja
 
 ```json
 "opencode": {
-  "orquestador": "opencode-go/glm-5.3",
+  "orquestador": "opencode-go/deepseek-v4.1-flash",
   "agente_principal": {
     "nombre": "orquestador",
     "ocultar": [],

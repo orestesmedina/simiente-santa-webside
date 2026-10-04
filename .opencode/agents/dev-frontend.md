@@ -1,7 +1,7 @@
 ---
 description: "Usar para implementar tareas marcadas [frontend] de tasks.md en React + TypeScript, siguiendo ux.md y el contrato de API, siempre con sus pruebas."
 mode: subagent
-model: opencode-go/kimi-k2.7-code
+model: opencode-go/deepseek-v4.1-flash
 temperature: 0.1
 permission:
   edit: allow

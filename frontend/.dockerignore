@@ -1,0 +1,40 @@
+# Solo entra al contexto lo que necesita `npm ci && npm run build`:
+# build reproducible, imagen mínima y sin filtraciones de contexto (§IV).
+
+# Control de versiones
+.git
+.gitignore
+.gitattributes
+.githooks/
+
+# Especificaciones y documentación del repositorio
+**/*.md
+specs/
+docs/
+
+# node_modules y artefactos de build (se regeneran dentro de la imagen)
+node_modules/
+dist/
+coverage/
+
+# Herramientas de desarrollo/tests (no hacen falta para compilar)
+e2e/
+playwright-report/
+test-results/
+src/**/*.test.ts
+src/**/*.test.tsx
+
+# IDE y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Entorno (nunca al contexto: los secretos van por variables de entorno)
+.env
+.env.*
+
+# Docker (auto-referencias y orquestación del repo)
+Dockerfile
+docker-compose*.yml
+.dockerignore

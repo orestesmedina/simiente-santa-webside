@@ -1,12 +1,16 @@
 services:
   db:
-    image: postgres:16.4-alpine
+    # Decisión humana T034 (plan R10, 2026-10-03): el entorno de desarrollo
+    # usa la rama `postgres:16-alpine` — en soporte hasta noviembre de 2028 y
+    # con parches de seguridad de la rama. La reproducibilidad estricta
+    # (minor/digest exacto) queda como pendiente para builds/despliegue.
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-app}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,24 +19,41 @@ services:
       timeout: 3s
       retries: 10
 
-  # Descomentar cuando existan backend/Dockerfile y frontend/Dockerfile
-  # (el subagente devops los crea en el primer proyecto).
-  #
-  # backend:
-  #   build: ./backend
-  #   env_file: .env
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #
-  # frontend:
-  #   build: ./frontend
-  #   ports:
-  #     - "5173:80"
-  #   depends_on:
-  #     - backend
+  backend:
+    build: ./backend
+    # Sin env_file (D2, FR-001): el clon limpio levanta con estos valores por
+    # defecto; un .env (cp .env.example .env) solo sobrescribe opcionalmente.
+    #
+    # DATABASE_URL se construye SIEMPRE aquí desde POSTGRES_* apuntando al host
+    # `db` (D3, plan R9): nunca hereda un DATABASE_URL del .env del host con
+    # `localhost`, que dentro del contenedor no es la base de datos.
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      # HTTP_PORT NO se pasa al contenedor: el servidor escucha fijo en 8080
+      # (puerto interno; default de platform/config, D12) — el binding del host
+      # es el que se parametriza abajo (${HTTP_PORT:-8080}:8080).
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app_dev_password}@db:5432/${POSTGRES_DB:-app}?sslmode=disable
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # VITE_API_URL se hornea en build time (plan R6); compose lo alinea con
+        # el puerto del backend publicado en el host. Ojo: cambia el build (y
+        # su caché) cuando cambia HTTP_PORT — tras cambiar puertos usar
+        # `docker compose up -d --build` o borrar la imagen del frontend.
+        VITE_API_URL: http://localhost:${HTTP_PORT:-8080}
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

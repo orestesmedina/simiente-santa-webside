@@ -1,7 +1,7 @@
 ---
 description: "Usar durante la planificación cuando la funcionalidad tiene interfaz de usuario, para definir pantallas, flujos, estados y componentes React antes de implementar."
 mode: subagent
-model: opencode-go/glm-5.3
+model: opencode-go/glm-5.3-flash
 temperature: 0.4
 permission:
   edit: allow
