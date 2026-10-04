@@ -1,15 +1,16 @@
 # Imagen del frontend (T025, plan R6).
 #
-# Build multi-stage: en la primera etapa node:22 compila la SPA con npm ci &&
+# Build multi-stage: en la primera etapa node:24 compila la SPA con npm ci &&
 # npm run build (Vite) con VITE_API_URL horneada en build time vía ARG
 # (plan R6: si cambia la URL de la API, hay que reconstruir la imagen).
 # La segunda etapa es la imagen final: nginx:alpine sirviendo dist/ como estático
 # con fallback de SPA (ver nginx.conf) — sin Node, ni node_modules, ni fuentes.
 #
 # Ambas imágenes van fijadas a una versión concreta (nada de :latest) para
-# reproducción determinista; node:22 es la versión que fija el ci.yml del kit
-# (plan R11/Node 22) en alpine para reducir el tamaño de la imagen.
-FROM node:22.22-alpine AS build
+# reproducción determinista; node:24 es la versión que fija el ci.yml del kit
+# actualizado a 1.6.4 (plan R11/Node 24) en alpine para reducir el tamaño de
+# la imagen.
+FROM node:24.21-alpine AS build
 
 # Values horneados en el build: VITE_API_URL, base URL de la API que el cliente
 # (src/api/client.ts) consume desde import.meta.env. Por defecto apunta al
