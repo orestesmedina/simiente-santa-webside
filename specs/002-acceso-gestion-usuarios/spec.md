@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-04
 
-**Status**: Aclaraciones resueltas (2026-10-04) — pendiente de aprobación humana
+**Status**: Aclaraciones resueltas y decisiones de credenciales confirmadas (2026-10-04) — pendiente de aprobación humana
 
 **Input**: User description: "F2 — Acceso y gestión de usuarios (roadmap §3, `docs/producto/roadmap.md`): El equipo de la iglesia inicia sesión en un panel de administración; los administradores crean usuarios, los activan o desactivan, y crean roles con los permisos por módulo que necesiten (p. ej., un rol de contenido, un rol de ministerios)." Decisiones aplicables del roadmap: **Decisión 4** (usuarios activo/inactivo) y **Decisión 5** (permisos por módulo agrupados en roles, sin catálogo fijo de roles; el administrador crea roles nuevos y les asigna permisos de forma independiente; **la spec de F2 define cómo queda garantizado el arranque con un administrador inicial**). Restricción de `idea.md` §2: los usuarios comunes no se registran; solo el administrador crea cuentas. Aclaraciones Q1–Q5 resueltas con el humano el 2026-10-04 (ver *Aclaraciones (resueltas)*).
 
@@ -138,7 +138,7 @@ Como usuario del panel, quiero cambiar mi contraseña desde mi cuenta, para mant
 
 1. **Dado** una cuenta autenticada, **cuando** cambia su contraseña indicando la actual y una nueva válida, **entonces** el cambio se aplica y puede iniciar sesión con la nueva contraseña.
 2. **Dado** una cuenta autenticada, **cuando** indica una contraseña actual incorrecta, **entonces** el sistema impide el cambio con un mensaje claro.
-3. **Dado** una cuenta autenticada, **cuando** propone una contraseña que no cumple la política vigente, **entonces** el sistema indica el requisito incumplido y no aplica el cambio.
+3. **Dado** una cuenta autenticada, **cuando** propone una contraseña que no cumple la política vigente —menos de 8 caracteres, sin combinar mayúsculas, minúsculas, números y caracteres especiales, o igual a su nombre o a su correo—, **entonces** el sistema indica el requisito incumplido y no aplica el cambio.
 4. **Dado** una cuenta con la contraseña definida o restablecida por un administrador, **cuando** inicia sesión con ella, **entonces** el sistema le exige cambiarla antes de usar el panel.
 5. **Dado** una persona que olvidó su contraseña, **cuando** un administrador le define una contraseña nueva en su cuenta, **entonces** puede entrar con ella y el sistema le exige cambiarla de inmediato.
 
@@ -156,8 +156,9 @@ Como usuario del panel, quiero cambiar mi contraseña desde mi cuenta, para mant
 - **Eliminar un rol con cuentas asignadas**: el sistema lo impide y explica que primero deben reasignarse esas cuentas; un rol solo se elimina cuando ninguna cuenta lo tiene asignado (decisión Q4), de modo que ninguna cuenta queda nunca sin rol por una eliminación.
 - **Dejar un rol sin ningún permiso** (al crearlo o editándolo): no se permite; un rol debe conservar al menos un permiso (decisión Q4).
 - **Repetir la acción de inicialización del administrador**: se impide; la acción es única y no debe poder repetirse ni abusarse de ella (decisión Q1).
-- **Cuenta con contraseña definida o restablecida por un administrador**: la persona debe cambiarla al entrar antes de usar el panel (decisión Q2).
-- **Cadena de intentos fallidos de inicio de sesión** (alguien probando contraseñas): el sistema limita los intentos fallidos para impedir la prueba masiva de contraseñas.
+- **Cuenta con contraseña definida o restablecida por un administrador**: la persona debe cambiarla al entrar antes de usar el panel (decisión Q2); esa contraseña inicial o restablecida también debe cumplir la política de contraseñas (FR-010).
+- **Contraseña que no cumple la política** (menos de 8 caracteres, sin combinar mayúsculas, minúsculas, números y caracteres especiales, o igual al nombre o al correo de la persona): se rechaza indicando el requisito incumplido, tanto cuando la define un administrador como cuando la cambia la persona (FR-010).
+- **Cadena de intentos fallidos de inicio de sesión** (alguien probando contraseñas): tras **5 intentos fallidos** el sistema bloquea temporalmente el acceso para impedir la prueba masiva de contraseñas (FR-006, decisión confirmada el 2026-10-04); la duración concreta del bloqueo queda para la planificación técnica.
 - **Sesión que expira mientras se llena un formulario**: la acción se interrumpe y el sistema pide iniciar sesión de nuevo; no debe aplicarse a medias ni perderse sin aviso.
 - **Pérdida de acceso de la única persona que sabe su contraseña**: un administrador le define una contraseña nueva en su cuenta y la persona la cambia al entrar (decisión Q2). No hay recuperación por auto-servicio con correo en el MVP.
 
@@ -178,7 +179,8 @@ Todos los mensajes deben ser comprensibles para personas no técnicas y nunca de
 | Operación sin el permiso correspondiente | Mensaje claro de acceso denegado, sin detalles internos |
 | Operación que dejaría el panel sin administrador | Mensaje que explica la restricción y cómo proceder |
 | Sesión expirada o cerrada | Mensaje que pide iniciar sesión de nuevo |
-| Contraseña nueva que no cumple la política | Mensaje con el requisito incumplido |
+| Contraseña nueva que no cumple la política (menos de 8 caracteres, sin combinar mayúsculas, minúsculas, números y caracteres especiales, o igual al nombre o al correo) | Mensaje con el requisito incumplido |
+| Superar los 5 intentos fallidos de inicio de sesión | Mensaje que indica que el acceso queda bloqueado temporalmente |
 | Error inesperado del sistema | Mensaje genérico sin información interna |
 
 ## Requirements *(mandatory)*
@@ -190,11 +192,11 @@ Todos los mensajes deben ser comprensibles para personas no técnicas y nunca de
 - **FR-003**: El mensaje de un inicio de sesión fallido DEBE ser genérico y NUNCA DEBE revelar si la cuenta existe; la contraseña NUNCA DEBE mostrarse ni devolverse en ninguna respuesta.
 - **FR-004**: El sistema DEBE permitir cerrar sesión en cualquier momento desde el panel, terminando el acceso de esa sesión.
 - **FR-005**: La sesión DEBE terminar tras un periodo de inactividad, y todo acceso posterior DEBE exigir un nuevo inicio de sesión.
-- **FR-006**: El sistema DEBE limitar los intentos fallidos de inicio de sesión para impedir la prueba masiva de contraseñas.
+- **FR-006**: El sistema DEBE limitar los intentos fallidos de inicio de sesión para impedir la prueba masiva de contraseñas: tras **5 intentos fallidos** DEBE bloquear temporalmente el acceso (decisión confirmada el 2026-10-04). La duración concreta del bloqueo queda definida por la planificación técnica.
 - **FR-007**: El primer administrador (cuenta con permisos completos, capaz de crear usuarios y roles de inmediato) DEBE crearse mediante una acción de inicialización de puesta en marcha que solo puede ejecutarse una sola vez: el sistema DEBE impedir que se repita y DEBE impedir cualquier uso abusivo de ella (decisión Q1).
 - **FR-008**: El sistema DEBE impedir que el panel se quede sin al menos una cuenta activa con permiso de administrar usuarios y roles: ninguna operación (desactivar una cuenta, cambiar su rol o quitarle ese permiso) DEBE poder dejarlo sin administración (regla confirmada).
 - **FR-009**: Los administradores DEBEN poder crear cuentas del equipo indicando identificación, correo, rol asignado y contraseña inicial; el sistema DEBE rechazar correos ya en uso, roles inexistentes y datos inválidos o incompletos, indicando qué corregir. Para detectar duplicados, los correos DEBEN compararse normalizados: uno que solo difiere en mayúsculas o en espacios sobrantes se trata como el mismo (decisión Q5).
-- **FR-010**: La contraseña inicial de una cuenta nueva DEBE ser definida por un administrador al crearla, y la persona DEBE cambiarla al entrar por primera vez antes de usar el panel. Cuando alguien olvida su contraseña o pierde el acceso, la recuperación DEBE resolverse con un restablecimiento hecho por un administrador (que define una contraseña nueva que la persona cambia al entrar); la recuperación por auto-servicio con correo queda fuera del MVP. La contraseña DEBE cumplir la política vigente: al menos 8 caracteres (decisión Q2).
+- **FR-010**: La contraseña inicial de una cuenta nueva DEBE ser definida por un administrador al crearla, y la persona DEBE cambiarla al entrar por primera vez antes de usar el panel. Cuando alguien olvida su contraseña o pierde el acceso, la recuperación DEBE resolverse con un restablecimiento hecho por un administrador (que define una contraseña nueva que la persona cambia al entrar); la recuperación por auto-servicio con correo queda fuera del MVP. Toda contraseña —la inicial definida por un administrador, las restablecidas por un administrador y las nuevas elegidas por la persona— DEBE cumplir la política vigente (decisión Q2, confirmada por el humano el 2026-10-04): al menos **8 caracteres**, combinando **mayúsculas, minúsculas, números y caracteres especiales**, y **sin poder ser igual al nombre ni al correo** de la persona.
 - **FR-011**: Los administradores DEBEN poder editar los datos de una cuenta (identificación, correo y rol asignado) y su estado (activo/inactivo).
 - **FR-012**: Al desactivar una cuenta, el sistema DEBE bloquear su acceso de inmediato —también las sesiones ya abiertas— y DEBE conservar todos sus datos.
 - **FR-013**: El sistema NUNCA DEBE eliminar cuentas: la única forma de retirar el acceso es desactivarlas (FR-012) y todos sus datos DEBEN conservarse siempre. Lo que `idea.md` §2 llama "eliminar" se resuelve como desactivación en el MVP (decisión Q3).
@@ -248,7 +250,7 @@ Queda explícitamente **fuera del alcance** de F2:
 
 ## Aclaraciones (resueltas el 2026-10-04)
 
-**Ninguna aclaración pendiente.** Las cinco preguntas (Q1–Q5) se resolvieron con el humano en la fase `clarify` del 2026-10-04. Queda aquí el registro de la decisión tomada en cada una; el detalle de opciones consideradas se conserva en el historial de esta spec.
+**Ninguna aclaración pendiente.** Las cinco preguntas (Q1–Q5) se resolvieron con el humano en la fase `clarify` del 2026-10-04, y ese mismo día el humano confirmó además la política de contraseñas y el límite de intentos fallidos (ver *Decisiones adicionales confirmadas por el humano el 2026-10-04*). Queda aquí el registro de la decisión tomada en cada una; el detalle de opciones consideradas se conserva en el historial de esta spec.
 
 ### Q1 — Mecanismo del administrador inicial (FR-007) — **Resuelta**
 
@@ -256,7 +258,7 @@ Queda explícitamente **fuera del alcance** de F2:
 
 ### Q2 — Contraseñas: entrega inicial, recuperación y política (FR-010) — **Resuelta**
 
-**Decisión (opción B)**: para el MVP, restablecimiento hecho por un administrador, **sin servicio de correo**: el administrador define la contraseña inicial al crear la cuenta y puede reiniciarla cuando alguien pierde el acceso; la persona la cambia al entrar (FR-010, US3 escenario 6, US7 escenarios 4–5). **Política para el MVP**: mínimo 8 caracteres, sin más complejidad exigida. La **recuperación por auto-servicio con correo queda fuera del MVP** y se anota como idea futura/backlog (ver Out of Scope).
+**Decisión (opción B)**: para el MVP, restablecimiento hecho por un administrador, **sin servicio de correo**: el administrador define la contraseña inicial al crear la cuenta y puede reiniciarla cuando alguien pierde el acceso; la persona la cambia al entrar (FR-010, US3 escenario 6, US7 escenarios 4–5). **Política para el MVP (confirmada por el humano el 2026-10-04)**: mínimo **8 caracteres**, la contraseña debe combinar **mayúsculas, minúsculas, números y caracteres especiales** y **no puede ser igual al nombre ni al correo** de la persona. La **recuperación por auto-servicio con correo queda fuera del MVP** y se anota como idea futura/backlog (ver Out of Scope).
 
 ### Q3 — Ciclo de vida de las cuentas: desactivar y eliminar (FR-013) — **Resuelta**
 
@@ -270,18 +272,23 @@ Queda explícitamente **fuera del alcance** de F2:
 
 **Decisión**: un correo o un nombre de rol que solo difiere en mayúsculas o en espacios sobrantes **se trata como el mismo** (se normaliza) y se rechaza como duplicado (FR-009, FR-014, Edge Cases).
 
+### Decisiones adicionales confirmadas por el humano el 2026-10-04
+
+- **Política de contraseñas (FR-010, US7.3)**: mínimo **8 caracteres**, combinando **mayúsculas, minúsculas, números y caracteres especiales**, y **no igual al nombre ni al correo** de la persona. Complementa la decisión Q2 (la contraseña inicial y los restablecimientos los hace un administrador; el auto-servicio por correo sigue fuera del MVP).
+- **Límite de intentos fallidos (FR-006)**: tras **5 intentos fallidos** de inicio de sesión, el sistema **bloquea temporalmente el acceso**; la duración concreta del bloqueo queda para la planificación técnica.
+
 ## Assumptions
 
 Defaults razonables tomados donde la descripción no fija una regla; **son provisionales y revisables** por el humano. Los puntos que cambian el alcance no se asumen: fueron resueltos explícitamente en las aclaraciones Q1–Q5.
 
 - **Identificación de la cuenta**: la cuenta se identifica con el correo electrónico de la persona (práctica estándar); no hay "nombres de usuario" aparte. Cada correo pertenece a una sola cuenta y se compara normalizado (decisión Q5).
 - **Significado de "desactivar"**: bloquear el acceso de inmediato (también las sesiones ya abiertas) y conservar todos los datos de la cuenta. Desactivar no borra nada y no existe eliminación de cuentas en el MVP (decisión Q3).
-- **Política de contraseñas (confirmada en Q2)**: al menos 8 caracteres. La contraseña nunca se muestra ni se devuelve; su resguardo sigue las reglas de seguridad de la constitución §IV.
+- **Política de contraseñas (confirmada en Q2 y por el humano el 2026-10-04)**: al menos **8 caracteres**, combinando **mayúsculas, minúsculas, números y caracteres especiales**, y **sin poder ser igual al nombre ni al correo** de la persona. Aplica a la contraseña inicial, a las restablecidas por un administrador y a los cambios que hace la persona. La contraseña nunca se muestra ni se devuelve; su resguardo sigue las reglas de seguridad de la constitución §IV.
 - **Entrega de credenciales fuera del sistema**: al no haber servicio de correo en el MVP, cómo se comunica a la persona su contraseña inicial o restablecida queda a criterio del equipo (p. ej., en persona); el sistema solo exige el cambio al entrar (decisión Q2).
 - **Sesión**: existe cierre de sesión manual (US1) y expiración por inactividad (FR-005); el periodo provisional de inactividad es de 30 minutos, ajustable por el cliente. El detalle de cómo se materializa la sesión tiene una decisión pendiente heredada de F1 (`specs/001-estructura-base/estado.md`, decisión D-A7); esta spec no la decide.
 - **Unidad del permiso**: un permiso corresponde a un módulo completo (lectura literal de la Decisión 5: "permisos por módulo"), no a acciones sueltas dentro del módulo (crear, editar, borrar). Si hiciera falta esa distinción, sería una ampliación.
 - **Catálogo de permisos de F2**: los módulos del producto del roadmap más la administración de usuarios y roles (FR-015). Los permisos de módulos que aún no existen quedan reservados y no producen acceso a nada hasta que esos módulos se construyan (F4–F9).
 - **"Administrador" no es un rol fijo**: es toda cuenta con el permiso de administrar usuarios y roles; este permiso es el que define quién gestiona cuentas y roles. El administrador inicial nace con todos los permisos.
 - **Idioma del panel**: se entrega en español, que es el idioma del equipo que lo usa. El bilingüismo del roadmap (Decisión 6) aplica al sitio público de F3–F9. De quererse el panel en ambos idiomas, sería una ampliación.
-- **Límite de intentos fallidos** (FR-006): medida estándar contra la prueba masiva de contraseñas; su configuración concreta (cuántos intentos y por cuánto tiempo) la define la planificación técnica dentro de una práctica estándar.
+- **Límite de intentos fallidos** (FR-006, confirmado por el humano el 2026-10-04): el bloqueo temporal se activa tras **5 intentos fallidos** de inicio de sesión; medida estándar contra la prueba masiva de contraseñas. La duración concreta del bloqueo la define la planificación técnica dentro de una práctica estándar.
 - **Sin cuentas compartidas**: cada persona del equipo debe tener su propia cuenta; el uso compartido de credenciales queda fuera del modelo.
