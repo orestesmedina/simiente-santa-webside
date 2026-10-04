@@ -1,0 +1,995 @@
+# ============================================================================
+# DELTA DE DISEÑO — Spec Kit (fase /speckit.plan de F2, 2026-10-04)
+# Funcionalidad: Acceso y gestión de usuarios (spec.md, aprobada el 2026-10-04)
+#
+# ESTE ARCHIVO ES UN DELTA, NO EL CONTRATO VIVO. Se fusiona (aditivamente) en
+# `backend/api/openapi.yaml` en la primera tarea de implementación (§8.1.5 de
+# docs/tecnico/arquitectura.md), que pasa de info.version 0.2.0 a 0.3.0.
+# Este snapshot de specs/ NO se vuelve a editar.
+#
+# Se REUTILIZAN del documento vivo (ya definidos por F1, no se redefinen aquí):
+#   - components/schemas: ErrorEnvelope, ErrorBody, SystemStatus
+#   - components/responses: NotFound, MethodNotAllowed, Internal, DatabaseUnavailable
+# El registro de `error.code` NO cambia: F2 emite `invalid`, `unauthenticated`,
+# `forbidden`, `conflict` y `rate_limited`, que ya están en el enum de ErrorBody.
+#
+# Formato uniforme (FR-012/FR-013 de F1): 2xx → el DTO de la operación;
+# 4xx/5xx → ErrorEnvelope. Ninguna respuesta contiene contraseñas ni hashes
+# (FR-003).
+#
+# Convenciones: operaciones en inglés (camelCase), segmentos de URL en español
+# donde el dominio lo pide (patrón de arquitectura.md §5.1), campos en
+# camelCase, additionalProperties: false, fechas ISO-8601 en UTC.
+# ============================================================================
+openapi: 3.1.0
+info:
+  title: API — Iglesia Simiente Santa
+  version: 0.3.0
+  description: |
+    Delta de F2 (acceso y gestión de usuarios) sobre el contrato vivo.
+
+    ## Nuevos en este delta
+
+    - Esquema de seguridad `sessionCookie`: sesión en servidor con cookie
+      `HttpOnly` (D-A7 — **pendiente de confirmación humana**; ver
+      `specs/002-acceso-gestion-usuarios/plan.md` P1).
+    - Superficie pública escribible (`/api/v1/auth/login`,
+      `/api/v1/setup/initialize`) con `rate-limit` por IP (429 `rate_limited`).
+    - Superficie de panel (`/api/v1/admin/…`) con sesión + CSRF + permiso del
+      módulo `admin_usuarios_roles` verificados **en el servidor** (FR-016).
+
+    ## Códigos que F2 puede devolver (amplía los de F1)
+
+    | HTTP | `error.code` | Cuándo |
+    |---|---|---|
+    | 400 | `invalid` | datos inválidos/incompletos o contraseña que no cumple la política (con `details` por campo) |
+    | 401 | `unauthenticated` | sin sesión, sesión expirada/cerrada o credenciales incorrectas (mensaje genérico, FR-003) |
+    | 403 | `forbidden` | sin el permiso del módulo, cuenta desactivada al iniciar sesión, o obligación de cambiar la contraseña |
+    | 404 | `not_found` | cuenta o rol inexistente |
+    | 409 | `conflict` | correo/nombre de rol duplicado, rol en uso, o operación que dejaría el panel sin administración |
+    | 429 | `rate_limited` | bloqueo por intentos fallidos (5 / 15 min) o rate-limit por IP |
+
+    El sobre de error (`ErrorEnvelope`) y su registro de códigos son los del
+    documento vivo: este delta solo añade respuestas reutilizables.
+  contact:
+    name: Equipo del proyecto
+servers:
+  - url: http://localhost:8080
+    description: Entorno local de desarrollo (Docker Compose)
+tags:
+  - name: auth
+    description: Sesión del panel (inicio/cierre de sesión, sesión actual, contraseña propia)
+  - name: setup
+    description: Inicialización única de la puesta en marcha
+  - name: users
+    description: Gestión de cuentas del panel (permiso admin_usuarios_roles)
+  - name: roles
+    description: Gestión de roles y catálogo de permisos (permiso admin_usuarios_roles)
+security:
+  - sessionCookie: []
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Iniciar sesión en el panel
+      description: |
+        Autentica con correo y contraseña y emite la cookie de sesión
+        (`ss_session`, `HttpOnly`) y la cookie CSRF (`csrf_token`, leída por el
+        cliente para las cabeceras `X-CSRF-Token`).
+
+        - Credenciales incorrectas **o** correo inexistente → el **mismo**
+          `401` genérico y el mismo tiempo de respuesta (FR-003, SC-008).
+        - Credenciales correctas con la cuenta desactivada → `403`
+          (`access_disabled`), mensaje comprensible (US1 esc. 3).
+        - 5 intentos fallidos → `429 rate_limited` durante 15 minutos (FR-006),
+          con el mismo mensaje exista o no la cuenta.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+            example:
+              email: ana@ejemplo.com
+              password: "********"
+      responses:
+        "200":
+          description: Sesión iniciada. Emite `Set-Cookie` de sesión y de CSRF.
+          headers:
+            Set-Cookie:
+              description: |
+                `ss_session=<token>; HttpOnly; SameSite=Lax; Path=/` (y `Secure`
+                según `SESSION_COOKIE_SECURE`) + `csrf_token=<nonce>.<hmac>; SameSite=Lax; Path=/`.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Cerrar la sesión actual
+      description: |
+        Termina el acceso de esta sesión (borra la sesión en el servidor y las
+        cookies). Toda acción posterior exige iniciar sesión de nuevo (FR-004).
+        Requiere CSRF (método no seguro con sesión).
+      responses:
+        "200":
+          description: Sesión cerrada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/auth/session:
+    get:
+      tags: [auth]
+      operationId: getCurrentSession
+      summary: Sesión actual
+      description: |
+        Devuelve la identidad de la sesión iniciada con sus permisos por módulo
+        (FR-015/FR-016). El cliente lo usa al cargar el panel para decidir la
+        navegación (los permisos además se verifican en cada operación en el
+        servidor). Sin sesión válida → `401`.
+      responses:
+        "200":
+          description: Identidad de la sesión iniciada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/auth/password:
+    post:
+      tags: [auth]
+      operationId: changeMyPassword
+      summary: Cambiar mi propia contraseña
+      description: |
+        Cambio de contraseña de la cuenta iniciada (FR-020). Exige la contraseña
+        actual y una nueva que cumpla la política (FR-010): mínimo 8 caracteres,
+        con mayúsculas, minúsculas, números y caracteres especiales, y distinta
+        del nombre y del correo. La nueva contraseña debe medir como máximo 64
+        caracteres y 72 bytes (límite de bcrypt). Revoca las demás sesiones de la
+        cuenta. Si la cuenta tenía `mustChangePassword`, queda resuelto (US7
+        esc. 4). Requiere CSRF.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: Contraseña cambiada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasswordChangedResponse"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/setup/initialize:
+    post:
+      tags: [setup]
+      operationId: initializeSystem
+      summary: Acción de inicialización única (primer administrador)
+      description: |
+        Crea el rol "Administrador" (con los 9 permisos del catálogo) y la cuenta
+        inicial, capaz de crear usuarios y roles de inmediato (FR-007, US2).
+
+        - Solo funciona mientras **no exista ninguna cuenta**: repetirla → `409`.
+        - Exige la cabecera `X-Setup-Token` con el valor de `BOOTSTRAP_TOKEN`
+          (impide el uso abusivo por un tercero en una instalación recién
+          desplegada; decisión P8 del plan — puede retirarse por decisión humana).
+        - Va sujeta a `rate-limit` por IP (429).
+        La contraseña inicial se entrega fuera del sistema y su titular **no**
+        necesita cambiarla al entrar (ya la eligió quien inicializa).
+      security: []
+      parameters:
+        - name: X-Setup-Token
+          in: header
+          required: true
+          description: Token de despliegue (`BOOTSTRAP_TOKEN`).
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitializeInput"
+      responses:
+        "201":
+          description: Administrador inicial creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserItem"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/admin/usuarios:
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: Listar cuentas del panel
+      description: |
+        Listado paginado de cuentas con su estado, correo y rol (FR-019).
+        Orden por defecto `createdAt DESC`. Defecto 20, tope 100. Requiere el
+        permiso `admin_usuarios_roles`.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Listado paginado de cuentas.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Crear una cuenta del equipo
+      description: |
+        Crea una cuenta activa con su contraseña inicial (definida por el
+        administrador, FR-010) y un rol válido (FR-009). El correo se normaliza
+        (trim + minúsculas): un duplicado que solo difiere en mayúsculas o
+        espacios se rechaza como `409` (Q5). La contraseña debe cumplir la
+        política (FR-010) y su titular deberá cambiarla al entrar (US3 esc. 6).
+        Requiere permiso `admin_usuarios_roles` y CSRF.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserInput"
+      responses:
+        "201":
+          description: Cuenta creada (nunca devuelve la contraseña ni su hash).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserItem"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/admin/usuarios/{id}:
+    parameters:
+      - $ref: "#/components/parameters/UserID"
+    get:
+      tags: [users]
+      operationId: getUser
+      summary: Ver una cuenta
+      description: Detalle de una cuenta (para el formulario de edición). Requiere permiso `admin_usuarios_roles`.
+      responses:
+        "200":
+          description: Cuenta solicitada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserItem"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+    patch:
+      tags: [users]
+      operationId: updateUser
+      summary: Editar una cuenta (datos, rol o estado)
+      description: |
+        Edita identificación (nombre completo), correo, rol asignado y/o estado
+        activo/inactivo (FR-011). Al asignar un rol nuevo, el nuevo **reemplaza**
+        al anterior (un solo rol por cuenta, Q4). Al desactivar se bloquea el
+        acceso de inmediato —también las sesiones abiertas— y se conservan los
+        datos (FR-012); reactivar restaura el acceso (US5 esc. 3). Ninguna
+        combinación puede dejar el panel sin una cuenta activa con permiso de
+        administrar usuarios y roles: eso se responde como `409` (FR-008). Los
+        duplicados por correo normalizado → `409`. Requiere CSRF.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserInput"
+      responses:
+        "200":
+          description: Cuenta actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserItem"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/admin/usuarios/{id}/password:
+    parameters:
+      - $ref: "#/components/parameters/UserID"
+    post:
+      tags: [users]
+      operationId: resetUserPassword
+      summary: Restablecer la contraseña de una cuenta
+      description: |
+        El administrador define una contraseña nueva (debe cumplir la política,
+        FR-010). La cuenta queda con `mustChangePassword = true`: su titular
+        deberá cambiarla al entrar (US7 esc. 5) y **todas sus sesiones abiertas
+        quedan revocadas** (R17). No hay recuperación por auto-servicio en el MVP.
+        Requiere permiso `admin_usuarios_roles` y CSRF.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: Contraseña restablecida (nunca se devuelve el valor).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasswordResetResponse"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/admin/roles:
+    get:
+      tags: [roles]
+      operationId: listRoles
+      summary: Listar roles
+      description: |
+        Listado paginado de roles con sus permisos y cuántas cuentas los usan
+        (para saber si se pueden eliminar, FR-017). Orden por defecto
+        `createdAt DESC`. Defecto 20, tope 100. Requiere permiso
+        `admin_usuarios_roles`.
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Listado paginado de roles.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+    post:
+      tags: [roles]
+      operationId: createRole
+      summary: Crear un rol con permisos por módulo
+      description: |
+        Crea un rol con nombre único y **al menos un permiso** del catálogo,
+        combinados libremente (FR-014; no hay catálogo fijo de roles). El nombre
+        se normaliza (trim + colapso de espacios) y su unicidad es
+        insensible a mayúsculas: un duplicado "casi igual" → `409` (Q5). Un rol
+        sin permisos → `400`. Requiere permiso `admin_usuarios_roles` y CSRF.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleCreateInput"
+      responses:
+        "201":
+          description: Rol creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleItem"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/admin/roles/{id}:
+    parameters:
+      - $ref: "#/components/parameters/RoleID"
+    get:
+      tags: [roles]
+      operationId: getRole
+      summary: Ver un rol
+      description: Detalle de un rol con sus permisos (para el formulario de edición). Requiere permiso `admin_usuarios_roles`.
+      responses:
+        "200":
+          description: Rol solicitado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleItem"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+    patch:
+      tags: [roles]
+      operationId: updateRole
+      summary: Editar un rol (nombre y permisos)
+      description: |
+        Actualiza el nombre y/o los permisos del rol (FR-017, FR-018): los
+        cambios se reflejan de inmediato en las cuentas que lo tienen asignado.
+        Quitar todos los permisos → `400` (un rol conserva al menos uno). Un
+        nombre duplicado normalizado → `409`. Si la edición dejara el panel sin
+        una cuenta activa con permiso de administración → `409` (FR-008).
+        Requiere CSRF.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleUpdateInput"
+      responses:
+        "200":
+          description: Rol actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleItem"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+    delete:
+      tags: [roles]
+      operationId: deleteRole
+      summary: Eliminar un rol sin uso
+      description: |
+        Elimina un rol **únicamente cuando ninguna cuenta lo tiene asignado**
+        (FR-017). Si hay cuentas con ese rol → `409` con el mensaje de que
+        primero deben reasignarse esas cuentas. La eliminación no afecta a
+        ninguna cuenta (US6 esc. 4). Requiere CSRF.
+      responses:
+        "200":
+          description: Rol eliminado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleDeletedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+  /api/v1/admin/permisos:
+    get:
+      tags: [roles]
+      operationId: listPermissions
+      summary: Catálogo de permisos por módulo
+      description: |
+        Lista el catálogo fijo de permisos (los módulos del producto más la
+        administración de usuarios y roles, FR-015). Es el que se usa para armar
+        roles; los módulos de F3–F9 aparecen como reservados hasta que se
+        construyan. Requiere permiso `admin_usuarios_roles`.
+      responses:
+        "200":
+          description: Catálogo de permisos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionList"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: ss_session
+      description: |
+        Sesión en servidor (D-A7, pendiente de confirmación humana): cookie
+        `ss_session` `HttpOnly` con un token opaco cuyo SHA-256 se guarda en el
+        servidor. Se emite en `POST /api/v1/auth/login` y se borra en logout y en
+        toda revocación. Las peticiones no seguras con sesión exigen además la
+        cabecera `X-CSRF-Token` con el valor de la cookie `csrf_token`.
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      description: Tamaño de página (por defecto 20, tope 100).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      description: Filas a saltar (por defecto 0).
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    UserID:
+      name: id
+      in: path
+      required: true
+      description: Identificador (UUID) de la cuenta.
+      schema:
+        type: string
+        format: uuid
+    RoleID:
+      name: id
+      in: path
+      required: true
+      description: Identificador (UUID) del rol.
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          description: Correo de la cuenta (se normaliza con trim + minúsculas).
+        password:
+          type: string
+          format: password
+          maxLength: 72
+          description: Contraseña en texto plano (solo viaja aquí; nunca se devuelve ni se guarda).
+      additionalProperties: false
+    SessionUser:
+      type: object
+      description: |
+        Identidad de la sesión iniciada con sus permisos efectivos (los del rol
+        asignado; nunca la suma de varios roles, Q4). No contiene ningún dato
+        sensible de credenciales (FR-003).
+      required: [id, email, fullName, roleId, roleName, permissions, mustChangePassword]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        fullName:
+          type: string
+        roleId:
+          type: string
+          format: uuid
+        roleName:
+          type: string
+        permissions:
+          type: array
+          description: Códigos de permiso del catálogo (p. ej. `eventos`, `admin_usuarios_roles`).
+          items:
+            type: string
+        mustChangePassword:
+          type: boolean
+          description: Si es `true`, la cuenta debe cambiar su contraseña antes de usar el panel (US7 esc. 4).
+      additionalProperties: false
+    LogoutResponse:
+      type: object
+      required: [loggedOut]
+      properties:
+        loggedOut:
+          type: boolean
+          const: true
+      additionalProperties: false
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+          maxLength: 72
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: |
+            Política FR-010: 8–64 caracteres y ≤72 bytes, con mayúsculas,
+            minúsculas, números y caracteres especiales, y distinta del nombre
+            y del correo.
+      additionalProperties: false
+    PasswordChangedResponse:
+      type: object
+      required: [passwordChanged]
+      properties:
+        passwordChanged:
+          type: boolean
+          const: true
+      additionalProperties: false
+    InitializeInput:
+      type: object
+      required: [fullName, email, password]
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: Contraseña del administrador inicial (misma política FR-010; no exige cambio al entrar).
+      additionalProperties: false
+    CreateUserInput:
+      type: object
+      required: [fullName, email, roleId, password]
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Identificación de la persona (nombre completo; ver riesgo R3 del plan).
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        roleId:
+          type: string
+          format: uuid
+          description: Rol existente (uno solo por cuenta, Q4). Un rol inexistente → `400` con `details.roleId`.
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: Contraseña inicial definida por el administrador (FR-010); su titular debe cambiarla al entrar.
+      additionalProperties: false
+    UpdateUserInput:
+      type: object
+      description: |
+        Al menos un campo. El nuevo rol reemplaza al anterior (Q4).
+        `isActive: false` bloquea el acceso de inmediato y revoca las sesiones
+        abiertas (FR-012); nunca se eliminan cuentas (FR-013).
+      properties:
+        fullName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        roleId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+      minProperties: 1
+      additionalProperties: false
+    ResetPasswordInput:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: Contraseña nueva definida por el administrador (FR-010).
+      additionalProperties: false
+    PasswordResetResponse:
+      type: object
+      required: [passwordReset]
+      properties:
+        passwordReset:
+          type: boolean
+          const: true
+      additionalProperties: false
+    UserItem:
+      type: object
+      description: Cuenta del panel en listados y detalle (FR-019). Nunca incluye credenciales.
+      required: [id, email, fullName, roleId, roleName, isActive, mustChangePassword, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        fullName:
+          type: string
+        roleId:
+          type: string
+          format: uuid
+        roleName:
+          type: string
+        isActive:
+          type: boolean
+          description: `false` = acceso retirado (desactivada); los datos se conservan siempre (FR-012/FR-013).
+        mustChangePassword:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    UserList:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserItem"
+        total:
+          type: integer
+          format: int64
+        limit:
+          type: integer
+        offset:
+          type: integer
+      additionalProperties: false
+    RoleCreateInput:
+      type: object
+      required: [name, permissions]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Nombre único (se normaliza: trim + colapso de espacios; unicidad sin distinguir mayúsculas).
+        permissions:
+          type: array
+          minItems: 1
+          description: Al menos un permiso del catálogo (FR-014); códigos repetidos se descartan.
+          items:
+            type: string
+      additionalProperties: false
+    RoleUpdateInput:
+      type: object
+      description: Al menos un campo. Si se envía `permissions`, debe traer al menos un permiso (FR-014).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        permissions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+      minProperties: 1
+      additionalProperties: false
+    RoleItem:
+      type: object
+      required: [id, name, permissions, userCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        permissions:
+          type: array
+          description: Códigos de permiso del rol (los efectivos de sus cuentas, Q4).
+          items:
+            type: string
+        userCount:
+          type: integer
+          description: Cuentas con este rol (0 = se puede eliminar, FR-017).
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    RoleList:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleItem"
+        total:
+          type: integer
+          format: int64
+        limit:
+          type: integer
+        offset:
+          type: integer
+      additionalProperties: false
+    RoleDeletedResponse:
+      type: object
+      required: [deleted]
+      properties:
+        deleted:
+          type: boolean
+          const: true
+      additionalProperties: false
+    PermissionItem:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+          description: Código estable del módulo (p. ej. `eventos`, `admin_usuarios_roles`).
+        label:
+          type: string
+          description: Etiqueta para la interfaz en español.
+      additionalProperties: false
+    PermissionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PermissionItem"
+      additionalProperties: false
+  responses:
+    Invalid:
+      description: |
+        Datos inválidos o incompletos, o contraseña que no cumple la política
+        (FR-010). `details` indica qué campo corregir; nunca expone información
+        interna.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: invalid
+              message: Revisa los datos del formulario
+              details:
+                email: no tiene un formato de correo válido
+    Unauthenticated:
+      description: |
+        Sin sesión válida (expirada por inactividad, cerrada o inexistente) o
+        credenciales de inicio de sesión incorrectas. El mensaje de login es
+        genérico y **no** revela si la cuenta existe (FR-003).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: unauthenticated
+              message: Correo o contraseña incorrectos
+    Forbidden:
+      description: |
+        Autenticado pero sin permiso para la operación (FR-016), o cuenta
+        desactivada al iniciar sesión (US1 esc. 3), o con la obligación de
+        cambiar la contraseña antes de usar el panel (en cuyo caso
+        `details.reason = "password_change_required"`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: forbidden
+              message: No tienes permiso para realizar esta operación
+    Conflict:
+      description: |
+        Conflicto con el estado actual: correo o nombre de rol duplicado (Q5),
+        rol con cuentas asignadas al intentar eliminarlo (FR-017), inicialización
+        ya ejecutada (FR-007) u operación que dejaría el panel sin administración
+        (FR-008, en cuyo caso `details.reason = "admin_required"`).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: conflict
+              message: Ese correo ya está en uso
+    TooManyRequests:
+      description: |
+        Demasiadas peticiones: bloqueo temporal por intentos fallidos de inicio
+        de sesión (5 intentos / 15 minutos, FR-006) o `rate-limit` por IP. El
+        mensaje de bloqueo es idéntico exista o no la cuenta (FR-003).
+      headers:
+        Retry-After:
+          description: Segundos hasta que se pueda volver a intentar.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: rate_limited
+              message: Demasiados intentos fallidos. El acceso queda bloqueado temporalmente durante 15 minutos
+              details:
+                retryAfterSeconds: 900
