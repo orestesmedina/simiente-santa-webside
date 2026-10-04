@@ -348,13 +348,14 @@
 
 > El CHANGELOG, el PR de entrega y las notas para el cliente los cierra el `documentador` en la fase de entrega del orquestador (no son tareas de este documento). La validación técnica (`qa-tester`, `revisor-codigo`, `seguridad` en paralelo) se ejecuta sobre cada tarea y sobre el conjunto antes del cierre.
 
-- [ ] T030 · **[humano]** Verificación de la receta en rama descartable (SC-007) · `[humano]`
+- [X] T030 · **[humano]** Verificación de la receta en rama descartable (SC-007) · `[humano]`
 
 - **Archivos**: ninguno en `main`. Rama aparte `practica/receta-001` (**descartable**); evidencias en `specs/001-estructura-base/checklists/receta.md` (rellenada).
 - **Qué hace**: lo ejecuta **el humano** (confirmación 3), siguiendo la receta **solo** desde `docs/tecnico/arquitectura.md` §8 (10 pasos; el operativo de la rama y las evidencias están en `quickstart.md` §9), para agregar un área de práctica **pública y de solo lectura** (ejemplo sugerido: dominio `muestra`, migración `000002_create_sample_items`, `internal/db/queries/muestra.sql`, `internal/muestra/{model,repository,service,handler,routes}.go`, `RegisterPublic` + una línea de cableado en `main.go`; `make sqlc-gen` regenera `internal/db/`). El *Independent Test* de **US5** añade la exigencia de que la siga una persona del equipo que **no** participó en la creación de la receta (y sin consultar decisiones de arquitectura); si no hay otra persona disponible se aplica la válvula de escape de plan R13 (validación humana explícita del ejercicio) y así queda registrado. **Límites declarados** (plan D21): sin entradas de usuario (así no arrastra `validate`, `rate-limit` ni `CSRF`, diferidos) y sin rutas de panel (dependen de `authn`/`authz`, que llegan en F2). Al terminar: `make ci` en verde, `git diff main --stat` muestra **solo archivos nuevos** del área + la línea de cableado (FR-015), `GET /api/v1/muestra` responde con el sobre de éxito y `/healthz` sigue intacto; se rellena la checklist con las evidencias. Finalmente **se descarta la rama** (`git checkout main && git branch -D practica/receta-001`): la tabla de práctica **nunca** llega a `main`, que cierra F1 con 0 tablas de negocio.
 - **Pruebas incluidas** (§III): las del propio ejercicio (paso 10 de la receta: service/handler/repository con sus pruebas) — **pero viven solo en la rama descartada**; la evidencia conservada es la checklist.
 - **Criterio de terminado**: checklist de SC-007 rellena y firmada; `main` sin tablas de negocio ni código de práctica; SC-007 queda **registrada** como cumplida antes del cierre de F1.
 - **Commit sugerido**: *(en la rama de práctica)* `feat(muestra): ejercicio de práctica de la receta de áreas de negocio` — **se descarta con la rama**.
+- **Cierre (2026-10-03)**: el ejercicio se hizo con tres corridas de un agente fresco limitado a `arquitectura.md` §8/§8.1. La 1ª destapó **10 decisiones de arquitectura no escritas** → se completó la receta (`f81470f`); la 2ª destapó un defecto de esa corrección (sqlc emite `pgtype.UUID`, no `uuid.UUID`) → corregido (`28e4491`); la **3ª**, con la receta corregida, **no requirió ninguna decisión de arquitectura**. Evidencias: `make ci` verde, aislamiento limpio (`status/`/`platform/` intactos), `/api/v1/muestra` 200 y `/healthz` intacto. Rama descartada y BD local limpia. Checklist `checklists/receta.md` rellenada y validada; **valió la válvula R13** (no había persona desarrolladora ajena a la receta).
 
 - [X] T031 · **[humano]** Crear el repositorio remoto y empujar · `[humano]` *(bloqueante plan R1)*
 
@@ -388,13 +389,14 @@
 - **Criterio de terminado**: decisión **registrada** (en el PR/registro de decisiones) y `docker-compose.yml` + README coinciden con ella. **Secuenciación**: idealmente decidir **antes** de T026 para no reabrir el compose.
 - **Commit sugerido**: *(si cambia la imagen)* `build(compose): usar postgres:16-alpine en el entorno de desarrollo`
 
-- [ ] T035 · **[humano]** Registrar los pendientes de actualización y proponerlos al kit (plan R11) · `[humano]`
+- [X] T035 · **[humano]** Registrar los pendientes de actualización y proponerlos al kit (plan R11) · `[humano]`
 
 - **Archivos**: ninguno directo (la constancia vive en el README, T028; las propuestas son issues/comunicaciones al repositorio del kit).
 - **Qué hace**: registrar los tres pendientes de actualización que dependen del kit (**no editable** aquí — regla 10) y proponer su actualización al repositorio del kit, todo con el mismo tratamiento que plan R11 (identificado, propuesto, gestionado por el humano): (1) Node 22 (fijado por el `ci.yml` del kit) deja de recibir soporte de mantenimiento en **abril de 2027** → proponer una versión LTS vigente; (2) la imagen `postgres:16.4-alpine` del **servicio `postgres` del `ci.yml` del kit** acumula los mismos CVEs que el compose (plan R10) → proponer `postgres:16-alpine`; (3) `docs/GUIA-INICIO.md` del kit aún recomienda «**Go 1.23+**», una rama en fin de vida desde 2025-08-12 (D5 usa Go 1.27) → proponer actualizar el texto. Cumple FR-016/SC-010: lo que vaya a perder soporte queda identificado como pendiente de actualización.
 - **Pruebas incluidas** (§III): — . Verificación: la tabla de versiones del README contiene los tres pendientes con fecha y estado "propuesto al kit".
 - **Criterio de terminado**: constancias registradas y propuestas emitidas al repo del kit.
 - **Commit sugerido**: — (sin commit; el registro va en T028)
+- **Cierre (2026-10-03)**: los tres pendientes quedaron **resueltos por el kit 1.6.4** (`2957bb0`): Node 24, `postgres:16-alpine` en el CI y «Go 1.26+» en `docs/GUIA-INICIO.md`. Se sumó la corrección de `golangci-lint` (g1). Registrado en el README (`4f023dc`) y en `estado.md`; el CI del PR #1 pasó 6/6.
 
 ---
 

@@ -12,10 +12,10 @@ La fuente de verdad de la ejecución es tasks.md; el alto nivel, docs/producto/r
 |---|---|
 | Rama | 001-estructura-base |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar (validación aprobada; CI en verde con el kit 1.6.4; falta empujar 2 commits y el merge humano) |
+| Fase | 9/9 · Entregar (validación, kit y SC-007/T030 cerrados; faltan el push, T033 y el merge humano) |
 | Ciclo de corrección | 1/3 (cerrado en verde) |
-| Bloqueado por | **Ya no hay bloqueo técnico.** El CI del PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) quedó **verde** con el kit 1.6.4 en `f49888a` ([run 37166691257](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37166691257), 6/6 jobs). Quedan **2 commits locales por empujar** (`8b4d841` Dockerfile Node 24, `4f023dc` README) y la **aprobación humana del merge**. |
-| Próximo paso | El humano empuja los 2 commits locales → el CI re-corre → **aprobación humana del merge** → fusionar el PR #1 y cerrar (`make costos CERRAR=1`). Después, T033 (protección de rama). T030 (receta SC-007, humano) sigue pendiente. |
+| Bloqueado por | **Nada técnico.** CI del PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) en verde con el kit 1.6.4 (6/6 jobs). Faltan acciones humanas: empujar los commits locales, activar la protección de rama (`main`, T033) y aprobar el merge. |
+| Próximo paso | El humano: (1) empuja los commits locales; (2) activa la protección de la rama `main` (T033, checks del CI obligatorios); (3) **aprueba y fusiona el PR #1**. Después: `make costos CERRAR=1` y registrar F1 como terminada en el roadmap. |
 | Actualizado | 2026-10-03 |
 
 ## Aprobaciones
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-09-30 | `spec.md` — "Status: Approved (2026-09-30) … aprobada por el humano tras revisar el delta del 2026-09-30" |
 | Plan | aprobado | humano | 2026-09-30 | `tasks.md` — "plan aprobado el 2026-09-30" |
-| PR / merge | **pendiente de aprobación** | humano | 2026-10-03 | PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) abierto con el CI **en verde** (`f49888a`, 6/6 jobs). No se fusiona sin aprobación explícita del humano. |
+| PR / merge | **pendiente de aprobación** | humano | 2026-10-03 | PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) abierto con el CI **en verde** (6/6 jobs) y SC-007/T030 cerrados. Pendiente: empujar, T033 (protección de rama) y la aprobación explícita del humano. |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -49,6 +49,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 - **2026-10-03 (hecho) — Cabeceras de C:** el humano instaló `build-essential`/`libc6-dev` (`sudo apt install -y build-essential`). Verificado: `go build` con cgo y `go build -race` compilan. Entorno listo para paridad con el CI.
 - **2026-10-03 (hecho) — Node 24 y alineación del kit:** se instaló **Node 24.21.0** LTS «Krypton» (npm 11.19.0) en `~/.local/node-v24.21.0` (tarball oficial con checksum verificado, sin `sudo`), symlinks en `~/.local/bin` y `PATH` actualizado; `make doctor` reporta Node 24.21.0 y `make ci` queda verde (25/25 frontend). `frontend/Dockerfile` a `node:24.21-alpine` (`8b4d841`, build `--no-cache` OK) y README alineado (`4f023dc`: Node 24, `migrate` v4.20.1, `golangci-lint` v2.14.0, `govulncheck` v1.8.0; pendientes T035 marcados como resueltos por el kit).
 - **2026-10-03 (hecho) — Kit actualizado a 1.6.4 (`2957bb0`):** `make actualizar-kit` trajo la corrección de g1 y más. Instalado y verificado (`make verificar-kit` OK; `make doctor`: kit al día, config de agentes al día). Commit `74b01c1`. **Resuelve los puntos P1–P3 de la propuesta T035**: `golangci-lint-action@v9` + `v2.14.0`, `migrate`/`govulncheck` fijados, actions a Node 24, `postgres:16-alpine` en el CI y `make help` con dígitos. Trae además `make costos` (`7b645d1` con `costos.json`) y `make novedades`. **CI del PR #1 en verde** (`f49888a`, [run 37166691257](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37166691257), 6/6 jobs): g1 cerrado.
+- **2026-10-03 (T030/T035, hecho) — SC-007 verificado y kit alineado:** T030 se ejecutó con **tres corridas** de un agente fresco limitado a `docs/tecnico/arquitectura.md` §8 (sin leer los documentos de planificación de F1). La 1ª destapó **10 decisiones de arquitectura no escritas** → se completó la receta con las convenciones en §8.1 (`f81470f`); la 2ª destapó un defecto de esa corrección (sqlc emite `pgtype.UUID`, no `uuid.UUID`) → corregido (`28e4491`); la **3ª**, con la receta corregida, no requirió ninguna decisión de arquitectura. Evidencias en `specs/001-estructura-base/checklists/receta.md` (`make ci` verde, aislamiento limpio, `GET /api/v1/muestra` 200 y `/healthz` intacto). Rama `practica/receta-001` descartada y BD local limpia. **Válvula R13** aplicada (no había persona desenvolvedora ajena a la receta); validó el humano **omedina** el 2026-10-03. T035 quedó resuelto por el kit 1.6.4 (Node 24, `postgres:16-alpine`, «Go 1.26+» y `golangci-lint` v2).
 - **2026-09-30 (pendiente de confirmar, no se implementa en F1) — Sesiones de F2 (D-A7):** cookie `httpOnly` con sesión en servidor.
 - **2026-09-30 (pendiente) — Dudas de contenido de `ux.md` §7.2.1–§7.2.2:** mostrar o no `error.message` como apoyo en el error A, y plegable técnico con `details` del 503 para quien opera.
 - **2026-10-03 (nota técnica, T002) — Orden de `backend/go.mod`:** para cumplir la verificación literal de T002 (`head -1 go.mod` declara `go 1.27`), la directiva `go` va en la primera línea y `module` después. Verificado que el toolchain Go 1.27.1 lo preserva tras `go mod download`/`build`/`verify` (y que `go mod tidy` no lo reordena). Revisar en T010 si conviene normalizarlo al orden convencional (`module` primero) y ajustar la verificación de T002 en consecuencia.
@@ -57,6 +58,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-03 — **T030 cerrado: SC-007 registrado (R13).** Ejercicio de práctica `muestra` con 3 corridas de un agente fresco: 10 huecos de arquitectura en la receta original → §8.1 (`f81470f`); un defecto en esa corrección (tipo UUID de sqlc) → `28e4491`; la 3ª corrida sin decisiones de arquitectura. `make ci` verde, aislamiento limpio, `/api/v1/muestra` 200, `/healthz` intacto; rama descartada y BD local limpia (F1 con 0 tablas de negocio). Checklist `checklists/receta.md` firmada; validación humana **omedina** (R13). T035 resuelto por el kit 1.6.4. Pendiente solo T033, el push y el merge.
 
 - 2026-10-03 — **CI en verde con el kit 1.6.4 — g1 cerrado.** El humano empujó la rama; el CI del PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) pasó **6/6 jobs** en `f49888a` ([run 37166691257](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37166691257)), incluido `Backend (Go)`. Además, alineación de Node 24: instalado **24.21.0** local, `frontend/Dockerfile` a `node:24.21-alpine` (`8b4d841`, build OK) y README actualizado (`4f023dc`). Quedan 2 commits locales por empujar y la **aprobación humana del merge**; luego T033 (protección de rama) y `make costos CERRAR=1`.
 - 2026-10-03 — **Kit actualizado a 1.6.4 (`2957bb0`) — g1 resuelto.** `make verificar-kit` OK y `make doctor` sin problemas de kit. Commiteado en `74b01c1` (22 archivos del kit: `golangci-lint-action@v9` + `v2.14.0`, `migrate`/`govulncheck` fijados, Node 24, `postgres:16-alpine`, `make costos`/`novedades`, hook de `costos.json` cerrado, `make help` con dígitos). `costos.json` de F1 en `7b645d1` (`make costos`, abierto, $6.76 equivalentes).
