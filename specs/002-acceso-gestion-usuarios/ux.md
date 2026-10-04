@@ -33,15 +33,15 @@
 | Credenciales incorrectas | Mensaje genérico arriba del formulario, el campo incorrecto no se revela; foco en el aviso; puede reintentar. **No se muestra "intentos restantes"** (revelaría si la cuenta existe). FR-003, SC-008 |
 | Cuenta inactiva con credenciales correctas | Mensaje dedicado: el acceso está desactivado y qué hacer (p. ej. "Pide a un administrador que la reactive."). US1.3 |
 | 5 fallos → bloqueo | Formulario deshabilitado con aviso y **hora calculada** de reintento ("a partir de las 16:45"); cuenta atrás visible; sin poder enviar desde la UI hasta que expire. FR-006 |
-| Sesión expirada por inactividad | Aviso 2 minutos antes ("¿Sigues ahí?") con botón "Sigo aquí"; si no hay respuesta → `/entrar` con notificación "Tu sesión terminó por inactividad." FR-005 |
+| Sesión expirada | El aviso 2 minutos antes del cierre por inactividad ("¿Sigues ahí?") con botón "Sigo aquí"; si no hay respuesta → `/entrar` con notificación "Tu sesión terminó por inactividad." La sesión también caduca al cumplir el techo absoluto de 1 hora aunque haya actividad: → `/entrar` con "Tu sesión terminó." FR-005 |
 | Caduca con formulario a medias | Al volver a entrar se le informa: "Tu sesión terminó. La última acción no se aplicó; vuelve a hacerla." Nada se aplica a medias (Edge Case). El borrador **no se recupera automáticamente** en el MVP (mejora futura); se comunica con claridad. |
 | Cuenta desactivada con sesión abierta | La siguiente petición responde 401 → se cierra la sesión y se redirige a `/entrar` con aviso ("Tu cuenta se desactivó. Pide a un administrador que la active."). US5.2 |
 | URL sin sesión | Cualquier ruta del panel → `/entrar?destino=<url>`; al iniciar sesión, si el origen era del panel, vuelve a esa página. |
 
 ### 1.3 Flujos de gestión (solo quien tiene el permiso "Administrar usuarios y roles")
 
-- **Crear cuenta**: Inicio → "Usuarios" → botón "Crear usuario" → formulario → éxito → vuelve al listado con aviso "usuario creado" y la fila nueva arriba.
-- **Editar cuenta / restablecer contraseña**: fila → "Editar" → formulario precargado (nombre, correo, rol; estado; botón aparte "Definir una contraseña nueva") → éxito → aviso y listado actualizado.
+- **Crear cuenta**: Inicio → "Usuarios" → botón "Crear usuario" → formulario (nombre, apellidos, correo, teléfono, rol, contraseña inicial) → éxito → vuelve al listado con aviso "usuario creado" y la fila nueva arriba.
+- **Editar cuenta / restablecer contraseña**: fila → "Editar" → formulario precargado (nombre, apellidos, correo, teléfono, rol; estado; botón aparte "Definir una contraseña nueva") → éxito → aviso y listado actualizado.
 - **Activar / desactivar**: en el listado, acción por fila "Desactivar"/"Activar" con confirmación solo al desactivar. Intentos que violan la regla del último administrador activo resultan en error explicado (FR-008).
 - **Crear/editar rol**: Inicio → "Roles" → "Crear rol" o "Editar" → nombre + casillas de permisos → éxito → listado.
 - **Eliminar rol**: fila → "Eliminar" → confirmación → si hay cuentas asignadas, se impide con mensaje "primero reasígalas" (no se deshabilita a ciegas; el intento siempre da una explicación). US6.5
@@ -80,7 +80,7 @@
 ### 3.2 Puesta en marcha (una sola vez, instalación nueva)
 
 - **Propósito**: crear el administrador inicial con permisos completos y sin pasos adicionales (US2). **No puede repetirse**: si se intenta de nuevo, mensaje "Esta acción ya se realizó y no puede repetirse." con opción de ir a Entrar (SC-003, FR-007).
-- **Contenido**: explicación llana de qué hará esta única acción; campos nombre, correo y contraseña del administrador (con checklist de política); botón "Crear administrador inicial".
+- **Contenido**: explicación llana de qué hará esta única acción; campos nombre, apellidos, correo y teléfono del administrador (los cuatro obligatorios) y contraseña (con checklist de política); botón "Crear administrador inicial".
 - Tras el éxito → `/panel/cuenta` NO en modo obligatorio (la contraseña la eligió él), sino directo a `/panel` con aviso "Cuenta creada. Ya puedes gestionar usuarios y roles."
 
 ### 3.3 Layout del panel — `/panel/*`
@@ -102,15 +102,15 @@
 
 - **Propósito**: ver quién tiene acceso hoy y gestionar cuentas (US3, US5; FR-019).
 - **Móvil**: tarjetas apiladas; **tableta en adelante**: tabla.
-- **Contenido por fila**: nombre/identificación, correo, rol (texto plano), estado (`Activo`/`Inactivo` en una "píldora" con color Y texto), y acciones: **Editar**, **Desactivar** o **Activar**. Sin acción de eliminar (FR-013): no existe y no aparece ningún botón gris que confunda.
-- **Encabezado**: contador ("8 usuarios"), buscador de texto libre (nombre o correo, filtro en cliente, sin paginar en MVP), botón principal "Crear usuario".
+- **Contenido por fila**: nombre y apellidos, correo, rol (texto plano), estado (`Activo`/`Inactivo` en una "píldora" con color Y texto), y acciones: **Editar**, **Desactivar** o **Activar**. Sin acción de eliminar (FR-013): no existe y no aparece ningún botón gris que confunda.
+- **Encabezado**: contador ("8 usuarios"), buscador de texto libre (nombre, apellidos o correo, filtro en cliente, sin paginar en MVP), botón principal "Crear usuario".
 - **Detalle del formulario**: ver `FormularioUsuario` (§4.c).
 
 ### 3.6 Crear/editar usuario (modal o página, solo con permiso de administración)
 
 - **Propósito**: crear cuenta con contraseña inicial o editar datos de una cuenta (FR-009, FR-011).
-- **Campos** (móvil en columna única): Nombre (texto), Correo (texto con validación de formato, con aviso de que se compara ignorando mayúsculas y espacios), Rol (selector con los roles existentes; obligatorio), Estado (solo en edición; conmutador con explicación "Desactivar bloquea el acceso de inmediato pero conserva todo."), y:
-  - **crear**: "Contraseña inicial" con toggle mostrar/ocultar + **checklist en vivo de la política** (mín. 8, mayúsculas, minúsculas, número, caracter especial, distinta del nombre y del correo) que se va marcando verde al cumplirse; botón "Definir una contraseña nueva" (edición, nunca muestra ni devuelve la actual).
+- **Campos** (móvil en columna única, todos obligatorios): **Nombre** (texto), **Apellidos** (texto), **Correo** (texto con validación de formato, con aviso de que se compara ignorando mayúsculas y espacios), **Teléfono** (texto con validación de formato; ayuda "Con código del país si procede, p. ej. 612 345 678 o +34 612 345 678"), Rol (selector con los roles existentes; obligatorio), Estado (solo en edición; conmutador con explicación "Desactivar bloquea el acceso de inmediato pero conserva todo."), y:
+  - **crear**: "Contraseña inicial" con toggle mostrar/ocultar + **checklist en vivo de la política** (mín. 8, mayúsculas, minúsculas, número, caracter especial, distinta del nombre, los apellidos y el correo) que se va marcando verde al cumplirse; botón "Definir una contraseña nueva" (edición, nunca muestra ni devuelve la actual).
   - Al crear una cuenta se envía también el aviso: "La persona deberá cambiar esta contraseña la primera vez que entre." (FR-010).
 - **Validaciones visibles**: junto a cada campo; resumen de errores arriba, no solo CSS rojo.
 
@@ -129,7 +129,7 @@
 ### 3.9 Cambiar contraseña — `/panel/cuenta/contrasena`
 
 - **Propósito**: cambiar mi propia contraseña (US7; FR-020) y el cambio obligatorio tras una contraseña definida/restablecida por un administrador (FR-010).
-- **Contenido**: Contraseña actual (no se pide en el modo "obligatorio" del primer cambio), Contraseña nueva y Confirmar nueva, **check-list en vivo de la política** igual que en 3.6, botón "Guardar" (deshabilitado hasta que todo cumpla).
+- **Contenido**: Contraseña actual (no se pide en el modo "obligatorio" del primer cambio), Contraseña nueva y Confirmar nueva, **check-list en vivo de la política** igual que en 3.6 (mín. 8, mayúsculas, minúsculas, número, caracter especial, distinta del nombre, los apellidos y el correo), botón "Guardar" (deshabilitado hasta que todo cumpla).
 - **Modo obligatorio**: idéntico pero sin navegación (ni menú ni enlaces) y con texto "Por seguridad, cambia esta contraseña antes de continuar."; al terminar → `/panel` con aviso de éxito.
 
 ### 3.10 Sin permiso — `/sin-permiso`
@@ -140,8 +140,8 @@
 
 ### 3.11 Aviso de sesión por caducar (superposición global en el layout del panel)
 
-- **Propósito**: advertir la expiración inminente y permitir continuar con "Sigo aquí" (renueva la sesión); si no se pulsa, expira (FR-005).
-- Doble capa: **banda superior** fina amarilla a los X min (dato del backend) + **modal** de confirmación con botones "Sigo aquí" (primario) / "Salir". En el aviso no se anuncia "cada segundo" (algo ruidoso para lectores de pantalla): se anuncia al abrirse y con la cuenta de tiempo redondeada ("quedan menos de 2 minutos").
+- **Propósito**: advertir el cierre inminente por inactividad y permitir continuar con "Sigo aquí" (renueva la actividad); si no se pulsa, expira (FR-005). Dos límites fijados por la spec: **30 minutos de inactividad** con aviso 2 minutos antes, y un **techo absoluto de 1 hora** de sesión aunque haya actividad; al llegar el techo, la sesión se cierra sin aviso previo posible (el usuario ve "Tu sesión terminó." al hacer la siguiente acción).
+- Doble capa: **banda superior** fina amarilla 2 minutos antes del cierre por inactividad + **modal** de confirmación con botones "Sigo aquí" (primario) / "Salir". En el aviso no se anuncia "cada segundo" (algo ruidoso para lectores de pantalla): se anuncia al abrirse y con la cuenta de tiempo redondeada ("quedan menos de 2 minutos").
 
 ---
 
@@ -176,7 +176,7 @@
 - Vacío (crear) o precargado (editar). Cada validación vive junto a su campo, aparece al enviar (no en vivo para no asustar) salvo la **política de contraseña**, que se marca en vivo.
 - Enviando: "Guardando…" deshabilitado, cierre del modal bloqueado.
 - Éxito: cierre + aviso en el listado.
-- Errores: campo rojo con texto ("Escribe un correo con este formato: nombre@dominio.com", "Elige un rol de la lista.") y errores de servidor mapeados: correo duplicado ("Ya existe una cuenta con ese correo; prueba con otro."; funciona también si solo cambia mayúsculas/espacios, Q5), rol inexistente ("El rol elegido ya no existe; elige otro."), regla del último administrador ("No puedes dejar el panel sin un administrador activo. Activa otra cuenta con permiso de administración primero.").
+- Errores: campo rojo con texto (obligatorios: "Escribe el nombre.", "Escribe los apellidos.", "Escribe un correo con este formato: nombre@dominio.com", "Escribe un número de teléfono válido."; "Elige un rol de la lista.") y errores de servidor mapeados: correo duplicado ("Ya existe una cuenta con ese correo; prueba con otro."; funciona también si solo cambia mayúsculas/espacios, Q5), rol inexistente ("El rol elegido ya no existe; elige otro."), regla del último administrador ("No puedes dejar el panel sin un administrador activo. Activa otra cuenta con permiso de administración primero.").
 
 ### d. Listado y formulario de rol
 
@@ -204,8 +204,8 @@
 | Componente | Props clave | Uso |
 |---|---|---|
 | `Boton` | `variante` ('primario' \| 'secundario' \| 'peligroso' \| 'enlace'), `cargando`, `tamano` (mín. 44 px) | Todos los botones. |
-| `Campo` | `etiqueta`, `tipo`, `error?`, `ayuda?`, `obligatorio`, `autocomplete?` | Envoltorio accesible label + `aria-describedby` con error/ayuda. |
-| `CampoContrasena` | igual que `Campo` + `mostrarToggle`, `politica?: string[]` (checklist en vivo), `autocomplete` (p. ej. `new-password`) | Acceso, formularios de contraseña. |
+| `Campo` | `etiqueta`, `tipo`, `error?`, `ayuda?`, `obligatorio`, `autocomplete?` (tel con `tel`) | Envoltorio accesible label + `aria-describedby` con error/ayuda. |
+| `CampoContrasena` | igual que `Campo` + `mostrarToggle`, `politica?: string[]` (checklist en vivo, incluye "distinta del nombre, los apellidos y el correo"), `autocomplete` (p. ej. `new-password`) | Acceso, formularios de contraseña. |
 | `Selector` | `etiqueta`, `opciones`, `error?` | Rol en formulario de usuario. |
 | `Aviso` | `variante` ('exito' \| 'error' \| 'info' \| 'alerta'), `children`, `temporal?` | Mensajes de sistema; `role="alert"` en error/alerta, `role="status"` en éxito/info. |
 | `Confirmacion` | `titulo`, `descripcion`, `textoAceptar`, `peligroso?`, `alAceptar`, `alCerrar` | Desactivar cuenta, eliminar rol. Trampa de foco + `Esc` + devolución del foco. |
@@ -223,7 +223,7 @@
 | `LayoutPanel` | Layout del panel con navegación y `AvisoSesion`. |
 | `useSesion` / `RequireAuth` / `RequirePermiso` | Sesión, redirección y permisos de ruta. Fuente: endpoint "mi sesión" del backend. |
 | `AvisoSesion` | Caducidad con "Sigo aquí". Temporizador con pruebas (se congelan tiempos). |
-| `ListaUsuarios`, `FilaUsuario`, `FormularioUsuario` | Listado + crear/editar; validación con Zod (correo, rol, política e igualdad con nombre/correo). |
+| `ListaUsuarios`, `FilaUsuario`, `FormularioUsuario` | Listado (nombre y apellidos, correo, teléfono, rol, estado) + crear/editar; validación con Zod (obligatorios, correo, teléfono, rol, política e igualdad con nombre/apellidos/correo). |
 | `ListaRoles`, `FormularioRol`, `GrupoPermisos` | Casillas por módulo con estados (sellos "más adelante"), errores de uso y duplicado. |
 | `PaginaSinPermiso` | §3.10. |
 | `PaginaCambiarContrasena` | Cambio propio y modo obligatorio. |
@@ -257,6 +257,8 @@
 | Cuenta inactiva | "Ese acceso está desactivado. Pide a un administrador de la iglesia que lo reactive para poder entrar." |
 | Bloqueo temporal | "Por seguridad, se han superado los intentos permitidos. Podrás volver a intentarlo a partir de las {hora}." |
 | Sesión por caducar | "¿Sigues ahí? Tu sesión se cerrará en {m} minutos si no la usamos." |
+| Sesión cerrada por techo absoluto | "Tu sesión terminó (cada sesión dura como máximo 1 hora). Vuelve a entrar para continuar." |
+| Contraseña igual a datos personales | "La contraseña no puede ser igual ni contener el nombre, los apellidos o el correo." |
 | Sesión terminada | "Tu sesión terminó. Vuelve a entrar para continuar." (+, si estaba con formulario: "La última acción no llegó a guardarse; vuelve a hacerla.") |
 | Cuenta desactivada con sesión abierta | "Tu cuenta se desactivó. Para entrar de nuevo, pide a un administrador que la reactive." |
 | Creado con éxito | "Cuenta creada." / "Rol creado." |
@@ -270,7 +272,7 @@
 | Último administrador | "No se puede {desactivar la cuenta / quitarle el permiso}: dejaría el panel sin ningún administrador activo. Activa o cambia a otra cuenta de administración y repite la acción." |
 | Puesta en marcha repetida | "La puesta en marcha ya se realizó y no puede repetirse." |
 | Sin permiso | "No tienes acceso a esta sección. Pide a quien administra el panel que revise tu rol." |
-| Datos con formato incorrecto | "Este correo no tiene el formato correcto." / "Escribe la contraseña con las reglas indicadas abajo." |
+| Datos con formato incorrecto | "Escribe el nombre." / "Escribe los apellidos." / "Este correo no tiene el formato correcto." / "Escribe un número de teléfono válido." / "Escribe la contraseña con las reglas indicadas abajo." |
 | Sesión expirada al intentar acción | "Tu sesión terminó. Entra de nuevo y vuelve a hacer la acción; no se guardó a medias." |
 | Error del sistema | "No se pudo completar la operación. Vuelve a intentarlo en unos minutos; si sigue, avísanos." |
 | Confirmaciones destructivas | Desactivar: "La persona perderá el acceso de inmediato, aunque tenga sesión abierta; sus datos se conservan." · Eliminar rol: "Se borrará el rol '{nombre}' con sus {N} permisos. Las cuentas que lo usen no se verán afectadas si antes les asignas otro." |
@@ -279,7 +281,7 @@
 
 ## 8. Notas para el `dev-frontend` / `qa-tester`
 
-- La **lógica con pruebas** está en hooks y formularios: política de contraseñas en Zod (compartida con el backend vía contrato), validators de igualdad con nombre/correo, cuenta atrás del bloqueo y de la sesión, y guardas de ruta.
+- La **lógica con pruebas** está en hooks y formularios: política de contraseñas en Zod (compartida con el backend vía contrato, incluida la distinción con nombre/apellidos/correo), validators de obligatorios (nombre, apellidos, correo, teléfono), cuenta atrás del bloqueo y de la sesión (30 min inactividad + techo absoluto de 1 hora, se congelan tiempos), y guardas de ruta.
 - Cualquier hora ("a partir de las HH:MM") se calcula en cliente con la zona del navegador; el backend aporta la marca de tiempo.
 - El listado no pagina en el MVP (equipo pequeño); el filtro es de texto en cliente. Si crece, se paginará después (fuera de alcance ahora).
 - El diseño móvil primero se verifica a 320 px: tarjetas, sin desbordes, targets de 44 px.

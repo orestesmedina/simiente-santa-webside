@@ -9,20 +9,21 @@ Docker, `make up` levantado, `make db-migrate` aplicado, hooks con `make instala
 ## 0. Preparar el entorno
 
 ```bash
-make up                      # levanta db, backend y frontend
-make db-migrate              # aplica 000001…000005 (F2: tablas de usuarios/sesiones/roles)
-docker compose ps            # db debe estar "healthy"
+make up                      # levanta db, redis, backend y frontend
+make db-migrate              # aplica 000001…000003 (F2: tablas de usuarios/roles/permisos)
+docker compose ps            # db y redis deben estar "healthy"
 ```
 
 Variables nuevas de F2 (documentadas en `.env.example`; con sus defectos basta en local):
 
 | Variable | Defecto en desarrollo | Para qué |
 |---|---|---|
+| `REDIS_URL` | `redis://localhost:6379/0` | Sesión del panel y contadores de intentos (`research.md` R1/R5) |
 | `SESSION_SECRET` | valor de ejemplo | Firma del token CSRF (P10) |
 | `BOOTSTRAP_TOKEN` | valor de ejemplo | Cabecera `X-Setup-Token` de la inicialización única (P8) |
 | `SESSION_COOKIE_SECURE` | `false` | `true` solo con HTTPS; `platform/config` no arranca en `production` con `false` |
-| `SESSION_IDLE_TTL_MINUTES` | `30` | Inactividad (FR-005) |
-| `SESSION_ABSOLUTE_TTL_HOURS` | `12` | Vida absoluta (R15 — solo si se confirma) |
+| `SESSION_IDLE_TTL_MINUTES` | `30` | Inactividad (FR-005, confirmada el 2026-10-04) |
+| `SESSION_ABSOLUTE_TTL_MINUTES` | `60` | Vida absoluta de la sesión: **1 hora** desde el inicio (R15, confirmada el 2026-10-04) |
 
 Si cambió el código tras el último `make up`: `docker compose up -d --build` (§8.1.8: `make up`
 reutiliza la imagen en caché y es la causa más frecuente de "el cambio no aparece").
@@ -36,7 +37,7 @@ Regenerar artefactos si tocó el contrato o las consultas: `make api-gen` y `mak
 curl -i -X POST http://localhost:8080/api/v1/setup/initialize \
   -H "Content-Type: application/json" \
   -H "X-Setup-Token: $BOOTSTRAP_TOKEN" \
-  -d '{"fullName":"Ana Responsable","email":"ana@ejemplo.com","password":"Semilla.2026"}'
+  -d '{"firstName":"Ana","lastName":"Responsable","email":"ana@ejemplo.com","phone":"+34 612 345 678","password":"Semilla.2026"}'
 ```
 
 Esperado: `201` con la cuenta creada (rol "Administrador", todos los permisos). **Repetir el mismo
@@ -59,16 +60,32 @@ panel redirige a `/login` (SC-001).
 
 ## 3. Sesión actual y cierre (FR-004, FR-005)
 
+La sesión vive en **Redis** (D-A7 confirmada el 2026-10-04): puedes verla mientras existe.
+
 ```bash
+docker compose exec redis redis-cli --scan --pattern 'sess:*'      # hay 1 clave con la sesión abierta
+docker compose exec redis redis-cli --scan --pattern 'user_sessions:*'
+
 curl -i -b /tmp/f2-cookies.txt http://localhost:8080/api/v1/auth/session   # 200 con la identidad
 curl -i -b /tmp/f2-cookies.txt -X POST http://localhost:8080/api/v1/auth/logout \
   -H "X-CSRF-Token: $CSRF_TOKEN"                                            # 200 {"loggedOut":true}
+docker compose exec redis redis-cli --scan --pattern 'sess:*'      # ya no hay claves: logout las borra
 curl -i -b /tmp/f2-cookies.txt http://localhost:8080/api/v1/auth/session   # 401
 ```
 
-Expiración por inactividad: deja una sesión sin usar `SESSION_IDLE_TTL_MINUTES` (30 min por
-defecto; se puede bajar a `1` en `.env` para la prueba) y repite `GET /auth/session` → `401`
-(FR-005).
+**Expiración por inactividad (30 min, FR-005)**: deja una sesión sin usar
+`SESSION_IDLE_TTL_MINUTES` (bájalo a `1` en `.env` para la prueba) y repite
+`GET /auth/session` → `401`. Comprueba el TTL de la clave: `docker compose exec redis redis-cli
+TTL sess:<sha256>` baja de 30 min (1800 s) y se refresca con cada petición.
+
+**Vida absoluta (1 hora desde el login, R15)**: pon `SESSION_ABSOLUTE_TTL_MINUTES=2` en `.env`,
+reinicia el backend (`docker compose up -d backend`), entra y sigue usándolo cada pocos segundos
+(para que la inactividad no sea la que corte): pasados los 2 minutos la sesión caduca igualmente
+→ `401`. En la clave se ve `absoluteExpiresAt` fijo desde el login, sin moverse.
+
+**Revocación (FR-012)**: con una sesión abierta de Carlos, desactiva su cuenta desde el panel (o
+restablece su contraseña): las claves `sess:*` de Carlos y su `user_sessions:*` desaparecen de
+Redis y su cookie deja de servir al instante (§7).
 
 ## 4. Crear rol y cuenta (FR-009, FR-014, FR-019, SC-005)
 
@@ -85,13 +102,15 @@ curl -i -b /tmp/f2-cookies.txt -X POST http://localhost:8080/api/v1/admin/roles 
 
 # Rol sin permisos → 400 "un rol debe tener al menos un permiso" (FR-014)
 
-# Cuenta con ese rol y contraseña inicial
+# Cuenta con ese rol y contraseña inicial (nombre, apellidos, correo y teléfono, FR-009)
 curl -i -b /tmp/f2-cookies.txt -X POST http://localhost:8080/api/v1/admin/usuarios \
   -H "Content-Type: application/json" -H "X-CSRF-Token: $CSRF" \
-  -d '{"fullName":"Carlos Ayudante","email":"carlos@ejemplo.com","roleId":"<id-del-rol>","password":"Cambio.2026"}'
+  -d '{"firstName":"Carlos","lastName":"Ayudante","email":"carlos@ejemplo.com","phone":"612 345 678","roleId":"<id-del-rol>","password":"Cambio.2026"}'
 
 # Correo repetido (aunque se escriba "  Carlos@Ejemplo.com ") → 409 (Q5)
 # roleId inexistente → 400 con details.roleId (US3 esc. 5)
+# teléfono "12" o "no es un teléfono" → 400 con details.phone (FR-009/US3 esc. 3)
+# nombre, apellidos, correo o teléfono vacíos → 400 con el campo que corregir
 
 curl -i -b /tmp/f2-cookies.txt "http://localhost:8080/api/v1/admin/usuarios?limit=20&offset=0"
 # → items con estado, correo y rol (FR-019)
@@ -106,8 +125,8 @@ ni nombre de rol casi duplicado (SC-011).
    nada (US7 esc. 4; el servidor responde `403` con `details.reason=password_change_required` a
    cualquier otra ruta).
 2. `POST /api/v1/auth/password` con `currentPassword` y `newPassword`. Prueba los rechazos: menos
-   de 8 caracteres, sin mayúscula, sin número, sin especial, igual al correo o al nombre → `400`
-   con el requisito incumplido (FR-010/US7 esc. 3).
+   de 8 caracteres, sin mayúscula, sin número, sin especial, igual al nombre, a los apellidos o al
+   correo → `400` con el requisito incumplido (FR-010/US7 esc. 3).
 3. Con una contraseña válida → `200`; sal y vuelve a entrar con la nueva (SC-010: < 1 min).
 4. Como administrador, `POST /api/v1/admin/usuarios/{id}/password` con una contraseña nueva: el
    titular debe cambiarla al entrar (US7 esc. 5) y **sus sesiones abiertas quedan revocadas**.
@@ -153,7 +172,9 @@ curl -i -X POST http://localhost:8080/api/v1/auth/login \
 
 - El mensaje de bloqueo es **el mismo** para un correo que no existe (repite el bucle con
   `nadie@ejemplo.com`): no revela existencia (SC-008). Pasados 15 minutos, se puede volver a
-  intentar (FR-006).
+  intentar (FR-006). Los contadores viven en Redis (R5): `docker compose exec redis redis-cli
+  KEYS 'login:*'` muestra `login:fail:<correo>` (contador) y `login:block:<correo>` (bandera con
+  TTL de 900 s); un login correcto las borra.
 - `rate-limit` por IP: más de 20 peticiones por minuto a `/auth/login` → `429` (P17).
 - Los mensajes de error son comprensibles y sin información interna (tabla de "Errores esperados"
   de la spec): verifica cada uno de los listados en `plan.md` §Cobertura.
@@ -175,11 +196,17 @@ servidor verifica todo).
 
 ```bash
 go test ./...                          # unitarias (service, handler, platform, middleware)
-go test -tags=integration ./...        # repository contra PostgreSQL real (crea app_test y migra antes)
+go test -tags=integration ./...        # integración: PostgreSQL real + Redis (testcontainers, ver abajo)
 npm test -- --run                      # frontend (Vitest + Testing Library + MSW)
 make e2e                               # Playwright: frontend/e2e/acceso.spec.ts
 make ci                                # lint + pruebas + migraciones + govulncheck + npm audit
 ```
+
+Las pruebas de integración necesitan **Docker** (que ya lo requiere `make up`): levantan Redis
+(`redis:7-alpine`) y, si no hay `DATABASE_URL_TEST`, también PostgreSQL, con `testcontainers-go`
+**dentro del propio test** (`research.md` R19). Esto es deliberado: `.github/workflows/ci.yml` es
+un archivo del kit y **no se puede editar**, así que el CI los recibe tal cual y los runners de
+GitHub Actions tienen Docker disponible.
 
 El e2e recorre el camino completo: inicializar → login → crear rol → crear cuenta → entrar con ella
 (contraseña forzada) → ver solo sus módulos → cambiar contraseña → desactivarla → acceso cortado →

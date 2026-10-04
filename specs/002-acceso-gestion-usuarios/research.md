@@ -3,29 +3,46 @@
 **Fecha**: 2026-10-04 · **Rama**: `002-acceso-gestion-usuarios` · **Spec**: `spec.md` (aprobada el 2026-10-04)
 
 Formato: Decisión / Justificación / Alternativas consideradas. Cierra además las preguntas abiertas
-2–5 de `docs/tecnico/decisiones.md` (D-A7, chi, `platform/validate`, tipos UUID). **R1–R4 son la
-aterrización de D-A7 y quedan sujetas a confirmación humana** (no se implementan hasta que el
-humano las apruebe con el plan).
+2–5 de `docs/tecnico/decisiones.md` (D-A7, chi, `platform/validate`, tipos UUID). **R1–R4 aterrizan
+D-A7, CONFIRMADA por el humano el 2026-10-04** con un cambio explícito: **la sesión vive en Redis**
+(no en PostgreSQL). Ese día confirmó además los tiempos de sesión (R15: vida absoluta 1 h +
+inactividad 30 min) y los datos de la cuenta (nombre, apellidos, correo y teléfono; reflejados en
+`data-model.md` y en el contrato).
 
-## R1. Dónde vive la sesión *(D-A7 — PENDIENTE DE CONFIRMACIÓN HUMANA)*
+## R1. Dónde vive la sesión *(D-A7 — CONFIRMADA el 2026-10-04: en Redis)*
 
-- **Decisión**: **sesión en servidor en la tabla PostgreSQL `sessions`**. La cookie solo lleva un
-  token aleatorio opaco; la BD guarda su **SHA-256** (no el token). Revocar es borrar la fila.
-  El detalle está en `data-model.md` (`sessions`) y en P1 del plan.
+- **Decisión**: **la sesión vive en Redis** (decisión explícita del humano el 2026-10-04, con la
+  justificación de adoptar/probar Redis como objetivo de aprendizaje). La cookie solo lleva un
+  token aleatorio opaco de 32 bytes (`crypto/rand`, base64url); **Redis guarda su SHA-256 como
+  parte de la clave, nunca el token en claro**. Revocar es `DEL` de la clave (y de la entrada en el
+  índice por usuario). El detalle de claves y TTL está abajo y en `data-model.md`.
+- **Diseño de claves (Redis)**:
+  - `sess:<sha256(token)>` — string JSON con `userId`, `createdAt`, `lastSeenAt` y
+    `absoluteExpiresAt`. **TTL = inactividad (30 min)**, refrescado en cada actividad y acotado al
+    tiempo que quede de vida absoluta (`TTL = min(30 min, absoluteExpiresAt - now)`).
+  - `user_sessions:<userId>` — `SET` con los hashes de token de las sesiones abiertas de la cuenta
+    (TTL ≤ vida absoluta). Permite **revocar todas las sesiones de una cuenta** (FR-012, R17) con
+    `SMEMBERS` + `DEL`, sin `SCAN` ni tabla.
+  - Los `lastSeenAt` se escriben estrangulados a una vez por minuto (misma idea que el
+    `last_seen_at` de la propuesta anterior; solo cambia el almacén).
 - **Justificación**:
   - FR-012 exige que desactivar una cuenta corte el acceso **de inmediato, también las sesiones
-    abiertas**: con sesión en servidor eso es un `DELETE FROM sessions WHERE user_id = …` (y, como
-    red de seguridad, `authn` revalida que la cuenta siga activa en cada petición). Con un token
-    autocontenido (JWT) habría que mantener una lista negra, que es… una sesión en servidor con
-    otro nombre.
-  - Cero servicios nuevos: PostgreSQL ya es obligatorio (constitución §II), `database.WithTx` y
-    sqlc ya existen y el volumen real son decenas de cuentas con pocas sesiones.
-  - Guardar el **hash** del token y no el token evita que una lectura indebida de la BD permita
-    secuestrar sesiones; la comparación es por igualdad de un hash (consulta por índice único).
+    abiertas**: con sesión en servidor eso es un `DEL` de sus claves (y, como red de seguridad,
+    `authn` revalida que la cuenta siga activa en cada petición). Con un token autocontenido (JWT)
+    habría que mantener una lista negra, que es… una sesión en servidor con otro nombre.
+  - **Es la decisión explícita del humano de adoptar Redis** (D-A8: dependencia justificada por
+    elección humana, con el objetivo declarado de aprender/usar Redis en el proyecto). No se
+    argumenta aquí contra ella: la alternativa PostgreSQL queda documentada abajo como descartada
+    por esa decisión, y es el plan B si Redis resultara inviable.
+  - Redis es la herramienta correcta para este estado: efímero, con **expiración nativa por TTL**
+    (sin limpieza manual ni cron) y compartido entre instancias si algún día hay más de una.
+  - Guardar el **hash** del token y no el token evita que una lectura indebida de Redis permita
+    secuestrar sesiones.
 - **Alternativas consideradas**:
-  - *Redis / memcached para sesiones*: rechazado — añade un servicio al `docker-compose.yml`, una
-    dependencia de cliente y una pieza más que operar para un panel con decenas de usuarios. Se
-    reabriría si hubiera varias instancias de backend y la escritura de `last_seen_at` molestara.
+  - *Tabla PostgreSQL `sessions`* (la propuesta original de D-A7): **descartada por la decisión
+    explícita del humano el 2026-10-04 de vivir en Redis**. Sus ventajas quedan registradas para el
+    plan B: cero servicios nuevos, transaccional con `users`, durabilidad y revisión por SQL. Es la
+    opción a la que se volvería si Redis no fuera viable (ver riesgo R15/R16 del plan).
   - *JWT autocontenido en cookie*: rechazado (y ya lo estaba en D-A7) — revocación al desactivar
     forzada con lista negra; más superficie (algoritmo, expiración, refresco) para el mismo
     resultado.
@@ -34,18 +51,21 @@ humano las apruebe con el plan).
   - *Token en `localStorage`*: rechazado — expuesto a XSS (CWE-79) y prohibido por la skill.
   - *Framework de auth completo (OIDC/Keycloak)*: rechazado — peso desproporcionado para un panel
     interno, y exige operar un IdP.
-- **Consecuencias**: tabla `sessions` + `internal/platform/session` (token y cookie, sin SQL) +
-  `middleware.Authn` resolviendo la identidad por petición. **Estado: propuesta — pendiente de
-  confirmación del humano junto con R2, R3 y R4.**
+- **Consecuencias**: servicio `redis` en `docker-compose.yml`, dependencia de runtime
+  `github.com/redis/go-redis/v9` (justificada en R16), `internal/platform/session` con la interfaz
+  `Store` y su implementación Redis (sin SQL), **sin** tabla `sessions` ni `sessions.sql`, y las
+  pruebas de integración de sesión con `testcontainers-go` (R19). `middleware.Authn` resuelve la
+  identidad por petición igual que antes. **Estado: confirmada por el humano el 2026-10-04.**
 
-## R2. La cookie de sesión y sus flags *(D-A7 — pendiente de confirmación)*
+## R2. La cookie de sesión y sus flags *(D-A7 — confirmada el 2026-10-04)*
 
 - **Decisión**: cookie **`ss_session`** con `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` según
   `SESSION_COOKIE_SECURE` (en `false` por defecto en desarrollo; `platform/config` **falla al
   arrancar** si `APP_ENV=production` y está en `false`). Valor: 32 bytes de `crypto/rand` en
-  base64url; caduca junto con la sesión (inactividad 30 min; vida absoluta propuesta de 12 h, R15).
-  Se emite en la respuesta de `POST /api/v1/auth/login` y se borra en `logout` y en toda
-  revocación.
+  base64url; caduca junto con la sesión (**inactividad 30 min + vida absoluta 1 h**, R15) y su
+  `Max-Age` se fija a la **vida absoluta (3600 s)**, de modo que el navegador la descarta en el
+  mismo instante en que el servidor la daría por vencida. Se emite en la respuesta de
+  `POST /api/v1/auth/login` y se borra en `logout` y en toda revocación.
 - **Justificación**: `HttpOnly` impide que JavaScript lea la sesión (mitigación de XSS, CWE-79);
   `SameSite=Lax` bloquea el envío de la cookie en peticiones cross-site de métodos no seguros
   (primera barrera de CSRF, que se refuerza con R3); `Secure` impide que viaje en claro cuando hay
@@ -61,7 +81,7 @@ humano las apruebe con el plan).
   envía en las peticiones `fetch` con `credentials: "include"`. Con `Secure=true` sobre `http://`
   algunos navegadores rechazan la cookie: por eso el desarrollo va con `false`.
 
-## R3. CSRF en las rutas con sesión *(D-A7 — pendiente de confirmación)*
+## R3. CSRF en las rutas con sesión *(D-A7 — confirmada el 2026-10-04)*
 
 - **Decisión**: **double-submit firmado**. Cookie `csrf_token` (no `HttpOnly`) cuyo valor es
   `nonce.HMAC-SHA256(SESSION_SECRET, nonce)`; todo método no seguro dentro de un grupo con sesión
@@ -89,7 +109,7 @@ humano las apruebe con el plan).
   "entre" a la víctima en la cuenta del atacante) queda documentado como riesgo aceptado: sin datos
   de la víctima y sin persistencia, su impacto es despreciable en este panel.
 
-## R4. Hash de contraseñas: bcrypt *(D-A7 — pendiente de confirmación)*
+## R4. Hash de contraseñas: bcrypt *(D-A7 — confirmada el 2026-10-04)*
 
 - **Decisión**: **bcrypt con cost 12** (`golang.org/x/crypto/bcrypt`) en un paquete propio
   `internal/platform/password` que además implementa la política FR-010 (validación) y expone
@@ -103,9 +123,9 @@ humano las apruebe con el plan).
   caro para la prueba masiva de contraseñas (se combina con el bloqueo de R5 y el rate-limit de R12).
 - **Política FR-010 (implementación)**: longitud **8–64 caracteres y ≤ 72 bytes** (límite duro de
   bcrypt: rechaza entradas mayores de 72 bytes — por eso la validación lo advierte antes), al menos
-  una mayúscula, una minúscula, un número y un carácter especial, y **distinta del nombre y del
-  correo** comparada de forma normalizada (trim + minúsculas). El error identifica el requisito
-  incumplido (`details.newPassword`).
+  una mayúscula, una minúscula, un número y un carácter especial, y **distinta del nombre, de los
+  apellidos y del correo** comparada de forma normalizada (trim + minúsculas). El error identifica
+  el requisito incumplido (`details.newPassword`).
 - **Alternativas consideradas**:
   - *argon2id*: válida por §IV y más resistente a GPU/ASIC, pero añade parámetros que afinar
     (memoria, iteraciones, paralelismo) sin una necesidad hoy; además usa **la misma** dependencia.
@@ -117,29 +137,40 @@ humano las apruebe con el plan).
   variables de entorno: son exigencias de la política confirmada por el humano (2026-10-04), no
   ajustes operativos.
 
-## R5. Bloqueo por intentos fallidos (FR-006) sin enumerar cuentas (FR-003)
+## R5. Bloqueo por intentos fallidos (FR-006) sin enumerar cuentas (FR-003) *(contadores en Redis)*
 
-- **Decisión**: tabla `login_attempts` con fila **por identificador normalizado (el correo), exista
-  o no la cuenta**. Al fallar: `upsert` que incrementa `failed_count` y fija `last_failed_at`; al
-  llegar a **5** se fija `blocked_until = now() + 15 minutos`. Si hay bloqueo vigente, la respuesta
-  es `429 rate_limited` con el mensaje de bloqueo; si no, la respuesta es siempre el mismo
-  `401 unauthenticated` genérico. Un inicio de sesión correcto borra la fila; el bloqueo expirado
-  se resetea al siguiente intento. Los valores **5** y **15 minutos** son **constantes de código**
-  (`maxFailedAttempts`, `lockoutDuration`) porque el humano los confirmó el 2026-10-04.
+- **Decisión**: los contadores viven en **Redis**, con una entrada **por identificador normalizado
+  (el correo), exista o no la cuenta**. Dos claves: `login:fail:<identificador>` (contador que se
+  incrementa con `INCR` en cada fallo, TTL 15 min) y `login:block:<identificador>` (bandera de
+  bloqueo con TTL 15 min, creada al llegar a **5** fallos). Si hay bloqueo vigente, la respuesta es
+  `429 rate_limited` con el mensaje de bloqueo y `Retry-After` = TTL restante; si no, la respuesta
+  es siempre el mismo `401 unauthenticated` genérico. Un inicio de sesión correcto borra las dos
+  claves; el bloqueo vencido lo borra el propio TTL (sin limpieza manual). Los valores **5** y
+  **15 minutos** siguen siendo **constantes de código** (`maxFailedAttempts`, `lockoutDuration`)
+  porque el humano los confirmó el 2026-10-04.
 - **Justificación**: FR-006 pide bloquear tras 5 intentos y FR-003/SC-008 piden que ningún mensaje
   revele si la cuenta existe. Si el contador viviera solo en `users`, el mensaje de bloqueo
   **solo** aparecería para cuentas reales → enumeración garantizada. Contando por identificador
   (haya cuenta o no) el comportamiento —mensaje, código y tiempos— es **idéntico** en ambos casos y
-  las dos exigencias se cumplen a la vez. La fila se limpia con el éxito y con la expiración, así
-  que no crece sin control.
-- **Alternativas consideradas**: contador solo en `users` (enumeración); contador solo en memoria
-  (se pierde al reiniciar el proceso y no sobrevive a varias instancias); rate-limit por IP como
-  única medida (no frena la prueba masiva de contraseñas contra **una** cuenta desde una IP); bloqueo
-  permanente hasta intervención de un administrador (no lo pide la spec y bloquea al usuario
-  legítimo).
+  las dos exigencias se cumplen a la vez. Con Redis el estado es efímero por definición (la tabla
+  propuesta antes se auto-borraba igual al resolverse: no tenía valor duradero), su TTL es
+  exactamente el mecanismo de expiración que la regla necesita y, como la sesión ya vive en Redis
+  (R1), no se añade ninguna pieza nueva.
+- **Alternativas consideradas**:
+  - *Tabla PostgreSQL `login_attempts`* (la propuesta anterior): descartada al confirmarse la
+    sesión en Redis — exigiría una migración, consultas sqlc y limpieza manual para un estado que
+    no debe durar. Queda como plan B junto con la tabla `sessions` si Redis no fuera viable.
+  - *Contador solo en `users`* (enumeración); *contador solo en memoria del proceso* (se pierde al
+    reiniciar y no sobrevive a varias instancias — ahora que Redis existe, no hay razón); *rate-limit
+    por IP como única medida* (no frena la prueba masiva de contraseñas contra **una** cuenta desde
+    una IP); *bloqueo permanente hasta intervención de un administrador* (no lo pide la spec y
+    bloquea al usuario legítimo).
 - **Mensajes** (siempre en español, sin datos internos): intentos 1–4 → *"Correo o contraseña
   incorrectos"* (genérico); desde el 5.º y durante el bloqueo → *"Demasiados intentos fallidos. El
   acceso queda bloqueado temporalmente durante 15 minutos"*, con `Retry-After` en segundos.
+- **Riesgo registrado**: si Redis se reinicia sin persistencia, se pierden los contadores (y las
+  sesiones, que solo obligan a volver a entrar). Un atacante no puede forzar ese reinicio, así que
+  la pérdida es aceptable; si en despliegue se exigiera dureza, se activa AOF/RDB de Redis.
 
 ## R6. Inicialización única del administrador (FR-007)
 
@@ -190,12 +221,13 @@ humano las apruebe con el plan).
 
 ## R8. Modelo de datos: simplificación de la referencia de F1
 
-- **Decisión**: `users`, `sessions`, `roles`, `permissions`, `role_permissions`, `login_attempts`.
+- **Decisión**: en PostgreSQL solo quedan `users`, `roles`, `permissions` y `role_permissions`.
   **Se elimina `user_roles`** (la referencia orientativa de F1 `data-model.md` §"F2" lo incluía):
   una cuenta tiene **un solo rol** (decisión Q4), así que la relación vive en `users.role_id`.
   **Se añade `permissions`** como catálogo fijo sembrado por la migración (los 9 módulos de
-  FR-015, incluidos los reservados de F3–F9) y **`login_attempts`** (R5). Detalle completo en
-  `data-model.md`.
+  FR-015, incluidos los reservados de F3–F9). **`sessions` y `login_attempts` no son tablas**: la
+  sesión vive en Redis (R1) y los contadores de intentos de acceso también (R5), por decisión
+  confirmada del humano el 2026-10-04. Detalle completo en `data-model.md` (tablas y claves Redis).
 - **Justificación**: `user_roles` permitiría varios roles por cuenta, exactamente lo que Q4 prohíbe;
   conservarlo "por si acaso" añadiría una tabla y reglas de "rol efectivo" que la spec no quiere. La
   tabla `permissions` da FK y unicidad reales a `role_permissions` y permite al panel listar el
@@ -292,12 +324,14 @@ humano las apruebe con el plan).
 
 - **Decisión**: todo F2 vive en **un paquete de dominio**, `internal/usuarios/`, con los archivos de
   la receta divididos por responsabilidad (`service_auth.go`, `handler_users.go`… — desviación
-  declarada en el plan). `internal/platform/session` solo contiene el **plumbing** de token/cookie y
-  los tipos `Identity`/`Resolver` (sin SQL); la persistencia de sesiones es parte del repository del
-  dominio.
+  declarada en el plan). `internal/platform/session` contiene el **plumbing** de token/cookie, los
+  tipos `Identity`/`Resolver`, la interfaz `Store` de sesiones y su implementación sobre Redis
+  (sin SQL ni conocimiento del dominio: las claves solo guardan el `userId` y marcas de tiempo);
+  el dominio resuelve la identidad (cuenta → rol → permisos) y revoca sesiones por cuenta a través
+  de `session.Store`.
 - **Justificación**: la spec de F2 es **una** área ("Acceso y gestión de usuarios") y sus tablas se
-  consultan juntas a cada paso (login = `users` + `roles` + `permissions`; gestión = las mismas +
-  `sessions`). Con dos dominios, R2 ("un dominio no importa a otro") obligaría a consultas
+  consultan juntas a cada paso (login = `users` + `roles` + `permissions`; gestión = las mismas).
+  Con dos dominios, R2 ("un dominio no importa a otro") obligaría a consultas
   compartidas en `internal/db/queries/` y a una interfaz extra para revocar sesiones desde la
   gestión de cuentas: reglas adicionales para ningún beneficio hoy. Además `data-model.md` de F1 ya
   preveía estas tablas transversales "en `internal/platform/` + el dominio `usuarios`".
@@ -306,19 +340,31 @@ humano las apruebe con el plan).
   (fragmentación sin aislamiento real: comparten tablas); todo en `platform/` (el dominio no es
   plumbing: tiene reglas de negocio de la spec).
 
-## R15. Vida absoluta de la sesión *(propuesta nueva — se confirma junto con D-A7)*
+## R15. Vida absoluta de la sesión *(CONFIRMADA el 2026-10-04: 1 hora)*
 
-- **Decisión propuesta**: además de la inactividad de **30 minutos** (assumption de la spec,
-  ajustable por el cliente), la sesión tiene una **vida absoluta de 12 horas** (`expires_at` fijado
-  al iniciar sesión). Superada cualquiera de las dos, hay que volver a iniciar sesión.
+- **Decisión**: además de la inactividad de **30 minutos** (assumption de la spec), la sesión tiene
+  una **vida absoluta de 1 hora desde el inicio de sesión** (ambos valores confirmados por el
+  humano el 2026-10-04). Superada cualquiera de las dos, hay que volver a iniciar sesión.
+- **Cómo se implementa sobre Redis (R1)**: una sola clave por sesión con **TTL de inactividad de
+  30 min** que se refresca en cada actividad, y dentro del valor un `absoluteExpiresAt = createdAt +
+  1 h` que nunca se mueve. En cada petición: si la clave no existe → sesión caducada por
+  inactividad; si existe pero `now >= absoluteExpiresAt` → caducada por vida absoluta (se borra la
+  clave); si sigue viva → se refresca el TTL **acotado** al tiempo que quede de vida absoluta
+  (`TTL = min(30 min, absoluteExpiresAt - now)`), de modo que Redis expira la clave como muy tarde
+  a la hora de nacer. La cookie se emite con `Max-Age` de 1 h (R2) y el cliente puede mostrar la
+  cuenta atrás con las mismas marcas.
 - **Justificación**: la spec solo exige expiración por inactividad (FR-005), pero sin vida absoluta
-  una cookie robada seguiría viva para siempre mientras haya actividad mínima, y los permisos de
-  una sesión "vieja" se revalidan igualmente (P9). Es una medida de seguridad estándar y de coste
-  nulo.
-- **Estado**: **no está en la spec**; se propone como complemento de seguridad y se marca para
-  confirmación humana junto con D-A7 (si no se confirma, se implementa solo la inactividad de 30 min
-  y `expires_at` pasa a ser derivado). El valor (12 h) y los 30 min serían configurables por
-  variables de entorno con esos defectos.
+  una cookie robada seguiría viva para siempre mientras haya actividad mínima. La vida absoluta de
+  1 h es corta a propósito (panel interno, re-login barato) y el mecanismo —TTL de Redis + fecha
+  límite inmóvil— es simple de explicar y de probar. Los dos valores se leen de
+  `SESSION_IDLE_TTL_MINUTES` (30) y `SESSION_ABSOLUTE_TTL_MINUTES` (60) con esos defectos.
+- **Alternativas consideradas**: solo inactividad (una cookie robada viviría lo que durara la
+  actividad); dos claves Redis por sesión (una por expiración: dos viajes y dos TTL que
+  sincronizar); TTL absoluto de 1 h sin refresco de inactividad (mataría sesiones legítimas activas
+  a la hora justa aunque haya actividad); refresco de vida absoluta por actividad (es un "sliding
+  window" total: vuelve a ser indefinida).
+- **Estado**: **confirmada por el humano el 2026-10-04** (1 h absoluta + 30 min de inactividad,
+  valores que sustituyen a los 12 h propuestos inicialmente).
 
 ## R16. Dependencias nuevas (D-A8: justificación por dependencia)
 
@@ -326,12 +372,15 @@ humano las apruebe con el plan).
 |---|---|---|---|---|
 | `golang.org/x/crypto` | backend (runtime) | 1 directa (+ `golang.org/x/sys` y/o `x/term` indirectas) | bcrypt: §IV **exige** bcrypt o argon2 y la stdlib no lo trae | argon2id (misma dependencia); hash propio (viola §IV) |
 | `github.com/google/uuid` | backend (runtime) | 1 directa, sin transitivas | Tipos UUID del dominio (§8.1.1; R11) | `pgtype.UUID` en el dominio (arrastra `pgx`) |
+| `github.com/redis/go-redis/v9` | backend (runtime) | 1 directa (+ `cespare/xxhash` y `dgryski/go-rendezvous` indirectas) | Cliente de Redis para la sesión y los contadores de acceso (R1/R5). **Justificado bajo D-A8 por decisión explícita del humano el 2026-10-04: adoptar Redis como objetivo de aprendizaje**; go-redis es el cliente de referencia, mantenido y con soporte de TTL/pipelines | La alternativa técnica era **no** usar Redis (sesión y contadores en PostgreSQL); queda descartada por esa decisión humana y documentada como plan B. Otros clientes (`rueidis`, cliente RESP propio) sin ventaja para este uso |
+| `github.com/testcontainers/testcontainers-go` | backend (**solo** pruebas `//go:build integration`) | 1 directa (+ transitivas del SDK de Docker) | Levanta Redis (y PostgreSQL si hace falta) **dentro de las pruebas de integración**: `.github/workflows/ci.yml` es del kit y **no se puede editar**, y F2 necesita Redis en esas pruebas (R19) | Editar `ci.yml` con un *service* de Redis (**prohibido**: archivo del kit); `miniredis` (reimplementación en memoria: no valida el cliente real ni los TTL reales); exigir Redis manual en cada entorno (no reproducible) |
 | `react-hook-form` | frontend | 1 | Convención de la skill para formularios (estado, errores junto al campo) | Estado manual en React (más código y más errores) |
 | `zod` | frontend | 1 | Esquemas de validación de formularios **espejo del contrato** (skill) | Validación a mano (duplica y diverge del contrato) |
 | `@hookform/resolvers` | frontend | 1 | Puente RHF↔Zod (oficial) | Integración manual |
 
 Ninguna otra dependencia entra en F2. `sqlc`, `golang-migrate` y `openapi-typescript` siguen siendo
-herramientas de desarrollo. Todas pasan `govulncheck`/`npm audit` (§IV) en `make ci`.
+herramientas de desarrollo; `testcontainers-go` se enlaza **solo** en el build de integración (no
+llega al binario de producción). Todas pasan `govulncheck`/`npm audit` (§IV) en `make ci`.
 
 ## R17. `mustChangePassword` y revocación de sesiones
 
@@ -361,3 +410,46 @@ herramientas de desarrollo. Todas pasan `govulncheck`/`npm audit` (§IV) en `mak
 - **Alternativas consideradas**: no hacerlo (enumeración por timing, hallazgo seguro para
   `seguridad`); retardar artificialmente todas las respuestas a un fijo (peor: alarga también los
   éxitos y no elimina la señal).
+
+## R19. Redis en las pruebas de integración sin tocar el CI del kit
+
+- **Decisión**: las pruebas de integración que necesitan Redis (sesiones, contadores de acceso) y
+  las de repositorio levantan sus servicios con **`testcontainers-go` dentro del propio proceso de
+  prueba** (`//go:build integration`): `redis:7-alpine` **siempre**, y PostgreSQL desde
+  `DATABASE_URL_TEST` si la variable existe (el CI del kit ya lo aporta como *service*) o también
+  con testcontainers si no. El flujo local puede usar el servicio `redis` de `docker-compose.yml`
+  vía `REDIS_URL`; el CI **no cambia**.
+- **Justificación**: `.github/workflows/ci.yml` está en `.kit-manifest.json` y **no se puede
+  editar** (regla 10 de AGENTS.md), pero su job de backend ya ejecuta
+  `go test -tags=integration ./...` y los runners `ubuntu-latest` de GitHub Actions tienen Docker
+  disponible. testcontainers gestiona el ciclo de vida (arranque, puerto, limpieza) desde el
+  propio test, así que la integración con Redis es reproducible en cualquier entorno sin tocar el
+  kit. `testcontainers-go` queda como dependencia **de desarrollo** justificada bajo D-A8 (R16).
+- **Alternativas consideradas**: editar `ci.yml` añadiendo un *service* de Redis (prohibido: archivo
+  del kit; y su hash está registrado en `.kit-manifest.json`); proponer el cambio al repositorio del
+  kit (vía válida para el futuro, pero bloquearía F2 y no es decisión de esta fase);
+  `miniredis` como Redis embebido (reimplementación en memoria: sirve para unit tests, pero no
+  valida el cliente real ni los TTLs de verdad); exigir un Redis manual en cada entorno (no
+  reproducible y frágil).
+- **Consecuencias**: los tests de integración exigen Docker (ya lo exigía `make up`); el primer
+  arranque descarga `redis:7-alpine` (~15 MB); si el runner no tuviera Docker o fallara la descarga
+  de imágenes, la integración fallaría **sin** poder remediarse desde el CI — registrado como
+  riesgo R15 del plan.
+
+## R20. Datos de la cuenta: nombre, apellidos, correo y teléfono *(confirmados el 2026-10-04)*
+
+- **Decisión**: la cuenta del panel tiene **nombre** (`users.first_name`), **apellidos**
+  (`users.last_name`), **correo** (`users.email`, identificación de acceso) y **teléfono**
+  (`users.phone`); los cuatro obligatorios, con nombre y apellidos como campos separados. La spec
+  ya está actualizada (FR-009, FR-011 y el glosario) y esto cierra el riesgo R3 del plan
+  ("identificación" ambigua) y la duda sobre un eventual documento de identidad: **no hace falta**.
+- **Justificación**: son los datos que el equipo de la iglesia necesita para identificar a cada
+  persona y contactarla; el teléfono se valida con un formato telefónico razonable (FR-009:
+  dígitos con espacios, guiones o paréntesis, prefijo internacional opcional y **al menos 7
+  dígitos**) en `platform/validate` (etiqueta `phone`), sin normalizar su forma de presentación
+  (no participa en unicidad). La política de contraseñas se compara contra nombre, apellidos y
+  correo (FR-010).
+- **Alternativas consideradas**: un solo campo `full_name` (la spec pide nombre y apellidos
+  separados); documento de identidad aparte (no lo pide la spec; quedaría como columna nueva si
+  algún día aparece); teléfono opcional (la spec lo hace obligatorio); guardar solo dígitos o
+  normalizar a E.164 (se pierde la forma de presentación sin ganar unicidad ni búsquedas).

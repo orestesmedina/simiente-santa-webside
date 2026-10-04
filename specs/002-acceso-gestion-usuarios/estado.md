@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 2/9 · Planificar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Aprobación humana del plan + confirmar D-A7 (y decidir "identificación" y la vida absoluta de sesión) |
+| Próximo paso | Aprobación humana del plan (D-A7 confirmada con Redis; tiempos, campos y token resueltos) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -46,6 +46,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-04 — El humano resolvió los puntos del plan: **D-A7 confirmada con Redis** (sesiones en Redis por objetivo de aprendizaje), sesión **1 h máxima + 30 min de inactividad**, cuenta con **nombre, apellidos, correo y teléfono**, y token `BOOTSTRAP_TOKEN` mantenido. Spec, plan, ux.md y `docs/tecnico/decisiones.md` (D-A7) actualizados.
 - 2026-10-04 — **Plan técnico y `ux.md` redactados** (`arquitecto`, `disenador-ux`); pendiente la aprobación humana del plan y la confirmación de D-A7.
 - 2026-10-04 — **Spec de F2 aprobada por el humano** ("apruebo la spec"). Inicio de la fase 2 (plan técnico).
 - 2026-10-04 — El humano fijó el bloqueo por intentos fallidos en **15 minutos** (FR-006); incorporado a la spec.

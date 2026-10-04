@@ -7,38 +7,44 @@
 ## Decisión: cómo se aterriza la referencia de F1 §"F2"
 
 F1 dejó una asignación **orientativa**: `users`, `sessions`, `roles`, `user_roles`, permisos por
-módulo (p. ej. `role_permissions`). Este plan la **simplifica y completa** así:
+módulo (p. ej. `role_permissions`). Este plan la **simplifica y completa** así (actualizado el
+2026-10-04 con las decisiones del humano: **la sesión vive en Redis**, no en PostgreSQL):
 
 | Tabla de la referencia de F1 | Decisión F2 | Por qué |
 |---|---|---|
 | `users` | **Se mantiene** | Cuenta del panel (FR-009…FR-013) |
-| `sessions` | **Se mantiene** | Sesión en servidor (D-A7, R1 de `research.md`) |
+| `sessions` | **No es tabla: vive en Redis** | D-A7 **confirmada** el 2026-10-04 con sesión en Redis (decisión explícita del humano para adoptar/probar Redis); ver `research.md` R1 y "Almacenamiento en Redis" más abajo |
 | `roles` | **Se mantiene** | Roles creados por el administrador (FR-014/FR-017) |
 | `user_roles` | **Se elimina** | La decisión Q4 fija **un solo rol por cuenta**: la relación es `users.role_id` (FK). Una tabla de unión permitiría varios roles, exactamente lo que la spec prohíbe |
 | permisos por módulo (ej. `role_permissions`) | **Se mantiene `role_permissions`** y se **añade `permissions`** como catálogo fijo sembrado por la migración | FK y unicidad reales + `GET /api/v1/admin/permisos` puede listar el catálogo con etiquetas sin duplicarlo en código |
-| (no previsto) | **Se añade `login_attempts`** | FR-006 (5 intentos / 15 min) sin enumerar cuentas (R5 de `research.md`) |
+| (no previsto) `login_attempts` | **No es tabla: contadores en Redis con TTL** | FR-006 (5 intentos / 15 min) sin enumerar cuentas (`research.md` R5). El estado es efímero por definición y Redis ya existe por la sesión: su TTL reemplaza a la limpieza manual |
 
 Reglas que se respetan de las convenciones: nombres en inglés y plural; `id UUID PRIMARY KEY
 DEFAULT gen_random_uuid()`; `created_at`/`updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`; `NOT NULL`
 por defecto; `TEXT` con `CHECK` de longitud; claves foráneas explícitas con `ON DELETE` decidido;
 índices en FK y en las columnas de `WHERE`/`ORDER BY`; `UNIQUE`/`CHECK` **en la base**, no solo en el
-código; `up`/`down` completos; **nunca** se edita una migración aplicada (F2 arranca en `000002`).
+código; `up`/`down` completos; **nunca** se edita una migración aplicada. **F2 consta de dos
+migraciones, `000002` y `000003`** (la numeración sigue desde el baseline `000001` de F1; al no
+crear tablas de sesión ni de intentos no hay huecos que renumerar).
 
 ## Resumen de tablas
 
 ```text
-permissions ──< role_permissions >── roles ──< users >── sessions
-                                          └────< login_attempts (por identificador, sin FK)
+PostgreSQL:  permissions ──< role_permissions >── roles ──< users
+
+Redis:       sess:<sha256(token)>      → sesión (TTL 30 min, vida absoluta 1 h)
+             user_sessions:<user_id>   → SET de sesiones abiertas (revocación por cuenta)
+             login:fail:<identificador>  /  login:block:<identificador>  → intentos y bloqueo
 ```
 
-| Tabla | Propietario (paquete) | Reglas que cubre |
+| Tabla / almacén | Propietario (paquete) | Reglas que cubre |
 |---|---|---|
 | `permissions` | `internal/usuarios` | FR-015 (catálogo = módulos del producto) |
 | `roles` | `internal/usuarios` | FR-014, FR-017 |
 | `role_permissions` | `internal/usuarios` | FR-014 (≥1 permiso), FR-018 |
 | `users` | `internal/usuarios` | FR-009…FR-013, FR-017 (un rol), FR-019 |
-| `sessions` | `internal/usuarios` (plumbing de token/cookie en `platform/session`) | FR-001, FR-004, FR-005, FR-012 |
-| `login_attempts` | `internal/usuarios` | FR-006 |
+| Redis: `sess:*` / `user_sessions:*` | `internal/platform/session` (implementación Redis de `session.Store`) | FR-001, FR-004, FR-005, FR-012 |
+| Redis: `login:fail:*` / `login:block:*` | `internal/usuarios` | FR-006 |
 
 ## Migraciones
 
@@ -115,7 +121,9 @@ DROP TABLE IF EXISTS permissions;
 CREATE TABLE users (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email                TEXT NOT NULL UNIQUE CHECK (char_length(email) BETWEEN 3 AND 254),
-    full_name            TEXT NOT NULL CHECK (char_length(full_name) BETWEEN 1 AND 120),
+    first_name           TEXT NOT NULL CHECK (char_length(first_name) BETWEEN 1 AND 80),
+    last_name            TEXT NOT NULL CHECK (char_length(last_name) BETWEEN 1 AND 120),
+    phone                TEXT NOT NULL CHECK (char_length(phone) BETWEEN 7 AND 32),
     password_hash        TEXT NOT NULL,
     must_change_password BOOLEAN NOT NULL DEFAULT true,
     is_active            BOOLEAN NOT NULL DEFAULT true,
@@ -123,7 +131,12 @@ CREATE TABLE users (
     created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     -- El correo se guarda normalizado (Q5): trim + minúsculas.
-    CHECK (email = lower(btrim(email)))
+    CHECK (email = lower(btrim(email))),
+    -- El teléfono se guarda sin espacios sobrantes; su formato telefónico (al menos
+    -- 7 dígitos, separadores habituales, prefijo internacional opcional) lo valida
+    -- `platform/validate` (etiqueta `phone`) en el service: la restricción de la
+    -- base evita vacíos y basura, no sustituye a la validación de formato.
+    CHECK (phone = btrim(phone))
 );
 
 CREATE INDEX users_role_id_idx ON users (role_id);
@@ -139,8 +152,11 @@ Notas:
 - `role_id NOT NULL` con `ON DELETE RESTRICT`: un rol en uso no se puede eliminar (FR-017) — la
   restricción es la red de seguridad del service, y el mensaje explicativo lo pone el service
   (`409 conflict`).
-- `full_name` es el campo de "identificación" de la spec (ver riesgo R3 del plan: pendiente de
-  confirmar si además hace falta un documento de identidad).
+- **Datos de la cuenta (confirmados por el humano el 2026-10-04, `research.md` R20)**: `first_name`
+  (nombre) y `last_name` (apellidos) son **campos obligatorios separados**, `email` es la
+  identificación de acceso y `phone` es **obligatorio** con formato telefónico razonable (FR-009:
+  dígitos con espacios, guiones o paréntesis, prefijo internacional opcional y ≥ 7 dígitos). No hay
+  documento de identidad: el riesgo R3 del plan queda **cerrado**.
 - `password_hash` guarda el hash **bcrypt** (nunca la contraseña, §IV); ningún DTO de salida incluye
   este campo (FR-003).
 - `must_change_password = true` cuando un administrador define/restablece la contraseña (US3 esc. 6,
@@ -155,75 +171,38 @@ Notas:
 DROP TABLE IF EXISTS users;
 ```
 
-### `000004_create_sessions.up.sql`
+## Almacenamiento en Redis (sesiones e intentos de acceso)
 
-```sql
-CREATE TABLE sessions (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash   BYTEA NOT NULL UNIQUE CHECK (octet_length(token_hash) = 32),
-    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at   TIMESTAMPTZ NOT NULL,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+No hay más migraciones: `sessions` y `login_attempts` **no** se crean en PostgreSQL (decisión
+confirmada del humano el 2026-10-04; `research.md` R1/R5). El contrato con Redis se documenta aquí
+porque es parte del modelo de datos aunque viva fuera de la base relacional. Cliente:
+`github.com/redis/go-redis/v9` (justificado en `research.md` R16); la interfaz `session.Store` y su
+implementación viven en `internal/platform/session`, y los contadores de acceso se manejan desde el
+dominio `usuarios`.
 
-CREATE INDEX sessions_user_id_idx ON sessions (user_id);
-CREATE INDEX sessions_expires_at_idx ON sessions (expires_at);
-```
-
-Notas:
-
-- `token_hash` es el **SHA-256** del token de la cookie (32 bytes); el token en claro **no** se
-  guarda (una lectura indebida de la BD no permite secuestrar sesiones). `UNIQUE` hace la
-  resolución por índice.
-- `last_seen_at` mide la **inactividad** (30 min; FR-005) y `expires_at` la **vida absoluta**
-  propuesta de 12 h (R15 de `research.md`, pendiente de confirmación junto con D-A7; si no se
-  aprueba, `expires_at` se fija igual y la inactividad basta para invalidar).
-- `ON DELETE CASCADE` sobre `users`: una sesión sin cuenta no significa nada. Los usuarios **no se
-  borran** en el MVP (FR-013), así que el `CASCADE` es la red de seguridad para un borrado futuro.
-- Limpieza: se borran las sesiones expiradas al crear una nueva (oportunista) y todas las de una
-  cuenta al desactivarla o al restablecer su contraseña (FR-012, R17). No hay cron: no hay
-  infraestructura de trabajos en F2 y el volumen es mínimo.
-
-### `000004_create_sessions.down.sql`
-
-```sql
-DROP TABLE IF EXISTS sessions;
-```
-
-### `000005_create_login_attempts.up.sql`
-
-```sql
-CREATE TABLE login_attempts (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    identifier    TEXT NOT NULL UNIQUE CHECK (char_length(identifier) BETWEEN 3 AND 254),
-    failed_count  INTEGER NOT NULL DEFAULT 0 CHECK (failed_count >= 0),
-    last_failed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    blocked_until TIMESTAMPTZ,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CHECK (identifier = lower(btrim(identifier)))
-);
-```
+| Clave | Tipo | Valor | TTL | Para qué |
+|---|---|---|---|---|
+| `sess:<sha256(token)>` | string | JSON: `userId`, `createdAt`, `lastSeenAt`, `absoluteExpiresAt` | **30 min de inactividad**, refrescado en cada actividad y acotado a la vida absoluta (`min(30 min, absoluteExpiresAt - now)`) | Sesión de la cookie `ss_session` (FR-001/FR-005). El token en claro **nunca** se guarda |
+| `user_sessions:<userId>` | set | hashes de token de las sesiones abiertas (la clave `sess:*` se reconstruye con `sess:<hash>`) | ≤ 1 h (vida absoluta) | Revocar **todas** las sesiones de una cuenta al desactivarla o al definir/restablecer su contraseña (FR-012, R17), sin `SCAN` |
+| `login:fail:<identificador>` | string (contador) | número de fallos consecutivos | 15 min | FR-006: `INCR` por fallo, `DEL` al entrar bien; con 5 fallos se crea la bandera de bloqueo |
+| `login:block:<identificador>` | string (bandera) | `"1"` | 15 min (la crea el 5.º fallo) | Bloqueo vigente → `429` con `Retry-After` = TTL restante |
 
 Notas:
 
-- Una fila **por identificador normalizado (correo), exista o no la cuenta** (R5 de
-  `research.md`): el bloqueo de FR-006 se comporta igual para cuentas reales e inexistentes y por
-  tanto no revela existencia (FR-003/SC-008).
-- Sin FK a `users` a propósito: también debe registrar intentos sobre correos inexistentes.
-- Semántica (en el service): fallo → `failed_count + 1`, `last_failed_at = now()`; con
-  `failed_count >= 5` → `blocked_until = now() + 15 min`; acierto → `DELETE` de la fila; bloqueo
-  vencido → la fila se resetea en el siguiente intento. Los valores **5** y **15 min** son
-  constantes de código (confirmados por el humano el 2026-10-04).
-- Las filas se eliminan al resolverse (acierto o vencimiento): la tabla no crece sin control.
-
-### `000005_create_login_attempts.down.sql`
-
-```sql
-DROP TABLE IF EXISTS login_attempts;
-```
+- `<identificador>` es el **correo normalizado** (trim + minúsculas), **exista o no la cuenta**: el
+  comportamiento del bloqueo (mensaje, código y tiempos) es idéntico en ambos casos y por eso no
+  revela existencia (FR-003/SC-008, `research.md` R5). Los valores **5 intentos** y **15 minutos**
+  siguen siendo constantes de código (confirmados por el humano el 2026-10-04).
+- **Vida absoluta de 1 h + inactividad de 30 min** (confirmadas el 2026-10-04, `research.md` R15):
+  la vida absoluta no se implementa con TTL sino con `absoluteExpiresAt` **inmóvil** dentro del
+  valor de la sesión; el TTL de la clave es siempre el de inactividad, acotado al tiempo que quede
+  de vida absoluta. La cookie se emite con `Max-Age` de 1 h.
+- Sesión válida solo si la clave existe, `now < absoluteExpiresAt` y **la cuenta sigue activa**:
+  `authn` revalida la cuenta en cada petición (red de seguridad de FR-012). El `lastSeenAt` se
+  escribe estrangulado a una vez por minuto.
+- Redis guarda estado efímero: un reinicio sin persistencia solo obliga a volver a iniciar sesión
+  (y reinicia los contadores de intentos — riesgo aceptado y registrado en el plan). Si en
+  despliegue se exigiera dureza, se activa AOF/RDB.
 
 ## Consultas sqlc (`backend/internal/db/queries/`)
 
@@ -232,11 +211,13 @@ Todas parametrizadas, sin `SELECT *`, con `ORDER BY` determinista y `LIMIT`/`OFF
 
 | Archivo | Consultas |
 |---|---|
-| `users.sql` | `InsertUser`, `GetUserByID`, `GetUserByEmail`, `GetUserAuthByEmail` (correo + hash + estado + rol + permisos, para login/`authn`), `ListUsers` (con `total` aparte), `CountUsers`, `UpdateUser` (nombre, correo, rol, activo), `UpdateUserPassword`, `SetUserMustChangePassword`, `CountActiveAdmins` (recuento **post-mutación** para FR-008), `CountUsersByRole` |
+| `users.sql` | `InsertUser`, `GetUserByID`, `GetUserByEmail`, `GetUserAuthByEmail` (correo + hash + estado + rol + permisos, para login/`authn`), `ListUsers` (con `total` aparte), `CountUsers`, `UpdateUser` (nombre, apellidos, correo, teléfono, rol, activo), `UpdateUserPassword`, `SetUserMustChangePassword`, `CountActiveAdmins` (recuento **post-mutación** para FR-008), `CountUsersByRole` |
 | `roles.sql` | `InsertRole`, `GetRoleByID`, `GetRoleByNameLower`, `ListRoles` (+ `CountRoles`), `UpdateRoleName`, `DeleteRolePermissions`, `InsertRolePermission`, `DeleteRole`, `CountRoleUsers` |
 | `permissions.sql` | `ListPermissions` (catálogo), `GetPermissionIDsByCodes` (para crear/editar roles) |
-| `sessions.sql` | `InsertSession`, `GetSessionByTokenHash` (+ expiración), `TouchSession` (actualiza `last_seen_at`, estrangulado a 1/min en el service), `DeleteSession`, `DeleteSessionsByUser`, `DeleteExpiredSessions` |
-| `login_attempts.sql` | `UpsertLoginAttempt` (incrementa o crea), `GetLoginAttempt`, `ResetLoginAttempt`, `DeleteLoginAttempt` |
+
+**No hay `sessions.sql` ni `login_attempts.sql`**: la sesión y los contadores de acceso viven en
+Redis (sección anterior; interfaz `session.Store` en `internal/platform/session` y contadores en el
+dominio `usuarios`), fuera de sqlc.
 
 Los tipos que emite sqlc (`pgtype.*`) se traducen **solo** en `repository.go`/`mapRow` (§8.1.6);
 `sqlc.yaml` no lleva `overrides`. El guard anti-bloqueo usa `database.WithTx` (transacción) y una
@@ -253,20 +234,23 @@ dentro de lo que D-A3 permite (SQL normal dentro del repository; **no** es un st
 | Un rol solo se elimina sin cuentas asignadas (FR-017) | Service (`CountRoleUsers`) | `ON DELETE RESTRICT` de `users.role_id` |
 | Nunca se eliminan cuentas (FR-013) | No existe operación | — (no hay `DELETE` en las consultas de `users`) |
 | Correo único normalizado (Q5) | Service (mensaje claro) | `UNIQUE` + `CHECK (email = lower(btrim(email)))` |
+| Teléfono con formato telefónico razonable (FR-009: ≥ 7 dígitos, separadores habituales, prefijo internacional opcional) | Service (`platform/validate`, etiqueta `phone`) | `CHECK (phone = btrim(phone))` + longitud 7–32 |
 | Nombre de rol único normalizado (Q5) | Service (mensaje claro) | `UNIQUE (lower(name))` |
 | Siempre ≥1 cuenta activa con `admin_usuarios_roles` (FR-008) | Service, transacción + advisory lock | Índice parcial `users_is_active_idx` |
 | Inicialización única (FR-007) | Service, transacción + advisory lock + `users` vacío | — (la transacción serializada lo garantiza) |
-| Bloqueo 5 intentos / 15 min (FR-006) | Service (`login_attempts`) | `UNIQUE (identifier)` |
-| Sesión válida solo con cuenta activa (FR-012) | `authn` en **cada petición** + borrado de sesiones al desactivar | FK + limpieza |
+| Bloqueo 5 intentos / 15 min (FR-006) | Service (contadores `login:fail:*` / `login:block:*` en Redis) | TTL de 15 min + clave por identificador normalizado (exista o no la cuenta) |
+| Sesión válida solo con cuenta activa (FR-012) | `authn` en **cada petición** + revocación de claves al desactivar (`user_sessions:*`) | TTL de inactividad + `absoluteExpiresAt` inmóvil en Redis |
 
 ## Validación del modelo (qué se comprobará en implementación)
 
-1. `make db-migrate` aplica `000002`…`000005` y `migrate down` las revierte por completo, en orden
-   inverso.
+1. `make db-migrate` aplica `000002` y `000003` y `migrate down` las revierte por completo, en
+   orden inverso.
 2. Pruebas de integración (`//go:build integration`) contra PostgreSQL real:
-   duplicados normalizados rechazados (`UNIQUE`), `ON DELETE RESTRICT`/`CASCADE`, `CHECK` de
-   normalización del correo, upsert de intentos, expiración de sesiones, **carrera anti-bloqueo**
-   (dos transacciones concurrentes no dejan 0 administradores) e **inicialización única** (dos
-   peticiones simultáneas → una sola crea).
-3. `make sqlc-verify` sin diferencias (el código generado acompaña al SQL).
-4. `GET /healthz` sigue respondiendo igual tras las migraciones (el esquema nuevo no afecta a F1).
+   duplicados normalizados rechazados (`UNIQUE`), `ON DELETE RESTRICT`, `CHECK` de
+   normalización del correo, **carrera anti-bloqueo** (dos transacciones concurrentes no dejan 0
+   administradores) e **inicialización única** (dos peticiones simultáneas → una sola crea).
+3. Pruebas de integración de Redis (real, levantado con `testcontainers-go` — ver `research.md`
+   R19): crear/resolver sesión, TTL de inactividad y su refresco, corte por vida absoluta de 1 h,
+   revocación por cuenta (`user_sessions:*`), contadores de intentos y bloqueo con `Retry-After`.
+4. `make sqlc-verify` sin diferencias (el código generado acompaña al SQL).
+5. `GET /healthz` sigue respondiendo igual tras las migraciones (el esquema nuevo no afecta a F1).

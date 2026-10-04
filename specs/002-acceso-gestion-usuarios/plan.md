@@ -1,16 +1,19 @@
 # Implementation Plan: Acceso y gestión de usuarios (F2)
 
-**Branch**: `002-acceso-gestion-usuarios` | **Date**: 2026-10-04 | **Spec**: [spec.md](./spec.md) (APROBADA por el humano el 2026-10-04)
+**Branch**: `002-acceso-gestion-usuarios` | **Date**: 2026-10-04 (actualizado el 2026-10-04 con las
+decisiones del humano: sesión en Redis, tiempos de sesión y datos de la cuenta) | **Spec**: [spec.md](./spec.md) (APROBADA por el humano el 2026-10-04)
 
 **Input**: `specs/002-acceso-gestion-usuarios/spec.md` (fuente de verdad) · `.specify/memory/constitution.md` · `docs/tecnico/decisiones.md` (D-A1…D-A9) y `docs/tecnico/arquitectura.md` (referencia obligada, §8.1 incluida) · plataforma ya construida en F1 (`specs/001-estructura-base/plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml`) · skills `go-backend`, `postgres-db`, `react-frontend`.
 
-> ⚠️ **PUERTA DE APROBACIÓN — D-A7 (pendiente de confirmación humana).** Este plan aterriza la
-> propuesta D-A7 (sesión en servidor + cookie `httpOnly`, hash bcrypt, permisos por módulo en
-> tablas propias) en la decisión **P1** y en `research.md` R1–R4: sesión en **tabla PostgreSQL**
-> `sessions`, cookie `ss_session` (`HttpOnly`, `SameSite=Lax`, `Secure` configurable), CSRF
-> *double-submit* firmado con `SESSION_SECRET`, hash de contraseñas **bcrypt (cost 12)**. **No está
-> aprobada**: se presenta junto con este plan para su confirmación. **No se escribe código de F2
-> hasta que el humano apruebe el plan y confirme D-A7.**
+> ✅ **D-A7 CONFIRMADA por el humano el 2026-10-04** — con un cambio explícito: **la sesión vive en
+> Redis** (no en PostgreSQL; el humano la adopta/proba como objetivo de aprendizaje). Se mantiene
+> lo confirmado: cookie `httpOnly`/`SameSite=Lax`/`Secure` configurable, hash de contraseñas
+> **bcrypt (cost 12)**, permisos por módulo en tablas propias y CSRF *double-submit* firmado con
+> `SESSION_SECRET`. Confirmó además los **tiempos de sesión: vida absoluta de 1 hora + inactividad
+> de 30 minutos** (P9/R15) y los **datos de la cuenta: nombre, apellidos, correo y teléfono**
+> (P12/R20). Todo ello está aterrizado en **P1/P5/P6/P9/P12** y en `research.md` R1–R5, R15, R19–R20.
+> **Queda la puerta de aprobación del plan**: no se escribe código de F2 hasta que el humano
+> apruebe este plan (regla 1 de AGENTS.md).
 
 ## Summary
 
@@ -20,9 +23,11 @@ en servidor, inicialización única del administrador (con regla anti-bloqueo), 
 con permisos por módulo (un rol por cuenta, catálogo de permisos fijo = módulos del producto).
 Técnicamente es la funcionalidad que **activa los diferidos de F1**: `platform/validate`,
 `platform/paginate`, middleware `authn`/`authz`/`CSRF`/`rate-limit`, primeras tablas de negocio
-(`users`, `sessions`, `roles`, `permissions`, `role_permissions`, `login_attempts`), primeras
-consultas sqlc, primeras dependencias nuevas justificadas (`golang.org/x/crypto`, `github.com/google/uuid`
-en backend; `react-hook-form`, `zod`, `@hookform/resolvers` en frontend) y el primer uso de la
+(`users`, `roles`, `permissions`, `role_permissions`), primeras consultas sqlc, el **primer uso de
+Redis** (sesión y contadores de acceso, decisión humana del 2026-10-04), primeras dependencias
+nuevas justificadas (`golang.org/x/crypto`, `github.com/google/uuid`, `github.com/redis/go-redis/v9`
+en backend, `github.com/testcontainers/testcontainers-go` solo en pruebas de integración;
+`react-hook-form`, `zod`, `@hookform/resolvers` en frontend) y el primer uso de la
 superficie pública escribible (con lo que se implementa el `rate-limit` diferido con su punto de
 decisión). Todo se construye sobre lo ya hecho: `internal/platform/` (config, logger, apperr,
 httpserver con `Registrar`/`Group`/`WriteJSON`/`WriteError`, middleware request-id/recover/logging/CORS,
@@ -35,35 +40,46 @@ y `GET /healthz` intacto.
 
 **Primary Dependencies (nuevas, justificadas en `research.md` R16)**: backend runtime →
 `golang.org/x/crypto` (bcrypt; §IV exige bcrypt o argon2 — no hay forma de cumplirlo sin esta
-dependencia) y `github.com/google/uuid` (tipos UUID del dominio; §8.1.1 ya lo exige y justifica).
+dependencia), `github.com/google/uuid` (tipos UUID del dominio; §8.1.1 ya lo exige y justifica) y
+`github.com/redis/go-redis/v9` (cliente de Redis para la sesión y los contadores de acceso;
+**justificado bajo D-A8 por decisión explícita del humano el 2026-10-04 de adoptar Redis**).
+Solo pruebas de integración → `github.com/testcontainers/testcontainers-go` (levanta Redis y, si
+hace falta, PostgreSQL desde el propio test: el CI del kit no se puede editar — R19).
 frontend → `react-hook-form` + `zod` + `@hookform/resolvers` (convención de la skill para
 formularios). El resto se mantiene: `pgx/v5` único runtime previo; `sqlc`, `golang-migrate`,
 `openapi-typescript` como herramientas de desarrollo.
 
-**Storage**: PostgreSQL 16 (servicio `db`). Primeras tablas de negocio (F2 arranca en la migración
-`000002`; ver `data-model.md`). Capa de datos sqlc (D-A3): consultas en
-`backend/internal/db/queries/`, código generado commiteado.
+**Storage**: **PostgreSQL 16** (servicio `db`) para las tablas de negocio (F2 crea las migraciones
+`000002` y `000003`; ver `data-model.md`) + **Redis 7** (servicio `redis`, nuevo) para la sesión y
+los contadores de intentos de acceso (claves `sess:*`, `user_sessions:*`, `login:fail:*`,
+`login:block:*` con TTL; D-A7 confirmada). Capa de datos sqlc (D-A3) solo para PostgreSQL:
+consultas en `backend/internal/db/queries/`, código generado commiteado; Redis se accede por la
+interfaz `session.Store` (`internal/platform/session`).
 
 **Testing**: estrategia por capa de F1 ampliada con las pruebas de sesión/autorización (sección
 propia): `go test` (unitarias), `go test -tags=integration` (repositorio contra PostgreSQL real,
-incluida la carrera anti-bloqueo), Vitest + Testing Library + MSW, Playwright (e2e del flujo de
-acceso y gestión).
+incluida la carrera anti-bloqueo, y store de sesiones/contadores contra Redis real — ambos
+servicios levantados con `testcontainers-go`), Vitest + Testing Library + MSW, Playwright (e2e del
+flujo de acceso y gestión).
 
 **Target Platform**: contenedores Docker en local (Docker Compose) + GitHub Actions (CI del kit,
 sin tocar). Sin despliegue a producción (fuera de alcance de F2).
 
-**Performance Goals**: login responde en <2 s con BD sana · el listado de usuarios (≤100 filas) en
-<1 s · la resolución de identidad por petición (sesión + permisos) añade ≤2 consultas por petición
-de panel, aceptable para el volumen del equipo de la iglesia (decenas de cuentas).
+**Performance Goals**: login responde en <2 s con BD y Redis sanos · el listado de usuarios (≤100
+filas) en <1 s · la resolución de identidad por petición añade **1 lectura Redis (sesión) + 1
+consulta SQL (cuenta + rol + permisos)** por petición de panel, aceptable para el volumen del
+equipo de la iglesia (decenas de cuentas).
 
 **Constraints**: stack fijo (constitución) · capas `handler → service → repository` (§II) ·
 contrato OpenAPI antes que el código (§II, R8) · migraciones versionadas e inmutables (§VI) ·
 authn/authz siempre en servidor (§IV, CWE-862) · contraseñas solo bcrypt/argon2 (§IV, CWE-256) ·
-archivos del kit no editables (regla 10 de AGENTS.md) · dependencias minimizadas y justificadas
+archivos del kit no editables (regla 10 de AGENTS.md; en particular `.github/workflows/ci.yml`, que
+F2 resuelve con `testcontainers-go` en las pruebas — R19) · dependencias minimizadas y justificadas
 (D-A8) · **la spec no se reabre**: los huecos se marcan como decisión o pregunta (R3, R15).
 
-**Scale/Scope**: 16 operaciones REST (1 dominio backend `usuarios`, 3 features frontend), 6 tablas,
-4 migraciones, 6 middlewares (4 nuevos + CORS ampliado), 1 puerta de aprobación (D-A7).
+**Scale/Scope**: 16 operaciones REST (1 dominio backend `usuarios`, 3 features frontend), 4 tablas
+PostgreSQL + 4 familias de claves Redis, 2 migraciones, 6 middlewares (4 nuevos + CORS ampliado),
+1 puerta de aprobación (D-A7 — **confirmada** el 2026-10-04; queda la aprobación del plan).
 
 ## Constitution Check
 
@@ -71,14 +87,14 @@ archivos del kit no editables (regla 10 de AGENTS.md) · dependencias minimizada
 
 | Principio | Evaluación | Resultado |
 |---|---|---|
-| §I La spec manda | El plan implementa FR-001…FR-020 sin interpretarlos; cada uno tiene fila en "Cobertura de requisitos". Los dos puntos que la spec deja abiertos están **marcados**, no supuestos: el detalle de D-A7 (que la propia spec declara pendiente, ver *Assumptions*) y el significado de "identificación" (R3, pregunta al humano). Ningún requisito fuera de alcance se construye (sin auto-servicio por correo, sin eliminación de cuentas, sin registro público). | ✅ |
-| §II Arquitectura | Monorepo; capas `handler → service → repository` sobre `internal/platform/` (reglas R1–R8 de `arquitectura.md`); API REST JSON documentada en `backend/api/openapi.yaml`, con el delta redactado en esta fase **antes** que el código (`contracts/openapi.yaml`, §8.1.5). Dependencias nuevas: 2 en backend + 3 en frontend, cada una justificada (R16). | ✅ |
-| §III Pruebas | Toda tarea lleva sus pruebas (se exigirá en `tasks.md`); cobertura ≥80 % en `service/` (verificable con `go test -cover`); repositorio contra PostgreSQL real con `//go:build integration` (incluida prueba de concurrencia del anti-bloqueo); frontend con Vitest + Testing Library + MSW; flujos críticos con Playwright (local). | ✅ |
+| §I La spec manda | El plan implementa FR-001…FR-020 sin interpretarlos; cada uno tiene fila en "Cobertura de requisitos". Los puntos que la spec dejaba abiertos están **cerrados con decisión humana**, no supuestos: D-A7 (confirmada el 2026-10-04, con sesión en **Redis**), los tiempos de sesión (1 h absoluta + 30 min de inactividad), los datos de la cuenta (nombre, apellidos, correo, teléfono — R20) y el significado de "identificación" (R3, resuelto). Ningún requisito fuera de alcance se construye (sin auto-servicio por correo, sin eliminación de cuentas, sin registro público). | ✅ |
+| §II Arquitectura | Monorepo; capas `handler → service → repository` sobre `internal/platform/` (reglas R1–R8 de `arquitectura.md`); API REST JSON documentada en `backend/api/openapi.yaml`, con el delta redactado en esta fase **antes** que el código (`contracts/openapi.yaml`, §8.1.5). Dependencias nuevas: 3 de runtime en backend + 1 solo de pruebas de integración + 3 en frontend, cada una justificada (R16). | ✅ |
+| §III Pruebas | Toda tarea lleva sus pruebas (se exigirá en `tasks.md`); cobertura ≥80 % en `service/` (verificable con `go test -cover`); repositorio contra PostgreSQL real con `//go:build integration` (incluida prueba de concurrencia del anti-bloqueo) y sesión/contadores contra Redis real (ambos servicios con `testcontainers-go`, R19); frontend con Vitest + Testing Library + MSW; flujos críticos con Playwright (local). | ✅ |
 | §IV Seguridad | Contraseñas con **bcrypt cost 12** (CWE-256), nunca en texto plano ni en respuestas (FR-003); SQL solo parametrizado vía sqlc (CWE-89); validación de toda entrada en backend (`platform/validate`, CWE-20) aunque el frontend valide; authn/authz **en servidor** en cada operación de panel (CWE-862); secretos (`SESSION_SECRET`, `BOOTSTRAP_TOKEN`) por variables de entorno, `.env.example` sin valores reales; CSRF en todo método inseguro con sesión (P10); sin `dangerouslySetInnerHTML` ni tokens en `localStorage` (skill). `govulncheck`/`npm audit` en el CI del kit. | ✅ |
 | §V Calidad | `gofmt`/`go vet`/`golangci-lint` sin errores; TS `strict` sin `any`; errores envueltos con `%w` y traducidos solo en `WriteError`; nombres en inglés dentro del código. | ✅ |
-| §VI Base de datos | 4 migraciones versionadas con `up`/`down` completos, numéricas desde `000002`; nunca se edita una aplicada; tablas con `id`, `created_at`, `updated_at`; FK e índices explícitos; `CHECK`/`UNIQUE` en la base (ver `data-model.md`). | ✅ |
-| §VII Observabilidad | Logs `log/slog` con `request_id` (incluidos los intentos de acceso fallidos, sin credenciales); `/healthz` intacto y sin sesión (sigue siendo el chequeo operativo); config por variables de entorno (`platform/config` ampliado); todo levantable con `make up`. | ✅ |
-| §VIII Gobierno | Este plan **y** la confirmación de D-A7 requieren aprobación humana antes de `/speckit.tasks` y de cualquier código. Sin despliegue a producción (fuera de alcance). Quien escribe no aprueba: todo pasa por `qa-tester`, `revisor-codigo` y `seguridad`. | ✅ |
+| §VI Base de datos | 2 migraciones versionadas con `up`/`down` completos, numéricas desde `000002`; nunca se edita una aplicada; tablas con `id`, `created_at`, `updated_at`; FK e índices explícitos; `CHECK`/`UNIQUE` en la base (ver `data-model.md`). La sesión y los contadores de acceso viven en Redis por decisión humana (no son tablas; su contrato de claves/TTL está documentado en `data-model.md`). | ✅ |
+| §VII Observabilidad | Logs `log/slog` con `request_id` (incluidos los intentos de acceso fallidos, sin credenciales); `/healthz` intacto y sin sesión (sigue siendo el chequeo operativo); config por variables de entorno (`platform/config` ampliado); todo levantable con `make up` (ahora incluye el servicio `redis`). | ✅ |
+| §VIII Gobierno | Este plan requiere aprobación humana antes de `/speckit.tasks` y de cualquier código (D-A7 ya está confirmada). Sin despliegue a producción (fuera de alcance). Quien escribe no aprueba: todo pasa por `qa-tester`, `revisor-codigo` y `seguridad`. | ✅ |
 
 **Sin violaciones que justificar** → "Complexity Tracking" solo registra desviaciones de
 convenciones internas (receta de archivos), no de la constitución.
@@ -90,23 +106,23 @@ Numeración **P1…P19** propia de este plan (no confundir con D1–D23 de F1 ni
 
 | # | Decisión | Por qué (una línea) | Alternativa descartada |
 |---|---|---|---|
-| **P1** | **D-A7 aterrizada (PENDIENTE DE CONFIRMACIÓN HUMANA)**: sesión en servidor en la **tabla PostgreSQL `sessions`**; cookie `ss_session` con `HttpOnly`, `SameSite=Lax`, `Secure` configurable (`SESSION_COOKIE_SECURE`), `Path=/`; valor = token aleatorio de 32 bytes (`crypto/rand`) y en BD solo su **SHA-256**; permisos por módulo en `permissions`/`role_permissions`; revocación = borrar filas de `sessions` + comprobación por petición de que la cuenta sigue activa | Revocación inmediata al desactivar (FR-012), cero servicios nuevos, `WithTx`/sqlc ya existen, escala de sobra para un equipo de decenas de personas | Redis/memcached (servicio + dependencia para este volumen); JWT autocontenido (revocación forzada con lista negra); cookie firmada sin estado en servidor (sin revocación real); token en `localStorage` (prohibido, CWE-79) |
+| **P1** | **D-A7 aterrizada (CONFIRMADA el 2026-10-04, con Redis)**: sesión en servidor **en Redis**; cookie `ss_session` con `HttpOnly`, `SameSite=Lax`, `Secure` configurable (`SESSION_COOKIE_SECURE`), `Path=/`, `Max-Age` = vida absoluta (1 h); valor = token aleatorio de 32 bytes (`crypto/rand`) y en Redis solo su **SHA-256** (clave `sess:<sha256>`; índice `user_sessions:<userId>` para revocar por cuenta); permisos por módulo en `permissions`/`role_permissions`; revocación = `DEL` de las claves + comprobación por petición de que la cuenta sigue activa | Es la decisión explícita del humano (adoptar/probar Redis como objetivo de aprendizaje); revocación inmediata al desactivar (FR-012), expiración por TTL nativa y un único almacén de estado efímero compartido con los intentos de acceso | Tabla PostgreSQL `sessions` (la propuesta original: sin servicios nuevos y transaccional con `users`; **descartada por la decisión humana** y conservada como plan B); JWT autocontenido (revocación forzada con lista negra); cookie firmada sin estado en servidor (sin revocación real); token en `localStorage` (prohibido, CWE-79) |
 | P2 | Router: **se mantiene `net/http` tras `Registrar`** (cierra la pregunta 3 de `decisiones.md`/D-A4) | Los grupos con permisos (`Group("/api/v1/admin", authn, authz, CSRF)`) ya se expresan con `Group`; chi solo aportaría sintaxis y cuesta dependencia + adaptador | Adoptar chi ahora (se reevalúa si el ruteo se complica; el cambio sigue limitado a `platform/httpserver`) |
 | P3 | `platform/validate` **propio mínimo** (cierra la pregunta 4 de `decisiones.md`): reflexión sobre las etiquetas `validate` de los DTOs (`required`, `omitempty`, `min`, `max`, `email`, `oneof`) → `apperr.Invalid` con `details` por campo | Sin dependencias (D-A8); mensajes en español y por campo; los 5 tags que usamos no justifican una librería | `go-playground/validator` (dependencia + transitivas, mensajes genéricos en inglés, superficie enorme para nuestro uso) |
 | P4 | Tipos UUID: `github.com/google/uuid` en el dominio, `pgtype.UUID` solo en `repository.go` (cierra la pregunta 5; §8.1.1) | Mantiene `pgx` fuera de las capas altas (R4); solo tipos, sin transitivas | `pgtype.UUID` en el dominio (arrastra `pgx`); `override` de sqlc (una segunda regla para un tipo) |
 | P5 | Hash de contraseñas: **bcrypt cost 12** (`golang.org/x/crypto/bcrypt`); política FR-010 centralizada en `platform/password` y aplicada en los 3 flujos (creación, restablecimiento, cambio propio) | Cumplimiento literal de §IV; bcrypt es el estándar con más revisión para este caso; el hash es autodescriptivo (futura migración a argon2id sin romper nada) | argon2id (más resistente a GPU pero más parámetros que afinar y la misma dependencia; decisión reversible); pbkdf2 de la stdlib (no es ni bcrypt ni argon2, §IV lo exige) |
-| P6 | Bloqueo FR-006 en tabla `login_attempts` **por identificador normalizado (correo) exista o no la cuenta**: 5 intentos → 15 min (constantes de código, valores confirmados por el humano) | Concilia FR-003 y FR-006: el mensaje de bloqueo es idéntico para cuentas reales e inexistentes y por tanto **no** revela existencia | Contadores solo en `users` (el bloqueo solo ocurriría en cuentas reales → enumera); contadores en memoria (se pierden al reiniciar); rate-limit por IP como única medida (no frena la prueba masiva contra una cuenta) |
+| P6 | Bloqueo FR-006 con **contadores en Redis** (`login:fail:<correo>` / `login:block:<correo>`, TTL 15 min) **por identificador normalizado (correo) exista o no la cuenta**: 5 intentos → 15 min (constantes de código, valores confirmados por el humano) | Concilia FR-003 y FR-006: el mensaje de bloqueo es idéntico para cuentas reales e inexistentes y por tanto **no** revela existencia; con Redis ya presente por la sesión (P1), el TTL sustituye a la limpieza manual y el estado se comparte entre instancias | Contadores solo en `users` (el bloqueo solo ocurriría en cuentas reales → enumera); tabla `login_attempts` en PostgreSQL (una migración y limpieza para un estado que no debe durar); contadores en memoria (se pierden al reiniciar); rate-limit por IP como única medida (no frena la prueba masiva contra una cuenta) |
 | P7 | Regla anti-bloqueo (FR-008) verificada **dentro de la transacción** de la mutación, con `pg_advisory_xact_lock` sobre una clave fija + recuento **post-mutación** de cuentas activas con el permiso `admin_usuarios_roles`; 0 → `409 conflict` y rollback | Hace imposible el estado prohibido incluso con dos administradores actuando a la vez (edge case de la spec) | Comprobación sin lock (carrera: dos desactivaciones simultáneas dejan 0 administradores); trigger en la BD (lógica de negocio fuera del service, difícil de probar) |
 | P8 | Inicialización única (FR-007): `POST /api/v1/setup/initialize` solo con `users` vacío, en transacción con el mismo advisory lock, que crea el rol **"Administrador"** con los 9 permisos y su cuenta; **exige el token `BOOTSTRAP_TOKEN`** (cabecera `X-Setup-Token`) y va rate-limited | El guard de BD impide repetirla (FR-007) y el token impide que un tercero se declare administrador en una instalación recién desplegada ("impedir cualquier uso abusivo", FR-007) | Sin token (ventana de robo del primer administrador en instalaciones públicas); CLI embebida (exige acceso al servidor y no es el producto); token de un solo uso impreso en logs (operación rara y secreto efímero mal resguardado) |
-| P9 | Sesión: expiración por inactividad de **30 minutos** (assumption de la spec) medida con `last_seen_at` (escritura estrangulada a 1/min) y **vida absoluta de 12 horas** *(propuesta nueva, se confirma junto con D-A7)*; al desactivar una cuenta o restablecer su contraseña se borran sus sesiones; `authn` comprueba **por petición** que la cuenta sigue activa | FR-005/FR-012/FR-018: los cambios de rol, permisos y estado se reflejan desde la primera acción posterior sin tocar cookies | Expiración solo por inactividad (una cookie robada vive para siempre); refresco de permisos en caché (rompería FR-018/SC-009) |
+| P9 | Sesión (**confirmada el 2026-10-04**): expiración por inactividad de **30 minutos** (assumption de la spec) medida con el TTL de la clave Redis (refrescado en cada actividad y con `last_seen_at` estrangulado a 1/min) y **vida absoluta de 1 hora** desde el login (fijada como `absoluteExpiresAt` inmóvil en la clave; el TTL se acota a ella — R15); al desactivar una cuenta o restablecer su contraseña se revocan sus sesiones (`DEL` vía `user_sessions:<userId>`); `authn` comprueba **por petición** que la cuenta sigue activa | FR-005/FR-012/FR-018: los cambios de rol, permisos y estado se reflejan desde la primera acción posterior sin tocar cookies; 1 h de vida absoluta corta el alcance de una cookie robada | Expiración solo por inactividad (una cookie robada vive para siempre); vida absoluta de 12 h (propuesta inicial: demasiado larga para un panel interno); refresco de permisos en caché (rompería FR-018/SC-009) |
 | P10 | CSRF obligatorio en todo método no seguro con sesión: *double-submit* **firmado** — cookie `csrf_token` (no `HttpOnly`) = `nonce.HMAC-SHA256(SESSION_SECRET, nonce)` + cabecera `X-CSRF-Token` igual, verificado por `middleware.CSRF` en el grupo (cadena de `arquitectura.md` §6) | Sin estado extra ni consultas; el HMAC impide que un atacante que inyecta cookies fabrique un par válido; `SESSION_SECRET` (ya en `.env.example`) por fin tiene uso | Token guardado en la sesión (doble consulta); exigir solo cabecera personalizada (débil); fiarlo todo a `SameSite` (no cubre toda la superficie); frameworks de CSRF (dependencia) |
 | P11 | CORS se **amplía sin dependencia** (revisión de D16 cerrada): `Access-Control-Allow-Credentials: true`, eco exacto del `Origin` permitido (nunca `*` con credenciales), cabeceras `Content-Type, X-CSRF-Token, X-Request-ID`, `Vary: Origin` | Las cookies de sesión exigen credenciales; 40 líneas bastan y el middleware ya existe | `rs/cors` (dependencia para lo que ya está escrito) |
-| P12 | Modelo: **un rol por cuenta** → `users.role_id` (se **simplifica** el `user_roles` orientativo de F1); catálogo de permisos fijo en tabla `permissions` **sembrada por la migración** + `role_permissions`; sesiones en `sessions`; FR-006 en `login_attempts` (detalle en `data-model.md`) | Refleja literalmente Q4 (un rol), da FK y unicidad reales y permite al panel listar el catálogo con `GET /admin/permisos` | `user_roles` (contradice Q4); permisos como `TEXT[]` en `roles` (sin FK, difícil de validar); permisos solo como constantes de código (el panel no podría listarlos con etiqueta sin duplicar el catálogo) |
+| P12 | Modelo: **un rol por cuenta** → `users.role_id` (se **simplifica** el `user_roles` orientativo de F1) con **nombre, apellidos, correo y teléfono** (`first_name`, `last_name`, `email`, `phone` — datos confirmados el 2026-10-04, R20); catálogo de permisos fijo en tabla `permissions` **sembrada por la migración** + `role_permissions`; sesión y FR-006 **en Redis**, no en tablas (detalle en `data-model.md`) | Refleja literalmente Q4 (un rol) y los datos de la cuenta de la spec, da FK y unicidad reales y permite al panel listar el catálogo con `GET /admin/permisos` | `user_roles` (contradice Q4); permisos como `TEXT[]` en `roles` (sin FK, difícil de validar); permisos solo como constantes de código (el panel no podría listarlos con etiqueta sin duplicar el catálogo); `full_name` único (la spec pide nombre y apellidos separados) |
 | P13 | Normalización (Q5): el correo se guarda `trim`+minúsculas y el nombre de rol `trim`+colapso de espacios (conservando sus mayúsculas de presentación), con `UNIQUE` real y `UNIQUE (lower(name))`; duplicados → `409 conflict` | El mismo dato nunca vive en dos formas y la unicidad la garantiza la BD, no solo el código | Índice funcional sobre el valor crudo (permite guardar duplicados "casi"); comparar solo en el service (carrera entre dos creaciones simultáneas) |
 | P14 | `platform/paginate` (diferido de F1) para `GET /admin/usuarios` y `GET /admin/roles`: `limit` 20 por defecto, tope 100, sobre `{items, total, limit, offset}` (§8.1.2/§8.1.3) | Primer listado de panel con parámetros de usuario; convención ya cerrada | Listados sin acotar (rompe §8.1.3); paginación por cursor (innecesaria en listados de decenas de filas) |
-| P15 | Un **único dominio `internal/usuarios/`** para todo F2 + `platform/session` (token y cookie, **sin SQL**) + `platform/password`; los archivos de la receta se **dividen por responsabilidad** (`service_auth.go`, `handler_users.go`…) — desviación declarada en "Complexity Tracking" | Un dominio evita que dos paquetes consulten las mismas tablas (R2) y encaja con "transversal en `platform/` + dominio `usuarios`" (F1 `data-model.md`); los archivos por responsabilidad mantienen funciones cortas | Dominios `auth/` + `usuarios/` separados (obliga a consultas compartidas y a una interfaz extra para revocar sesiones); un `handler.go` monolítico de 16 endpoints |
+| P15 | Un **único dominio `internal/usuarios/`** para todo F2 + `platform/session` (token y cookie, tipos `Identity`/`Resolver` y el `Store` de sesiones **sobre Redis**, sin SQL ni dominio) + `platform/password`; los archivos de la receta se **dividen por responsabilidad** (`service_auth.go`, `handler_users.go`…) — desviación declarada en "Complexity Tracking" | Un dominio evita que dos paquetes consulten las mismas tablas (R2) y encaja con "transversal en `platform/` + dominio `usuarios`" (F1 `data-model.md`); el acceso a Redis es plumbing, como el de PostgreSQL en `platform/database`; los archivos por responsabilidad mantienen funciones cortas | Dominios `auth/` + `usuarios/` separados (obliga a consultas compartidas y a una interfaz extra para revocar sesiones); la persistencia de sesiones dentro del repository del dominio (mezclaría Redis con sqlc); un `handler.go` monolítico de 16 endpoints |
 | P16 | `apperr` crece con los kinds ya registrados en el contrato: `Invalid` (400), `Unauthenticated` (401), `Forbidden` (403), `Conflict` (409), `RateLimited` (429, con `Retry-After`) | El registro estaba cerrado y previsto para "crecer bajo demanda con F2+" (`arquitectura.md` §5.11) | Códigos nuevos fuera del registro (rompería el contrato) |
-| P17 | `rate-limit` mínimo **en memoria** (cierra el punto de decisión de D23): ventana deslizante por IP sobre los endpoints públicos escribibles (`/auth/login`, `/setup/initialize`), 429 `rate_limited` | El primer endpoint público escribible ha llegado con F2; amortigua la prueba masiva de contraseñas por IP además del bloqueo por cuenta | No hacerlo (deja el diferido sin decidir); Redis/limiter externo (dependencia y servicio para una sola instancia) |
+| P17 | `rate-limit` mínimo **en memoria** (cierra el punto de decisión de D23): ventana deslizante por IP sobre los endpoints públicos escribibles (`/auth/login`, `/setup/initialize`), 429 `rate_limited` | El primer endpoint público escribible ha llegado con F2; amortigua la prueba masiva de contraseñas por IP además del bloqueo por cuenta | No hacerlo (deja el diferido sin decidir); Redis/limiter externo (hoy Redis ya existe por la sesión, P1, pero el umbral por IP no necesita compartirse con una sola instancia: se moverá a Redis si llega el escalado) |
 | P18 | Frontend: rutas `/login`, `/cambiar-contrasena`, `/panel`, `/panel/usuarios`, `/panel/roles`; guards `RequireAuth`, `RequirePermission` y `RequirePasswordChange`; sesión vía TanStack Query (`GET /auth/session`); formularios con React Hook Form + Zod; menú filtrado por permisos (US4 esc. 6) | Es la convención de la skill y el patrón que copiarán F3–F9; los permisos se ocultan **y** se deniegan en servidor | Estado global propio (redux/zustand: no hace falta); fetch en componentes (prohibido); validación manual de formularios |
 | P19 | Contrato: delta en `specs/002-acceso-gestion-usuarios/contracts/openapi.yaml`, fusionado en `backend/api/openapi.yaml` al implementar (§8.1.5) con `info.version` **0.2.0 → 0.3.0**; esquema de seguridad `sessionCookie`; el registro de `error.code` **no cambia** (F2 emite `invalid`, `unauthenticated`, `forbidden`, `conflict`, `rate_limited`, ya en el enum) | Contrato antes que el código (§II) sin dos copias vivas | Editar el snapshot de `specs/` a posteriori (prohibido); códigos nuevos ad-hoc por endpoint |
 
@@ -117,11 +133,11 @@ Numeración **P1…P19** propia de este plan (no confundir con D1–D23 de F1 ni
 ```text
 specs/002-acceso-gestion-usuarios/
 ├── plan.md              # EDITABLE (este archivo, /speckit.plan)
-├── research.md          # EDITABLE (fase 0: R1…R18, incluye D-A7)
+├── research.md          # EDITABLE (fase 0: R1…R20, incluye D-A7 confirmada con Redis)
 ├── data-model.md        # EDITABLE (fase 1: tablas, migraciones, consultas)
 ├── quickstart.md        # EDITABLE (fase 1: cómo probar F2 en local)
 ├── spec.md              # APROBADA — no se edita
-├── ux.md                # DEL disenador-ux (PENDIENTE — riesgo R2; las tareas de frontend lo necesitan)
+├── ux.md                # DEL disenador-ux (entregado; pendiente alinear sus campos de usuario con los confirmados el 2026-10-04 — riesgo R2)
 ├── contracts/
 │   └── openapi.yaml     # EDITABLE (fase 1): delta de diseño, se fusiona en backend/api/openapi.yaml
 ├── checklists/          # (existente)
@@ -133,24 +149,22 @@ specs/002-acceso-gestion-usuarios/
 ```text
 backend/
 ├── cmd/api/
-│   ├── main.go                      # EDITADO: DI de F2 + grupos /api/v1/auth, /api/v1/setup y /api/v1/admin
+│   ├── main.go                      # EDITADO: DI de F2 (incl. cliente Redis) + grupos /api/v1/auth, /api/v1/setup y /api/v1/admin
 │   └── main_test.go                 # EDITADO: prueba de humo ampliada (rutas nuevas + /healthz intacto)
 ├── internal/
 │   ├── db/
 │   │   ├── queries/
 │   │   │   ├── users.sql            # NUEVO: cuentas (CRUD + authn + recuento anti-bloqueo)
 │   │   │   ├── roles.sql            # NUEVO: roles + role_permissions
-│   │   │   ├── permissions.sql      # NUEVO: catálogo
-│   │   │   ├── sessions.sql         # NUEVO: sesiones
-│   │   │   └── login_attempts.sql   # NUEVO: intentos fallidos (upsert/limpieza)
-│   │   └── (generado por sqlc, commiteado)
+│   │   │   └── permissions.sql      # NUEVO: catálogo
+│   │   └── (generado por sqlc, commiteado)   # sin sessions.sql ni login_attempts.sql: viven en Redis
 │   ├── usuarios/                    # NUEVO — dominio F2 (área completa: acceso + gestión)
 │   │   ├── model.go                 # entidades, estados y DTOs (etiquetas validate)
 │   │   ├── repository.go            # constructor + mapRow/params (pgtype → dominio)
-│   │   ├── repository_users.go      # cuentas + sesiones + intentos
+│   │   ├── repository_users.go      # cuentas (PostgreSQL)
 │   │   ├── repository_roles.go      # roles + permisos + guard anti-bloqueo
 │   │   ├── service.go               # tipos comunes + invariantes compartidos
-│   │   ├── service_auth.go          # login, logout, sesión, cambio de contraseña, inicialización
+│   │   ├── service_auth.go          # login, logout, sesión, cambio de contraseña, inicialización (usa session.Store y los contadores Redis)
 │   │   ├── service_users.go         # CRUD de cuentas, activar/desactivar, restablecer
 │   │   ├── service_roles.go         # CRUD de roles y catálogo de permisos
 │   │   ├── handler.go               # constructor + helpers HTTP
@@ -158,16 +172,16 @@ backend/
 │   │   ├── handler_users.go         # /api/v1/admin/usuarios*
 │   │   ├── handler_roles.go         # /api/v1/admin/roles* + /api/v1/admin/permisos
 │   │   ├── routes.go                # RegisterPublic (login, setup) + RegisterAdmin (usuarios/roles)
-│   │   └── *_test.go                # service con fakes · handler con httptest · repository integration
+│   │   └── *_test.go                # service con fakes · handler con httptest · repository integration (testcontainers)
 │   └── platform/
 │       ├── apperr/apperr.go         # EDITADO: + Invalid, Unauthenticated, Forbidden, Conflict, RateLimited
-│       ├── config/config.go         # EDITADO: + SESSION_SECRET, SESSION_* , SESSION_COOKIE_SECURE, BOOTSTRAP_TOKEN
-│       ├── session/                 # NUEVO: token aleatorio + SHA-256, cookie ss_session/csrf_token, tipos Identity y Resolver (sin SQL)
+│       ├── config/config.go         # EDITADO: + REDIS_URL, SESSION_SECRET, SESSION_* , SESSION_COOKIE_SECURE, BOOTSTRAP_TOKEN
+│       ├── session/                 # NUEVO: token aleatorio + SHA-256, cookies ss_session/csrf_token, tipos Identity y Resolver, interfaz Store + implementación Redis (claves sess:* y user_sessions:*)
 │       ├── password/                # NUEVO: bcrypt (hash/verify) + política FR-010
-│       ├── validate/                # NUEVO (P3): validación de DTOs por etiquetas → apperr.Invalid
+│       ├── validate/                # NUEVO (P3): validación de DTOs por etiquetas (incl. `phone`) → apperr.Invalid
 │       ├── paginate/                # NUEVO (P14): limit/offset con topes
 │       └── middleware/
-│           ├── authn.go             # NUEVO: cookie → session.Resolver → Identity en el contexto
+│           ├── authn.go             # NUEVO: cookie → session.Store (Redis) → session.Resolver → Identity en el contexto
 │           ├── authz.go             # NUEVO: AuthzByModule(código) sobre la Identity
 │           ├── csrf.go              # NUEVO: double-submit firmado en métodos no seguros
 │           ├── ratelimit.go         # NUEVO (P17): ventana deslizante por IP
@@ -175,9 +189,7 @@ backend/
 │           └── chain.go             # EDITADO si hace falta: orden de los grupos
 ├── migrations/
 │   ├── 000002_create_roles_and_permissions.up.sql / .down.sql   # NUEVO (incluye la siembra del catálogo)
-│   ├── 000003_create_users.up.sql / .down.sql                   # NUEVO
-│   ├── 000004_create_sessions.up.sql / .down.sql                # NUEVO
-│   └── 000005_create_login_attempts.up.sql / .down.sql          # NUEVO
+│   └── 000003_create_users.up.sql / .down.sql                   # NUEVO (first_name, last_name, email, phone)
 └── api/openapi.yaml                 # EDITADO: se fusiona el delta (info.version → 0.3.0)
 ```
 
@@ -204,10 +216,10 @@ frontend/src/
 frontend/e2e/acceso.spec.ts          # NUEVO: flujo completo Playwright (ver quickstart §10)
 
 # Raíz
-.env.example                         # EDITADO: + BOOTSTRAP_TOKEN, SESSION_SECRET (ya existe), SESSION_* y su documentación
+.env.example                         # EDITADO: + REDIS_URL, BOOTSTRAP_TOKEN, SESSION_SECRET (ya existe), SESSION_* y su documentación
 README.md                            # EDITADO por documentador al cerrar: comandos y variables nuevas
-docker-compose.yml                   # SIN CAMBIOS de estructura (solo variables nuevas opcionales si hicieran falta)
-Makefile / .github/workflows/ci.yml / .githooks/   # SIN CAMBIOS (son del kit)
+docker-compose.yml                   # EDITADO: servicio `redis` (redis:7-alpine, healthcheck, puerto) + variables del backend (REDIS_URL, SESSION_*, BOOTSTRAP_TOKEN)
+Makefile / .github/workflows/ci.yml / .githooks/   # SIN CAMBIOS (son del kit; ci.yml NO se toca: las pruebas de integración levantan Redis con testcontainers-go, R19)
 ```
 
 ## Cadena de middleware y grupos (orden; el primero es el más externo)
@@ -220,7 +232,8 @@ Grupos:   /api/v1/setup                    → rate-limit (P17)                 
           /api/v1/admin                     → authn → guard de cambio de contraseña → CSRF → (subgrupo) authz(módulo) → handler
 ```
 
-- `authn` (P1/P9): lee `ss_session`, resuelve la identidad vía `session.Resolver` (interfaz
+- `authn` (P1/P9): lee `ss_session`, resuelve la sesión en **Redis** vía `session.Store`
+  (comprobando inactividad y vida absoluta), resuelve la identidad vía `session.Resolver` (interfaz
   definida en `platform/session`, implementada por `usuarios.Service` — R3), comprueba que la
   cuenta siga activa y la deja en el contexto. Sin sesión válida → `401 unauthenticated`.
 - **Guard de cambio de contraseña**: si `mustChangePassword`, solo se autorizan `/auth/session`,
@@ -254,12 +267,13 @@ Cobertura exigida: **80 % en `service/`** (§III). Comandos: `go test ./...` ·
 | Capa | Tipo | Qué verifica F2 además de lo de F1 | Dónde |
 |---|---|---|---|
 | `platform/password` | Unitaria (tabla de casos) | Política FR-010: longitud 8–64 y ≤72 bytes, mayúsculas+minúsculas+números+especiales, distinta del nombre y del correo; hash/verify bcrypt; límite de bytes | `internal/platform/password/*_test.go` |
-| `platform/session` | Unitaria | Token aleatorio distinto por llamada, SHA-256 estable, cookies con `HttpOnly`/`SameSite`/`Secure`/`Max-Age`, lectura y borrado | `internal/platform/session/*_test.go` |
+| `platform/session` | Unitaria | Token aleatorio distinto por llamada, SHA-256 estable, cookies con `HttpOnly`/`SameSite`/`Secure`/`Max-Age` (1 h), lectura y borrado; `Store` con fakes | `internal/platform/session/*_test.go` |
+| `session.Store` (Redis) | **Integración** (Redis real, testcontainers) | Crear/resolver sesión, TTL de inactividad y su refresco acotado a la vida absoluta, corte a los 60 min aunque haya actividad, revocación por cuenta (`user_sessions:*`), contadores `login:fail`/`login:block` y `Retry-After` | `internal/platform/session/*_test.go` (`//go:build integration`) |
 | `platform/validate` | Unitaria (tabla de casos) | Cada etiqueta y el `details` por campo que produce | `internal/platform/validate/*_test.go` |
 | `middleware` | Unitaria + `httptest` | `authn` (sin cookie, cookie inválida, sesión expirada, cuenta inactiva), `authz` (con/sin permiso), `csrf` (método seguro pasa, inseguro sin/desalineado con token), `ratelimit` (429 tras el umbral) | `internal/platform/middleware/*_test.go` |
 | `service` (dominio) | Unitaria con **fakes** | Login (éxito, credenciales genéricas, cuenta inactiva, bloqueo 5/15 min, limpieza de intentos), cambio/restablecimiento de contraseña con `mustChangePassword`, anti-bloqueo (desactivar, cambiar rol, quitar permiso al rol), reglas de roles (≥1 permiso, duplicados normalizados, eliminación solo sin uso), un rol por cuenta | `internal/usuarios/service_*_test.go` |
 | `handler` | Unitaria con `httptest` + service falso | Cada operación: decodificación, validación con `details`, códigos 200/201/400/401/403/404/409/429, sobres de éxito y de error, **que la contraseña nunca aparece en la respuesta** | `internal/usuarios/handler_*_test.go` |
-| `repository` | **Integración** (PostgreSQL real) | SQL real, `UNIQUE` de correos/nombres normalizados, FK y `ON DELETE`, `upsert` de intentos, expiración de sesiones, **carrera anti-bloqueo** (dos transacciones concurrentes no dejan 0 administradores) e **inicialización única** (dos `initialize` simultáneos → uno solo crea) | `internal/usuarios/repository_*_test.go` (`//go:build integration`) |
+| `repository` | **Integración** (PostgreSQL real, testcontainers si no hay `DATABASE_URL_TEST`) | SQL real, `UNIQUE` de correos/nombres normalizados, FK y `ON DELETE`, **carrera anti-bloqueo** (dos transacciones concurrentes no dejan 0 administradores) e **inicialización única** (dos `initialize` simultáneos → uno solo crea) | `internal/usuarios/repository_*_test.go` (`//go:build integration`) |
 | `cmd/api` | Humo de composición | Rutas nuevas publicadas con su sobre y `/healthz` intacto (§8.1.9) | `cmd/api/main_test.go` |
 | Frontend | Unitaria (Vitest + MSW) | Login (errores genéricos, bloqueo, cuenta desactivada), guard de cambio de contraseña, navegación filtrada por permisos, formulario de cuenta (duplicado, rol inexistente, política), formulario de rol (sin permisos → error), eliminar rol en uso | `frontend/src/features/*/*.test.tsx` |
 | E2E | Playwright (local) | Recorrido completo de `quickstart.md` §10 (valida SC-002, SC-005, SC-006, SC-007, SC-010, SC-011) | `frontend/e2e/acceso.spec.ts` |
@@ -278,15 +292,15 @@ intentos es idéntico para cuentas reales e inexistentes (FR-006).
 | FR-001 | P18 (guards `RequireAuth` en el router) + `middleware/authn` (P1) | e2e + quickstart §2 (SC-001) |
 | FR-002 | P1 + P5 + `service_auth.go` (login: correo+contraseña, cuenta inactiva rechazada) | quickstart §2 y §7 · pruebas del service |
 | FR-003 | P6 + P20 *(en `research.md` R18: verificación dummy para uniformidad de tiempos)* + contrato (ninguna respuesta contiene `password` ni `passwordHash`) | quickstart §8 · suite de handlers (SC-008) |
-| FR-004 | `POST /api/v1/auth/logout` (P1: borra la sesión y la cookie) | quickstart §3 |
-| FR-005 | P9 (inactividad 30 min con `last_seen_at`) | quickstart §3 · pruebas de `platform/session` |
-| FR-006 | P6 (`login_attempts`, 5 intentos / 15 min como constantes) | quickstart §8 · pruebas del service + integración |
+| FR-004 | `POST /api/v1/auth/logout` (P1: `DEL` de la sesión en Redis y borrado de las cookies) | quickstart §3 |
+| FR-005 | P9 (inactividad 30 min por TTL + vida absoluta de 1 h con `absoluteExpiresAt`, R15) | quickstart §3 · pruebas de `platform/session` (unitarias + Redis) |
+| FR-006 | P6 (contadores `login:fail:*`/`login:block:*` en Redis, 5 intentos / 15 min como constantes) | quickstart §8 · pruebas del service + integración |
 | FR-007 | P8 (`POST /api/v1/setup/initialize` + guard de BD + `BOOTSTRAP_TOKEN`) | quickstart §1 y §8 · integración (doble inicialización) |
 | FR-008 | P7 (recuento post-mutación en transacción con advisory lock) | quickstart §6 · integración concurrente (SC-004) |
-| FR-009 | P3 + P13 + `POST /api/v1/admin/usuarios` (rol inexistente → 400 con `details.roleId`) | quickstart §4 · pruebas de service/handler |
-| FR-010 | P5 (política en `platform/password`) + P9 (`mustChangePassword`) + `POST /admin/usuarios/{id}/password` | quickstart §5 · tabla de casos de la política |
-| FR-011 | `PATCH /api/v1/admin/usuarios/{id}` (fullName, email, roleId, isActive) | quickstart §4 y §7 |
-| FR-012 | P1 + P9 (borrado de sesiones al desactivar + comprobación por petición) | quickstart §7 · e2e (SC-006) |
+| FR-009 | P3 + P13 + P12 + `POST /api/v1/admin/usuarios` (nombre, apellidos, correo, teléfono, rol, contraseña; teléfono mal formado → 400 con `details.phone`; rol inexistente → 400 con `details.roleId`) | quickstart §4 · pruebas de service/handler |
+| FR-010 | P5 (política en `platform/password`: 8+, 4 clases de caracteres, distinta del nombre, los apellidos y el correo) + P9 (`mustChangePassword`) + `POST /admin/usuarios/{id}/password` | quickstart §5 · tabla de casos de la política |
+| FR-011 | `PATCH /api/v1/admin/usuarios/{id}` (firstName, lastName, email, phone, roleId, isActive) | quickstart §4 y §7 |
+| FR-012 | P1 + P9 (revocación de claves de sesión al desactivar + comprobación por petición) | quickstart §3 y §7 · e2e (SC-006) |
 | FR-013 | **No existe operación de borrado** de cuentas en el contrato ni en el servicio (solo `is_active`) | revisión del contrato + `revisor-codigo` |
 | FR-014 | P12 + P13 + `POST/PATCH /api/v1/admin/roles` (≥1 permiso, nombre único normalizado) | quickstart §4 · pruebas de service |
 | FR-015 | P12 (catálogo de 9 permisos sembrado en `000002`) | `data-model.md` · `GET /admin/permisos` |
@@ -316,20 +330,22 @@ intentos es idéntico para cuentas reales e inexistentes (FR-006).
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| **R1 — D-A7 sin confirmar** | El núcleo de F2 (sesión, CSRF, hash) no puede implementarse | **Bloqueante explícito**: la puerta de aprobación de este plan incluye confirmar D-A7 tal como está aterrizada en P1/P5/P10/P9. Si el humano cambia la opción (p. ej. argon2id o Redis), solo se reescriben P1/P5 y `research.md` R1/R4 antes de `tasks` |
-| **R2 — `ux.md` pendiente** (`disenador-ux`) | Las tareas de frontend no tienen pantallas/estados definitivos | Se pide `ux.md` en paralelo a la aprobación; las tareas `[frontend]` de `tasks.md` quedarán marcadas como dependientes de él. El plan define rutas, guards y contenido mínimo (P18) para que el diseño no cambie la API |
-| **R3 — "Identificación" de la cuenta es ambigua** en la spec (¿nombre completo o documento de identidad?) | Modelado de `users` y formulario | Se modela como `full_name` (nombre completo) porque la política de contraseñas habla de "nombre" (FR-010). **Pregunta al humano**; si exige además un documento (cédula), es una columna nueva y un campo más de los DTOs — cambio menor y localizado |
+| **R1 — Redis como nueva pieza operativa** (D-A7 confirmada el 2026-10-04 con sesión en Redis) | Si Redis cae o no arranca, nadie puede entrar ni mantener la sesión (y se pierden los contadores de intentos) | Servicio `redis` con `healthcheck` y `depends_on: service_healthy` en `docker-compose.yml`; `platform/config` valida `REDIS_URL` al arrancar (falla con mensaje claro, §VII); los errores de Redis se traducen a `503`/`500` con sobre uniforme y log con `request_id`. El plan B (sesión y contadores en PostgreSQL) está documentado en `research.md` R1/R5 por si Redis no fuera viable |
+| **R2 — `ux.md` por alinear con los datos de la cuenta** (`disenador-ux`) | Las tareas de frontend podrían reproducir los campos antiguos (`nombre`/`correo`) en vez de **nombre, apellidos, correo y teléfono** | `ux.md` está entregado pero hay que actualizarlo con los campos confirmados el 2026-10-04 (R20); las tareas `[frontend]` de `tasks.md` quedarán marcadas como dependientes de ese ajuste. El plan define rutas, guards, DTOs y contenido mínimo (P18 + contrato) para que el diseño no cambie la API |
+| **R3 — Datos de la cuenta (cerrado el 2026-10-04)** | — | La spec (ya actualizada) y el humano fijaron **nombre, apellidos, correo y teléfono** como datos de la cuenta, todos obligatorios (`research.md` R20): `users.first_name`/`last_name`/`phone` y los DTOs del contrato. Sin documento de identidad. Si algún día hiciera falta, sería una columna nueva y un campo más — cambio menor y localizado |
 | **R4 — Enumeración de cuentas** | US1 esc. 3 pide un mensaje de "acceso desactivado" y el bloqueo pide el suyo, ambos distintos del genérico | Es exigido por la spec, así que se implementa **tal cual** pero se limita la superficie: credenciales incorrectas y correos inexistentes comparten mensaje y tiempo de respuesta (P6/R18) y el mensaje de bloqueo es idéntico exista o no la cuenta. Queda registrado para `seguridad` |
-| **R5 — `rate-limit` en memoria** | Con varias instancias el umbral se multiplica | Limitación declarada (P17): hoy hay una instancia; si llega el escalado, se decide un almacén compartido en esa funcionalidad |
+| **R5 — `rate-limit` en memoria** | Con varias instancias el umbral se multiplica | Limitación declarada (P17): hoy hay una instancia; si llega el escalado, se decide un almacén compartido en esa funcionalidad (Redis ya está disponible por P1, aunque el umbral por IP no necesita compartirse hoy) |
 | **R6 — bcrypt limita a 72 bytes** | Contraseñas muy largas (multi-byte) | La validación exige ≤72 bytes y ≤64 caracteres y lo dice el mensaje (P5) |
-| **R7 — Escritura de `last_seen_at` por petición** | Ruido de escritura en el panel | Estrangulado a una actualización por minuto por sesión (P9); se revisa si el volumen crece |
+| **R7 — Escritura de `lastSeenAt` por petición** | Ruido de escritura (ahora en Redis) | Estrangulado a una actualización por minuto por sesión (P9); se revisa si el volumen crece |
 | **R8 — Carreras** (anti-bloqueo, inicialización, duplicados simultáneos) | Estados prohibidos o duplicados | Advisory lock + transacción (P7/P8) y `UNIQUE` en la base (P13); pruebas de integración **concurrentes** que lo demuestran |
 | **R9 — Deriva de artefactos generados** (sqlc, `schema.d.ts`) | Compilación contra SQL o tipos viejos | Heredado de F1 (R4): código generado commiteado, `make sqlc-verify`, regla de revisión (un PR que toca `migrations/`/`queries/` debe tocar `internal/db/`) |
-| **R10 — Latencia por resolver identidad en cada petición** | Panel lento con muchas peticiones | 2 consultas por petición (sesión + identidad) en un panel de decenas de usuarios; si se nota, caché corta con invalidación por evento — decisión futura, no de F2 (rompería FR-018 si se hace mal) |
+| **R10 — Latencia por resolver identidad en cada petición** | Panel lento con muchas peticiones | 1 lectura Redis (sesión) + 1 consulta SQL (identidad y permisos) por petición en un panel de decenas de usuarios; si se nota, caché corta con invalidación por evento — decisión futura, no de F2 (rompería FR-018 si se hace mal) |
 | **R11 — Cookie `Secure` en local (http)** | Sesión que "no se guarda" en desarrollo | `SESSION_COOKIE_SECURE=false` por defecto en desarrollo; `platform/config` **falla al arrancar** si `APP_ENV=production` y está en `false` (P1) |
 | **R12 — Dependencias nuevas** (2 backend + 3 frontend) | Superficie de vulnerabilidades | Justificadas en R16; `govulncheck` y `npm audit` en `make ci` sin altas/críticas (§IV) |
 | **R13 — `BOOTSTRAP_TOKEN` puede parecerle excesivo al humano** | FR-007 "impedir cualquier uso abusivo" | Va **en la puerta de aprobación**: si se rechaza, se retira una única validación del endpoint (queda el guard de "solo con `users` vacío" + rate-limit) y se anota en la spec/plan como decisión humana |
 | **R14 — Denegación de servicio contra bcrypt** (login público) | CPU agotada por intentos masivos | `rate-limit` por IP (P17) + bloqueo por cuenta (P6) + `govulncheck`; registrado para `seguridad` |
+| **R15 — Redis en las pruebas sin poder tocar el CI del kit** | Si el runner no tiene Docker o falla la descarga de imágenes (`redis:7-alpine`), la integración falla y **no** se puede remediar desde `ci.yml` (archivo del kit, `.kit-manifest.json`) | Las pruebas de integración levantan Redis (y, si no hay `DATABASE_URL_TEST`, PostgreSQL) con `testcontainers-go` dentro del propio test (`research.md` R19); los runners `ubuntu-latest` tienen Docker y el CI del kit ya ejecuta `go test -tags=integration ./...` sin cambios. Imágenes pequeñas y reutilización entre tests. Si aun así fuera inviable, el plan B es la sesión/contadores en PostgreSQL (R1) y se comunicaría al humano para proponer el cambio en el repositorio del kit |
+| **R16 — Redis sin persistencia (estado efímero)** | Un reinicio de Redis borra sesiones (re-login) y contadores de intentos (se reabre la ventana de prueba de contraseñas) | Aceptado y documentado (`research.md` R5/R15): un tercero no puede forzar el reinicio; en despliegue se activa AOF/RDB si se exige dureza. Las sesiones no guardan datos que no estén en PostgreSQL |
 
 ## Complexity Tracking
 

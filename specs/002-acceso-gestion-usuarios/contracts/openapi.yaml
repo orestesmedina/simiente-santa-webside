@@ -30,9 +30,9 @@ info:
 
     ## Nuevos en este delta
 
-    - Esquema de seguridad `sessionCookie`: sesión en servidor con cookie
-      `HttpOnly` (D-A7 — **pendiente de confirmación humana**; ver
-      `specs/002-acceso-gestion-usuarios/plan.md` P1).
+    - Esquema de seguridad `sessionCookie`: sesión en servidor **en Redis** (D-A7
+      **confirmada por el humano el 2026-10-04**; cookie `HttpOnly` con token opaco
+      cuyo SHA-256 es la clave en Redis; ver `specs/002-acceso-gestion-usuarios/plan.md` P1).
     - Superficie pública escribible (`/api/v1/auth/login`,
       `/api/v1/setup/initialize`) con `rate-limit` por IP (429 `rate_limited`).
     - Superficie de panel (`/api/v1/admin/…`) con sesión + CSRF + permiso del
@@ -100,8 +100,9 @@ paths:
           headers:
             Set-Cookie:
               description: |
-                `ss_session=<token>; HttpOnly; SameSite=Lax; Path=/` (y `Secure`
-                según `SESSION_COOKIE_SECURE`) + `csrf_token=<nonce>.<hmac>; SameSite=Lax; Path=/`.
+                `ss_session=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=3600`
+                (vida absoluta de 1 h; `Secure` según `SESSION_COOKIE_SECURE`) +
+                `csrf_token=<nonce>.<hmac>; SameSite=Lax; Path=/`.
               schema:
                 type: string
           content:
@@ -170,7 +171,7 @@ paths:
         Cambio de contraseña de la cuenta iniciada (FR-020). Exige la contraseña
         actual y una nueva que cumpla la política (FR-010): mínimo 8 caracteres,
         con mayúsculas, minúsculas, números y caracteres especiales, y distinta
-        del nombre y del correo. La nueva contraseña debe medir como máximo 64
+        del nombre, de los apellidos y del correo. La nueva contraseña debe medir como máximo 64
         caracteres y 72 bytes (límite de bcrypt). Revoca las demás sesiones de la
         cuenta. Si la cuenta tenía `mustChangePassword`, queda resuelto (US7
         esc. 4). Requiere CSRF.
@@ -331,8 +332,8 @@ paths:
       operationId: updateUser
       summary: Editar una cuenta (datos, rol o estado)
       description: |
-        Edita identificación (nombre completo), correo, rol asignado y/o estado
-        activo/inactivo (FR-011). Al asignar un rol nuevo, el nuevo **reemplaza**
+        Edita los datos de la cuenta (nombre, apellidos, correo y teléfono), el
+        rol asignado y/o el estado activo/inactivo (FR-011). Al asignar un rol nuevo, el nuevo **reemplaza**
         al anterior (un solo rol por cuenta, Q4). Al desactivar se bloquea el
         acceso de inmediato —también las sesiones abiertas— y se conservan los
         datos (FR-012); reactivar restaura el acceso (US5 esc. 3). Ninguna
@@ -574,11 +575,14 @@ components:
       in: cookie
       name: ss_session
       description: |
-        Sesión en servidor (D-A7, pendiente de confirmación humana): cookie
-        `ss_session` `HttpOnly` con un token opaco cuyo SHA-256 se guarda en el
-        servidor. Se emite en `POST /api/v1/auth/login` y se borra en logout y en
-        toda revocación. Las peticiones no seguras con sesión exigen además la
-        cabecera `X-CSRF-Token` con el valor de la cookie `csrf_token`.
+        Sesión en servidor **en Redis** (D-A7 confirmada el 2026-10-04): cookie
+        `ss_session` `HttpOnly` con un token opaco cuyo **SHA-256** es la clave
+        en Redis (el token en claro nunca se guarda). Caduca por inactividad
+        (30 min) o por vida absoluta (1 h desde el inicio de sesión); su
+        `Max-Age` es la vida absoluta. Se emite en `POST /api/v1/auth/login` y se
+        borra en logout y en toda revocación. Las peticiones no seguras con
+        sesión exigen además la cabecera `X-CSRF-Token` con el valor de la
+        cookie `csrf_token`.
   parameters:
     Limit:
       name: limit
@@ -635,7 +639,7 @@ components:
         Identidad de la sesión iniciada con sus permisos efectivos (los del rol
         asignado; nunca la suma de varios roles, Q4). No contiene ningún dato
         sensible de credenciales (FR-003).
-      required: [id, email, fullName, roleId, roleName, permissions, mustChangePassword]
+      required: [id, email, firstName, lastName, phone, roleId, roleName, permissions, mustChangePassword]
       properties:
         id:
           type: string
@@ -643,8 +647,15 @@ components:
         email:
           type: string
           format: email
-        fullName:
+        firstName:
           type: string
+          description: Nombre de la persona (datos de la cuenta confirmados el 2026-10-04).
+        lastName:
+          type: string
+          description: Apellidos de la persona.
+        phone:
+          type: string
+          description: Número de teléfono (formato telefónico razonable, FR-009).
         roleId:
           type: string
           format: uuid
@@ -682,8 +693,8 @@ components:
           maxLength: 72
           description: |
             Política FR-010: 8–64 caracteres y ≤72 bytes, con mayúsculas,
-            minúsculas, números y caracteres especiales, y distinta del nombre
-            y del correo.
+            minúsculas, números y caracteres especiales, y distinta del nombre,
+            de los apellidos y del correo.
       additionalProperties: false
     PasswordChangedResponse:
       type: object
@@ -695,9 +706,17 @@ components:
       additionalProperties: false
     InitializeInput:
       type: object
-      required: [fullName, email, password]
+      description: |
+        Datos de la cuenta del primer administrador: los mismos campos
+        obligatorios de toda cuenta (nombre, apellidos, correo y teléfono;
+        confirmados el 2026-10-04) y su contraseña.
+      required: [firstName, lastName, email, phone, password]
       properties:
-        fullName:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        lastName:
           type: string
           minLength: 1
           maxLength: 120
@@ -705,6 +724,11 @@ components:
           type: string
           format: email
           maxLength: 254
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 32
+          description: Formato telefónico razonable (FR-009): dígitos con separadores habituales, prefijo internacional opcional y al menos 7 dígitos.
         password:
           type: string
           format: password
@@ -714,17 +738,31 @@ components:
       additionalProperties: false
     CreateUserInput:
       type: object
-      required: [fullName, email, roleId, password]
+      required: [firstName, lastName, email, phone, roleId, password]
       properties:
-        fullName:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Nombre de la persona (campo obligatorio y separado de los apellidos; FR-009).
+        lastName:
           type: string
           minLength: 1
           maxLength: 120
-          description: Identificación de la persona (nombre completo; ver riesgo R3 del plan).
+          description: Apellidos de la persona (campo obligatorio; FR-009).
         email:
           type: string
           format: email
           maxLength: 254
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 32
+          description: |
+            Número de teléfono obligatorio (FR-009): dígitos con espacios,
+            guiones o paréntesis como separadores habituales, un prefijo
+            internacional opcional y al menos 7 dígitos. Un formato que no es
+            telefónico → `400` con `details.phone`.
         roleId:
           type: string
           format: uuid
@@ -739,11 +777,17 @@ components:
     UpdateUserInput:
       type: object
       description: |
-        Al menos un campo. El nuevo rol reemplaza al anterior (Q4).
-        `isActive: false` bloquea el acceso de inmediato y revoca las sesiones
-        abiertas (FR-012); nunca se eliminan cuentas (FR-013).
+        Al menos un campo (nombre, apellidos, correo, teléfono, rol o estado;
+        mismas validaciones que al crear, FR-011). El nuevo rol reemplaza al
+        anterior (Q4). `isActive: false` bloquea el acceso de inmediato y
+        revoca las sesiones abiertas (FR-012); nunca se eliminan cuentas
+        (FR-013).
       properties:
-        fullName:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        lastName:
           type: string
           minLength: 1
           maxLength: 120
@@ -751,6 +795,10 @@ components:
           type: string
           format: email
           maxLength: 254
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 32
         roleId:
           type: string
           format: uuid
@@ -780,7 +828,7 @@ components:
     UserItem:
       type: object
       description: Cuenta del panel en listados y detalle (FR-019). Nunca incluye credenciales.
-      required: [id, email, fullName, roleId, roleName, isActive, mustChangePassword, createdAt]
+      required: [id, email, firstName, lastName, phone, roleId, roleName, isActive, mustChangePassword, createdAt]
       properties:
         id:
           type: string
@@ -788,8 +836,15 @@ components:
         email:
           type: string
           format: email
-        fullName:
+        firstName:
           type: string
+          description: Nombre de la persona.
+        lastName:
+          type: string
+          description: Apellidos de la persona.
+        phone:
+          type: string
+          description: Número de teléfono (FR-009).
         roleId:
           type: string
           format: uuid
