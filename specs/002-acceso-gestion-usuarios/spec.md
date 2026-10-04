@@ -4,11 +4,11 @@
 
 **Created**: 2026-10-04
 
-**Status**: Aclaraciones resueltas y decisiones de datos de cuenta, contraseñas y sesión confirmadas (2026-10-04) — pendiente de aprobación humana
+**Status**: Aprobada con aclaraciones resueltas (2026-10-04); **cambio de alcance: auditoría** incorporado por decisión del humano (2026-10-04) — pendiente de aprobación del añadido
 
-**Input**: User description: "F2 — Acceso y gestión de usuarios (roadmap §3, `docs/producto/roadmap.md`): El equipo de la iglesia inicia sesión en un panel de administración; los administradores crean usuarios, los activan o desactivan, y crean roles con los permisos por módulo que necesiten (p. ej., un rol de contenido, un rol de ministerios)." Decisiones aplicables del roadmap: **Decisión 4** (usuarios activo/inactivo) y **Decisión 5** (permisos por módulo agrupados en roles, sin catálogo fijo de roles; el administrador crea roles nuevos y les asigna permisos de forma independiente; **la spec de F2 define cómo queda garantizado el arranque con un administrador inicial**). Restricción de `idea.md` §2: los usuarios comunes no se registran; solo el administrador crea cuentas. Aclaraciones Q1–Q5 resueltas con el humano el 2026-10-04 (ver *Aclaraciones (resueltas)*).
+**Input**: User description: "F2 — Acceso y gestión de usuarios (roadmap §3, `docs/producto/roadmap.md`): El equipo de la iglesia inicia sesión en un panel de administración; los administradores crean usuarios, los activan o desactivan, y crean roles con los permisos por módulo que necesiten (p. ej., un rol de contenido, un rol de ministerios)." Decisiones aplicables del roadmap: **Decisión 4** (usuarios activo/inactivo) y **Decisión 5** (permisos por módulo agrupados en roles, sin catálogo fijo de roles; el administrador crea roles nuevos y les asigna permisos de forma independiente; **la spec de F2 define cómo queda garantizado el arranque con un administrador inicial**). Restricción de `idea.md` §2: los usuarios comunes no se registran; solo el administrador crea cuentas. Aclaraciones Q1–Q5 resueltas con el humano el 2026-10-04 (ver *Aclaraciones (resueltas)*). **Cambio de alcance aprobado por el humano el 2026-10-04**: se añade la **auditoría de F2** —último acceso por cuenta, historial de inicios de sesión (exitosos y fallidos) y registro de acciones administrativas, consultables en el panel de solo lectura— (ver *Decisiones adicionales confirmadas por el humano el 2026-10-04*).
 
-> **Nota de alcance y terminología**: esta funcionalidad es la puerta del **panel de administración** que usarán las funcionalidades F3–F9. Se distinguen dos personas distintas: el **visitante** (el "usuario común" de `idea.md` §2: ve el sitio público, no tiene cuenta y no se registra) y el **usuario del panel** (el "usuario del sistema" y el "usuario administrador" de `idea.md` §2: tiene cuenta, inicia sesión y gestiona el contenido). En esta spec, "usuario" significa siempre **usuario del panel** salvo que se diga lo contrario. F2 entrega: acceso autenticado al panel, gestión de cuentas (crear, editar, activar/desactivar) y gestión de roles con permisos por módulo. El contenido de los módulos (portada, eventos, actividades, grupos, ministerios, donaciones, noticias, medios) llega en F3–F9; aquí solo se definen los permisos que esos módulos usarán.
+> **Nota de alcance y terminología**: esta funcionalidad es la puerta del **panel de administración** que usarán las funcionalidades F3–F9. Se distinguen dos personas distintas: el **visitante** (el "usuario común" de `idea.md` §2: ve el sitio público, no tiene cuenta y no se registra) y el **usuario del panel** (el "usuario del sistema" y el "usuario administrador" de `idea.md` §2: tiene cuenta, inicia sesión y gestiona el contenido). En esta spec, "usuario" significa siempre **usuario del panel** salvo que se diga lo contrario. F2 entrega: acceso autenticado al panel, gestión de cuentas (crear, editar, activar/desactivar), gestión de roles con permisos por módulo y la **auditoría de F2** (último acceso por cuenta, historial de inicios de sesión y registro de acciones administrativas de gestión, consultables en el panel). El registro de auditoría cubre solo el ámbito de F2 (accesos al panel y gestión de cuentas y roles); "origen" significa el **origen del acceso**, la dirección desde la que se hizo el intento. El contenido de los módulos (portada, eventos, actividades, grupos, ministerios, donaciones, noticias, medios) llega en F3–F9; aquí solo se definen los permisos que esos módulos usarán.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -145,6 +145,27 @@ Como usuario del panel, quiero cambiar mi contraseña desde mi cuenta, para mant
 
 ---
 
+### User Story 8 - Consultar el registro de accesos y acciones administrativas (Priority: P3)
+
+Como administrador, quiero consultar el registro de accesos al panel y de acciones administrativas de gestión —con filtros por cuenta y por rango de fechas— y ver el último acceso de cada cuenta, para saber quién entró, desde dónde, qué se hizo sobre las cuentas y los roles, y cuándo.
+
+**Why this priority**: Es valor de control y acompañamiento: da confianza y permite revisar qué pasó, pero no bloquea el acceso ni la gestión de usuarios y roles, que ya entregan su valor sin él (US1–US7). Por eso va al final, como P3.
+
+**Independent Test**: Se prueba de forma independiente con una cuenta administradora y otra sin ese permiso, tras generar algunos accesos (exitosos y fallidos) y algunas acciones de gestión: la sección muestra ambos historiales con fecha y hora, resultado e IP de origen; los filtros por cuenta y por rango de fechas y la paginación funcionan; la ficha de cada cuenta muestra su último acceso; un intento fallido contra un correo que no existe queda registrado sin asociarse a ninguna cuenta; los registros no se pueden editar ni borrar; y la cuenta sin permiso no puede abrir la sección. Entrega valor por sí sola: el administrador ve qué pasó en el panel.
+
+**Acceptance Scenarios**:
+
+1. **Dado** un administrador autenticado, **cuando** abre la sección de registro, **entonces** ve el historial de inicios de sesión (exitosos y fallidos) y el de acciones administrativas, con fecha y hora, resultado y los datos propios de cada registro.
+2. **Dado** la sección de registro, **cuando** filtro por cuenta y por rango de fechas, **entonces** veo únicamente los registros de esa cuenta dentro de ese periodo.
+3. **Dado** un periodo con muchos registros, **cuando** recorro la sección, **entonces** los registros se muestran paginados y puedo pasar de una página a otra sin perder los filtros aplicados.
+4. **Dado** la sección de registro, **cuando** intento editar o borrar un registro, **entonces** no puedo: el registro es de solo lectura.
+5. **Dado** una cuenta sin el permiso de administrar usuarios y roles, **cuando** intenta abrir la sección de registro, **entonces** el sistema impide el acceso con un mensaje claro.
+6. **Dado** un administrador consultando una cuenta, **cuando** mira su ficha, **entonces** ve la fecha y el origen de su último acceso exitoso, o una indicación de que esa cuenta aún no ha iniciado sesión.
+7. **Dado** un inicio de sesión fallido contra un correo que no corresponde a ninguna cuenta, **cuando** se registra el intento, **entonces** queda registrado con su fecha y hora, su resultado y su IP de origen, sin asociarse a ninguna cuenta y sin que ningún mensaje a la persona revele si la cuenta existe.
+8. **Dado** un administrador que realiza una acción sensible de gestión (crear, editar, activar o desactivar una cuenta, restablecer la contraseña de una cuenta, o crear, editar o eliminar un rol), **cuando** la realiza, **entonces** la acción queda registrada con quién la hizo, qué hizo, sobre qué y cuándo.
+
+---
+
 ### Edge Cases
 
 - **Cuenta desactivada con sesión abierta**: pierde el acceso de inmediato (US5, escenario 2); no debe poder seguir actuando en el panel con esa sesión.
@@ -163,6 +184,14 @@ Como usuario del panel, quiero cambiar mi contraseña desde mi cuenta, para mant
 - **Sesión que termina mientras se llena un formulario** (por 30 minutos de inactividad o por alcanzar la hora máxima desde su inicio): la acción se interrumpe y el sistema pide iniciar sesión de nuevo; no debe aplicarse a medias ni perderse sin aviso.
 - **Sesión con actividad continua que alcanza la hora máxima**: 1 hora desde el inicio es el techo absoluto; aunque la persona siga trabajando sin parar, la sesión termina y debe iniciar sesión de nuevo. La inactividad (30 minutos) solo puede cerrarla antes, nunca extenderla.
 - **Pérdida de acceso de la única persona que sabe su contraseña**: un administrador le define una contraseña nueva en su cuenta y la persona la cambia al entrar (decisión Q2). No hay recuperación por auto-servicio con correo en el MVP.
+- **Intento de inicio de sesión contra un correo que no existe**: se registra el intento como fallido, con su fecha y hora y su IP de origen, **sin asociarlo a ninguna cuenta y sin crear nada**; el mensaje a la persona sigue sin revelar si la cuenta existe (coherente con FR-003). El registro no debe generar "cuentas fantasma" a partir de correos inventados.
+- **Acción administrativa que no se completa** (falla o es denegada por falta de permiso): el intento queda registrado con su resultado y la operación no se aplica; para la auditoría importa saber qué se intentó, quién, sobre qué y cuándo.
+- **Intentos de inicio de sesión durante el bloqueo temporal** (FR-006): cada intento también se registra como intento fallido; el bloqueo no suspende ni borra el registro.
+- **Cuenta que nunca ha iniciado sesión**: su ficha no muestra ningún último acceso e indica que aún no hay accesos; no debe aparecer una fecha vacía ni inventada.
+- **Cuenta desactivada**: su historial de accesos y las acciones registradas sobre ella se conservan íntegros (coherente con FR-012 y FR-013); desactivar no borra nada del registro.
+- **Contraseñas y credenciales**: nunca aparecen en ningún registro; de un restablecimiento se registra quién lo hizo, sobre qué cuenta y cuándo, nunca la contraseña definida (FR-010, constitución §IV).
+- **Gran volumen de registros**: la consulta se pagina y se filtra por cuenta y por rango de fechas; el registro no se edita ni se borra desde el panel, y no hay purga en el MVP (ver Out of Scope y Assumptions).
+- **Cambio de la propia contraseña (US7)**: no es una acción administrativa y no se registra en el historial de acciones; los accesos de esa persona sí quedan en el historial de accesos.
 
 ### Errores esperados
 
@@ -184,6 +213,7 @@ Todos los mensajes deben ser comprensibles para personas no técnicas y nunca de
 | Sesión terminada (por cerrarla, por 30 minutos de inactividad o por alcanzar la hora máxima) | Mensaje que pide iniciar sesión de nuevo |
 | Contraseña nueva que no cumple la política (menos de 8 caracteres, sin combinar mayúsculas, minúsculas, números y caracteres especiales, o igual al nombre, a los apellidos o al correo) | Mensaje con el requisito incumplido |
 | Superar los 5 intentos fallidos de inicio de sesión | Mensaje que indica que el acceso queda bloqueado temporalmente durante 15 minutos |
+| Filtros de consulta del registro sin resultados | Indicación clara de que no hay registros que coincidan con esos filtros, sin romper la pantalla |
 | Error inesperado del sistema | Mensaje genérico sin información interna |
 
 ## Requirements *(mandatory)*
@@ -210,15 +240,23 @@ Todos los mensajes deben ser comprensibles para personas no técnicas y nunca de
 - **FR-018**: Todo cambio en los permisos de un rol DEBE reflejarse de inmediato en el acceso de las cuentas que lo tienen, sin pasos adicionales.
 - **FR-019**: El sistema DEBE mostrar el listado de cuentas con su estado (activo/inactivo), su correo y su rol asignado.
 - **FR-020**: Las personas con cuenta en el panel DEBEN poder cambiar su propia contraseña.
+- **FR-021** *(cambio de alcance: auditoría, 2026-10-04)*: La ficha de cada cuenta DEBE mostrar la fecha y el origen (IP) de su **último acceso exitoso** al panel; una cuenta que aún no ha iniciado sesión DEBE indicarlo sin mostrar ningún acceso inventado.
+- **FR-022**: El sistema DEBE registrar cada **intento de inicio de sesión** —exitoso y fallido— con fecha y hora, resultado e **IP de origen**, asociado a la cuenta cuando se pueda identificar. Un intento con un correo que no corresponde a ninguna cuenta DEBE registrarse igualmente como fallido, sin asociarse a ninguna cuenta y sin crear nada, y el mensaje a la persona NUNCA DEBE revelar si la cuenta existe (coherente con FR-003).
+- **FR-023**: El sistema DEBE registrar cada **acción administrativa sensible de gestión** con **quién la hizo, qué hizo, sobre qué** (cuenta o rol) **y cuándo**, y su resultado: crear, editar, activar o desactivar una cuenta; restablecer la contraseña de una cuenta; crear, editar o eliminar un rol. La creación del administrador inicial (FR-007) cuenta como creación de cuenta y DEBE registrarse. Si la operación no se completa (falla o se deniega), el intento DEBE registrarse igualmente con su resultado. El cambio de la propia contraseña (FR-020) no es una acción administrativa y no se registra en este historial.
+- **FR-024**: El panel DEBE exponer una sección de registro —historial de accesos y de acciones administrativas— accesible **solo a las cuentas con el permiso de administrar usuarios y roles** (decisión de permiso documentada en *Decisiones adicionales*): DEBE mostrar ambos historiales, DEBE permitir filtrar por cuenta y por rango de fechas y DEBE paginar los resultados. Las cuentas sin ese permiso DEBEN ver denegado el acceso con un mensaje claro.
+- **FR-025**: El registro DEBE ser de **solo lectura** desde el panel: el sistema NUNCA DEBE permitir editar ni borrar registros por ninguna vía de la interfaz, y los registros DEBEN conservarse aunque la cuenta se desactive, cambie de rol o se le editen los datos (coherente con FR-012 y FR-013).
+- **FR-026**: NINGÚN registro DEBE contener contraseñas ni otros datos de credenciales: de un inicio de sesión solo su resultado, y de un restablecimiento de contraseña quién lo hizo, sobre qué cuenta y cuándo (FR-010, constitución §IV).
 
 ### Key Entities
 
-- **Cuenta del panel**: persona del equipo de la iglesia con acceso autenticado al panel. Se identifica por su correo y tiene como datos de la cuenta su nombre, sus apellidos, su correo y su número de teléfono (todos obligatorios), un estado (activo/inactivo) y un rol asignado. No debe confundirse con el "usuario común" de `idea.md` §2: el visitante del sitio público no tiene cuenta ni se registra.
+- **Cuenta del panel**: persona del equipo de la iglesia con acceso autenticado al panel. Se identifica por su correo y tiene como datos de la cuenta su nombre, sus apellidos, su correo y su número de teléfono (todos obligatorios), un estado (activo/inactivo) y un rol asignado. Su ficha muestra además la fecha y el origen de su último acceso exitoso. No debe confundirse con el "usuario común" de `idea.md` §2: el visitante del sitio público no tiene cuenta ni se registra.
 - **Rol**: nombre único creado por el administrador que agrupa al menos un permiso; define qué puede hacer la cuenta que lo tiene. Puede editarse (nombre y permisos) y eliminarse solo cuando no está en uso. No hay un catálogo fijo de roles (Decisión 5).
 - **Permiso**: autorización sobre un módulo del producto (p. ej., gestionar eventos). Es la unidad con la que se arman los roles; su catálogo corresponde a los módulos del producto más la administración de usuarios y roles.
 - **Sesión**: acceso en curso de una cuenta autenticada. Nace al iniciar sesión y termina al cerrar sesión, a los **30 minutos de inactividad**, al alcanzar la duración máxima de **1 hora** desde su inicio o cuando la cuenta se desactiva.
+- **Registro de acceso** *(auditoría)*: entrada del historial de inicios de sesión con fecha y hora, resultado (exitoso/fallido) e IP de origen, asociada a la cuenta cuando se puede identificar. Un intento contra un correo que no corresponde a ninguna cuenta queda registrado sin asociación. De los accesos exitosos se deriva el último acceso que muestra la ficha de la cuenta. Es de solo lectura y no contiene credenciales.
+- **Registro de acción administrativa** *(auditoría)*: entrada del historial de acciones sensibles de gestión con quién la hizo, qué hizo, sobre qué cuenta o rol, cuándo y con qué resultado —incluidos los intentos que no se completan—. Es de solo lectura y no contiene credenciales.
 
-Relaciones: un rol agrupa varios permisos y un permiso puede estar en varios roles; una cuenta tiene un solo rol y, a través de él, permisos efectivos; un rol solo puede eliminarse cuando ninguna cuenta lo tiene asignado.
+Relaciones: un rol agrupa varios permisos y un permiso puede estar en varios roles; una cuenta tiene un solo rol y, a través de él, permisos efectivos; un rol solo puede eliminarse cuando ninguna cuenta lo tiene asignado. Cada registro de acceso puede estar asociado a una cuenta (salvo los intentos no identificables, que quedan sin asociación), y cada registro de acción administrativa nombra a la cuenta que lo hizo y al objeto (cuenta o rol) sobre el que se hizo.
 
 ## Success Criteria *(mandatory)*
 
@@ -235,6 +273,8 @@ Relaciones: un rol agrupa varios permisos y un permiso puede estar en varios rol
 - **SC-009**: Un cambio en los permisos de un rol se refleja en el acceso de sus cuentas desde la primera acción posterior, sin pasos adicionales.
 - **SC-010**: Una persona con cuenta cambia su contraseña y vuelve a entrar con la nueva en menos de 1 minuto.
 - **SC-011**: 0 intentos de eliminar un rol en uso ni de repetir la inicialización tienen éxito en las pruebas de aceptación, y ningún correo o nombre de rol casi duplicado (solo por mayúsculas o espacios) queda registrado.
+- **SC-012** *(auditoría)*: Un administrador encuentra los accesos y las acciones administrativas de una cuenta concreta en menos de 1 minuto, filtrando por cuenta y por rango de fechas, y ve el último acceso de cada cuenta en su ficha.
+- **SC-013** *(auditoría)*: El 100% de los inicios de sesión (exitosos y fallidos) y de las acciones administrativas sensibles de las pruebas de aceptación queda registrado con sus datos (fecha y hora, resultado y, en los accesos, IP de origen), y 0 registros pueden editarse o borrarse desde el panel.
 
 ## Out of Scope
 
@@ -246,7 +286,8 @@ Queda explícitamente **fuera del alcance** de F2:
 - **Gestión del contenido de los módulos** (portada e información general, eventos, actividades, grupos de conexión, ministerios, donaciones, noticias y galería, medios): pertenece a F3–F9. F2 solo define los permisos que esos módulos usarán después.
 - **Identificación con cuentas externas** (redes sociales, cuentas de correo como único acceso sin contraseña, etc.) y cualquier acceso sin contraseña.
 - **Recuperación o notificaciones por SMS, WhatsApp u otros canales**: la resolución de credenciales se limita al restablecimiento por un administrador (decisión Q2).
-- **Registro de auditoría de acciones** (quién hizo qué cambio y cuándo) más allá de lo que el sistema registre para su propio diagnóstico.
+- **Auditoría más allá del ámbito de F2**: el registro cubre los accesos al panel y las acciones administrativas de gestión de cuentas y roles (cambio de alcance del 2026-10-04). Auditar la gestión del contenido de los módulos (portada, eventos, actividades, grupos, ministerios, donaciones, noticias y galería, medios: F3–F9) queda para cuando esos módulos existan.
+- **Exportación, alertas y políticas de retención o purga del registro**: no hay exportación del registro, avisos automáticos ni borrado programado de entradas en el MVP; los registros se conservan mientras el sistema funciona (defaults revisables, ver Assumptions).
 - **Bilingüismo del panel de administración**: la Decisión 6 aplica al sitio público (F3–F9); el panel se entrega en español (ver Assumptions). De quererse el panel bilingüe, sería una ampliación.
 - **Despliegue a producción** ni a entornos distintos de los ya manejados por el proyecto: sigue pendiente a nivel de proyecto.
 - **Diseño visual del sitio público** (identidad de marca, estilos, animaciones): llega con F3.
@@ -281,6 +322,8 @@ Queda explícitamente **fuera del alcance** de F2:
 - **Política de contraseñas (FR-010, US7.3)**: mínimo **8 caracteres**, combinando **mayúsculas, minúsculas, números y caracteres especiales**, y **distinta del nombre, de los apellidos y del correo** de la persona. Complementa la decisión Q2 (la contraseña inicial y los restablecimientos los hace un administrador; el auto-servicio por correo sigue fuera del MVP).
 - **Tiempos de sesión (FR-005, US1 escenarios 6–7)**: la sesión dura **como máximo 1 hora** desde que se inicia —techo absoluto, incluso con actividad continua— y además **se cierra tras 30 minutos de inactividad**, que puede acortarla antes. En cualquiera de los dos casos se exige iniciar sesión de nuevo.
 - **Límite de intentos fallidos (FR-006)**: tras **5 intentos fallidos** de inicio de sesión, el sistema **bloquea temporalmente el acceso durante 15 minutos**; pasados esos 15 minutos se puede volver a intentar iniciar sesión.
+- **Cambio de alcance: auditoría de F2 (decisión del humano, 2026-10-04)**: la auditoría pasa de Out of Scope a **alcance de F2** (US8, FR-021–FR-026). Se añade: el **último acceso exitoso** por cuenta (fecha y origen), el **historial de inicios de sesión** —exitosos y fallidos— con fecha/hora, resultado e IP de origen, asociado a la cuenta cuando se pueda identificar; el **registro de acciones administrativas sensibles** (crear, editar, activar o desactivar una cuenta, restablecer la contraseña de una cuenta, crear, editar o eliminar un rol) con quién la hizo, qué hizo, sobre qué y cuándo —también cuando la operación no se completa—; y una **sección del panel de solo lectura**, accesible a quien administra usuarios y roles, con filtros por cuenta y por rango de fechas y paginación. Prioridad **P3**: es valor de control y acompañamiento y no bloquea el acceso ni la gestión.
+- **Permiso de la sección de registro (decisión de producto documentada, 2026-10-04)**: la sección de auditoría usa **el mismo permiso de administrar usuarios y roles**, sin un permiso propio de "auditoría". Por qué: (1) el catálogo de permisos corresponde a los **módulos del producto** (Decisión 5, FR-015) y la auditoría no es un módulo del producto, sino un instrumento de la administración de usuarios y roles; (2) todo lo que el registro muestra —accesos y cambios sobre cuentas y roles— pertenece a ese ámbito, que quien tiene ese permiso ya puede ver y definir, de modo que un permiso aparte no aportaría separación real de funciones en un equipo pequeño; (3) mantener un único permiso evita ensanchar el catálogo con una entrada ajena a los módulos y simplifica los roles. Si en el futuro hiciera falta separar la consulta de la gestión (p. ej., una revisión externa al equipo), sería una ampliación con un permiso nuevo.
 
 ## Assumptions
 
@@ -297,3 +340,6 @@ Defaults razonables tomados donde la descripción no fija una regla; **son provi
 - **Idioma del panel**: se entrega en español, que es el idioma del equipo que lo usa. El bilingüismo del roadmap (Decisión 6) aplica al sitio público de F3–F9. De quererse el panel en ambos idiomas, sería una ampliación.
 - **Límite de intentos fallidos** (FR-006, confirmado por el humano el 2026-10-04): el bloqueo temporal se activa tras **5 intentos fallidos** de inicio de sesión y dura **15 minutos**; pasados esos 15 minutos se puede volver a intentar iniciar sesión. Medida estándar contra la prueba masiva de contraseñas.
 - **Sin cuentas compartidas**: cada persona del equipo debe tener su propia cuenta; el uso compartido de credenciales queda fuera del modelo.
+- **Alcance y datos de la auditoría** *(cambio aprobado el 2026-10-04)*: el registro cubre los accesos al panel y las acciones administrativas de gestión de cuentas y roles (US8). "Origen" es la IP de origen del intento de acceso. Los registros se conservan mientras el sistema funciona: no hay retención, purga ni exportación en el MVP (defaults revisables, ver Out of Scope).
+- **Nivel de detalle de las acciones registradas**: se registra quién, qué acción, sobre qué cuenta o rol, cuándo y con qué resultado; conservar además el detalle concreto de los cambios (qué datos o permisos se modificaron, antes y después) es un default deseable pero revisable, no un requisito del MVP.
+- **Permiso de la auditoría**: la sección de registro se gobierna con el permiso de administrar usuarios y roles (decisión documentada en *Decisiones adicionales*); no existe un permiso propio de "auditoría" en el catálogo.
