@@ -424,14 +424,15 @@ Se ejecuta `sqlc generate` en desarrollo y **el código generado se commitea** (
 `frontend/src/api/schema.d.ts`: el CI no necesita la herramienta). Con `sqlc`, todo cambio de
 consulta o de esquema **falla en compilación** si el código no acompaña (D-A3).
 
-> **Tipos UUID (convención cerrada, §8.1 punto 1).** sqlc emite `github.com/google/uuid` para las
-> columnas `uuid`, que es también el tipo del dominio (`uuid.UUID` en §5.4). La entrada nueva en
-> `go.mod` es una **dependencia justificada** (D-A8: solo tipos, sin dependencias transitivas; no
-> deja que los tipos `pgtype` de `pgx` se cuelen en el dominio) y su justificación se repite en el
-> `plan.md` de la primera funcionalidad que cree una tabla con UUID. `sqlc.yaml` **no** necesita
-> ningún `override` de UUID. La alternativa `pgtype.UUID` vía `override` (cero dependencias nuevas)
-> queda descartada por los tipos torpes que arrastra al dominio. Esto cierra la pregunta abierta 5
-> de `decisiones.md`.
+> **Tipos UUID (convención cerrada, §8.1 punto 1).** Con `sqlc` y `sql_package: pgx/v5`, una
+> columna `uuid` se genera como **`pgtype.UUID`** en `internal/db/` (no como `uuid.UUID`). El
+> dominio usa `uuid.UUID` de `github.com/google/uuid` (§5.4) y la conversión —`pgtype.UUID` →
+> `uuid.UUID` vía `.Bytes`, que comparten el `[16]byte` subyacente— vive **solo en
+> `repository.go`** (§5.6, §8.1 punto 6): los tipos `pgtype` de `pgx` no salen de ahí. La entrada
+> nueva en `go.mod` (`github.com/google/uuid`) es una **dependencia justificada** (D-A8: solo
+> tipos, sin dependencias transitivas) y su justificación se repite en el `plan.md` de la primera
+> funcionalidad que cree una tabla con UUID. `sqlc.yaml` **no** usa `override` para UUID. Esto
+> cierra la pregunta abierta 5 de `decisiones.md`.
 
 ### 5.4 `model.go` — entidad y DTOs
 
@@ -1167,14 +1168,17 @@ cobertura en `service/`, §7).
 
 1. **Clave primaria y tipos UUID.** Toda tabla de negocio nace con `id UUID PRIMARY KEY DEFAULT
    gen_random_uuid()` (la alternativa `BIGINT GENERATED ALWAYS AS IDENTITY` solo con justificación
-   en el plan de la funcionalidad, como manda la skill `postgres-db`). En Go el identificador es
-   `uuid.UUID` (`github.com/google/uuid`) en la entidad y en los parámetros; en el JSON viaja como
-   `string` (§5.4). **Consecuencias**: la primera funcionalidad con una tabla de UUID añade
-   `github.com/google/uuid` a `go.mod` —dependencia nueva **justificada** según D-A8 (solo tipos,
-   sin dependencias transitivas; es lo que sqlc emite por defecto y evita que los `pgtype` de
-   `pgx` se cuelen en el dominio, R4)— y repite esa justificación en su `plan.md`. `sqlc.yaml`
-   **no** necesita ningún `override`. *Descartado*: `pgtype.UUID` vía `override` (cero
-   dependencias, pero tipos torpes que empujan `pgx` al dominio o conversiones a `string` a mano).
+   en el plan de la funcionalidad, como manda la skill `postgres-db`). En Go el identificador del
+   **dominio** es `uuid.UUID` (`github.com/google/uuid`) en la entidad y en los parámetros; en el
+   JSON viaja como `string` (§5.4). Con `sql_package: pgx/v5`, sqlc genera la columna como
+   `pgtype.UUID`: la conversión a `uuid.UUID` (`uuid.UUID(row.ID.Bytes)`, el mismo `[16]byte`
+   subyacente) se hace en `repository.go` (§8.1 punto 6), nunca en el dominio. **Consecuencias**: la
+   primera funcionalidad con una tabla de UUID añade `github.com/google/uuid` a `go.mod`
+   —dependencia nueva **justificada** según D-A8 (solo tipos, sin dependencias transitivas;
+   mantiene los `pgtype` de `pgx` fuera del dominio, R4)— y repite esa justificación en su
+   `plan.md`. `sqlc.yaml` **no** necesita ningún `override`. *Descartado*: exponer `pgtype.UUID` en
+   el dominio (arrastra `pgx` a las capas altas) o añadir un `override` de sqlc solo para evitar la
+   conversión (una segunda regla para un tipo; se prefiere la conversión única en el repository).
    Cierra la pregunta abierta 5 de `decisiones.md`.
 2. **Sobre de éxito de un listado.** Todo listado responde un objeto con **`items`**: array JSON
    que **nunca es `null`** (vacío es `[]`). En Go: campo `Items` con tipo `[]T` y etiqueta
@@ -1216,7 +1220,7 @@ cobertura en `service/`, §7).
 
    | Columna PostgreSQL | Lo que emite sqlc (`pgx/v5`) | En la entidad de dominio |
    |---|---|---|
-   | `uuid` no anulable | `uuid.UUID` (google/uuid) | `uuid.UUID`, sin conversión |
+   | `uuid` no anulable | `pgtype.UUID` | `uuid.UUID` con `uuid.UUID(row.ID.Bytes)` |
    | `timestamptz` no anulable | `pgtype.Timestamptz` | `time.Time` con `row.CreatedAt.Time` |
    | `text` / `int4`… **anulable** | `pgtype.Text` / `pgtype.Int4`… | `string` / `int32`… mirando `.Valid` |
    | `text` / `int4`… no anulable | `string` / `int32`… | sin conversión |
@@ -1229,12 +1233,17 @@ cobertura en `service/`, §7).
    primero; `id` desempata, de modo que el orden es estable y la paginación no repite ni pierde
    filas). Nunca un `ORDER BY` sin desempate. El índice del listado refleja ese orden (p. ej.
    `(created_at DESC, id DESC)`, o con el filtro delante si lo hay).
-8. **Operativa del entorno local.** Dos comandos de la receta dan por hecho un entorno que hay que
-   preparar:
+8. **Operativa del entorno local.** Varios comandos de la receta dan por hecho un entorno que hay
+   que preparar:
    - `make db-migrate` (`migrate -path backend/migrations -database "$DATABASE_URL" up`) exige la
      **base de datos levantada y sana**: `docker compose up -d db` (o `make up`) y esperar a que
      `docker compose ps` la muestre `healthy`; y `DATABASE_URL` definida en el entorno (su forma
      está en `.env.example`; para el host: `localhost:5432`).
+   - Las **pruebas de integración** del repository (`//go:build integration`) usan
+     `DATABASE_URL_TEST`, y en local esa base (`app_test`) **no la crea** `docker compose`: créala
+     (`CREATE DATABASE app_test OWNER app;`) y migra con
+     `migrate -path backend/migrations -database "$DATABASE_URL_TEST" up` antes de
+     `go test -tags=integration ./...` (en CI lo hace el propio workflow).
    - `make up` es `docker compose up -d` y **reutiliza la imagen en caché**: si cambió el código
      de `backend/` o `frontend/`, puede seguir sirviendo código viejo. Tras cambiar código,
      reconstruye con `docker compose up -d --build` (o `docker compose build` y luego `make up`).
