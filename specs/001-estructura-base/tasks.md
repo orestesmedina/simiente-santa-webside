@@ -356,7 +356,7 @@
 - **Criterio de terminado**: checklist de SC-007 rellena y firmada; `main` sin tablas de negocio ni código de práctica; SC-007 queda **registrada** como cumplida antes del cierre de F1.
 - **Commit sugerido**: *(en la rama de práctica)* `feat(muestra): ejercicio de práctica de la receta de áreas de negocio` — **se descarta con la rama**.
 
-- [ ] T031 · **[humano]** Crear el repositorio remoto y empujar · `[humano]` *(bloqueante plan R1)*
+- [X] T031 · **[humano]** Crear el repositorio remoto y empujar · `[humano]` *(bloqueante plan R1)*
 
 - **Archivos**: ninguno (acción en GitHub).
 - **Qué hace**: crear el repositorio remoto en GitHub y empujar las ramas existentes. Sin remoto, el workflow `CI` del kit no corre en ningún sitio y FR-006/FR-007 no pueden verificarse.
@@ -364,7 +364,7 @@
 - **Criterio de terminado**: remoto configurado en este clon (`git remote -v`) y ramas empujadas. **Nota**: el path definitivo del módulo Go (`backend/go.mod`, hoy `simiente-santa/backend`) se fija cuando exista el remoto (plan R1; "Preguntas abiertas" 6 de `decisiones.md`).
 - **Commit sugerido**: — (sin commit)
 
-- [ ] T032 · **[humano]** Renombrar la rama por defecto `master` → `main` · `[humano]` *(bloqueante plan R1)*
+- [X] T032 · **[humano]** Renombrar la rama por defecto `master` → `main` · `[humano]` *(bloqueante plan R1)*
 
 - **Archivos**: ninguno (acción en GitHub).
 - **Qué hace**: renombrar la rama por defecto del repositorio a `main`. El `ci.yml` del kit solo se dispara en push a `main` (y en PR): con `master` como rama por defecto, el CI no corre (riesgo plan R1). Alternativa (si no se renombra): proponer el ajuste al repositorio del kit — pero renombrar es la opción recomendada.

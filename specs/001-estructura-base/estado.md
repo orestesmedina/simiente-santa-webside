@@ -12,10 +12,10 @@ La fuente de verdad de la ejecución es tasks.md; el alto nivel, docs/producto/r
 |---|---|
 | Rama | 001-estructura-base |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar (ciclo 1 cerrado, validación aprobada) |
+| Fase | 7/9 · Validar (validación aprobada; bloqueado por el kit para el merge) |
 | Ciclo de corrección | 1/3 (cerrado en verde) |
-| Próximo paso | Siguiente tarea humana: **T031–T033** (remoto GitHub, `master`→`main`, protección) y **T030** (receta SC-007). T034 hecho. Luego fase 9 (entrega: PR) |
-| Bloqueado por | — (entorno completo: Go 1.27.1, Node/npm Linux, calidad y cgo con `-race`) |
+| Bloqueado por | **Kit (g1):** `golangci-lint-action@v6` sin versión instala v1.64.8 (go1.24) y no puede analizar `go 1.27` → job `Backend (Go)` del CI en rojo (run [37161716733](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37161716733), PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1)). **Decisión humana (2026-10-03): no fusionar hasta que el kit se corrija.** No es defecto de F1: `make ci` en local está verde con golangci-lint 2.14.0. |
+| Próximo paso | Propuesta de correcciones al kit (T035, texto entregado al humano) → cuando el kit se actualice, re-ejecutar el CI y fusionar el PR. T030 (receta SC-007) sigue pendiente. T033 (protección de rama) depende de los checks en verde. |
 | Actualizado | 2026-10-03 |
 
 ## Aprobaciones
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-09-30 | `spec.md` — "Status: Approved (2026-09-30) … aprobada por el humano tras revisar el delta del 2026-09-30" |
 | Plan | aprobado | humano | 2026-09-30 | `tasks.md` — "plan aprobado el 2026-09-30" |
-| PR / merge | pendiente | | | |
+| PR / merge | **bloqueado** | humano | 2026-10-03 | PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) abierto; no se fusiona hasta que el kit corrija el punto g1 (`golangci-lint`). Decisión explícita del humano: "No fusionar hasta que el kit se corrija". |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -48,7 +48,6 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 - **2026-10-03 (hecho) — Herramientas de calidad:** instaladas en `~/.local/bin` (sin `sudo`): `golangci-lint` 2.14.0, `govulncheck`, `golang-migrate` (con `-tags postgres`, para `make db-migrate` de T005) y `gitleaks` `v8.27.2` (ruta antigua `zricethezav`, porque los releases nuevos no resuelven por módulo; su comando `protect` que usa el hook funciona). `make doctor`: las cuatro ✓.
 - **2026-10-03 (hecho) — Cabeceras de C:** el humano instaló `build-essential`/`libc6-dev` (`sudo apt install -y build-essential`). Verificado: `go build` con cgo y `go build -race` compilan. Entorno listo para paridad con el CI.
 - **2026-09-30 (pendiente de confirmar, no se implementa en F1) — Sesiones de F2 (D-A7):** cookie `httpOnly` con sesión en servidor.
-- **2026-10-03 (hecho) — Imagen de PostgreSQL (T034 / plan R10):** el humano decidió **`postgres:16-alpine`** para el entorno de desarrollo (rama 16 con parches de seguridad; reproducibilidad estricta reservada a builds/despliegue). Aplicado en `docker-compose.yml` (`85ba674`) y en la tabla de versiones del README. Queda como pendiente **del kit** la imagen `postgres:16.4-alpine` del `ci.yml` (no editable; propuesta en T035). Incidente de la migración de imagen: deriva de credencial en el volumen `pgdata` resuelta con `ALTER ROLE app PASSWORD` sin borrar el volumen.
 - **2026-09-30 (pendiente) — Dudas de contenido de `ux.md` §7.2.1–§7.2.2:** mostrar o no `error.message` como apoyo en el error A, y plegable técnico con `details` del 503 para quien opera.
 - **2026-10-03 (nota técnica, T002) — Orden de `backend/go.mod`:** para cumplir la verificación literal de T002 (`head -1 go.mod` declara `go 1.27`), la directiva `go` va en la primera línea y `module` después. Verificado que el toolchain Go 1.27.1 lo preserva tras `go mod download`/`build`/`verify` (y que `go mod tidy` no lo reordena). Revisar en T010 si conviene normalizarlo al orden convencional (`module` primero) y ajustar la verificación de T002 en consecuencia.
 - **2026-10-03 (propuesta al kit, T035) — `make help` oculta `e2e`:** el regex del recetario `help` del Makefile del kit (`^[a-zA-Z_-]+:.*?## `) no incluye dígitos, así que el target `e2e` de `proyecto.mk` funciona pero no aparece en `make help`. Es item del mismo tipo que el (f) de T035: proponer al repo del kit ampliar la clase a `[a-zA-Z0-9_-]`. No se toca el Makefile (regla 10).
@@ -57,7 +56,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
-- 2026-10-03 — **T034 decidido y aplicado:** el humano eligió `postgres:16-alpine` para desarrollo; `85ba674` actualiza `docker-compose.yml` y el README. `make up` + `/healthz` 200 verificados; `make down` al terminar. Queda como pendiente del kit la imagen del `ci.yml` (T035).
+- 2026-10-03 — **Merge de F1 bloqueado por el kit (decisión humana).** PR [#1](https://github.com/orestesmedina/simiente-santa-webside/pull/1) abierto; el job `Backend (Go)` sale rojo porque `golangci/golangci-lint-action@v6` (sin `version:` en el `ci.yml` del kit) instala v1.64.8, compilada con go1.24, y no puede analizar un módulo `go 1.27` (run [37161716733](https://github.com/orestesmedina/simiente-santa-webside/actions/runs/37161716733)). No es defecto de F1: `make ci` local verde con 2.14.0 y los otros 5 jobs verdes. El humano eligió **opción A: no fusionar hasta que el kit se corrija** y se le entregó el texto de propuesta al kit (10 puntos, P1–P3). T031/T032 hechas; T033 pendiente de checks verdes; T035 es la vía de desbloqueo.
+- 2026-10-03 — **T034 decidido y aplicado:** el humano eligió `postgres:16-alpine` para desarrollo; `85ba674` actualiza `docker-compose.yml` y el README. `make up` + `/healthz` 200 verificados; `make down` al terminar. Queda como pendiente del kit la imagen del `ci.yml` (T035). Incidente: deriva de credencial en el volumen `pgdata` resuelta con `ALTER ROLE app PASSWORD` sin borrar el volumen.
 - 2026-10-03 — **Fase 7 (validar) cerrada — validación APROBADA (ciclo 1/3).** Veredictos iniciales: `revisor-codigo` RECHAZADO (B1 QF1011; M1/M2/M3) y `seguridad` RECHAZADO (B1 GO-2026-5970 en `x/text`), `qa-tester` sin bloqueantes. Ciclo 1 aplicado con aprobación del humano (B1 + menores baratos): `aa60f35` x/text→v0.39 (`govulncheck` exit 0), `87ed7e2` QF1011, `f20aa8a` M2 (logger por petición con productor), `ef2faca`+`1401aa0` M6, `f31c152` M5, `1c18315` M8, `af8a51d` N2, `d1cbd50` N3, `234d75b` M1 (frontend), `3e09619` M3 (`ux.md`). Revalidado: **`make ci` en verde verificado por el orquestador** (lint 0 issues, 25/25 frontend, `govulncheck` sin vulnerabilidades, `npm audit` 0). Reportes: `revision-2026-10-03-{qa,codigo,seguridad}.md`. Próximo: aprobaciones humanas de T030–T035 y entrega (PR).
 - 2026-10-03 — **Backend de F1 completo (T006–T018):** sqlc (R5: el CLI exige ≥1 consulta → `internal/db/` sin generar en F1; v1.31.1), `platform` (config, logger, apperr, database, httpserver, middleware, testutil), dominio `status` + `GET /healthz` y suite del sobre (SC-008/SC-009). Commits T006 `5542b2a`, T007 `e2ba57b`, T008 `c1ef24f`, T009 `d4fda46`, T010 `aebbace`, T011 `a032e74`, T012 `7e5ab61`, T013 `dc962a7`, T014 `8628ec1`, T015 `ec24b76`, T016 `8bb6322`, T017 `4057959`, T018 `1262ba1`, más el fix `c43f000` (timeout de `Ping` → 503 en vez de 500, hallado por el humo de T017). `go test ./...` e integración en verde; service `status` 100 %. Próximo: T019 (Dockerfile backend) y frontend.
 - 2026-10-03 — **Fase 1 de `tasks.md` completada (T001–T005):** T003+T004 (`91c3cc3`, `28ff85b`), T001 (`5042cab`), T005 (`e1a40b4`), T002 (`4d45cc8`). Contrato vivo idéntico byte a byte; módulo Go 1.27 con pgx v5.11.0 (`go mod verify` OK, sin `go mod tidy`); migración baseline aplicada/revertida con el toolchain real (`\dt` solo `schema_migrations`). Próximo: T006 (sqlc) y grupo P3.
