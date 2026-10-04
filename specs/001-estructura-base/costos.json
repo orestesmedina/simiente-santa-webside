@@ -1084,6 +1084,174 @@
         }
       ],
       "hasta_ms": 1790729706613
+    },
+    {
+      "id": "ses_efb9bffd5ffe8vhotMK4qC16cQ",
+      "padre": null,
+      "titulo": "Continuación de la conversación anterior",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-04T03:12:02Z",
+      "desde": "2026-10-04T00:50:26Z",
+      "hasta": "2026-10-04T03:11:35Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 119,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 165931,
+            "output": 37653,
+            "reasoning": 53540,
+            "cache_read": 11134848,
+            "cache_write": 0
+          },
+          "costo": 0.11301,
+          "costo_opencode": 0.11301
+        }
+      ],
+      "hasta_ms": 1791083495357
+    },
+    {
+      "id": "ses_efb3b2310ffekuhaD4rTRtnW7s",
+      "padre": "ses_efb9bffd5ffe8vhotMK4qC16cQ",
+      "titulo": "Corrida final de la receta (T030)",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-04T03:12:02Z",
+      "desde": "2026-10-04T02:36:13Z",
+      "hasta": "2026-10-04T02:49:27Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 42,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 92272,
+            "output": 15819,
+            "reasoning": 16858,
+            "cache_read": 2938752,
+            "cache_write": 0
+          },
+          "costo": 0.042263,
+          "costo_opencode": 0.042263
+        }
+      ],
+      "hasta_ms": 1791082167817
+    },
+    {
+      "id": "ses_efb4e5a22ffeFwY2wYapCNuMG3",
+      "padre": "ses_efb9bffd5ffe8vhotMK4qC16cQ",
+      "titulo": "Re-probar la receta corregida (T030)",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-04T03:12:02Z",
+      "desde": "2026-10-04T02:15:14Z",
+      "hasta": "2026-10-04T02:31:22Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 53,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 102900,
+            "output": 19316,
+            "reasoning": 19774,
+            "cache_read": 4266624,
+            "cache_write": 0
+          },
+          "costo": 0.051689,
+          "costo_opencode": 0.051689
+        }
+      ],
+      "hasta_ms": 1791081082125
+    },
+    {
+      "id": "ses_efb6182cfffePGsyBt2jpdgQzq",
+      "padre": "ses_efb9bffd5ffe8vhotMK4qC16cQ",
+      "titulo": "Completar la receta §8 tras T030",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-04T03:12:02Z",
+      "desde": "2026-10-04T01:54:19Z",
+      "hasta": "2026-10-04T02:13:20Z",
+      "consumo": [
+        {
+          "agente": "arquitecto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 41,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 100106,
+            "output": 11961,
+            "reasoning": 28286,
+            "cache_read": 2341120,
+            "cache_write": 0
+          },
+          "costo": 0.087048,
+          "costo_opencode": 0.087048
+        }
+      ],
+      "hasta_ms": 1791080000515
+    },
+    {
+      "id": "ses_efb77cdfcffeY5vfmHqOVvNN4X",
+      "padre": "ses_efb9bffd5ffe8vhotMK4qC16cQ",
+      "titulo": "Ejercicio de práctica de la receta (T030)",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-04T03:12:02Z",
+      "desde": "2026-10-04T01:29:58Z",
+      "hasta": "2026-10-04T01:45:38Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 52,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 99732,
+            "output": 15189,
+            "reasoning": 17270,
+            "cache_read": 3828480,
+            "cache_write": 0
+          },
+          "costo": 0.045921,
+          "costo_opencode": 0.045921
+        }
+      ],
+      "hasta_ms": 1791078338144
+    },
+    {
+      "id": "ses_efb8ce3ddffeS2W6V61sCnlngB",
+      "padre": "ses_efb9bffd5ffe8vhotMK4qC16cQ",
+      "titulo": "Alinear Dockerfile frontend a Node 24",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-04T03:12:02Z",
+      "desde": "2026-10-04T01:06:56Z",
+      "hasta": "2026-10-04T01:10:12Z",
+      "consumo": [
+        {
+          "agente": "devops",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 12,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 70265,
+            "output": 1669,
+            "reasoning": 286,
+            "cache_read": 43392,
+            "cache_write": 0
+          },
+          "costo": 0.012819,
+          "costo_opencode": 0.012819
+        }
+      ],
+      "hasta_ms": 1791076212079
     }
   ],
   "totales": {
@@ -1136,16 +1304,16 @@
       {
         "agente": "arquitecto",
         "modelo": "opencode-go/mimo-v2.6-pro",
-        "respuestas": 130,
+        "respuestas": 171,
         "tokens": {
-          "input": 588766,
-          "output": 112692,
-          "reasoning": 168396,
-          "cache_read": 14358784,
+          "input": 688872,
+          "output": 124653,
+          "reasoning": 196682,
+          "cache_read": 16699904,
           "cache_write": 0
         },
-        "costo": 0.55271,
-        "costo_opencode": 0.55271,
+        "costo": 0.639758,
+        "costo_opencode": 0.639758,
         "sin_precio": false
       },
       {
@@ -1164,33 +1332,48 @@
         "sin_precio": false
       },
       {
-        "agente": "devops",
-        "modelo": "opencode-go/glm-5.3-flash",
-        "respuestas": 213,
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 368,
         "tokens": {
-          "input": 825677,
-          "output": 65442,
-          "reasoning": 53899,
-          "cache_read": 10704320,
+          "input": 1154394,
+          "output": 179319,
+          "reasoning": 181203,
+          "cache_read": 36364544,
           "cache_write": 0
         },
-        "costo": 0.50465,
-        "costo_opencode": 0.50465,
+        "costo": 0.524017,
+        "costo_opencode": 0.498566,
         "sin_precio": false
       },
       {
-        "agente": "orquestador",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 249,
+        "agente": "devops",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 225,
         "tokens": {
-          "input": 988463,
-          "output": 141666,
-          "reasoning": 127663,
-          "cache_read": 25229696,
+          "input": 895942,
+          "output": 67111,
+          "reasoning": 54185,
+          "cache_read": 10747712,
           "cache_write": 0
         },
-        "costo": 0.411007,
-        "costo_opencode": 0.385556,
+        "costo": 0.517469,
+        "costo_opencode": 0.517469,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-backend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 402,
+        "tokens": {
+          "input": 909502,
+          "output": 139389,
+          "reasoning": 169228,
+          "cache_read": 33378816,
+          "cache_write": 0
+        },
+        "costo": 0.421732,
+        "costo_opencode": 0.421732,
         "sin_precio": false
       },
       {
@@ -1206,21 +1389,6 @@
         },
         "costo": 0.390673,
         "costo_opencode": 0.390673,
-        "sin_precio": false
-      },
-      {
-        "agente": "dev-backend",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 255,
-        "tokens": {
-          "input": 614598,
-          "output": 89065,
-          "reasoning": 115326,
-          "cache_read": 22344960,
-          "cache_write": 0
-        },
-        "costo": 0.281859,
-        "costo_opencode": 0.281859,
         "sin_precio": false
       },
       {
@@ -1329,8 +1497,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 115886607,
-    "costo": 6.763037,
-    "costo_opencode": 6.712306
+    "tokens": 141308650,
+    "costo": 7.115787,
+    "costo_opencode": 7.065056
   }
 }
