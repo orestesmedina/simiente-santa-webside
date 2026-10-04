@@ -158,7 +158,7 @@ Como usuario del panel, quiero cambiar mi contraseña desde mi cuenta, para mant
 - **Repetir la acción de inicialización del administrador**: se impide; la acción es única y no debe poder repetirse ni abusarse de ella (decisión Q1).
 - **Cuenta con contraseña definida o restablecida por un administrador**: la persona debe cambiarla al entrar antes de usar el panel (decisión Q2); esa contraseña inicial o restablecida también debe cumplir la política de contraseñas (FR-010).
 - **Contraseña que no cumple la política** (menos de 8 caracteres, sin combinar mayúsculas, minúsculas, números y caracteres especiales, o igual al nombre o al correo de la persona): se rechaza indicando el requisito incumplido, tanto cuando la define un administrador como cuando la cambia la persona (FR-010).
-- **Cadena de intentos fallidos de inicio de sesión** (alguien probando contraseñas): tras **5 intentos fallidos** el sistema bloquea temporalmente el acceso para impedir la prueba masiva de contraseñas (FR-006, decisión confirmada el 2026-10-04); la duración concreta del bloqueo queda para la planificación técnica.
+- **Cadena de intentos fallidos de inicio de sesión** (alguien probando contraseñas): tras **5 intentos fallidos** el sistema bloquea temporalmente el acceso **durante 15 minutos** para impedir la prueba masiva de contraseñas (FR-006, decisión confirmada el 2026-10-04); pasados esos 15 minutos la persona puede volver a intentar iniciar sesión.
 - **Sesión que expira mientras se llena un formulario**: la acción se interrumpe y el sistema pide iniciar sesión de nuevo; no debe aplicarse a medias ni perderse sin aviso.
 - **Pérdida de acceso de la única persona que sabe su contraseña**: un administrador le define una contraseña nueva en su cuenta y la persona la cambia al entrar (decisión Q2). No hay recuperación por auto-servicio con correo en el MVP.
 
@@ -180,7 +180,7 @@ Todos los mensajes deben ser comprensibles para personas no técnicas y nunca de
 | Operación que dejaría el panel sin administrador | Mensaje que explica la restricción y cómo proceder |
 | Sesión expirada o cerrada | Mensaje que pide iniciar sesión de nuevo |
 | Contraseña nueva que no cumple la política (menos de 8 caracteres, sin combinar mayúsculas, minúsculas, números y caracteres especiales, o igual al nombre o al correo) | Mensaje con el requisito incumplido |
-| Superar los 5 intentos fallidos de inicio de sesión | Mensaje que indica que el acceso queda bloqueado temporalmente |
+| Superar los 5 intentos fallidos de inicio de sesión | Mensaje que indica que el acceso queda bloqueado temporalmente durante 15 minutos |
 | Error inesperado del sistema | Mensaje genérico sin información interna |
 
 ## Requirements *(mandatory)*
@@ -192,7 +192,7 @@ Todos los mensajes deben ser comprensibles para personas no técnicas y nunca de
 - **FR-003**: El mensaje de un inicio de sesión fallido DEBE ser genérico y NUNCA DEBE revelar si la cuenta existe; la contraseña NUNCA DEBE mostrarse ni devolverse en ninguna respuesta.
 - **FR-004**: El sistema DEBE permitir cerrar sesión en cualquier momento desde el panel, terminando el acceso de esa sesión.
 - **FR-005**: La sesión DEBE terminar tras un periodo de inactividad, y todo acceso posterior DEBE exigir un nuevo inicio de sesión.
-- **FR-006**: El sistema DEBE limitar los intentos fallidos de inicio de sesión para impedir la prueba masiva de contraseñas: tras **5 intentos fallidos** DEBE bloquear temporalmente el acceso (decisión confirmada el 2026-10-04). La duración concreta del bloqueo queda definida por la planificación técnica.
+- **FR-006**: El sistema DEBE limitar los intentos fallidos de inicio de sesión para impedir la prueba masiva de contraseñas: tras **5 intentos fallidos** DEBE bloquear temporalmente el acceso **durante 15 minutos** (decisión confirmada por el humano el 2026-10-04); pasados esos 15 minutos DEBE permitir de nuevo el intento de inicio de sesión.
 - **FR-007**: El primer administrador (cuenta con permisos completos, capaz de crear usuarios y roles de inmediato) DEBE crearse mediante una acción de inicialización de puesta en marcha que solo puede ejecutarse una sola vez: el sistema DEBE impedir que se repita y DEBE impedir cualquier uso abusivo de ella (decisión Q1).
 - **FR-008**: El sistema DEBE impedir que el panel se quede sin al menos una cuenta activa con permiso de administrar usuarios y roles: ninguna operación (desactivar una cuenta, cambiar su rol o quitarle ese permiso) DEBE poder dejarlo sin administración (regla confirmada).
 - **FR-009**: Los administradores DEBEN poder crear cuentas del equipo indicando identificación, correo, rol asignado y contraseña inicial; el sistema DEBE rechazar correos ya en uso, roles inexistentes y datos inválidos o incompletos, indicando qué corregir. Para detectar duplicados, los correos DEBEN compararse normalizados: uno que solo difiere en mayúsculas o en espacios sobrantes se trata como el mismo (decisión Q5).
@@ -275,7 +275,7 @@ Queda explícitamente **fuera del alcance** de F2:
 ### Decisiones adicionales confirmadas por el humano el 2026-10-04
 
 - **Política de contraseñas (FR-010, US7.3)**: mínimo **8 caracteres**, combinando **mayúsculas, minúsculas, números y caracteres especiales**, y **no igual al nombre ni al correo** de la persona. Complementa la decisión Q2 (la contraseña inicial y los restablecimientos los hace un administrador; el auto-servicio por correo sigue fuera del MVP).
-- **Límite de intentos fallidos (FR-006)**: tras **5 intentos fallidos** de inicio de sesión, el sistema **bloquea temporalmente el acceso**; la duración concreta del bloqueo queda para la planificación técnica.
+- **Límite de intentos fallidos (FR-006)**: tras **5 intentos fallidos** de inicio de sesión, el sistema **bloquea temporalmente el acceso durante 15 minutos**; pasados esos 15 minutos se puede volver a intentar iniciar sesión.
 
 ## Assumptions
 
@@ -290,5 +290,5 @@ Defaults razonables tomados donde la descripción no fija una regla; **son provi
 - **Catálogo de permisos de F2**: los módulos del producto del roadmap más la administración de usuarios y roles (FR-015). Los permisos de módulos que aún no existen quedan reservados y no producen acceso a nada hasta que esos módulos se construyan (F4–F9).
 - **"Administrador" no es un rol fijo**: es toda cuenta con el permiso de administrar usuarios y roles; este permiso es el que define quién gestiona cuentas y roles. El administrador inicial nace con todos los permisos.
 - **Idioma del panel**: se entrega en español, que es el idioma del equipo que lo usa. El bilingüismo del roadmap (Decisión 6) aplica al sitio público de F3–F9. De quererse el panel en ambos idiomas, sería una ampliación.
-- **Límite de intentos fallidos** (FR-006, confirmado por el humano el 2026-10-04): el bloqueo temporal se activa tras **5 intentos fallidos** de inicio de sesión; medida estándar contra la prueba masiva de contraseñas. La duración concreta del bloqueo la define la planificación técnica dentro de una práctica estándar.
+- **Límite de intentos fallidos** (FR-006, confirmado por el humano el 2026-10-04): el bloqueo temporal se activa tras **5 intentos fallidos** de inicio de sesión y dura **15 minutos**; pasados esos 15 minutos se puede volver a intentar iniciar sesión. Medida estándar contra la prueba masiva de contraseñas.
 - **Sin cuentas compartidas**: cada persona del equipo debe tener su propia cuenta; el uso compartido de credenciales queda fuera del modelo.
