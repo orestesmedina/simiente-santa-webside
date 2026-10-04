@@ -170,6 +170,8 @@ Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda
 
 ## Documentación relacionada
 
+- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer); la 0.1.0 corresponde a F1.
+- [`docs/entrega/F1-estructura-base.md`](docs/entrega/F1-estructura-base.md) — notas de entrega de F1 para el cliente (lenguaje no técnico).
 - [`specs/001-estructura-base/quickstart.md`](specs/001-estructura-base/quickstart.md) — validación ejecutable de F1 de punta a punta (qué se espera en cada escenario).
 - [`docs/tecnico/arquitectura.md`](docs/tecnico/arquitectura.md) — arquitectura del sistema; **§8 es la receta** de 10 pasos para agregar un área de negocio nueva.
 - [`docs/tecnico/decisiones.md`](docs/tecnico/decisiones.md) — decisiones de arquitectura y su justificación.
