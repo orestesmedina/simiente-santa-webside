@@ -110,13 +110,14 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 | `make sqlc-gen` | Regenera el código Go de consultas de `backend/internal/db/` |
 | `make sqlc-verify` | Regenera y exige `git diff --exit-code` (sin deriva de artefactos) |
 | `make instalar-hooks` | **Una vez por clon**: activa los hooks de git (`.githooks`) |
-| `make help` | Lista los comandos disponibles (ver nota sobre `e2e`) |
+| `make help` | Lista los comandos disponibles |
 | `make estado` | Por dónde va el proyecto: roadmap, fase, aprobaciones y próximo paso |
+| `make costos` | Costo de IA de la tarea actual (`CERRAR=1` lo congela al aprobar el PR; `TODO=1` resume el proyecto) |
+| `make novedades` | Historial de cambios del kit (`DESDE=1.4.0` para ver desde una versión) |
 
 Notas:
 
 - **`make db-migrate` usa `$DATABASE_URL` del shell** (no lee `.env` por sí mismo). Con `.env`: `set -a; source .env; set +a` antes de llamarlo; sin `.env`: `DATABASE_URL='postgres://app:app_dev_password@localhost:5432/app?sslmode=disable' make db-migrate`.
-- **`make help` no lista `e2e`**: el recetario `help` del `Makefile` del kit usa un regex cuya clase (`[a-zA-Z_-]`) no incluye dígitos. Es un pendiente del **kit** (no editable aquí: regla 10, T035); el target **funciona igual**.
 - En F1 `make sqlc-verify` termina en verde avisando que no hay consultas: `backend/internal/db/queries/` está vacío hasta la primera consulta de negocio (R5 del plan).
 
 ## Herramientas de desarrollo (opcionales)
@@ -126,13 +127,13 @@ Solo hace falta instalarlas para trabajar **fuera** de Docker (tests, lint, gene
 | Herramienta | Versión fijada | Dónde se fija / cómo se obtiene |
 |---|---|---|
 | Go | **1.27** | `go 1.27` en `backend/go.mod`, `golang:1.27` en `backend/Dockerfile`; el CI lee `backend/go.mod` |
-| Node.js | **22** | `node-version: 22` en `.github/workflows/ci.yml` (kit); `node:22.22-alpine` en `frontend/Dockerfile` |
-| `golang-migrate` | CLI con `-tags postgres` | `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest` (mismo comando que el CI); **el proyecto no fija su versión** |
+| Node.js | **24** | `NODE_VERSION: '24'` en `.github/workflows/ci.yml` (kit 1.6.4); `node:24.21-alpine` en `frontend/Dockerfile` |
+| `golang-migrate` | **v4.20.1** | `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.20.1` (mismo pin que el CI del kit 1.6.4) |
 | `sqlc` | **v1.31.1** | instalado con `go install …@v1.31.1`; el binario queda en `$(go env GOPATH)/bin`, que debe estar en el `PATH` |
 | `openapi-typescript` | `^7.13.0` | `devDependency` de `frontend/package.json`, fijada en `package-lock.json` (`npm ci`) |
 | Playwright | `@playwright/test` `^1.63.0` | `devDependency` de `frontend/package.json` |
 
-Otras herramientas del flujo de calidad: `golangci-lint` y `govulncheck` (los usan `make lint` y `make security`) y `gitleaks` (hooks de git y el paso de secretos del CI).
+Otras herramientas del flujo de calidad: `golangci-lint` **v2.14.0** y `govulncheck` **v1.8.0** (los usan `make lint` y `make security`; el CI del kit 1.6.4 fija esas mismas versiones) y `gitleaks` (hooks de git y el paso de secretos del CI).
 
 Para `make e2e` hace falta además el **navegador** de Playwright:
 
@@ -144,21 +145,20 @@ sudo npx playwright install-deps chromium   # solo Linux: librerías del sistema
 
 ## Versiones y soporte de seguridad (FR-016 / SC-010)
 
-Comprobado a **2026-09-30**:
+Comprobado a **2026-10-03**:
 
 | Tecnología | Versión en uso | Estado de soporte |
 |---|---|---|
 | Go | 1.27 | Vigente (solo 1.26 y 1.27 reciben parches; 1.23 está en fin de vida desde 2025-08-12) |
-| Node.js | 22 | En mantenimiento hasta **abril de 2027** |
+| Node.js | 24 (LTS «Krypton») | **LTS activa** (mantenimiento desde 2026-10-20; fin de soporte 2028-04-30); el kit 1.6.4 fija esta línea mayor en el CI |
 | PostgreSQL | 16 (imagen `postgres:16-alpine` en desarrollo — **decisión del 2026-10-03**, T034/plan R10) | Rama 16 en soporte hasta noviembre de 2028 y recibe parches de seguridad; fijar un minor/digest exacto para reproducibilidad queda pendiente para builds/despliegue |
 | React / TypeScript / Vite | 19 / 5.x / actual | Mantenidas; vulnerabilidades vía `npm audit` |
 | `pgx/v5`, `sqlc`, `golang-migrate`, `openapi-typescript` | fijadas en `go.sum`, `package-lock.json` y este README | Herramientas de desarrollo; `govulncheck` y `npm audit` sin altas/críticas |
 
 **Pendientes de actualización conocidos** (US7 esc. 2; identificados, propuestos y gestionados por el humano):
 
-1. **`postgres:16.4-alpine` del servicio `postgres` del `ci.yml` del kit**: mismo minor con CVEs corregidos en minors posteriores (R10); el compose ya usa `postgres:16-alpine` (decisión del 2026-10-03, T034) y para el CI se propone la misma imagen al repositorio del kit (T035).
-2. **Node 22**, fijado por el `ci.yml` del kit (R11): soporte hasta abril de 2027 → proponer al kit una LTS vigente antes de esa fecha (T035).
-3. **«Go 1.23+»** que aún recomienda `docs/GUIA-INICIO.md` del kit (Go 1.23, fin de vida desde 2025-08-12): el proyecto usa Go 1.27 → propuesta al repo del kit (T035).
+- **Resueltos por el kit 1.6.4** (`2957bb0`, actualizado el 2026-10-03): `postgres:16-alpine` en el CI (R10/T034), Node 24 en el CI (R11), `golangci-lint` v2 en el CI (g1) y «Go 1.26+» en `docs/GUIA-INICIO.md`. Ya no son pendientes del proyecto.
+- **Sin pendientes abiertos** por el momento. Queda para builds/despliegue fijar un **minor/digest exacto** de las imágenes (FR-016).
 
 Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda funcionalidad que fije o actualice una versión revisa esta tabla; lo que deje de estar en soporte se registra como pendiente antes de seguir construyendo.
 
@@ -167,7 +167,6 @@ Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda
 - **`VITE_API_URL` se hornea en el build** (plan R6): la URL de la API queda dentro del bundle del frontend. Por defecto `http://localhost:8080` y compose la deriva de `HTTP_PORT`. Por eso **cambiar puertos exige `docker compose up -d --build`** (o borrar la imagen del frontend), y al cambiar `WEB_PORT` hay que ajustar también `CORS_ALLOWED_ORIGINS`.
 - **Artefactos generados (se commitean)**: `frontend/src/api/schema.d.ts` se regenera con `make api-gen` cuando cambia `backend/api/openapi.yaml`; el código de sqlc con `make sqlc-gen` cuando cambian `backend/migrations/` o `backend/internal/db/queries/`. Regla de revisión (plan R4): un PR que toca migraciones o consultas debe regenerar `internal/db/`, y uno que toca el contrato debe regenerar `schema.d.ts`. `make sqlc-verify` comprueba que no hay deriva.
 - **E2E**: `make e2e` necesita el stack levantado (`make up`) y el navegador de Playwright instalado (arriba). El CI del kit **no** corre e2e.
-- **`make e2e` no aparece en `make help`** (bug del regex del Makefile del kit, pendiente T035): ejecútalo directamente.
 
 ## Documentación relacionada
 
