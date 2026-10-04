@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 1/9 · Especificar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Resolver Q1–Q5 con el humano (clarify) y luego aprobar la spec |
+| Próximo paso | Aprobación humana de la spec (Q1–Q5 ya resueltas) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -40,10 +40,11 @@ Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fe
 
 Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y quién decidió).
 
-- (ninguna)
+- 2026-10-04 — El humano pidió que la recuperación de contraseña por auto-servicio con correo quede registrada como idea futura/backlog (registrada en `roadmap.md` §5 y §6 decisión 9). En el MVP la contraseña la restablece un administrador.
 
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-04 — Aclaraciones Q1–Q5 resueltas con el humano; `analista-producto` actualizó la spec (cero marcas pendientes). Pendiente la aprobación de la spec.
 - 2026-10-04 — Inicio de F2. Spec redactada por `analista-producto` con 5 aclaraciones abiertas (Q1–Q5); pendiente de aprobación humana.

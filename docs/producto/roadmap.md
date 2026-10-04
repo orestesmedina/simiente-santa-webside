@@ -46,6 +46,7 @@ Vienen de las preguntas abiertas de `idea.md` §8 y de la sección de fuera de a
 
 | Candidata | Qué haría | Depende de |
 |---|---|---|
+| Recuperación de contraseña por auto-servicio | El usuario del panel restablece su propia contraseña con un enlace enviado a su correo, sin depender de un administrador. En el MVP la contraseña la restablece un administrador (ver decisión 9); esto llegaría cuando el proyecto madure (requiere servicio de correo). | F2 |
 | Formulario de inscripción a grupos | El visitante se inscribe a un grupo de conexión llenando un formulario; en el MVP solo se muestra la información y el contacto del encargado (decisión 1). | F5 |
 | Sincronización de episodios | Publicar en YouTube/Spotify agrega el episodio al sitio automáticamente. | F8 |
 | Publicación y banners para redes | Generar imágenes de eventos y publicar automáticamente en Instagram/WhatsApp/Facebook (los banners están fuera de alcance en `idea.md` §6). | F4 |
@@ -61,6 +62,7 @@ Vienen de las preguntas abiertas de `idea.md` §8 y de la sección de fuera de a
 6. **Idioma (2026-09-28).** El sitio es bilingüe, español e inglés, para que personas de otros países también lo vean.
 7. **Donaciones (2026-09-28).** La información de donaciones (IBAN/SINPE y su uso) se administra desde el panel; F7 depende de F2 y F3.
 8. **Bilingüismo del contenido (2026-09-28).** Todo el contenido puede ingresarse en ambos idiomas o solo en español: el español es el idioma base y el inglés es opcional por contenido (la interfaz, en cambio, siempre es bilingüe — decisión 6).
+9. **Gestión de usuarios y roles de F2 (2026-10-04).** Se refinan las decisiones 4 y 5 con lo aprobado en la spec de F2: las cuentas **no se eliminan**, solo se activan o desactivan (los datos se conservan); cada cuenta tiene **un solo rol**; los roles se editan y se eliminan **solo si no están en uso**; el administrador inicial se crea con una **acción de inicialización única** (no repetible); y la recuperación de contraseña por auto-servicio con correo queda para el backlog (en el MVP la contraseña la restablece un administrador).
 
 ## 7. Preguntas abiertas
 
