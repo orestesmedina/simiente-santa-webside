@@ -3,6 +3,7 @@ import { Link, useRoutes, type RouteObject } from 'react-router-dom';
 import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
+import { UsersPage } from '../features/usuarios/pages/UsersPage';
 import { ADMIN_USERS_ROLES } from '../lib/permissions';
 import { RequireAuth, RequirePasswordChange, RequirePermission } from './guards';
 import { AppLayout, PanelLayout } from './layout';
@@ -40,10 +41,6 @@ function ForbiddenPending() {
 
 function PanelHomePending() {
   return <PendingPage title="Inicio" />;
-}
-
-function UsersPending() {
-  return <PendingPage title="Usuarios" />;
 }
 
 function RolesPending() {
@@ -92,7 +89,7 @@ const appRoutes: RouteObject[] = [
               {
                 element: <RequirePermission code={ADMIN_USERS_ROLES} />,
                 children: [
-                  { path: 'usuarios', element: <UsersPending /> },
+                  { path: 'usuarios', element: <UsersPage /> },
                   { path: 'roles', element: <RolesPending /> },
                   { path: 'auditoria', element: <AuditPending /> },
                 ],
