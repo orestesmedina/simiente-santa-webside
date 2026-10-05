@@ -100,6 +100,12 @@ func (r *repository) InsertUser(ctx context.Context, user NewUser) (User, error)
 		RoleID:             pgUUID(user.RoleID),
 	})
 	if err != nil {
+		// La única FK de `users` es `role_id`: un rol borrado en la carrera entre
+		// la comprobación del service y el INSERT debe dar el 400 de rol
+		// inexistente con details.roleId, no el genérico.
+		if isForeignKeyViolation(err) {
+			return User{}, roleNotFoundError()
+		}
 		return User{}, wrap(err, "insert user", "", "Ya existe una cuenta con ese correo electrónico")
 	}
 	return mapInsertUserRow(row), nil
@@ -118,6 +124,11 @@ func (r *repository) UpdateUser(ctx context.Context, update UserUpdate) (User, e
 		ID:        pgUUID(update.ID),
 	})
 	if err != nil {
+		// Misma carrera de rol que en InsertUser (FR-011): el 400 de rol
+		// inexistente lleva details.roleId.
+		if isForeignKeyViolation(err) {
+			return User{}, roleNotFoundError()
+		}
 		return User{}, wrap(err, "update user", "La cuenta no existe", "Ya existe una cuenta con ese correo electrónico")
 	}
 	return mapUpdateUserRow(row), nil
@@ -141,6 +152,20 @@ func (r *repository) SetUserMustChangePassword(ctx context.Context, id uuid.UUID
 		ID:                 pgUUID(id),
 	})
 	return wrap(err, "set user must change password", "", "")
+}
+
+// ChangeUserPassword guarda el hash bcrypt y resuelve la obligación de cambio
+// en UNA transacción (FR-010/FR-020): el cambio propio nunca puede dejar el
+// hash nuevo con must_change_password todavía en true. Los flujos que
+// distinguen el restablecimiento administrativo (que SÍ deja la obligación
+// activa) siguen usando UpdateUserPassword/SetUserMustChangePassword.
+func (r *repository) ChangeUserPassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	return r.withTx(ctx, func(tx *repository) error {
+		if err := tx.UpdateUserPassword(ctx, id, passwordHash); err != nil {
+			return err
+		}
+		return tx.SetUserMustChangePassword(ctx, id, false)
+	})
 }
 
 // UpdateUserLastLogin escribe la proyección del último acceso exitoso

@@ -4,6 +4,7 @@ package usuarios
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -104,12 +105,22 @@ func TestIntegrationUpdateUserForeignKeyAndDuplicate(t *testing.T) {
 	user := mustInsertUser(t, repo, "ana@ejemplo.com", role.ID, true)
 	mustInsertUser(t, repo, "luis@ejemplo.com", other.ID, true)
 
-	// Rol inexistente → violación de FK → apperr.Invalid.
+	// Rol inexistente → violación de FK → apperr.Invalid CON details.roleId
+	// (M6: se distingue del 400 genérico, como en los flujos de cuenta).
 	_, err := repo.UpdateUser(ctx, UserUpdate{
 		ID: user.ID, Email: "ana@ejemplo.com", FirstName: "Ana", LastName: "Pérez",
 		Phone: "612345678", RoleID: uuid.New(), IsActive: true,
 	})
 	assertKind(t, err, apperr.KindInvalid)
+	assertRoleDetail(t, err)
+
+	// La misma traducción aplica a la creación (carrera con el rol).
+	_, err = repo.InsertUser(ctx, NewUser{
+		Email: "nuevo@ejemplo.com", FirstName: "Nuevo", LastName: "Usuario",
+		Phone: "699999999", PasswordHash: "hash", RoleID: uuid.New(),
+	})
+	assertKind(t, err, apperr.KindInvalid)
+	assertRoleDetail(t, err)
 
 	// Correo ya en uso por otra cuenta → apperr.Conflict.
 	_, err = repo.UpdateUser(ctx, UserUpdate{
@@ -117,6 +128,18 @@ func TestIntegrationUpdateUserForeignKeyAndDuplicate(t *testing.T) {
 		Phone: "612345678", RoleID: role.ID, IsActive: true,
 	})
 	assertKind(t, err, apperr.KindConflict)
+}
+
+// assertRoleDetail comprueba que el error lleva details.roleId (M6).
+func assertRoleDetail(t *testing.T, err error) {
+	t.Helper()
+	var appErr *apperr.Error
+	if !errors.As(err, &appErr) {
+		t.Fatalf("se esperaba *apperr.Error, se obtuvo %v", err)
+	}
+	if _, ok := appErr.Details["roleId"]; !ok {
+		t.Fatalf("details = %v, se esperaba roleId", appErr.Details)
+	}
 }
 
 func TestIntegrationUpdateUserPasswordAndMustChange(t *testing.T) {
@@ -149,6 +172,36 @@ func TestIntegrationUpdateUserPasswordAndMustChange(t *testing.T) {
 		t.Fatal("correo inexistente debería devolver error")
 	} else {
 		assertKind(t, err, apperr.KindNotFound)
+	}
+}
+
+// TestIntegrationChangeUserPasswordIsAtomic fija M3: el cambio propio guarda el
+// hash y resuelve must_change_password en una sola transacción.
+func TestIntegrationChangeUserPasswordIsAtomic(t *testing.T) {
+	repo, _ := newTestRepo(t)
+	ctx := context.Background()
+
+	role := mustInsertRole(t, repo, "Editor", "eventos")
+	user := mustInsertUser(t, repo, "ana@ejemplo.com", role.ID, true)
+
+	before, err := repo.GetUserAuthByEmail(ctx, "ana@ejemplo.com")
+	if err != nil {
+		t.Fatalf("GetUserAuthByEmail: %v", err)
+	}
+	if !before.MustChangePassword {
+		t.Fatal("la cuenta de prueba debe nacer con cambio obligatorio")
+	}
+
+	if err := repo.ChangeUserPassword(ctx, user.ID, "hash-atomico"); err != nil {
+		t.Fatalf("ChangeUserPassword: %v", err)
+	}
+
+	after, err := repo.GetUserAuthByEmail(ctx, "ana@ejemplo.com")
+	if err != nil {
+		t.Fatalf("GetUserAuthByEmail tras el cambio: %v", err)
+	}
+	if after.PasswordHash != "hash-atomico" || after.MustChangePassword {
+		t.Fatalf("el cambio no fue atómico: %+v", after)
 	}
 }
 

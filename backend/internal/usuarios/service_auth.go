@@ -76,8 +76,10 @@ type AuthRepository interface {
 	GetUserAuthByEmail(ctx context.Context, email string) (UserAuth, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetRoleByID(ctx context.Context, id uuid.UUID) (Role, error)
-	UpdateUserPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
-	SetUserMustChangePassword(ctx context.Context, id uuid.UUID, must bool) error
+	// ChangeUserPassword guarda el hash nuevo y resuelve la obligación de
+	// cambio en una sola transacción (FR-010/FR-020): el cambio propio es
+	// atómico.
+	ChangeUserPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	RecordLoginSuccess(ctx context.Context, userID uuid.UUID, ip string) (LoginEvent, error)
 }
 
@@ -308,11 +310,10 @@ func (s *authService) ChangeMyPassword(
 		return err
 	}
 
-	if err := s.repository.UpdateUserPassword(ctx, auth.ID, hash); err != nil {
+	// Una sola operación atómica: hash nuevo + resolución de la obligación de
+	// cambio (FR-010/FR-020).
+	if err := s.repository.ChangeUserPassword(ctx, auth.ID, hash); err != nil {
 		return fmt.Errorf("guardar la contraseña: %w", err)
-	}
-	if err := s.repository.SetUserMustChangePassword(ctx, auth.ID, false); err != nil {
-		return fmt.Errorf("resolver el cambio obligatorio: %w", err)
 	}
 	if err := s.sessions.RevokeUserExcept(ctx, auth.ID, currentToken); err != nil {
 		return fmt.Errorf("revocar las demás sesiones: %w", err)
@@ -387,12 +388,18 @@ func loginFailureError() error {
 }
 
 // retryAfterSeconds redondea hacia arriba el tiempo restante del bloqueo a
-// segundos para la cabecera Retry-After y Details["retryAfterSeconds"].
+// segundos para la cabecera Retry-After y Details["retryAfterSeconds"], con un
+// mínimo de 1 para no anunciar un reintento inmediato. Es la misma semántica
+// que middleware.retryAfterSeconds (M5).
 func retryAfterSeconds(d time.Duration) int {
 	if d <= 0 {
-		return 0
+		return 1
 	}
-	return int(math.Ceil(d.Seconds()))
+	seconds := int(math.Ceil(d.Seconds()))
+	if seconds < 1 {
+		return 1
+	}
+	return seconds
 }
 
 // authService implementa el Resolver que consume authn (T227).

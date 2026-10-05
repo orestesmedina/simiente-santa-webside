@@ -37,14 +37,14 @@ type fakeAuthRepo struct {
 	authErr   error
 	userErr   error
 	roleErr   error
-	updateErr error
-	mustErr   error
+	changeErr error
 	recordErr error
 
 	seenEmails         []string
 	recordSuccessCalls []loginSuccessCall
 	updatedHashes      map[uuid.UUID]string
 	mustUpdates        map[uuid.UUID]bool
+	changeCalls        int
 	adminActions       int
 }
 
@@ -103,23 +103,15 @@ func (f *fakeAuthRepo) GetRoleByID(_ context.Context, id uuid.UUID) (Role, error
 	return role, nil
 }
 
-func (f *fakeAuthRepo) UpdateUserPassword(_ context.Context, id uuid.UUID, hash string) error {
+func (f *fakeAuthRepo) ChangeUserPassword(_ context.Context, id uuid.UUID, hash string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.updateErr != nil {
-		return f.updateErr
+	if f.changeErr != nil {
+		return f.changeErr
 	}
+	f.changeCalls++
 	f.updatedHashes[id] = hash
-	return nil
-}
-
-func (f *fakeAuthRepo) SetUserMustChangePassword(_ context.Context, id uuid.UUID, must bool) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.mustErr != nil {
-		return f.mustErr
-	}
-	f.mustUpdates[id] = must
+	f.mustUpdates[id] = false
 	return nil
 }
 
@@ -737,6 +729,10 @@ func TestChangeMyPasswordSuccess(t *testing.T) {
 	if must, ok := repo.mustUpdates[auth.ID]; !ok || must {
 		t.Fatalf("mustChangePassword debe quedar en false: %v", repo.mustUpdates)
 	}
+	// El hash y la obligación se resuelven en una sola operación (atómica).
+	if repo.changeCalls != 1 {
+		t.Fatalf("cambios de contraseña = %d, se esperaba 1", repo.changeCalls)
+	}
 	if len(store.revokeUserExceptCalls) != 1 ||
 		store.revokeUserExceptCalls[0].userID != auth.ID ||
 		store.revokeUserExceptCalls[0].keepTokens[0] != "token-actual" {
@@ -832,8 +828,7 @@ func TestChangeMyPasswordPropagatesErrors(t *testing.T) {
 		setup func(*fakeAuthRepo, *fakeSessionStore)
 	}{
 		{"leer credenciales", func(r *fakeAuthRepo, _ *fakeSessionStore) { r.authErr = errors.New("bd caída") }},
-		{"guardar contraseña", func(r *fakeAuthRepo, _ *fakeSessionStore) { r.updateErr = errors.New("bd caída") }},
-		{"resolver obligación", func(r *fakeAuthRepo, _ *fakeSessionStore) { r.mustErr = errors.New("bd caída") }},
+		{"guardar contraseña", func(r *fakeAuthRepo, _ *fakeSessionStore) { r.changeErr = errors.New("bd caída") }},
 		{"revocar sesiones", func(_ *fakeAuthRepo, s *fakeSessionStore) { s.revokeUserExceptErr = errors.New("redis caído") }},
 	}
 	for _, tc := range cases {
@@ -860,11 +855,13 @@ func TestLogoutPropagatesRevokeError(t *testing.T) {
 }
 
 func TestRetryAfterSecondsRoundsUp(t *testing.T) {
-	if got := retryAfterSeconds(0); got != 0 {
-		t.Fatalf("retryAfterSeconds(0) = %d", got)
+	// Mismo mínimo de 1 s que middleware.retryAfterSeconds (M5): nunca se anuncia
+	// un reintento inmediato.
+	if got := retryAfterSeconds(0); got != 1 {
+		t.Fatalf("retryAfterSeconds(0) = %d, se esperaba 1", got)
 	}
-	if got := retryAfterSeconds(-time.Second); got != 0 {
-		t.Fatalf("retryAfterSeconds(negativo) = %d", got)
+	if got := retryAfterSeconds(-time.Second); got != 1 {
+		t.Fatalf("retryAfterSeconds(negativo) = %d, se esperaba 1", got)
 	}
 	if got := retryAfterSeconds(899 * time.Second); got != 899 {
 		t.Fatalf("retryAfterSeconds(899s) = %d", got)
