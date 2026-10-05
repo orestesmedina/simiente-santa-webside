@@ -12,10 +12,14 @@ import (
 // vigentes (FR-018/SC-009) y solo si la cuenta sigue activa (FR-012); el
 // middleware authn la deja en el contexto de la petición y authz la consulta.
 type Identity struct {
-	UserID             uuid.UUID
-	Email              string
-	FirstName          string
-	LastName           string
+	UserID    uuid.UUID
+	Email     string
+	FirstName string
+	LastName  string
+	// Phone es el teléfono de la cuenta: no lo necesita la autorización, pero
+	// lo exige el DTO SessionUser del contrato (GET /api/v1/auth/session), que
+	// se construye a partir de esta identidad sin otra consulta.
+	Phone              string
 	RoleID             uuid.UUID
 	RoleName           string
 	Permissions        []string

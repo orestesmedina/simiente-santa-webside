@@ -260,6 +260,7 @@ func (s *authService) Resolve(ctx context.Context, userID uuid.UUID) (session.Id
 		Email:              user.Email,
 		FirstName:          user.FirstName,
 		LastName:           user.LastName,
+		Phone:              user.Phone,
 		RoleID:             user.RoleID,
 		RoleName:           user.RoleName,
 		Permissions:        ensureStrings(role.Permissions),

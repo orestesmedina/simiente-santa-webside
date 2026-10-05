@@ -3,19 +3,98 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"simiente-santa/backend/internal/platform/httpserver"
 	"simiente-santa/backend/internal/platform/middleware"
+	"simiente-santa/backend/internal/platform/session"
 	"simiente-santa/backend/internal/platform/testutil"
+	"simiente-santa/backend/internal/status"
+	"simiente-santa/backend/internal/usuarios"
 )
 
 // fakeRepository permite guionizar el estado de la conexión sin base de datos.
 type fakeRepository struct{ err error }
 
 func (f fakeRepository) Ping(context.Context) error { return f.err }
+
+// fakeAuthService guioniza el servicio de acceso para el humo de composición.
+type fakeAuthService struct{}
+
+func (fakeAuthService) Login(_ context.Context, in usuarios.LoginInput, _ string) (usuarios.SessionUser, []*http.Cookie, error) {
+	return usuarios.SessionUser{
+		ID:          uuid.New().String(),
+		Email:       in.Email,
+		FirstName:   "Ana",
+		LastName:    "Responsable",
+		Phone:       "+34 600 000 000",
+		RoleID:      uuid.New().String(),
+		RoleName:    "Administrador",
+		Permissions: []string{usuarios.PermissionAdminUsersRoles},
+	}, nil, nil
+}
+
+func (fakeAuthService) Logout(context.Context, string) ([]*http.Cookie, error) { return nil, nil }
+
+func (fakeAuthService) ChangeMyPassword(context.Context, session.Identity, string, usuarios.ChangePasswordInput) error {
+	return nil
+}
+
+// fakeSessionStore no tiene sesiones: cualquier token es inexistente. Basta para
+// el humo de composición (peticiones sin sesión).
+type fakeSessionStore struct{}
+
+func (fakeSessionStore) Create(context.Context, uuid.UUID) (string, error) { return "", nil }
+func (fakeSessionStore) Resolve(context.Context, string) (session.Session, error) {
+	return session.Session{}, session.ErrSessionNotFound
+}
+func (fakeSessionStore) Revoke(context.Context, string) error                      { return nil }
+func (fakeSessionStore) RevokeUser(context.Context, uuid.UUID) error               { return nil }
+func (fakeSessionStore) RevokeUserExcept(context.Context, uuid.UUID, string) error { return nil }
+
+// fakeResolver implementa session.Resolver; nunca se llega a él sin cookie.
+type fakeResolver struct{}
+
+func (fakeResolver) Resolve(context.Context, uuid.UUID) (session.Identity, error) {
+	return session.Identity{}, errors.New("sin identidad")
+}
+
+// testDeps compone las dependencias del mux con dobles, sin base de datos ni
+// Redis, y publica una ruta de sonda en el grupo de panel para comprobar que la
+// cadena aprobada queda montada.
+func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
+	return apiDeps{
+		statusRepo:  repo,
+		authHandler: usuarios.NewHandler(fakeAuthService{}, log),
+		public: usuarios.PublicDeps{
+			Login: nil,
+			Session: []httpserver.Middleware{
+				middleware.Authn(fakeSessionStore{}, fakeResolver{}, log),
+				middleware.CSRF("secret", log),
+			},
+		},
+		admin: usuarios.AdminDeps{
+			Module: usuarios.PermissionAdminUsersRoles,
+			Deps: middleware.AdminDeps{
+				Sessions:   fakeSessionStore{},
+				Resolver:   fakeResolver{},
+				CSRFSecret: "secret",
+				Logger:     log,
+			},
+			Routes: func(r httpserver.Registrar) {
+				r.Handle(http.MethodGet, "/probe", func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusOK)
+				})
+			},
+		},
+	}
+}
 
 // TestHealthzSmoke comprueba de punta a punta el mux ensamblado con la cadena de
 // middlewares: el sobre de respuesta (200 o 503 según el repositorio) y que la
@@ -45,7 +124,7 @@ func TestHealthzSmoke(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger, _ := testutil.NewLogger()
 			srv := httptest.NewServer(httpserver.NewHandler(
-				newMux(fakeRepository{err: tt.repoErr}, logger),
+				newMux(testDeps(fakeRepository{err: tt.repoErr}, logger), logger),
 				logger,
 				middleware.Chain(logger, []string{"http://localhost:5173"})...,
 			))
@@ -67,4 +146,60 @@ func TestHealthzSmoke(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNewRoutesSmoke comprueba que el mux publica la superficie de F2 con su
+// sobre: el login responde el DTO directo, las rutas con sesión y el grupo de
+// panel exigen sesión (401 unauthenticated) y una ruta inexistente sigue dando
+// 404 con sobre de error.
+func TestNewRoutesSmoke(t *testing.T) {
+	logger, _ := testutil.NewLogger()
+	srv := httptest.NewServer(httpserver.NewHandler(
+		newMux(testDeps(fakeRepository{}, logger), logger),
+		logger,
+		middleware.Chain(logger, []string{"http://localhost:5173"})...,
+	))
+	t.Cleanup(srv.Close)
+
+	t.Run("login público responde el DTO directo", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodPost, "/api/v1/auth/login",
+			`{"email":"ana@ejemplo.com","password":"Semilla.2026"}`,
+			map[string]string{"Content-Type": "application/json"})
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"email":"ana@ejemplo.com"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+		if strings.Contains(string(resp.Body), "password") {
+			t.Errorf("la respuesta filtra credenciales: %s", resp.Body)
+		}
+	})
+
+	t.Run("sesión sin cookie responde 401", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/auth/session", "", nil)
+		if resp.Status != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("grupo de panel exige sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/probe", "", nil)
+		if resp.Status != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("ruta inexistente responde 404 con sobre", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/noexiste", "", nil)
+		if resp.Status != http.StatusNotFound {
+			t.Fatalf("status = %d, se esperaba 404 (%s)", resp.Status, resp.Body)
+		}
+	})
 }
