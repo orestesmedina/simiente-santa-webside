@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 002-acceso-gestion-usuarios |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar |
+| Fase | 3/9 · Tareas y coherencia |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Aprobación humana del plan actualizado (incluye auditoría, Redis y datos de cuenta) |
+| Próximo paso | Redactar `tasks.md` (`arquitecto`) y luego `analyze` (`revisor-codigo`) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-04 | "apruebo la spec actualizada" (con auditoría, US8 + FR-021…FR-026) |
-| Plan | pendiente | | | |
+| Plan | aprobado | humano | 2026-10-04 | "apruebo el plan" |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
@@ -46,6 +46,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-04 — **Plan de F2 aprobado por el humano** ("apruebo el plan"). Inicio de la fase 3 (tareas y coherencia).
 - 2026-10-04 — Plan y `ux.md` actualizados con la **auditoría** (tablas `login_events`/`admin_actions`, endpoints de consulta, pantalla `/panel/auditoria`) y Redis sin persistencia. Pendiente la aprobación del plan.
 - 2026-10-04 — **Spec actualizada re-aprobada por el humano** ("apruebo la spec actualizada") con la auditoría incluida. Se actualiza el plan.
 - 2026-10-04 — **Cambio de alcance aprobado por el humano: auditoría en F2** (último acceso, historial de inicios de sesión y acciones administrativas, visible en el panel). `analista-producto` añadió US8 y FR-021…FR-026; Redis **sin persistencia**. Requiere re-aprobar la spec.
