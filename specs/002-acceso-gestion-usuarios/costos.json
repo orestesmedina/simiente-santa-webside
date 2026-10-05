@@ -635,6 +635,34 @@
         }
       ],
       "hasta_ms": 1791146114705
+    },
+    {
+      "id": "ses_ef771f921ffebVO4MWcZz8RfZU",
+      "padre": null,
+      "titulo": "Preguntando con qué continuar",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-05T04:42:18Z",
+      "desde": "2026-10-05T04:39:01Z",
+      "hasta": "2026-10-05T04:40:19Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 4,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 2858,
+            "output": 1105,
+            "reasoning": 458,
+            "cache_read": 598528,
+            "cache_write": 0
+          },
+          "costo": 0.003162,
+          "costo_opencode": 0.003162
+        }
+      ],
+      "hasta_ms": 1791175219415
     }
   ],
   "totales": {
@@ -702,21 +730,21 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 84,
+        "respuestas": 88,
         "tokens": {
-          "input": 153604,
-          "output": 41055,
-          "reasoning": 33624,
-          "cache_read": 7185792,
+          "input": 156462,
+          "output": 42160,
+          "reasoning": 34082,
+          "cache_read": 7784320,
           "cache_write": 0
         },
-        "costo": 0.111306,
-        "costo_opencode": 0.089405,
+        "costo": 0.114468,
+        "costo_opencode": 0.092567,
         "sin_precio": false
       }
     ],
-    "tokens": 58476439,
-    "costo": 1.523407,
-    "costo_opencode": 1.501506
+    "tokens": 59079388,
+    "costo": 1.526569,
+    "costo_opencode": 1.504668
   }
 }

@@ -156,7 +156,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
 ## Fase 1 — Contrato OpenAPI, dependencias y tipos
 
-- [ ] T201 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.3.0) · `[backend]` `[P1]`
+- [X] T201 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.3.0) · `[backend]` `[P1]`
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO). *No* se toca
     `specs/002-acceso-gestion-usuarios/contracts/openapi.yaml` (snapshot inmutable, P19).
@@ -179,7 +179,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     `conflict`, `rate_limited`) ya estaban en el enum de F1.
   - **Commit sugerido**: `docs(api): fusionar delta de F2 en el contrato vivo (0.3.0)`
 
-- [ ] T202 · Dependencias Go nuevas justificadas · `[backend]` `[P1]`
+- [X] T202 · Dependencias Go nuevas justificadas · `[backend]` `[P1]`
 
   - **Archivos**: `backend/go.mod`, `backend/go.sum` (EDITADOS).
   - **Qué hace**: añade las dependencias justificadas en `research.md` R16: runtime →
@@ -193,7 +193,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     justificadas (D-A8); ningún archivo del kit modificado.
   - **Commit sugerido**: `chore(backend): agregar dependencias de F2 (x/crypto, uuid, go-redis, testcontainers)`
 
-- [ ] T203 · Dependencias npm nuevas · `[frontend]` `[P1]`
+- [X] T203 · Dependencias npm nuevas · `[frontend]` `[P1]`
 
   - **Archivos**: `frontend/package.json`, `frontend/package-lock.json` (EDITADOS).
   - **Qué hace**: añade `react-hook-form`, `zod` y `@hookform/resolvers` (convención de la skill para
@@ -205,7 +205,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: solo las tres dependencias nuevas; el árbol sigue compilando.
   - **Commit sugerido**: `chore(frontend): agregar react-hook-form, zod y @hookform/resolvers`
 
-- [ ] T204 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
+- [X] T204 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/schema.d.ts` (GENERADO y commiteado).
   - **Qué hace**: ejecuta `make api-gen` (o `npm run api:gen`) contra **`backend/api/openapi.yaml`**
@@ -221,7 +221,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
 ## Fase 2 — Infraestructura local (`[infra]`, la aplica `devops`)
 
-- [ ] T205 · Servicio `redis` en `docker-compose.yml` · `[infra]` `[P2]`
+- [X] T205 · Servicio `redis` en `docker-compose.yml` · `[infra]` `[P2]`
 
   - **Archivos**: `docker-compose.yml` (EDITABLE: no está en `.kit-manifest.json`). *No se toca*
     `.github/workflows/ci.yml` (archivo del kit, R19).
@@ -241,7 +241,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     caído se traducen a `503`/`500` con sobre uniforme (R1); ningún archivo del kit modificado.
   - **Commit sugerido**: `build(compose): servicio redis sin persistencia y variables de sesión`
 
-- [ ] T206 · `.env.example`: variables de sesión y de arranque · `[infra]` `[P2]`
+- [X] T206 · `.env.example`: variables de sesión y de arranque · `[infra]` `[P2]`
 
   - **Archivos**: `.env.example` (EDITABLE).
   - **Qué hace**: documenta las variables nuevas con valores de ejemplo (nunca secretos reales, §IV):
