@@ -124,14 +124,10 @@ test.describe('Acceso y gestión de usuarios (US1–US7)', () => {
       await expect(userPage).toHaveURL(/\/login/);
       await expect(userPage.getByRole('heading', { name: 'Entrar al panel' })).toBeVisible();
 
-      // Con credenciales correctas, la cuenta desactivada no puede entrar:
-      // el servidor responde 403 con el mensaje de acceso desactivado (SC-006).
-      //
-      // HALLAZGO (para dev-backend): el sobre real trae `code: "forbidden"` sin
-      // `details.reason = "access_disabled"`, que es lo que espera la UI
-      // (src/features/auth/pages/LoginPage.tsx) y documenta el contrato. Por eso
-      // aquí se verifica el corte de acceso (403 + se queda en /login) y NO el
-      // texto concreto, para no fijar el comportamiento defectuoso.
+      // Con credenciales correctas, la cuenta desactivada no puede entrar: el
+      // servidor responde 403 `forbidden` con `details.reason = "access_disabled"`
+      // (SC-006, contrato US1 esc. 3), que la UI traduce al aviso dedicado en
+      // lugar del error genérico (src/features/auth/pages/LoginPage.tsx).
       const [disabledLogin] = await Promise.all([
         userPage.waitForResponse(
           (res) => res.url().includes('/api/v1/auth/login') && res.request().method() === 'POST',
@@ -139,7 +135,13 @@ test.describe('Acceso y gestión de usuarios (US1–US7)', () => {
         loginViaUi(userPage, carlos.email, newPassword),
       ]);
       expect(disabledLogin.status()).toBe(403);
+      const disabledBody = (await disabledLogin.json()) as {
+        error?: { code?: string; details?: { reason?: string } };
+      };
+      expect(disabledBody.error?.code).toBe('forbidden');
+      expect(disabledBody.error?.details?.reason).toBe('access_disabled');
       await expect(userPage).toHaveURL(/\/login/);
+      await expect(userPage.getByText(/acceso está desactivado/)).toBeVisible();
       await expect(userPage.getByRole('heading', { name: 'Mi cuenta' })).toHaveCount(0);
 
       // ── US5 esc. 3: reactivar devuelve el acceso con normalidad ────────────
