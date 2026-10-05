@@ -6,9 +6,14 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"simiente-santa/backend/internal/platform/apperr"
 )
+
+// headerRetryAfter es la cabecera del contrato que acompaña a un 429 y lleva
+// los segundos hasta poder reintentar.
+const headerRetryAfter = "Retry-After"
 
 // Claves del contexto de petición. Las escribe middleware/request-id y las
 // consumen WriteError y middleware/logging; viven aquí porque WriteError es el
@@ -75,7 +80,8 @@ func WriteJSON(w http.ResponseWriter, status int, payload any) {
 // WriteError es el ÚNICO punto donde un error de dominio (apperr) se traduce a
 // HTTP (arq. §5.11). Cualquier error inesperado se responde como 500 `internal`
 // con mensaje genérico; el detalle interno solo va al log estructurado con su
-// request_id (FR-013, SC-009).
+// request_id (FR-013, SC-009). Si el error lleva Retry-After (RateLimited), la
+// cabecera homónima del contrato se fija aquí con su valor en segundos.
 func WriteError(ctx context.Context, w http.ResponseWriter, logger *slog.Logger, err error) {
 	domainErr := toDomainError(err)
 
@@ -83,6 +89,10 @@ func WriteError(ctx context.Context, w http.ResponseWriter, logger *slog.Logger,
 	var details map[string]any
 	if domainErr.Kind != apperr.KindInternal {
 		details = domainErr.Details
+	}
+
+	if retryAfter := domainErr.RetryAfter(); retryAfter > 0 {
+		w.Header().Set(headerRetryAfter, strconv.Itoa(retryAfter))
 	}
 
 	logError(ctx, logger, domainErr)
