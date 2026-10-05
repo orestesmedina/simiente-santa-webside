@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"simiente-santa/backend/internal/platform/apperr"
 	"simiente-santa/backend/internal/platform/httpserver"
 	"simiente-santa/backend/internal/platform/session"
@@ -64,6 +66,7 @@ type Handler struct {
 	setup      SetupService
 	users      UsersService
 	roles      RolesService
+	audit      AuditService
 	setupToken string
 	logger     *slog.Logger
 }
@@ -84,6 +87,11 @@ type HandlerDeps struct {
 	// Opcional: si es nil, las rutas /api/v1/admin/roles* y /api/v1/admin/permisos
 	// no se publican (T237).
 	Roles RolesService
+	// Audit es el servicio de consulta del registro de auditoría y el punto de
+	// registro de los rechazos por datos inválidos (T239/T240). Opcional: si es
+	// nil, las rutas /api/v1/admin/auditoria/* no se publican y los rechazos solo
+	// quedan en el log.
+	Audit AuditService
 	// SetupToken es el valor esperado de la cabecera X-Setup-Token
 	// (BOOTSTRAP_TOKEN). Nunca se registra ni se devuelve (RG13).
 	SetupToken string
@@ -103,6 +111,7 @@ func NewHandler(deps HandlerDeps) *Handler {
 		setup:      deps.Setup,
 		users:      deps.Users,
 		roles:      deps.Roles,
+		audit:      deps.Audit,
 		setupToken: deps.SetupToken,
 		logger:     logger,
 	}
@@ -115,9 +124,9 @@ func NewHandler(deps HandlerDeps) *Handler {
 // (additionalProperties: false del contrato) y más de un valor JSON.
 //
 // Todo rechazo pasa por recordRejected: es el punto de escritura de P20 para
-// «JSON inválido o DTO no válido». En T228 deja la traza con el request_id; T239
-// conecta el registro duradero en admin_actions (best-effort, nunca cambia la
-// respuesta — R23).
+// «JSON inválido o DTO no válido». Deja la traza con el request_id y, desde
+// T239, el registro duradero en admin_actions con `result='failure'`
+// (best-effort, nunca cambia la respuesta — R23).
 func (h *Handler) decodeAndValidate(w http.ResponseWriter, r *http.Request, dto any) bool {
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBytes)
@@ -152,6 +161,12 @@ func (h *Handler) rejectInvalid(ctx context.Context, w http.ResponseWriter, r *h
 // recordRejected deja constancia de una petición rechazada por JSON o DTO
 // inválido (P20). Es best-effort y nunca cambia la respuesta; usa el logger por
 // petición (con request_id) cuando está en el contexto.
+//
+// Además de la traza del log, el intento se registra duradero como
+// `result='failure'` en `admin_actions` (T239) resolviendo la acción y el
+// objetivo desde method+path; el dominio nunca recibe ni guarda el cuerpo, así
+// que no puede filtrar credenciales (FR-026). Un fallo del registro queda
+// únicamente en el log con su request_id (R23).
 func (h *Handler) recordRejected(ctx context.Context, r *http.Request) {
 	logger := httpserver.RequestLoggerFromContext(ctx)
 	if logger == nil {
@@ -164,6 +179,26 @@ func (h *Handler) recordRejected(ctx context.Context, r *http.Request) {
 		slog.String("method", r.Method),
 		slog.String("path", r.URL.Path),
 	)
+
+	if h.audit == nil {
+		return
+	}
+	h.audit.RecordRejectedBestEffort(ctx, Rejection{
+		ActorUserID: identityUserID(ctx),
+		Method:      r.Method,
+		Path:        r.URL.Path,
+	})
+}
+
+// identityUserID devuelve el id de la identidad autenticada de la petición, si
+// authn ya la resolvió; nil en las rutas públicas (p. ej. la inicialización).
+func identityUserID(ctx context.Context) *uuid.UUID {
+	identity, ok := session.IdentityFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	id := identity.UserID
+	return &id
 }
 
 // writeCookies escribe las cookies que devuelve el service (sesión y CSRF en el

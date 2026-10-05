@@ -625,6 +625,35 @@ func TestAuthzByModuleWithoutIdentityIsUnauthenticated(t *testing.T) {
 	}
 }
 
+func TestAuthzByModuleRecordsDenialBestEffort(t *testing.T) {
+	// El registro de la denegación entrega actor, método y ruta (el dominio
+	// resuelve acción y objetivo, P20); un fallo al persistir no cambia el 403
+	// (R23).
+	userID := uuid.New()
+	target := uuid.New()
+	identity := session.Identity{UserID: userID, Permissions: []string{"otro_modulo"}}
+	recorder := &stubRecorder{err: errors.New("bd caída")}
+	mw := AuthzByModule("admin_usuarios_roles", recorder, discardLogger())
+	path := "/api/v1/admin/usuarios/" + target.String()
+
+	rec := httptest.NewRecorder()
+	withIdentity(identity, mw(okHandler())).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, path, nil))
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, se esperaba 403 aunque falle el registro", rec.Code)
+	}
+	if len(recorder.denials) != 1 {
+		t.Fatalf("denegaciones registradas = %d, se esperaba 1", len(recorder.denials))
+	}
+	denial := recorder.denials[0]
+	if denial.ActorUserID == nil || *denial.ActorUserID != userID {
+		t.Errorf("actor = %v, se esperaba %v", denial.ActorUserID, userID)
+	}
+	if denial.Method != http.MethodPatch || denial.Path != path {
+		t.Errorf("método/ruta = %s %s, se esperaba PATCH %s", denial.Method, denial.Path, path)
+	}
+}
+
 // --- CSRF ---
 
 func TestCSRF(t *testing.T) {
