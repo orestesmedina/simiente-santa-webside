@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 002-acceso-gestion-usuarios |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (en curso: 28/54 tareas) |
+| Fase | 6/9 · Implementar (en curso: 40/54 tareas; backend completo) |
 | Ciclo de corrección | 2/3 (1er ciclo documental cerrado; 1 corrección de integración aplicada) |
-| Próximo paso | Fase 6 (`[backend]`): T229 (inicialización única) + T230 (endpoint `POST /setup/initialize`) → `dev-backend` |
+| Próximo paso | Fase 10 (`[frontend]`): T241 (api client/auth) + T242 (componentes compartidos) → `dev-frontend` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -53,6 +53,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-05 — **Backend completo (40/54).** Fases 6–9: inicialización única (T229–T230), gestión de cuentas (T231–T234), roles y permisos (T235–T237) y auditoría de solo lectura (T238–T240). Corregido otro bug de F1: `httpserver` no rellenaba `PathValue` en rutas con parámetros (`{id}`). `go test ./...` y `go test -tags=integration ./...` en verde.
 - 2026-10-05 — **Implementación (fase 6/9): 28/54 tareas.** Completadas las fases 3–5: migraciones `000002`–`000004` y consultas sqlc (T207–T211); núcleo `platform` (T212–T219, incluida la sesión en Redis); dominio `usuarios` (T220–T228: repositorios, auditoría, login/logout/Resolve, cambio de contraseña, middleware y handlers de acceso). Corregido un ciclo de imports de pruebas de integración (`session`→`testutil`→`middleware`→`session`) extrayendo los helpers de contenedores a `testutil/containers`. Próximo: T229/T230 (inicialización única).
 - 2026-10-04 — **Implementación iniciada (fase 6/9).** Fases 1–2 completadas y commiteadas: T201 (contrato 0.3.0), T202 (deps Go), T203 (deps npm), T204 (regenerar `schema.d.ts`) y T205/T206 (Redis en Compose + `.env.example`). 6/54 tareas. Próximo: T207 (migración `000002`). Nota T201: el snapshot `contracts/openapi.yaml` no era YAML válido (escalares con `:`) y la corrección se aplicó **solo** al contrato vivo (el snapshot no se edita, P19).
 - 2026-10-04 — **Sesión cerrada.** F2 lista para implementar: spec y plan aprobados, coherencia en verde, 53 tareas. Próximo paso: **T201** (fusionar el contrato OpenAPI 0.3.0) y en paralelo **T202/T203** (dependencias) y **T205/T206** (Redis en Compose y `.env.example`). Costo de la tarea (abierto): **$1.52**.

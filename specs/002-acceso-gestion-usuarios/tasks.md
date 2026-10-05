@@ -716,7 +716,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
 ## Fase 6 — Inicialización única del administrador (US2, FR-007)
 
-- [ ] T229 · `usuarios`: inicialización única · `[backend]`
+- [X] T229 · `usuarios`: inicialización única · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_auth.go` (EDITADO) o `service_init.go` (NUEVO),
     `service_init_test.go` y `repository_*_integration_test.go` (ampliados).
@@ -735,7 +735,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     sola vez; repeticiones bloqueadas).
   - **Commit sugerido**: `feat(usuarios): inicialización única del administrador inicial`
 
-- [ ] T230 · `usuarios`: `POST /api/v1/setup/initialize` y rate-limit · `[backend]`
+- [X] T230 · `usuarios`: `POST /api/v1/setup/initialize` y rate-limit · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/handler_auth.go` (EDITADO), `routes.go` (EDITADO),
     `handler_auth_test.go` (ampliado) y `backend/cmd/api/main.go` (EDITADO si aplica).
@@ -755,7 +755,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
 ## Fase 7 — Gestión de cuentas (US3, US5, US7 parcial)
 
-- [ ] T231 · `usuarios`: `service_users.go` — crear cuenta · `[backend]`
+- [X] T231 · `usuarios`: `service_users.go` — crear cuenta · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_users.go`, `service_users_test.go` (NUEVOS).
   - **Qué hace**: `CreateUser` (FR-009/US3): valida con `platform/validate` (nombre, apellidos, correo
@@ -775,7 +775,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: US3 cubierta en el service; nunca se devuelve la contraseña (FR-003).
   - **Commit sugerido**: `feat(usuarios): creación de cuentas con validación y registro`
 
-- [ ] T232 · `usuarios`: `service_users.go` — editar y activar/desactivar · `[backend]`
+- [X] T232 · `usuarios`: `service_users.go` — editar y activar/desactivar · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_users.go` (EDITADO) y `service_users_test.go`.
   - **Qué hace**: `UpdateUser` (FR-011/US5): edita nombre, apellidos, correo, teléfono, **rol**
@@ -796,7 +796,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     desactivada sin acceso ni con sesión abierta).
   - **Commit sugerido**: `feat(usuarios): edición y activación/desactivación con guard anti-bloqueo`
 
-- [ ] T233 · `usuarios`: `service_users.go` — restablecer contraseña · `[backend]`
+- [X] T233 · `usuarios`: `service_users.go` — restablecer contraseña · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_users.go` (EDITADO) y `service_users_test.go`.
   - **Qué hace**: `ResetUserPassword` (FR-010/US7 esc. 5): el administrador define una contraseña
@@ -813,7 +813,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     sin servicio de correo (Out of Scope respetado).
   - **Commit sugerido**: `feat(usuarios): restablecimiento de contraseña con registro sin credenciales`
 
-- [ ] T234 · `usuarios`: `handler_users.go` y rutas de cuentas · `[backend]`
+- [X] T234 · `usuarios`: `handler_users.go` y rutas de cuentas · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/handler_users.go`, `handler_users_test.go` (NUEVOS),
     `routes.go` (EDITADO: `RegisterAdmin`) y `backend/cmd/api/main.go` (EDITADO).
@@ -836,7 +836,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
 ## Fase 8 — Gestión de roles y permisos (US4, US6)
 
-- [ ] T235 · `usuarios`: `service_roles.go` — crear rol y catálogo · `[backend]`
+- [X] T235 · `usuarios`: `service_roles.go` — crear rol y catálogo · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_roles.go`, `service_roles_test.go` (NUEVOS).
   - **Qué hace**: `CreateRole` (FR-014/US4): nombre único **normalizado** (trim + colapso de espacios;
@@ -854,7 +854,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     (T207), no se duplica en código.
   - **Commit sugerido**: `feat(usuarios): creación de roles con permisos por módulo y catálogo`
 
-- [ ] T236 · `usuarios`: `service_roles.go` — editar y eliminar rol · `[backend]`
+- [X] T236 · `usuarios`: `service_roles.go` — editar y eliminar rol · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_roles.go` (EDITADO) y `service_roles_test.go`.
   - **Qué hace**: `UpdateRole` (FR-017/FR-018/US6): cambia nombre (mismas reglas de unicidad) y/o
@@ -875,7 +875,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     posibles.
   - **Commit sugerido**: `feat(usuarios): edición y eliminación de roles con reglas de uso`
 
-- [ ] T237 · `usuarios`: `handler_roles.go` y rutas de roles · `[backend]`
+- [X] T237 · `usuarios`: `handler_roles.go` y rutas de roles · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/handler_roles.go`, `handler_roles_test.go` (NUEVOS),
     `routes.go` (EDITADO) y `backend/cmd/api/main.go` (EDITADO).
@@ -900,7 +900,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 > productor (T224–T236, P20). Esta fase cierra los dos puntos transversales restantes y toda la
 > consulta de solo lectura.
 
-- [ ] T238 · `usuarios`: `service_audit.go` — consulta con filtros y paginación · `[backend]`
+- [X] T238 · `usuarios`: `service_audit.go` — consulta con filtros y paginación · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_audit.go` (EDITADO) y `service_audit_test.go`.
   - **Qué hace**: `ListAccessEvents` y `ListAdminActions` (FR-024/US8, P22): filtros `userId` (en
@@ -916,7 +916,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     filtros por cuenta y fechas).
   - **Commit sugerido**: `feat(usuarios): consulta de auditoría con filtros y paginación`
 
-- [ ] T239 · Auditoría: denegaciones y datos inválidos registrados · `[backend]`
+- [X] T239 · Auditoría: denegaciones y datos inválidos registrados · `[backend]`
 
   - **Archivos**: `backend/internal/platform/middleware/authz.go` (EDITADO),
     `backend/internal/usuarios/handler.go` (EDITADO), `handler_test.go`/`middleware_test.go`
@@ -936,7 +936,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     "un punto olvidado dejaría un intento sin registrar").
   - **Commit sugerido**: `feat(usuarios): registrar denegaciones y datos inválidos en admin_actions`
 
-- [ ] T240 · `usuarios`: `handler_audit.go` y rutas de auditoría · `[backend]`
+- [X] T240 · `usuarios`: `handler_audit.go` y rutas de auditoría · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/handler_audit.go`, `handler_audit_test.go` (NUEVOS),
     `routes.go` (EDITADO) y `backend/cmd/api/main.go` (EDITADO).
