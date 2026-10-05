@@ -1,14 +1,17 @@
 import type { ReactNode } from 'react';
 import { Link, useRoutes, type RouteObject } from 'react-router-dom';
+import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
+import { LoginPage } from '../features/auth/pages/LoginPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
 import { ADMIN_USERS_ROLES } from '../lib/permissions';
 import { RequireAuth, RequirePasswordChange, RequirePermission } from './guards';
 import { AppLayout, PanelLayout } from './layout';
 
 /**
- * Pantallas provisionales de F2. T245–T250 las sustituyen por las páginas de
- * `features/`; existen aquí para que las 7 rutas de P18 y sus guards sean
- * navegables y verificables desde ya (T244).
+ * Pantallas provisionales de F2 que T247–T250 y T254 sustituyen por las páginas
+ * de `features/`; existen aquí para que las 7 rutas de P18 y sus guards sigan
+ * navegables hasta que se implementen (T244). El acceso y el cambio de
+ * contraseña ya son las páginas reales de `features/auth` (T245/T246).
  */
 function PendingPage({ title, children }: { title: string; children?: ReactNode }) {
   return (
@@ -17,14 +20,6 @@ function PendingPage({ title, children }: { title: string; children?: ReactNode 
       {children}
     </section>
   );
-}
-
-function LoginPending() {
-  return <PendingPage title="Entrar al panel" />;
-}
-
-function ChangePasswordPending() {
-  return <PendingPage title="Cambiar contraseña" />;
 }
 
 function ForbiddenPending() {
@@ -80,12 +75,12 @@ const appRoutes: RouteObject[] = [
     element: <AppLayout />,
     children: [{ index: true, element: <StatusPage /> }],
   },
-  { path: '/login', element: <LoginPending /> },
+  { path: '/login', element: <LoginPage /> },
   { path: '/sin-permiso', element: <ForbiddenPending /> },
   {
     element: <RequireAuth />,
     children: [
-      { path: '/cambiar-contrasena', element: <ChangePasswordPending /> },
+      { path: '/cambiar-contrasena', element: <ChangePasswordPage /> },
       {
         element: <RequirePasswordChange />,
         children: [

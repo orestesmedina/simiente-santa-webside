@@ -1,10 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { logout } from '../api/auth';
 import { Button } from '../components/Button';
+import { SessionWarning } from '../features/auth/components/SessionWarning';
+import { useLogout } from '../features/auth/hooks/useLogout';
+import { useSessionQuery } from '../features/auth/hooks/useSession';
 import { ADMIN_USERS_ROLES, hasPermission } from '../lib/permissions';
-import { SESSION_QUERY_KEY, useSessionQuery } from './session';
 
 /**
  * Layout mínimo y semántico de la aplicación pública: encabezado con navegación
@@ -47,15 +47,13 @@ export function PanelLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: session } = useSessionQuery();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const logoutMutation = useLogout();
 
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey: SESSION_QUERY_KEY });
-      navigate('/login', { replace: true });
-    },
-  });
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => navigate('/login', { replace: true }),
+    });
+  };
 
   const items: NavItem[] = [{ to: '/panel', label: 'Inicio', end: true }];
   if (hasPermission(session, ADMIN_USERS_ROLES)) {
@@ -68,6 +66,7 @@ export function PanelLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-slate-900">
+      <SessionWarning />
       <header className="border-b border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">
           <p className="font-semibold">Panel</p>
@@ -118,11 +117,7 @@ export function PanelLayout() {
         <p className="text-sm text-slate-700">
           {session ? `${session.firstName} ${session.lastName} · ${session.roleName}` : null}
         </p>
-        <Button
-          variant="secondary"
-          loading={logoutMutation.isPending}
-          onClick={() => logoutMutation.mutate()}
-        >
+        <Button variant="secondary" loading={logoutMutation.isPending} onClick={handleLogout}>
           Salir
         </Button>
       </footer>
