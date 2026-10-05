@@ -106,6 +106,7 @@ func main() {
 		Setup:      initSvc,
 		Users:      userSvc,
 		Roles:      roleSvc,
+		Audit:      auditSvc,
 		SetupToken: cfg.BootstrapToken,
 		Logger:     appLog,
 	})
@@ -139,8 +140,8 @@ func main() {
 				CSRFSecret: cfg.SessionSecret,
 				Logger:     appLog,
 			},
-			// Las rutas de cuentas (T234) y de roles (T237) ya se publican desde
-			// este handler; las de auditoría llegan en T238/T240.
+			// Las rutas de cuentas (T234), de roles (T237) y de auditoría
+			// (T240) se publican desde este handler.
 			Handler: handler,
 		},
 	}
