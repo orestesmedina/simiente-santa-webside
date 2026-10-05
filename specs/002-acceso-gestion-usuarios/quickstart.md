@@ -270,17 +270,39 @@ restablecer su contraseña, crear un rol, editar sus permisos, eliminar un rol s
 
 ```bash
 go test ./...                          # unitarias (service, handler, platform, middleware)
-go test -tags=integration ./...        # integración: PostgreSQL real + Redis (testcontainers, ver abajo)
+go test -tags=integration ./...        # integración: Redis (testcontainers) + PostgreSQL vía DATABASE_URL_TEST (ver abajo)
 npm test -- --run                      # frontend (Vitest + Testing Library + MSW)
 make e2e                               # Playwright: frontend/e2e/acceso.spec.ts + auditoria.spec.ts
 make ci                                # lint + test + security (govulncheck + npm audit); db-migrate es aparte (§0)
 ```
 
-Las pruebas de integración necesitan **Docker** (que ya lo requiere `make up`): levantan Redis
-(`redis:7-alpine`) y, si no hay `DATABASE_URL_TEST`, también PostgreSQL, con `testcontainers-go`
-**dentro del propio test** (`research.md` R19). Esto es deliberado: `.github/workflows/ci.yml` es
-un archivo del kit y **no se puede editar**, así que el CI los recibe tal cual y los runners de
-GitHub Actions tienen Docker disponible.
+Las pruebas de integración del backend arrancan servicios de forma distinta según el servicio:
+
+- **Redis**: se levanta con `testcontainers-go` (`redis:7-alpine`) **dentro del propio test** y se
+  destruye al terminar (`research.md` R19). Sin Docker accesible la prueba se **omite**
+  (`t.Skip`), nunca falla.
+- **PostgreSQL**: las pruebas de dominio **no** levantan PostgreSQL con testcontainers; leen
+  **`DATABASE_URL_TEST`** (`testutil.DatabaseURL`/`testutil.Pool`). Si la variable existe, se usa
+  esa base; si no existe, la prueba se **omite** (`t.Skip`). Por eso una corrida local sin la
+  variable sale en verde con las pruebas de integración saltadas. (Único caso en que testcontainers
+  arranca un `postgres:16-alpine` efímero es la prueba del propio helper `containers.PostgresURL`,
+  que además **reutiliza** `DATABASE_URL_TEST` si ya está definida.)
+
+`DATABASE_URL_TEST` debe apuntar **solo a una base de pruebas efímera** (p. ej. `app_test`, como
+trae `.env.example`): esas pruebas **vacían las tablas del dominio** (`TRUNCATE login_events,
+admin_actions, role_permissions, roles, users CASCADE`) y luego insertan sus propias cuentas (p.
+ej. el administrador `ana@ejemplo.com`). **Nunca** la apuntes a la base del stack de desarrollo
+(`make up`) ni a producción: destruiría el entorno (riesgo M-3 de
+`revision-2026-10-05-qa.md`).
+
+Esto es deliberado respecto al CI: `.github/workflows/ci.yml` es un archivo del kit y **no se
+puede editar** (`.kit-manifest.json`), pero trae ya su propio servicio `postgres` con
+`DATABASE_URL_TEST` apuntando a él y ejecuta `go test -tags=integration ./...`; para Redis sí hace
+falta Docker, que los runners `ubuntu-latest` de GitHub Actions tienen disponible.
+
+En local, `make test` y `make ci` ejecutan `go test -tags=integration ./...` (Makefile), así que
+aplican la misma regla: **sin `DATABASE_URL_TEST` exportada las pruebas de dominio se saltan en
+silencio** y el veredicto "en verde" no las cubre.
 
 El e2e recorre el camino completo: inicializar → login → crear rol → crear cuenta → entrar con ella
 (contraseña forzada) → ver solo sus módulos → cambiar contraseña → desactivarla → acceso cortado →
