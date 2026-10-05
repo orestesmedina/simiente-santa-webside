@@ -14,6 +14,7 @@ import (
 
 	"simiente-santa/backend/internal/platform/httpserver"
 	"simiente-santa/backend/internal/platform/middleware"
+	"simiente-santa/backend/internal/platform/paginate"
 	"simiente-santa/backend/internal/platform/session"
 	"simiente-santa/backend/internal/platform/testutil"
 	"simiente-santa/backend/internal/status"
@@ -87,18 +88,46 @@ func (fakeResolver) Resolve(context.Context, uuid.UUID) (session.Identity, error
 	return session.Identity{}, errors.New("sin identidad")
 }
 
+// fakeRoleService guioniza la gestión de roles para el humo de composición de
+// las rutas /api/v1/admin/roles* y /api/v1/admin/permisos (T237).
+type fakeRoleService struct{}
+
+func (fakeRoleService) ListRoles(context.Context, paginate.Params) (usuarios.RoleList, error) {
+	return usuarios.RoleList{}, nil
+}
+
+func (fakeRoleService) GetRole(context.Context, uuid.UUID) (usuarios.RoleItem, error) {
+	return usuarios.RoleItem{}, nil
+}
+
+func (fakeRoleService) CreateRole(context.Context, uuid.UUID, usuarios.RoleCreateInput) (usuarios.RoleItem, error) {
+	return usuarios.RoleItem{}, nil
+}
+
+func (fakeRoleService) UpdateRole(context.Context, uuid.UUID, uuid.UUID, usuarios.RoleUpdateInput) (usuarios.RoleItem, error) {
+	return usuarios.RoleItem{}, nil
+}
+
+func (fakeRoleService) DeleteRole(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+
+func (fakeRoleService) ListPermissions(context.Context) (usuarios.PermissionList, error) {
+	return usuarios.PermissionList{}, nil
+}
+
 // testDeps compone las dependencias del mux con dobles, sin base de datos ni
 // Redis, y publica una ruta de sonda en el grupo de panel para comprobar que la
 // cadena aprobada queda montada.
 func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
+	handler := usuarios.NewHandler(usuarios.HandlerDeps{
+		Access:     fakeAuthService{},
+		Setup:      fakeSetupService{},
+		Roles:      fakeRoleService{},
+		SetupToken: "token-de-prueba",
+		Logger:     log,
+	})
 	return apiDeps{
-		statusRepo: repo,
-		authHandler: usuarios.NewHandler(usuarios.HandlerDeps{
-			Access:     fakeAuthService{},
-			Setup:      fakeSetupService{},
-			SetupToken: "token-de-prueba",
-			Logger:     log,
-		}),
+		statusRepo:  repo,
+		authHandler: handler,
 		public: usuarios.PublicDeps{
 			Login: nil,
 			Session: []httpserver.Middleware{
@@ -114,6 +143,9 @@ func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
 				CSRFSecret: "secret",
 				Logger:     log,
 			},
+			// El Handler publica las rutas de roles (T237); la sonda comprueba
+			// que la cadena aprobada queda montada.
+			Handler: handler,
 			Routes: func(r httpserver.Registrar) {
 				r.Handle(http.MethodGet, "/probe", func(w http.ResponseWriter, _ *http.Request) {
 					w.WriteHeader(http.StatusOK)
@@ -245,6 +277,18 @@ func TestNewRoutesSmoke(t *testing.T) {
 		}
 		if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
 			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("rutas de roles exigen sesión", func(t *testing.T) {
+		for _, path := range []string{"/api/v1/admin/roles", "/api/v1/admin/roles/" + uuid.New().String(), "/api/v1/admin/permisos"} {
+			resp := testutil.Do(t, srv, http.MethodGet, path, "", nil)
+			if resp.Status != http.StatusUnauthorized {
+				t.Fatalf("GET %s: status = %d, se esperaba 401 (%s)", path, resp.Status, resp.Body)
+			}
+			if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
+				t.Errorf("GET %s: cuerpo inesperado: %s", path, resp.Body)
+			}
 		}
 	})
 

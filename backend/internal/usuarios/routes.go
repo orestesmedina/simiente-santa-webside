@@ -41,7 +41,7 @@ type AdminDeps struct {
 	// middleware.AdminChain en el orden aprobado.
 	Deps middleware.AdminDeps
 	// Handler trae los servicios de panel. Si no es nil, RegisterAdmin publica
-	// las rutas de cuentas (T234); T237/T238/T240 añadirán las de roles y
+	// las rutas de cuentas (T234) y de roles (T237); T238/T240 añadirán las de
 	// auditoría.
 	Handler *Handler
 	// Routes publica rutas adicionales dentro del grupo ya protegido. Se
@@ -85,4 +85,7 @@ func RegisterAdmin(root httpserver.Registrar, deps AdminDeps) {
 	// Rutas de gestión de cuentas (T234). RegisterUserRoutes no publica ninguna
 	// operación de borrado: las cuentas nunca se eliminan (FR-013).
 	RegisterUserRoutes(group, deps.Handler)
+	// Rutas de roles y del catálogo de permisos (T237): /roles* (GET/POST/GET
+	// id/PATCH/DELETE) y /permisos (GET).
+	RegisterRoleRoutes(group, deps.Handler)
 }

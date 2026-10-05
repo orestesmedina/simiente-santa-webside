@@ -63,6 +63,7 @@ type Handler struct {
 	access     AccessService
 	setup      SetupService
 	users      UsersService
+	roles      RolesService
 	setupToken string
 	logger     *slog.Logger
 }
@@ -79,6 +80,10 @@ type HandlerDeps struct {
 	// Users es el servicio de gestión de cuentas. Opcional: si es nil, las rutas
 	// /api/v1/admin/usuarios* no se publican (T234).
 	Users UsersService
+	// Roles es el servicio de gestión de roles y del catálogo de permisos.
+	// Opcional: si es nil, las rutas /api/v1/admin/roles* y /api/v1/admin/permisos
+	// no se publican (T237).
+	Roles RolesService
 	// SetupToken es el valor esperado de la cabecera X-Setup-Token
 	// (BOOTSTRAP_TOKEN). Nunca se registra ni se devuelve (RG13).
 	SetupToken string
@@ -97,6 +102,7 @@ func NewHandler(deps HandlerDeps) *Handler {
 		access:     deps.Access,
 		setup:      deps.Setup,
 		users:      deps.Users,
+		roles:      deps.Roles,
 		setupToken: deps.SetupToken,
 		logger:     logger,
 	}

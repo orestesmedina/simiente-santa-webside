@@ -94,11 +94,18 @@ func main() {
 		Audit:      auditSvc,
 		Logger:     appLog,
 	})
+	// Gestión de roles y catálogo de permisos (T235–T237): mismo repositorio y
+	// servicio de auditoría (registro best-effort de los fallos).
+	roleSvc := usuarios.NewRoleService(usuarios.RoleServiceDeps{
+		Repository: repo,
+		Audit:      auditSvc,
+	})
 
 	handler := usuarios.NewHandler(usuarios.HandlerDeps{
 		Access:     authSvc,
 		Setup:      initSvc,
 		Users:      userSvc,
+		Roles:      roleSvc,
 		SetupToken: cfg.BootstrapToken,
 		Logger:     appLog,
 	})
@@ -132,8 +139,8 @@ func main() {
 				CSRFSecret: cfg.SessionSecret,
 				Logger:     appLog,
 			},
-			// Las rutas de cuentas (T234) ya se publican desde este handler; las
-			// de roles y auditoría llegan en T237/T238/T240.
+			// Las rutas de cuentas (T234) y de roles (T237) ya se publican desde
+			// este handler; las de auditoría llegan en T238/T240.
 			Handler: handler,
 		},
 	}
