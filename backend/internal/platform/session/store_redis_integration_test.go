@@ -12,14 +12,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
-	"simiente-santa/backend/internal/platform/testutil"
+	"simiente-santa/backend/internal/platform/testutil/containers"
 )
 
 // newTestClient levanta un Redis real (testcontainers, T219) y lo deja limpio.
 func newTestClient(t *testing.T) *redis.Client {
 	t.Helper()
 
-	client, err := NewRedisClient(testutil.RedisURL(t))
+	client, err := NewRedisClient(containers.RedisURL(t))
 	if err != nil {
 		t.Fatalf("NewRedisClient() error: %v", err)
 	}
