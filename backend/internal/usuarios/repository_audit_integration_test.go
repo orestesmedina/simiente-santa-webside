@@ -4,9 +4,12 @@ package usuarios
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"regexp"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"simiente-santa/backend/internal/platform/audit"
 )
@@ -185,6 +188,65 @@ func TestIntegrationLoginProjectionCoherence(t *testing.T) {
 	}
 	if account.LastLoginIP == nil || *account.LastLoginIP != "10.0.0.9" {
 		t.Fatalf("lastLoginIp = %v", account.LastLoginIP)
+	}
+}
+
+// TestIntegrationDeniedAndRejectedSurviveMissingTarget fija FR-023 contra
+// PostgreSQL real: una denegación o un rechazo contra un {id} inexistente deja
+// su fila (denied/failure) con el objetivo en NULL, sin perderse por la FK.
+func TestIntegrationDeniedAndRejectedSurviveMissingTarget(t *testing.T) {
+	repo, _ := newTestRepo(t)
+	ctx := context.Background()
+
+	role := mustInsertRole(t, repo, "Editor", "eventos")
+	actor := mustInsertUser(t, repo, "admin@ejemplo.com", role.ID, true)
+	missing := uuid.New()
+	service := NewAuditService(repo, nil)
+
+	if err := service.RecordDenied(ctx, audit.Denial{
+		ActorUserID: &actor.ID, Method: http.MethodPatch,
+		Path: "/api/v1/admin/usuarios/" + missing.String(),
+	}); err != nil {
+		t.Fatalf("RecordDenied con objetivo inexistente: %v", err)
+	}
+	service.RecordRejectedBestEffort(ctx, Rejection{
+		ActorUserID: &actor.ID, Method: http.MethodDelete,
+		Path: "/api/v1/admin/roles/" + missing.String(),
+	})
+
+	entries, err := repo.ListAdminActions(ctx, AuditFilter{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListAdminActions: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("acciones registradas = %d, se esperaban 2", len(entries))
+	}
+
+	byAction := make(map[string]AdminActionEntry, len(entries))
+	for _, entry := range entries {
+		byAction[entry.Action] = entry
+	}
+
+	denied, ok := byAction[audit.ActionUserUpdate]
+	if !ok {
+		t.Fatal("no se registró la denegación de user.update")
+	}
+	if denied.Result != audit.ResultDenied || denied.TargetID != nil {
+		t.Fatalf("fila denied = %+v, se esperaba result=denied con targetId NULL", denied)
+	}
+	if denied.TargetKind != audit.TargetUser {
+		t.Fatalf("target_kind = %q, se esperaba %q", denied.TargetKind, audit.TargetUser)
+	}
+
+	rejected, ok := byAction[audit.ActionRoleDelete]
+	if !ok {
+		t.Fatal("no se registró el rechazo de role.delete")
+	}
+	if rejected.Result != audit.ResultFailure || rejected.TargetID != nil {
+		t.Fatalf("fila failure = %+v, se esperaba result=failure con targetId NULL", rejected)
+	}
+	if rejected.TargetKind != audit.TargetRole {
+		t.Fatalf("target_kind = %q, se esperaba %q", rejected.TargetKind, audit.TargetRole)
 	}
 }
 

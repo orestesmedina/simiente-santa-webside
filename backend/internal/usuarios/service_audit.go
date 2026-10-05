@@ -2,6 +2,7 @@ package usuarios
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -81,9 +82,27 @@ func (s *auditService) RecordAction(ctx context.Context, action audit.Action) er
 		return err
 	}
 	if _, err := s.repo.InsertAdminAction(ctx, action); err != nil {
+		if errors.Is(err, errTargetReference) && hasAuditTarget(action) {
+			// FR-023: el {id} de la ruta no existe y la FK bloquearía la fila.
+			// Se reintenta con el objetivo en nil, conservando target_kind y
+			// target_label, para no perder la denegación/rechazo.
+			retry := action
+			retry.TargetUserID = nil
+			retry.TargetRoleID = nil
+			if _, retryErr := s.repo.InsertAdminAction(ctx, retry); retryErr != nil {
+				return retryErr
+			}
+			return nil
+		}
 		return err
 	}
 	return nil
+}
+
+// hasAuditTarget indica si la acción referencia un objetivo por id: solo esas
+// pueden necesitar el reintento con objetivo nulo (FR-023).
+func hasAuditTarget(action audit.Action) bool {
+	return action.TargetUserID != nil || action.TargetRoleID != nil
 }
 
 // RecordLoginEventBestEffort registra un intento que ya va a fallar: si la

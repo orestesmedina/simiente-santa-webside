@@ -30,6 +30,11 @@ type fakeAuditRepo struct {
 	actions []audit.Action
 	err     error
 
+	// targetFKErr simula que el objetivo con ese id no existe: InsertAdminAction
+	// devuelve errTargetReference cuando la acción lo referencia por id, como
+	// haría la FK de admin_actions.
+	targetFKErr *uuid.UUID
+
 	// Datos de consulta pre-sembrados y el total que devuelve Count*.
 	accessEvents []AccessEvent
 	adminEntries []AdminActionEntry
@@ -52,10 +57,19 @@ func (f *fakeAuditRepo) InsertAdminAction(_ context.Context, action audit.Action
 	if f.err != nil {
 		return AdminAction{}, f.err
 	}
+	if f.targetFKErr != nil && targetsID(action, *f.targetFKErr) {
+		return AdminAction{}, errTargetReference
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.actions = append(f.actions, action)
 	return AdminAction{Action: action.Code, Result: action.Result}, nil
+}
+
+// targetsID indica si la acción referencia por id el objetivo dado.
+func targetsID(action audit.Action, id uuid.UUID) bool {
+	return (action.TargetUserID != nil && *action.TargetUserID == id) ||
+		(action.TargetRoleID != nil && *action.TargetRoleID == id)
 }
 
 func (f *fakeAuditRepo) ListLoginEvents(_ context.Context, filter AuditFilter) ([]AccessEvent, error) {
@@ -496,6 +510,87 @@ func TestRecordRejectedResolvesActionFromRoute(t *testing.T) {
 		t.Fatal("la inicialización no es una acción administrativa")
 	}
 }
+
+// TestRecordActionRetriesWithNullTargetWhenTargetMissing fija FR-023: si el
+// {id} de la ruta no existe, la FK bloquea la fila; la denegación y el rechazo
+// se registran igual, con el objetivo en nil y conservando kind y label.
+func TestRecordActionRetriesWithNullTargetWhenTargetMissing(t *testing.T) {
+	t.Run("denegación de cuenta inexistente", func(t *testing.T) {
+		repo := &fakeAuditRepo{}
+		missing := uuid.New()
+		repo.targetFKErr = &missing
+		service := NewAuditService(repo, nil)
+		actor := uuid.New()
+
+		if err := service.RecordDenied(context.Background(), audit.Denial{
+			ActorUserID: &actor, Method: http.MethodPatch,
+			Path: "/api/v1/admin/usuarios/" + missing.String(),
+		}); err != nil {
+			t.Fatalf("RecordDenied: %v", err)
+		}
+
+		if repo.actionCount() != 1 {
+			t.Fatalf("acciones registradas = %d, se esperaba 1", repo.actionCount())
+		}
+		last := repo.actions[0]
+		if last.Code != audit.ActionUserUpdate || last.Result != audit.ResultDenied {
+			t.Fatalf("acción = %+v", last)
+		}
+		if last.TargetUserID != nil || last.TargetRoleID != nil {
+			t.Fatalf("el objetivo debe quedar en nil: %+v", last)
+		}
+		if last.TargetKind != audit.TargetUser {
+			t.Fatalf("target_kind = %q, se esperaba %q", last.TargetKind, audit.TargetUser)
+		}
+	})
+
+	t.Run("rechazo de rol inexistente", func(t *testing.T) {
+		repo := &fakeAuditRepo{}
+		missing := uuid.New()
+		repo.targetFKErr = &missing
+		logger, _ := testutil.NewLogger()
+		service := NewAuditService(repo, logger)
+		actor := uuid.New()
+
+		service.RecordRejectedBestEffort(context.Background(), Rejection{
+			ActorUserID: &actor, Method: http.MethodDelete,
+			Path: "/api/v1/admin/roles/" + missing.String(),
+		})
+
+		if repo.actionCount() != 1 {
+			t.Fatalf("acciones registradas = %d, se esperaba 1", repo.actionCount())
+		}
+		last := repo.actions[0]
+		if last.Code != audit.ActionRoleDelete || last.Result != audit.ResultFailure {
+			t.Fatalf("acción = %+v", last)
+		}
+		if last.TargetRoleID != nil {
+			t.Fatalf("el objetivo debe quedar en nil: %+v", last)
+		}
+		if last.TargetKind != audit.TargetRole {
+			t.Fatalf("target_kind = %q, se esperaba %q", last.TargetKind, audit.TargetRole)
+		}
+	})
+
+	t.Run("sin objetivo no reintenta", func(t *testing.T) {
+		repo := &fakeAuditRepo{}
+		service := NewAuditService(repo, nil)
+		// Una creación no lleva objetivo: no hay nada que reintentar y la fila
+		// se escribe en el primer intento.
+		if err := service.RecordDenied(context.Background(), audit.Denial{
+			ActorUserID: ptrUUID(uuid.New()), Method: http.MethodPost,
+			Path: "/api/v1/admin/usuarios",
+		}); err != nil {
+			t.Fatalf("RecordDenied: %v", err)
+		}
+		if repo.actionCount() != 1 {
+			t.Fatalf("acciones registradas = %d, se esperaba 1", repo.actionCount())
+		}
+	})
+}
+
+// ptrUUID devuelve un puntero al UUID dado (para pruebas).
+func ptrUUID(id uuid.UUID) *uuid.UUID { return &id }
 
 // sampleAccessEvent construye un intento identificado (identified=true) o sin
 // cuenta asociada.

@@ -375,6 +375,19 @@ const (
 	codeCheckViolation      = "23514"
 )
 
+// errTargetReference señala que una escritura del registro de auditoría
+// referencia un objetivo (target_user_id/target_role_id) que no existe: la FK
+// lo bloquea. La auditoría best-effort lo usa para reintentar la fila con el
+// objetivo en nil y no perder el registro (FR-023).
+var errTargetReference = errors.New("usuarios: el objetivo de la acción no existe")
+
+// isForeignKeyViolation indica si err es una violación de clave foránea de
+// PostgreSQL (SQLSTATE 23503).
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == codeForeignKeyViolation
+}
+
 // classify traduce un error de PostgreSQL a un error de dominio. `ErrNoRows`
 // pasa a apperr.NotFound (404) y las violaciones conocidas de integridad a
 // apperr.Conflict/apperr.Invalid; el resto se devuelve envuelto por el llamador

@@ -2,6 +2,7 @@ package usuarios
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -69,6 +70,13 @@ func (r *repository) InsertAdminAction(ctx context.Context, action audit.Action)
 		Result:       string(action.Result),
 	})
 	if err != nil {
+		// La FK del objetivo (target_user_id/target_role_id) bloquea la fila
+		// cuando el {id} de la ruta no existe. Se expone como errTargetReference
+		// para que la auditoría best-effort reintente con el objetivo en nil
+		// (FR-023) sin que el service conozca pgx.
+		if isForeignKeyViolation(err) {
+			return AdminAction{}, fmt.Errorf("insert admin action: %w", errTargetReference)
+		}
 		return AdminAction{}, wrap(err, "insert admin action", "", "")
 	}
 	return mapInsertAdminActionRow(row), nil
