@@ -178,7 +178,7 @@ func TestIntegrationAdminGuardRace(t *testing.T) {
 		go func(i int, user User) {
 			defer wg.Done()
 			<-start
-			results[i] = repo.WithAdminGuard(context.Background(), func(tx *repository) error {
+			results[i] = repo.WithAdminGuard(context.Background(), func(tx GuardTx) error {
 				_, updateErr := tx.UpdateUser(ctx, UserUpdate{
 					ID:        user.ID,
 					Email:     user.Email,

@@ -9,6 +9,7 @@ import (
 
 	gendb "simiente-santa/backend/internal/db"
 	"simiente-santa/backend/internal/platform/apperr"
+	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/database"
 	"simiente-santa/backend/internal/platform/paginate"
 )
@@ -170,13 +171,33 @@ func (r *repository) withTx(ctx context.Context, fn func(tx *repository) error) 
 	})
 }
 
+// GuardTx es la vista de datos disponible dentro de una transacción del guard
+// anti-bloqueo (P7/P8). Se declara como interfaz para que los services que mutan
+// dentro del guard dependan de un puerto (skill `go-backend`) y puedan probarse
+// con fakes que no tocan PostgreSQL. Crece con cada operación que necesite
+// ejecutarse dentro del guard.
+type GuardTx interface {
+	CountUsers(ctx context.Context) (int64, error)
+	InsertRole(ctx context.Context, name string) (Role, error)
+	ListPermissions(ctx context.Context) ([]Permission, error)
+	InsertRolePermission(ctx context.Context, roleID, permissionID uuid.UUID) error
+	InsertUser(ctx context.Context, user NewUser) (User, error)
+	InsertAdminAction(ctx context.Context, action audit.Action) (AdminAction, error)
+	UpdateUser(ctx context.Context, update UserUpdate) (User, error)
+}
+
 // WithAdminGuard ejecuta la mutación dentro de una transacción serializada por
 // el advisory lock del guard y comprueba DESPUÉS que sigue habiendo al menos un
 // administrador activo (FR-008/P7). Si el recuento es 0, devuelve
 // apperr.Conflict con `details.reason = "admin_required"` y la transacción se
 // revierte (rollback). El lock hace imposible el estado prohibido incluso con
 // dos administradores actuando a la vez (SC-004).
-func (r *repository) WithAdminGuard(ctx context.Context, mutate func(tx *repository) error) error {
+//
+// El callback recibe GuardTx (interfaz), no el repositorio concreto: así el
+// service no puede sacar la mutación de la transacción ni depender de pgx, y
+// sus pruebas usan un fake. La inicialización única (FR-007) usa este mismo
+// guard: el advisory lock serializa dos `Initialize` simultáneos (SC-003).
+func (r *repository) WithAdminGuard(ctx context.Context, mutate func(tx GuardTx) error) error {
 	return r.withTx(ctx, func(tx *repository) error {
 		if err := tx.lockAdminGuard(ctx); err != nil {
 			return err
