@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 3/9 · Tareas y coherencia |
 | Ciclo de corrección | 1/3 (`analyze`: RECHAZADO en coherencia documental) |
-| Próximo paso | Corregir los hallazgos de `analyze` (F-01…F-15) y re-analizar |
+| Próximo paso | Re-analizar para verificar el cierre de F-01…F-15 |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -54,6 +54,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-04 — Ciclo de corrección 1: aplicados F-01…F-15 (`arquitecto`, `disenador-ux`, `analista-producto`). Pendiente re-analizar.
 - 2026-10-04 — `analyze` (`revisor-codigo`): **RECHAZADO en coherencia documental** (F-01 crítico; F-02–F-06 mayores; F-07–F-15 menores). Ciclo de corrección 1/3; se corrigen con `arquitecto`, `disenador-ux` y `analista-producto`.
 - 2026-10-04 — **`tasks.md` redactado** por `arquitecto` (53 tareas, T201–T253). Pendiente `analyze`.
 - 2026-10-04 — **Plan de F2 aprobado por el humano** ("apruebo el plan"). Inicio de la fase 3 (tareas y coherencia).
