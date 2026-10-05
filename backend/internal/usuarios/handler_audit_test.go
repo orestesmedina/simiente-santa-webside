@@ -76,12 +76,6 @@ func (f *fakeAuditService) RecordDenied(ctx context.Context, denial audit.Denial
 	return nil
 }
 
-func (f *fakeAuditService) rejectionCount() int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return len(f.rejections)
-}
-
 // --- Servidor de panel con la cadena real ---
 
 func newAdminAuditServer(t *testing.T, auditSvc AuditService, identity session.Identity) *httptest.Server {

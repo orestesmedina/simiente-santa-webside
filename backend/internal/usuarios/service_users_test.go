@@ -704,7 +704,7 @@ func TestUpdateUserNotFound(t *testing.T) {
 	svc := newTestUserService(repo, &fakeUserSessionStore{}, recorder)
 
 	_, err := svc.UpdateUser(context.Background(), uuid.New(), uuid.New(), UpdateUserInput{FirstName: "X"})
-	requireKind(t, err, apperr.KindNotFound)
+	_ = requireKind(t, err, apperr.KindNotFound)
 	if action := lastAction(t, recorder); action.Result != audit.ResultFailure {
 		t.Errorf("una cuenta inexistente debe dejar fallo: %+v", action)
 	}
@@ -842,7 +842,7 @@ func TestResetUserPasswordNotFound(t *testing.T) {
 	svc := newTestUserService(repo, &fakeUserSessionStore{}, recorder)
 
 	err := svc.ResetUserPassword(context.Background(), uuid.New(), uuid.New(), ResetPasswordInput{Password: "Nueva9#Aa"})
-	requireKind(t, err, apperr.KindNotFound)
+	_ = requireKind(t, err, apperr.KindNotFound)
 	if action := lastAction(t, recorder); action.Code != audit.ActionUserPasswordReset || action.Result != audit.ResultFailure {
 		t.Errorf("acción = %+v, se esperaba user.password_reset failure", action)
 	}

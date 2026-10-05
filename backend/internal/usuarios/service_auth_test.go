@@ -576,7 +576,7 @@ func TestLoginBestEffortRegistrationNeverChangesResponse(t *testing.T) {
 	service := newTestAuthService(repo, &fakeSessionStore{}, throttle, &fakeLoginRecorder{})
 	_, _, err := service.Login(context.Background(),
 		LoginInput{Email: "ana@ejemplo.com", Password: "Mala1!x"}, "10.0.0.6")
-	requireKind(t, err, apperr.KindUnauthenticated)
+	_ = requireKind(t, err, apperr.KindUnauthenticated)
 
 	// Un fallo al limpiar el contador tampoco impide el acceso correcto.
 	successRepo := newFakeAuthRepo()
@@ -699,7 +699,7 @@ func TestResolveInactiveAccountIsRejected(t *testing.T) {
 func TestResolveUnknownAccount(t *testing.T) {
 	service := newTestAuthService(newFakeAuthRepo(), &fakeSessionStore{}, newFakeThrottle(), &fakeLoginRecorder{})
 	_, err := service.Resolve(context.Background(), uuid.New())
-	requireKind(t, err, apperr.KindNotFound)
+	_ = requireKind(t, err, apperr.KindNotFound)
 }
 
 // --- ChangeMyPassword ---
