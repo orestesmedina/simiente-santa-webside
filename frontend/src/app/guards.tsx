@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { hasPermission } from '../lib/permissions';
-import { isUnauthenticated, useSessionQuery } from './session';
+import { isUnauthenticated, useSessionQuery } from '../features/auth/hooks/useSession';
 
 function SessionLoading() {
   return (
