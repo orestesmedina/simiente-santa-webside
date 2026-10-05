@@ -570,6 +570,76 @@ func TestAuthnLeavesResolvedIdentityInContext(t *testing.T) {
 	}
 }
 
+// TestAuthnLogsInfrastructureFailures fija M-2: un fallo del Store o del
+// Resolver queda en el log a nivel Error (sin token) y el cliente recibe el 401
+// uniforme. Un token desconocido o la ausencia de cookie no son errores.
+func TestAuthnLogsInfrastructureFailures(t *testing.T) {
+	userID := uuid.New()
+	live := session.Session{UserID: userID, AbsoluteExpiresAt: time.Now().Add(time.Hour)}
+
+	tests := []struct {
+		name        string
+		token       string
+		storeErr    error
+		resolverErr error
+		wantLog     string
+	}{
+		{name: "store caído", token: "viva", storeErr: errors.New("redis caído"), wantLog: "redis caído"},
+		{name: "resolver caído", token: "viva", resolverErr: errors.New("postgres caído"), wantLog: "postgres caído"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			logger, store := captureLogger()
+			st := &stubSessionStore{sess: live, err: tc.storeErr}
+			resolver := &stubResolver{identity: session.Identity{UserID: userID}, err: tc.resolverErr}
+			rec := serve(Authn(st, resolver, logger), sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", tc.token))
+
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, se esperaba 401", rec.Code)
+			}
+			record, ok := store.find(slog.LevelError)
+			if !ok {
+				t.Fatal("la causa del fallo no quedó en el log a nivel Error")
+			}
+			if got, _ := record.attrs["error"].(string); !strings.Contains(got, tc.wantLog) {
+				t.Errorf("log error = %q, se esperaba contener %q", got, tc.wantLog)
+			}
+			if record.attrs["cause"] == "" {
+				t.Errorf("falta el campo cause en el log: %v", record.attrs)
+			}
+		})
+	}
+}
+
+// TestAuthnDoesNotLogExpectedUnauthenticated fija que la ausencia de cookie y un
+// token desconocido no son fallos de infraestructura y no se registran a Error.
+func TestAuthnDoesNotLogExpectedUnauthenticated(t *testing.T) {
+	t.Run("sin cookie", func(t *testing.T) {
+		logger, store := captureLogger()
+		rec := serve(Authn(&stubSessionStore{}, &stubResolver{}, logger),
+			sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", ""))
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401", rec.Code)
+		}
+		if _, ok := store.find(slog.LevelError); ok {
+			t.Error("«sin cookie» no es un fallo de infraestructura")
+		}
+	})
+
+	t.Run("token desconocido", func(t *testing.T) {
+		logger, store := captureLogger()
+		st := &stubSessionStore{err: session.ErrSessionNotFound}
+		rec := serve(Authn(st, &stubResolver{}, logger),
+			sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", "desconocido"))
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401", rec.Code)
+		}
+		if _, ok := store.find(slog.LevelError); ok {
+			t.Error("un token desconocido no es un fallo de infraestructura")
+		}
+	})
+}
+
 // --- authz ---
 
 func TestAuthzByModuleAllowsWithPermission(t *testing.T) {

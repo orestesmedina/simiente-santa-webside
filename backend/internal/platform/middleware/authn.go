@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -45,13 +46,24 @@ func Authn(store session.Store, resolver session.Resolver, logger *slog.Logger) 
 			}
 
 			sess, err := store.Resolve(ctx, token)
-			if err != nil || sess.ExpiredAt(time.Now()) {
+			if err != nil {
+				// Un token desconocido o vencido es un 401 esperado; el resto
+				// (Redis/PostgreSQL caídos) es un fallo de infraestructura que
+				// debe quedar en el log para poder distinguirlo (M-2).
+				if !errors.Is(err, session.ErrSessionNotFound) {
+					logAuthnFailure(ctx, logger, "resolver la sesión", err)
+				}
+				writeUnauthenticated(ctx, w, logger)
+				return
+			}
+			if sess.ExpiredAt(time.Now()) {
 				writeUnauthenticated(ctx, w, logger)
 				return
 			}
 
 			identity, err := resolver.Resolve(ctx, sess.UserID)
 			if err != nil {
+				logAuthnFailure(ctx, logger, "resolver la identidad de la sesión", err)
 				writeUnauthenticated(ctx, w, logger)
 				return
 			}
@@ -64,4 +76,15 @@ func Authn(store session.Store, resolver session.Resolver, logger *slog.Logger) 
 // writeUnauthenticated responde el 401 genérico de sesión.
 func writeUnauthenticated(ctx context.Context, w http.ResponseWriter, logger *slog.Logger) {
 	httpserver.WriteError(ctx, w, logger, apperr.Unauthenticated(messageUnauthenticated))
+}
+
+// logAuthnFailure registra la causa de un fallo de autenticación del Store o
+// del Resolver a nivel Error, para no confundir una caída de infraestructura con
+// un incidente de acceso. Nunca registra el token ni datos de la cookie: solo la
+// causa. La respuesta al cliente sigue siendo el 401 uniforme (FR-003/FR-012).
+func logAuthnFailure(ctx context.Context, logger *slog.Logger, cause string, err error) {
+	loggerFor(ctx, logger).Error("no se pudo autenticar la sesión",
+		slog.String("cause", cause),
+		slog.String("error", err.Error()),
+	)
 }
