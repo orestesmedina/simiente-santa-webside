@@ -264,7 +264,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 > FK e índices explícitos, `CHECK`/`UNIQUE` **en la base**, `up`/`down` completos, y **nunca** se
 > edita una migración aplicada. Numeración sin huecos desde `000001` (F1).
 
-- [ ] T207 · Migración `000002_create_roles_and_permissions` · `[db]`
+- [X] T207 · Migración `000002_create_roles_and_permissions` · `[db]`
 
   - **Archivos**: `backend/migrations/000002_create_roles_and_permissions.up.sql` y
     `.down.sql` (NUEVOS).
@@ -281,7 +281,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     base (no solo en código).
   - **Commit sugerido**: `feat(db): migración 000002 de roles y permisos con catálogo sembrado`
 
-- [ ] T208 · Migración `000003_create_users` · `[db]`
+- [X] T208 · Migración `000003_create_users` · `[db]`
 
   - **Archivos**: `backend/migrations/000003_create_users.up.sql` y `.down.sql` (NUEVOS).
   - **Qué hace**: crea `users` con `email` (`UNIQUE` + `CHECK (email = lower(btrim(email)))`),
@@ -299,7 +299,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     `data-model.md` están **en la base**, no solo en el código.
   - **Commit sugerido**: `feat(db): migración 000003 de cuentas del panel`
 
-- [ ] T209 · Migración `000004_create_login_events_and_admin_actions` · `[db]`
+- [X] T209 · Migración `000004_create_login_events_and_admin_actions` · `[db]`
 
   - **Archivos**: `backend/migrations/000004_create_login_events_and_admin_actions.up.sql` y
     `.down.sql` (NUEVOS).
@@ -320,7 +320,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     credenciales.
   - **Commit sugerido**: `feat(db): migración 000004 de auditoría y último acceso`
 
-- [ ] T210 · Consultas sqlc `users.sql`, `roles.sql`, `permissions.sql` · `[db]`
+- [X] T210 · Consultas sqlc `users.sql`, `roles.sql`, `permissions.sql` · `[db]`
 
   - **Archivos**: `backend/internal/db/queries/users.sql`, `roles.sql`, `permissions.sql` (NUEVOS) y
     el código generado `backend/internal/db/` (GENERADO y commiteado).
@@ -341,7 +341,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     revisión: un PR que toca `queries/` toca `internal/db/`).
   - **Commit sugerido**: `feat(db): consultas sqlc de cuentas, roles y permisos`
 
-- [ ] T211 · Consultas sqlc `audit.sql` · `[db]`
+- [X] T211 · Consultas sqlc `audit.sql` · `[db]`
 
   - **Archivos**: `backend/internal/db/queries/audit.sql` (NUEVO) + código generado (GENERADO).
   - **Qué hace**: `InsertLoginEvent`, `ListLoginEvents` + `CountLoginEvents` (filtros `userId`,
@@ -363,7 +363,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 > `platform` **no conoce dominios** (arq. R1); los tipos de plumbing (`Identity`, `Resolver`,
 > `Recorder`) los implementa el dominio `usuarios` (excepciones declaradas en el plan, P15/P20).
 
-- [ ] T212 · `platform/apperr`: kinds de F2 · `[backend]`
+- [X] T212 · `platform/apperr`: kinds de F2 · `[backend]`
 
   - **Archivos**: `backend/internal/platform/apperr/apperr.go` y `apperr_test.go` (EDITADOS).
   - **Qué hace**: añade al registro cerrado de F1 los kinds que F2 emite (P16, tabla de §5.11 de
@@ -378,7 +378,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     (T201) documenta; ningún código fuera del registro.
   - **Commit sugerido**: `feat(platform): apperr con Invalid, Unauthenticated, Forbidden, Conflict y RateLimited`
 
-- [ ] T213 · `platform/validate` — validación de DTOs por etiquetas · `[backend]` `[P3]`
+- [X] T213 · `platform/validate` — validación de DTOs por etiquetas · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/validate/validate.go`, `validate_test.go` (NUEVOS).
   - **Qué hace**: validación propia mínima por reflexión sobre etiquetas `validate` de los DTOs (P3):
@@ -395,7 +395,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     comprensible para personas no técnicas (spec, "Errores esperados").
   - **Commit sugerido**: `feat(platform): validate por etiquetas con details por campo`
 
-- [ ] T214 · `platform/paginate` — paginación con topes · `[backend]` `[P3]`
+- [X] T214 · `platform/paginate` — paginación con topes · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/paginate/paginate.go`, `paginate_test.go` (NUEVOS).
   - **Qué hace**: parseo y normalización de `limit`/`offset` para los listados (P14, §8.1.2/§8.1.3):
@@ -407,7 +407,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: ningún listado de F2 puede desbordar el tope (§8.1.3).
   - **Commit sugerido**: `feat(platform): paginate con defecto 20 y tope 100`
 
-- [ ] T215 · `platform/password` — bcrypt 12 y política FR-010 · `[backend]` `[P3]`
+- [X] T215 · `platform/password` — bcrypt 12 y política FR-010 · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/password/password.go`, `password_test.go` (NUEVOS).
   - **Qué hace**: `Hash`/`Verify` con **bcrypt cost 12** (`golang.org/x/crypto/bcrypt`, P5) y la
@@ -427,7 +427,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     implementación de la política (§IV, CWE-256).
   - **Commit sugerido**: `feat(platform): password con bcrypt cost 12 y política FR-010`
 
-- [ ] T216 · `platform/config` ampliado · `[backend]` `[P3]`
+- [X] T216 · `platform/config` ampliado · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/config/config.go`, `config_test.go` (EDITADOS).
   - **Qué hace**: añade a la lista canónica las variables de F2 (coherentes con T205/T206):
@@ -443,7 +443,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     (T206) = la inyectada por compose (T205).
   - **Commit sugerido**: `feat(platform): config de Redis, sesión y BOOTSTRAP_TOKEN`
 
-- [ ] T217 · `platform/audit` — plumbing del registro · `[backend]` `[P3]`
+- [X] T217 · `platform/audit` — plumbing del registro · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/audit/audit.go`, `audit_test.go` (NUEVOS).
   - **Qué hace**: los tipos de plumbing `Event` (intento de acceso: resultado, IP, usuario opcional) y
@@ -457,7 +457,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: `authz` puede registrar una denegación con solo este paquete.
   - **Commit sugerido**: `feat(platform): tipos e interfaz Recorder de auditoría`
 
-- [ ] T219 · `platform/testutil`: helpers de testcontainers · `[backend]` `[P3]`
+- [X] T219 · `platform/testutil`: helpers de testcontainers · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/testutil/containers.go`, `containers_test.go`
     (NUEVOS; extiende el `testutil` de F1 sin cambiar su API).
@@ -472,7 +472,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     kit ejecuta `go test -tags=integration ./...` sin cambios.
   - **Commit sugerido**: `test(platform): helpers de testcontainers para Redis y PostgreSQL`
 
-- [ ] T218 · `platform/session` — sesión en Redis y contadores de acceso · `[backend]`
+- [X] T218 · `platform/session` — sesión en Redis y contadores de acceso · `[backend]`
 
   - **Archivos**: `backend/internal/platform/session/` (`token.go`, `cookies.go`, `identity.go`,
     `store.go`, `store_redis.go`, `throttle.go` y sus `*_test.go`; NUEVOS).
@@ -510,7 +510,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 > (`service_auth.go`, `handler_users.go`… — desviación declarada del plan). Capas
 > `handler → service → repository` (§II): los handlers no tocan SQL.
 
-- [ ] T220 · `usuarios`: modelo y base del repositorio · `[backend]`
+- [X] T220 · `usuarios`: modelo y base del repositorio · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/model.go`, `repository.go` y
     `model_test.go`/`repository_test.go` (NUEVOS).
@@ -526,7 +526,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     mapeo.
   - **Commit sugerido**: `feat(usuarios): modelo del dominio y base del repositorio`
 
-- [ ] T221 · `usuarios`: `repository_users.go` · `[backend]` `[P4]`
+- [X] T221 · `usuarios`: `repository_users.go` · `[backend]` `[P4]`
 
   - **Archivos**: `backend/internal/usuarios/repository_users.go`,
     `repository_users_integration_test.go` (`//go:build integration`; NUEVOS).
@@ -544,7 +544,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     repositorio no contiene reglas de negocio (solo SQL y mapeo).
   - **Commit sugerido**: `feat(usuarios): repositorio de cuentas sobre sqlc`
 
-- [ ] T222 · `usuarios`: `repository_roles.go` y guard anti-bloqueo · `[backend]` `[P4]`
+- [X] T222 · `usuarios`: `repository_roles.go` y guard anti-bloqueo · `[backend]` `[P4]`
 
   - **Archivos**: `backend/internal/usuarios/repository_roles.go`,
     `repository_roles_integration_test.go` (`//go:build integration`; NUEVOS).
@@ -562,7 +562,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     con dos administradores actuando a la vez (prueba concurrente en verde).
   - **Commit sugerido**: `feat(usuarios): repositorio de roles con guard anti-bloqueo transaccional`
 
-- [ ] T223 · `usuarios`: `repository_audit.go` · `[backend]` `[P4]`
+- [X] T223 · `usuarios`: `repository_audit.go` · `[backend]` `[P4]`
 
   - **Archivos**: `backend/internal/usuarios/repository_audit.go`,
     `repository_audit_integration_test.go` (`//go:build integration`; NUEVOS).
@@ -582,7 +582,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     inserción; `go test -tags=integration ./internal/usuarios/` en verde.
   - **Commit sugerido**: `feat(usuarios): repositorio de auditoría (inserción y consulta)`
 
-- [ ] T224 · `usuarios`: `service_audit.go` — registro de accesos y acciones · `[backend]`
+- [X] T224 · `usuarios`: `service_audit.go` — registro de accesos y acciones · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_audit.go`, `service_audit_test.go` (NUEVOS).
   - **Qué hace**: el servicio de registro que consumen el resto de servicios y el middleware:
@@ -603,7 +603,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     `service_users`/`service_roles` se conecta en T231–T236; el de `authz`/`handler` en T239).
   - **Commit sugerido**: `feat(usuarios): registro de accesos y acciones administrativas`
 
-- [ ] T225 · `usuarios`: `service_auth.go` — login, logout y sesión · `[backend]`
+- [X] T225 · `usuarios`: `service_auth.go` — login, logout y sesión · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_auth.go`, `service_auth_test.go` (NUEVOS).
   - **Qué hace**: `Login` (FR-002/FR-003/US1): normaliza el correo (Q5), comprueba el bloqueo FR-006
@@ -631,7 +631,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     sesión inutilizable en el store.
   - **Commit sugerido**: `feat(usuarios): login, logout y resolución de identidad con bloqueo FR-006`
 
-- [ ] T226 · `usuarios`: cambio de contraseña propio y `mustChangePassword` · `[backend]`
+- [X] T226 · `usuarios`: cambio de contraseña propio y `mustChangePassword` · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/service_auth.go` (EDITADO) y `service_auth_test.go`.
   - **Qué hace**: `ChangeMyPassword` (FR-020/US7): exige la contraseña actual, aplica la política
@@ -654,7 +654,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     revocadas dejan de resolver en el store.
   - **Commit sugerido**: `feat(usuarios): cambio de contraseña propio con política y guard obligatorio`
 
-- [ ] T227 · `platform/middleware`: authn, authz, CSRF, rate-limit y cadena · `[backend]`
+- [X] T227 · `platform/middleware`: authn, authz, CSRF, rate-limit y cadena · `[backend]`
 
   - **Archivos**: `backend/internal/platform/middleware/authn.go`, `authz.go`, `csrf.go`,
     `ratelimit.go`, `passwordguard.go`, `cors.go` (EDITADO), `chain.go` (EDITADO si aplica) y
@@ -683,7 +683,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     (§IV, CWE-862); SC-007 verificable por estas pruebas.
   - **Commit sugerido**: `feat(platform): middleware authn, authz, CSRF, rate-limit y CORS con credenciales`
 
-- [ ] T228 · `usuarios`: handlers de acceso y cableado · `[backend]`
+- [X] T228 · `usuarios`: handlers de acceso y cableado · `[backend]`
 
   - **Archivos**: `backend/internal/usuarios/handler.go`, `handler_auth.go`, `routes.go`
     (`RegisterPublic`), `handler_auth_test.go` (NUEVOS) y `backend/cmd/api/main.go`,

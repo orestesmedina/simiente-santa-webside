@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 002-acceso-gestion-usuarios |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (en curso: 6/54 tareas) |
-| Ciclo de corrección | 1/3 (cerrado en verde) |
-| Próximo paso | Fase 3 (`[db]`): T207 (migración 000002 roles + permisos) → `dev-backend` |
+| Fase | 6/9 · Implementar (en curso: 28/54 tareas) |
+| Ciclo de corrección | 2/3 (1er ciclo documental cerrado; 1 corrección de integración aplicada) |
+| Próximo paso | Fase 6 (`[backend]`): T229 (inicialización única) + T230 (endpoint `POST /setup/initialize`) → `dev-backend` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -45,11 +45,15 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 - 2026-10-04 — **Pantalla de "Puesta en marcha" (coherencia `analyze` F-06):** se retira de `ux.md`; la inicialización única es por API con `BOOTSTRAP_TOKEN` y no debe exponer el secreto en el navegador.
 - 2026-10-04 — **T202 (dependencias Go, implementación):** se anclan con `backend/internal/tools/tools.go` (`//go:build tools`) para que `go mod tidy` no las borre antes de sus primeros imports reales (T215/T218/T219/T220); el archivo se retira cuando se usen. Se sube la transitiva `moby/go-archive` a v0.3.0 por `GO-2026-6253` (govulncheck, §IV).
 - 2026-10-04 — **T205 (Redis sin persistencia, implementación):** en Redis 7 la imagen trae `save 3600 1` y `VOLUME /data`; "sin volumen" en Compose no bastaba (el estado sobrevivía al `restart`). Se desactiva explícitamente con `--save "" --appendonly no --dir /tmp` (P23).
+- 2026-10-05 — **T225 (Retry-After):** `httpserver.WriteError` no emitía la cabecera `Retry-After` que el contrato documenta; se corrigió (bug de F1).
+- 2026-10-05 — **Discrepancia pendiente de validar (T226):** `ux.md` §3.8 dice que el cambio obligatorio de contraseña no pide la actual, pero el contrato (aprobado) marca `currentPassword` como `required` y T226 dice "exige la contraseña actual". Se implementó lo del contrato; lo revisa `revisor-codigo`/`disenador-ux` en la fase 7. **No se reabre la spec sin aprobación.**
+- 2026-10-05 — **T227 (`authn`):** cualquier error del `Resolver` (incluido un fallo transitorio de BD) se traduce a `401 unauthenticated` (fail-closed). Se deja señalado para la revisión de seguridad/arquitectura.
 
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-05 — **Implementación (fase 6/9): 28/54 tareas.** Completadas las fases 3–5: migraciones `000002`–`000004` y consultas sqlc (T207–T211); núcleo `platform` (T212–T219, incluida la sesión en Redis); dominio `usuarios` (T220–T228: repositorios, auditoría, login/logout/Resolve, cambio de contraseña, middleware y handlers de acceso). Corregido un ciclo de imports de pruebas de integración (`session`→`testutil`→`middleware`→`session`) extrayendo los helpers de contenedores a `testutil/containers`. Próximo: T229/T230 (inicialización única).
 - 2026-10-04 — **Implementación iniciada (fase 6/9).** Fases 1–2 completadas y commiteadas: T201 (contrato 0.3.0), T202 (deps Go), T203 (deps npm), T204 (regenerar `schema.d.ts`) y T205/T206 (Redis en Compose + `.env.example`). 6/54 tareas. Próximo: T207 (migración `000002`). Nota T201: el snapshot `contracts/openapi.yaml` no era YAML válido (escalares con `:`) y la corrección se aplicó **solo** al contrato vivo (el snapshot no se edita, P19).
 - 2026-10-04 — **Sesión cerrada.** F2 lista para implementar: spec y plan aprobados, coherencia en verde, 53 tareas. Próximo paso: **T201** (fusionar el contrato OpenAPI 0.3.0) y en paralelo **T202/T203** (dependencias) y **T205/T206** (Redis en Compose y `.env.example`). Costo de la tarea (abierto): **$1.52**.
 - 2026-10-04 — Re-`analyze`: **APROBADO** (F-01…F-15 cerrados, sin regresiones). N-1 (inventario de componentes) y N-2 (texto del guard) cerrados. Fase 5/9 (coherencia) cerrada en verde.
