@@ -54,10 +54,12 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
    (5 fallos / 15 min) en el dominio `usuarios`. **Semántica del 5.º intento (F-03)**: el contador
    se incrementa con cada fallo; el **5.º fallo** responde el `401` genérico **y crea el bloqueo**;
    desde el **6.º intento** (dentro de los 15 min) responde `429` con `Retry-After`.
-5. **Componentes UI (F-10)**: inventario fijo con **nombres de código en inglés** (`Table`, `Tabs`,
-   `Pagination`, `DateRangeFilter`, `StatusPill`, `Notice`, `ModalDialog`, `Field`, `ConfirmDialog`,
-   `EmptyState`) en T242; `disenador-ux` da en `ux.md` el mapeo a sus etiquetas en español. Las
-   features los **reutilizan sin duplicar markup** (lo revisa `revisor-codigo`).
+5. **Componentes UI (F-10)**: inventario **único y definitivo** de **13** componentes con **nombres
+   de código en inglés** (`Field`, `PasswordField`, `Select`, `Button`, `Notice`, `ConfirmDialog`,
+   `Dialog`, `EmptyState`, `Table`, `Tabs`, `Pagination`, `DateRangeFilter`, `StatusPill`) en T242
+   y en el plan ("Inventario único de componentes UI"); `disenador-ux` da en `ux.md` el mapeo a
+   sus etiquetas en español. Las features los **reutilizan sin duplicar markup** (lo revisa
+   `revisor-codigo`).
 6. **`platform/testutil` se amplía** con helpers de `testcontainers-go` (Redis y PostgreSQL) para no
    duplicar el arranque de servicios en las pruebas de integración (R19). Extensión del helper de F1,
    sin cambios en su API pública.
@@ -116,7 +118,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 | T239 | Puntos de escritura de auditoría restantes: `authz` (denied) y `handler` (JSON inválido) | `[backend]` | 9 | — | T224, T227, T228 |
 | T240 | `usuarios`: `handler_audit.go` + `GET /api/v1/admin/auditoria/*` + cableado | `[backend]` | 9 | — | T238, T239, T228 |
 | T241 | `api/client.ts` (credenciales + `X-CSRF-Token`) y `api/auth.ts` | `[frontend]` | 10 | P5 | T204 |
-| T242 | Componentes compartidos (`Table`, `Tabs`, `Pagination`, `DateRangeFilter`, `StatusPill`, `Notice`, `ModalDialog`, `Field`, `ConfirmDialog`, `EmptyState`) y `lib/` (permisos, formato) | `[frontend]` | 10 | P5 | — |
+| T242 | Componentes compartidos (`Field`, `PasswordField`, `Select`, `Button`, `Notice`, `ConfirmDialog`, `Dialog`, `EmptyState`, `Table`, `Tabs`, `Pagination`, `DateRangeFilter`, `StatusPill`) y `lib/` (permisos, formato) | `[frontend]` | 10 | P5 | — |
 | T243 | `api/usuarios.ts`, `api/roles.ts`, `api/auditoria.ts` | `[frontend]` | 10 | — | T241 |
 | T244 | Guards (`RequireAuth`, `RequirePermission`, `RequirePasswordChange`), router y layout por permisos | `[frontend]` | 10 | — | T241, T242 |
 | T245 | `features/auth`: LoginPage y hooks de sesión | `[frontend]` | 10 | — | T244 |
@@ -636,12 +638,17 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     FR-010 con `platform/password` (también "distinta del nombre/apellidos/correo"), guarda el hash
     nuevo, pone `mustChangePassword=false`, **revoca las demás sesiones** de la cuenta (R17) y **no**
     se registra en `admin_actions` (no es acción administrativa, FR-023). El **guard de cambio
-    obligatorio** (FR-010/US7 esc. 4–5): si `mustChangePassword`, solo se autorizan `/auth/session`,
-    `/auth/logout` y `/auth/password`; el resto → `403` con `details.reason="password_change_required"`.
+    obligatorio** (FR-010/US7 esc. 4–5) se monta **solo en el grupo `/api/v1/admin`** (entre `authn`
+    y `authz`; lo cablea T228): con `mustChangePassword`, todo lo demás de ese grupo → `403` con
+    `details.reason="password_change_required"`. Las rutas `/api/v1/auth/session`,
+    `/api/v1/auth/logout` y `/api/v1/auth/password` quedan **blanqueadas** porque viven en el grupo
+    `/api/v1/auth`, que **no monta el guard** (no es una whitelist genérica sobre `/auth/*`).
   - **Pruebas incluidas** (§III): unitarias con fakes. **Cómo se verifica**:
     `go test ./internal/usuarios/` en verde: cambio válido aplica y permite entrar con la nueva;
     contraseña actual incorrecta → error claro; política incumplida (cada requisito) → `400` con el
-    requisito nombrado; cuenta con `mustChangePassword` → el guard deniega lo demás con su `details`;
+    requisito nombrado; cuenta con `mustChangePassword` → el guard (montado solo en `/api/v1/admin`)
+    deniega las rutas de admin con su `details`, y `/auth/session`, `/auth/logout` y `/auth/password`
+    siguen disponibles;
     **0 filas nuevas en `admin_actions`** por el cambio propio.
   - **Criterio de terminado**: FR-010 (flujos de la persona) y FR-020 cubiertos; las sesiones
     revocadas dejan de resolver en el store.
@@ -979,17 +986,24 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 - [ ] T242 · Componentes compartidos y helpers de `lib/` · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/components/` (NUEVOS, **nombres de código en inglés**):
-    `Table.tsx`, `Tabs.tsx`, `Pagination.tsx`, `DateRangeFilter.tsx`, `StatusPill.tsx`, `Notice.tsx`,
-    `ModalDialog.tsx`, `Field.tsx`, `ConfirmDialog.tsx`, `EmptyState.tsx` (+ tests) y
-    `frontend/src/lib/permissions.ts`, `format.ts` (+ tests) (NUEVOS).
-  - **Qué hace**: el inventario de componentes genéricos que necesita F2 (F-10), sin duplicar markup
-    en las features: **`Table`** (tabla accesible),
+    `Field.tsx`, `PasswordField.tsx`, `Select.tsx`, `Button.tsx`, `Notice.tsx`, `ConfirmDialog.tsx`,
+    `Dialog.tsx`, `EmptyState.tsx`, `Table.tsx`, `Tabs.tsx`, `Pagination.tsx`, `DateRangeFilter.tsx`,
+    `StatusPill.tsx` (+ tests) y `frontend/src/lib/permissions.ts`, `format.ts` (+ tests) (NUEVOS).
+  - **Qué hace**: el inventario **único y definitivo** de componentes genéricos que necesita F2
+    (F-10): son **13** y esta lista es la referencia que cita `ux.md` (que da las etiquetas en
+    español, las props y los textos). **`Field`** (campo con etiqueta, error y `autocomplete`),
+    **`PasswordField`** (contraseña con mostrar/ocultar y checklist en vivo de la política FR-010),
+    **`Select`** (rol en el formulario de usuario), **`Button`** (acciones y envío de formularios),
+    **`Notice`** (avisos con `aria-live`), **`ConfirmDialog`** (confirmación accesible: desactivar
+    cuenta, eliminar rol), **`Dialog`** (diálogo accesible para los formularios en modal; **sustituye
+    a `ModalDialog`** de las rondas previas), **`EmptyState`** (estados vacío, cargando y error —
+    p. ej. "no hay registros que coincidan con esos filtros"), **`Table`** (tabla accesible),
     **`Tabs`** (los dos historiales de auditoría), **`Pagination`** (`limit`/`offset`, conserva los
-    filtros), **`DateRangeFilter`** (`from`/`to`), **`StatusPill`** (estado de cuenta y resultado de
-    registro: texto además de color), **`Notice`** (avisos con `aria-live`), **`Field`** (campo con
-    etiqueta, error y `autocomplete`), **`ModalDialog`** (diálogo accesible),
-    **`ConfirmDialog`** (confirmación accesible) y **`EmptyState`** (estado vacío comprensible —
-    p. ej. "no hay registros que coincidan con esos filtros"). Los nombres de código son en inglés;
+    filtros), **`DateRangeFilter`** (`from`/`to`) y **`StatusPill`** (estado de cuenta y resultado de
+    registro: texto además de color). **Ninguno sobra ni falta** (los estados de carga y error los
+    cubre `EmptyState`, según `ux.md`). Las features los **reutilizan sin duplicar markup**; un
+    componente fuera de esta lista exige **primero** actualizarla aquí y en el plan. Los nombres de
+    código son en inglés;
     **`ux.md` (disenador-ux) da el mapeo** a sus etiquetas en español y los textos. Helpers:
     `hasPermission(session, code)` y formato de fecha/hora en español (para `lastLoginAt` y los
     historiales). Accesibilidad: `getByRole`, foco visible, `aria-live` para avisos (§6).

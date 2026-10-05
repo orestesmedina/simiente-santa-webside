@@ -227,7 +227,7 @@
 
 ### Componentes genéricos nuevos (`frontend/src/components/`)
 
-> Nombres de código definitivos (en inglés), alineados con plan/tasks (T242+). Quedan como **único** inventario de componentes.
+> Nombres de código definitivos (en inglés). El inventario definitivo vive en el plan: `tasks.md` (T242, componentes compartidos); `ux.md` solo da el mapeo a sus etiquetas en español.
 
 | Componente (código) | Props clave | Uso |
 |---|---|---|
@@ -235,15 +235,15 @@
 | `Field` (antes "Campo") | `label`, `type`, `error?`, `help?`, `required`, `autocomplete?` | Envoltorio accesible label + `aria-describedby` con error/ayuda. |
 | `PasswordField` (antes "CampoContrasena") | igual que `Field` + `showToggle`, `policy?: string[]` (checklist en vivo, incluye "distinta del nombre, los apellidos y el correo" y "máximo 64 caracteres"), `autocomplete` (p. ej. `new-password`) | Acceso, formularios de contraseña. |
 | `Select` | `label`, `options`, `error?` | Rol en formulario de usuario. |
-| `Alert` (antes "Aviso") | `variant` ('success' \| 'error' \| 'info' \| 'warning'), `children`, `temporal?` | Mensajes de sistema; `role="alert"` en error/warning, `role="status"` en éxito/info. |
+| `Notice` | `variant` ('success' \| 'error' \| 'info' \| 'warning'), `children`, `temporal?` | Mensajes de sistema; `role="alert"` en error/warning, `role="status"` en éxito/info. |
 | `ConfirmDialog` (antes "Confirmacion") | `title`, `description`, `confirmText`, `danger?`, `onConfirm`, `onClose` | Desactivar cuenta, eliminar rol. Trampa de foco + `Esc` + devolución del foco. |
 | `EmptyState` (junto a estados de carga y error) | `message`, `action?` | Estados vacío, cargando y error. |
 | `StatusPill` | `value` ('active' \| 'inactive') | Color + texto (más que color). |
 | `Table` | cabeceras + filas; en móvil se compone como lista de tarjetas | Usuarios, roles y auditoría (móvil primero). |
 | `Tabs` (antes "Pestannas") | `tabs[{id, label}]`, `active`, `onChange` | Las dos vistas de la Auditoría; texto visible + `aria-current`. |
 | `Pagination` (antes "Paginacion") | `page`, `totalPages`, `onChange`, `summaryText` | Pie de la Auditoría y listados: "Anterior" / "Siguiente" deshabilitados en los extremos. |
-| `DateRangeFilters` | envuelve dos `Field` tipo date + botones "Filtrar" / "Quitar filtros" | Rango de fechas de la Auditoría. |
-| `ModalDialog` | `title`, `description?`, `onClose` | Formularios en modal (Crear/editar usuario/rol). |
+| `DateRangeFilter` | envuelve dos `Field` tipo date + botones "Filtrar" / "Quitar filtros" | Rango de fechas de la Auditoría. |
+| `Dialog` | `title`, `description?`, `onClose` | Formularios en modal (Crear/editar usuario/rol). |
 
 ### De funcionalidad (`frontend/src/features/auth/`, `features/usuarios/`, `features/roles/`, `features/auditoria/`)
 
@@ -267,7 +267,7 @@
 ## 6. Accesibilidad (WCAG 2.1 AA)
 
 - **Teclado**: todo interactivo alcanzable y visible; orden de tabulación lógico (título → campos → botón). `Enter` envía el formulario de acceso. En listados, las acciones por fila son botones reales.
-- **Foco**: visible siempre (`focus-visible` con anillo de 2 px `slate-900`); al aparecer un error, el foco va al `Aviso` y, si es de campo, al primer campo inválido; tras iniciar sesión, foco en el `h1` del panel.
+- **Foco**: visible siempre (`focus-visible` con anillo de 2 px `slate-900`); al aparecer un error, el foco va al `Notice` y, si es de campo, al primer campo inválido; tras iniciar sesión, foco en el `h1` del panel.
 - **Semántica**: `<h1>` único por página; formularios con `<label>` explícito; errores con `aria-invalid` + `aria-describedby`; navegación con `<nav aria-label="Navegación del panel">`; listados con tablas semánticas (th con ámbito) y tarjetas equivalentes en móvil. En la Auditoría: las pestañas son botones con estado `aria-current` (o patrón de pestañas ARIA con flechas); la paginación se anuncia con el resumen "Mostrando {a}–{b} de {total}" tras cada cambio (`role="status"`).
 - **Avisos**: error/alerta como `role="alert"`, éxito como `role="status"`. El aviso de sesión usa `role="alertdialog"` y trampa de foco.
 - **Más que color**: activo/inactivo y permisos llevan texto explícito, nunca solo rojo/verde. Los errores no se comunican solo con color del borde.

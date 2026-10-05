@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 002-acceso-gestion-usuarios |
 | Flujo | equipo-feature |
-| Fase | 3/9 · Tareas y coherencia |
-| Ciclo de corrección | 1/3 (`analyze`: RECHAZADO en coherencia documental) |
-| Próximo paso | Re-analizar para verificar el cierre de F-01…F-15 |
+| Fase | 5/9 · Coherencia (cerrada en verde) |
+| Ciclo de corrección | 1/3 (cerrado en verde) |
+| Próximo paso | Iniciar la implementación (fase 6/9); primera tarea: T201 (contrato) + arranque en paralelo T202/T203/T205/T206 |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -34,13 +34,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- **F-01 (crítico)** — la pantalla de auditoría de `ux.md` no es construible con el contrato: pide nombre/correo que los DTOs no exponen y afirma que se guarda el correo de intentos sin cuenta (no se guarda). Resolución: añadir `userName`/`actorName` al DTO (derivado cuando la cuenta se identifica) y mostrar "Intento sin cuenta asociada" en el resto.
-- **F-02 (mayor)** — falta tarea para la página de Inicio del panel (`/panel`) y el caso "cuenta sin permisos de módulo".
-- **F-03 (mayor)** — semántica contradictoria del 5.º intento fallido (FR-006 vs R5 vs quickstart vs data-model). Resolución: el 5.º responde genérico y crea el bloqueo; el 429 aplica desde el 6.º intento.
-- **F-04 (mayor)** — `ux.md` dice "sin paginar" con buscador en cliente; plan/contrato/tareas usan paginación. Resolución: mantener paginación; retirar el buscador de texto libre del MVP.
-- **F-05 (mayor)** — rutas divergentes. Resolución: las del plan (`/login`, `/cambiar-contrasena`, `/panel`, `/panel/usuarios`, `/panel/roles`, `/panel/auditoria`, `/sin-permiso`).
-- **F-06 (mayor)** — pantalla de "Puesta en marcha" en `ux.md`. Resolución: retirarla (la inicialización es por API con `BOOTSTRAP_TOKEN`).
-- **F-07…F-15 (menores)** — cobertura FR-021 (T247), filtro de auditoría (inicialización), política de contraseñas (igual vs contener, tope de longitud), inventario de componentes UI, código de permiso, número de operaciones, reparto de contadores, "F3–F9", ámbito del guard de contraseña y descripción de `make ci`.
+- (ninguno) — el ciclo 1 del `analyze` (F-01…F-15) se cerró en verde en el re-análisis; N-1 y N-2 cerrados también. La spec está aprobada y el plan, aprobado.
 
 ## Decisiones y aclaraciones
 
@@ -54,6 +48,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-04 — Re-`analyze`: **APROBADO** (F-01…F-15 cerrados, sin regresiones). N-1 (inventario de componentes) y N-2 (texto del guard) cerrados. Fase 5/9 (coherencia) cerrada en verde.
 - 2026-10-04 — Ciclo de corrección 1: aplicados F-01…F-15 (`arquitecto`, `disenador-ux`, `analista-producto`). Pendiente re-analizar.
 - 2026-10-04 — `analyze` (`revisor-codigo`): **RECHAZADO en coherencia documental** (F-01 crítico; F-02–F-06 mayores; F-07–F-15 menores). Ciclo de corrección 1/3; se corrigen con `arquitecto`, `disenador-ux` y `analista-producto`.
 - 2026-10-04 — **`tasks.md` redactado** por `arquitecto` (53 tareas, T201–T253). Pendiente `analyze`.

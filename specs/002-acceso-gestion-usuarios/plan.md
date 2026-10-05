@@ -249,7 +249,7 @@ frontend/src/
 │   ├── usuarios/                    # NUEVO: UsersPage, UserForm (con último acceso en la ficha = detalle/edición, FR-021), hooks useUsers/useCreateUser/…
 │   ├── roles/                       # NUEVO: RolesPage, RoleForm (permisos), hooks useRoles/…
 │   └── auditoria/                   # NUEVO (auditoría): AuditPage (dos historiales, filtros por cuenta y fechas, paginación; sin acciones de edición), hooks useAccessEvents/useAdminActions
-├── components/                      # EDITADO: Table, Tabs, Pagination, DateRangeFilter, StatusPill, Notice, ModalDialog, Field, ConfirmDialog, EmptyState (reutilizables, nombres de código en inglés; `ux.md` da sus etiquetas en español)
+├── components/                      # EDITADO: inventario único de 13 componentes compartidos (ver "Inventario único de componentes UI" más abajo): Field, PasswordField, Select, Button, Notice, ConfirmDialog, Dialog, EmptyState, Table, Tabs, Pagination, DateRangeFilter, StatusPill
 └── lib/                             # EDITADO: helpers de permisos y formato
 frontend/e2e/acceso.spec.ts          # NUEVO: flujo completo Playwright (ver quickstart §11)
 frontend/e2e/auditoria.spec.ts       # NUEVO (auditoría): sección de registro, filtros y solo lectura (ver quickstart §10)
@@ -260,6 +260,34 @@ README.md                            # EDITADO por documentador al cerrar: coman
 docker-compose.yml                   # EDITADO: servicio `redis` (redis:7-alpine, healthcheck, puerto — SIN volumen ni appendonly: persistencia desactivada a propósito, P23) + variables del backend (REDIS_URL, SESSION_*, BOOTSTRAP_TOKEN)
 Makefile / .github/workflows/ci.yml / .githooks/   # SIN CAMBIOS (son del kit; ci.yml NO se toca: las pruebas de integración levantan Redis con testcontainers-go, R19)
 ```
+
+### Inventario único de componentes UI (F-10, el que cita `ux.md`)
+
+Es el **único** inventario de componentes compartidos de F2 (T242): **13 componentes** con
+**nombres de código en inglés**. `ux.md` (`disenador-ux`) lo **cita** y da el mapeo a sus etiquetas
+en español, sus props y sus textos; este plan fija los nombres de código. Ninguno sobra ni falta
+para las pantallas de F2: los estados de **carga y error** también los cubre `EmptyState` (según
+`ux.md`), por lo que no hace falta un componente aparte.
+
+| Componente (código) | Responsabilidad |
+|---|---|
+| `Field` | campo de formulario con etiqueta, error y `autocomplete` |
+| `PasswordField` | campo de contraseña: mostrar/ocultar y checklist en vivo de la política FR-010 |
+| `Select` | selector (rol en el formulario de usuario, entre otros) |
+| `Button` | acciones y envío de formularios (variantes, `loading`, mínimo 44 px) |
+| `Notice` | avisos de sistema con `aria-live` |
+| `ConfirmDialog` | confirmación accesible (desactivar cuenta, eliminar rol) |
+| `Dialog` | diálogo accesible con los formularios en modal (crear/editar usuario/rol) — **sustituye a `ModalDialog`** de las rondas previas |
+| `EmptyState` | estados vacío, cargando y error |
+| `Table` | tabla accesible (en móvil, lista de tarjetas) |
+| `Tabs` | los dos historiales de la auditoría |
+| `Pagination` | `limit`/`offset`, conservando los filtros |
+| `DateRangeFilter` | rango de fechas `from`/`to` de la auditoría |
+| `StatusPill` | estado de cuenta y resultado de registro (texto además de color) |
+
+Las features los **reutilizan sin duplicar markup** (lo revisa `revisor-codigo`). Un componente
+fuera de esta lista exige **primero** actualizarla aquí y en T242; cualquier cambio de nombre se
+propaga a `ux.md` para que la cita siga siendo inequívoca.
 
 ## Cadena de middleware y grupos (orden; el primero es el más externo)
 
