@@ -2,14 +2,17 @@ package usuarios
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 
+	"simiente-santa/backend/internal/platform/apperr"
 	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/httpserver"
+	"simiente-santa/backend/internal/platform/paginate"
 )
 
 // auditService escribe el registro de auditoría que consumen el resto de
@@ -32,11 +35,20 @@ type auditService struct {
 	log  *slog.Logger
 }
 
-// AuditRepository es el puerto de escritura que el servicio de auditoría
-// necesita del repositorio (lo define quien lo consume, arq. R3).
+// AuditRepository es el puerto que el servicio de auditoría necesita del
+// repositorio (lo define quien lo consume, arq. R3): escritura de cada intento y
+// cada acción, y consulta de solo lectura de ambos historiales (FR-025).
 type AuditRepository interface {
 	InsertLoginEvent(ctx context.Context, event audit.Event) (LoginEvent, error)
 	InsertAdminAction(ctx context.Context, action audit.Action) (AdminAction, error)
+	// ListLoginEvents y CountLoginEvents consultan el historial de accesos con
+	// los filtros de cuenta y semirango `[from, to)` (FR-024).
+	ListLoginEvents(ctx context.Context, filter AuditFilter) ([]AccessEvent, error)
+	CountLoginEvents(ctx context.Context, filter AuditFilter) (int64, error)
+	// ListAdminActions y CountAdminActions consultan el historial de acciones;
+	// el filtro por cuenta incluye actor y objetivo (FR-024).
+	ListAdminActions(ctx context.Context, filter AuditFilter) ([]AdminActionEntry, error)
+	CountAdminActions(ctx context.Context, filter AuditFilter) (int64, error)
 }
 
 // NewAuditService construye el servicio de registro de auditoría. Si logger es
@@ -96,11 +108,111 @@ func (s *auditService) RecordActionBestEffort(ctx context.Context, action audit.
 // método y la ruta (R23). Una petición de lectura denegada no corresponde a
 // ninguna acción sensible y no deja fila.
 func (s *auditService) RecordDenied(ctx context.Context, denial audit.Denial) error {
-	action, ok := denialAction(denial)
+	action, ok := actionFromRoute(denial.Method, denial.Path)
 	if !ok {
 		return nil
 	}
+	action.ActorUserID = denial.ActorUserID
+	action.Result = audit.ResultDenied
 	return s.RecordAction(ctx, action)
+}
+
+// RecordRejectedBestEffort registra un intento rechazado ANTES de llegar al
+// servicio —JSON inválido o DTO no válido en el helper de decodificación del
+// handler (P20/R23)—. Resuelve la acción y el objetivo desde method+path con la
+// misma tabla del dominio que las denegaciones y lo escribe con
+// `result='failure'`. Nunca transporta el cuerpo de la petición, así que no
+// puede guardar credenciales (FR-026). Es best-effort: su fallo se queda en el
+// log con el request_id y no cambia la respuesta.
+func (s *auditService) RecordRejectedBestEffort(ctx context.Context, rejection Rejection) {
+	action, ok := actionFromRoute(rejection.Method, rejection.Path)
+	if !ok {
+		return
+	}
+	action.ActorUserID = rejection.ActorUserID
+	action.Result = audit.ResultFailure
+	s.RecordActionBestEffort(ctx, action)
+}
+
+// Rejection describe una petición rechazada por JSON o DTO inválido (P20). El
+// dominio resuelve la acción y el objetivo desde method+path; por diseño no
+// lleva el cuerpo de la petición (FR-026).
+type Rejection struct {
+	ActorUserID *uuid.UUID
+	Method      string
+	Path        string
+}
+
+// ListAccessEvents devuelve una página del historial de intentos de acceso
+// (FR-024/P22), con filtros de cuenta y semirango de fechas `[from, to)`, orden
+// `createdAt DESC` y paginación de platform/paginate. Es SOLO lectura: no
+// escribe, modifica ni borra el registro (FR-025). Un `from` posterior a `to`
+// es un rango imposible → 400 invalid.
+func (s *auditService) ListAccessEvents(ctx context.Context, filter AuditFilter) (AccessEventList, error) {
+	filter, err := normalizeAuditFilter(filter)
+	if err != nil {
+		return AccessEventList{}, err
+	}
+	events, err := s.repo.ListLoginEvents(ctx, filter)
+	if err != nil {
+		return AccessEventList{}, fmt.Errorf("listar accesos: %w", err)
+	}
+	total, err := s.repo.CountLoginEvents(ctx, filter)
+	if err != nil {
+		return AccessEventList{}, fmt.Errorf("contar accesos: %w", err)
+	}
+	items := make([]AccessEventItem, 0, len(events))
+	for _, event := range events {
+		items = append(items, AccessEventItemFrom(event))
+	}
+	return AccessEventList{Items: items, Total: total, Limit: filter.Limit, Offset: filter.Offset}, nil
+}
+
+// ListAdminActions devuelve una página del historial de acciones
+// administrativas (FR-024/P22), con las mismas reglas de filtro, orden y
+// paginación que ListAccessEvents. El filtro por cuenta incluye a quien hizo la
+// acción y a la cuenta objetivo (lo resuelve la consulta; FR-024). Es SOLO
+// lectura (FR-025).
+func (s *auditService) ListAdminActions(ctx context.Context, filter AuditFilter) (AdminActionList, error) {
+	filter, err := normalizeAuditFilter(filter)
+	if err != nil {
+		return AdminActionList{}, err
+	}
+	entries, err := s.repo.ListAdminActions(ctx, filter)
+	if err != nil {
+		return AdminActionList{}, fmt.Errorf("listar acciones: %w", err)
+	}
+	total, err := s.repo.CountAdminActions(ctx, filter)
+	if err != nil {
+		return AdminActionList{}, fmt.Errorf("contar acciones: %w", err)
+	}
+	items := make([]AdminActionItem, 0, len(entries))
+	for _, entry := range entries {
+		items = append(items, AdminActionItemFrom(entry))
+	}
+	return AdminActionList{Items: items, Total: total, Limit: filter.Limit, Offset: filter.Offset}, nil
+}
+
+// normalizeAuditFilter valida el rango y normaliza la paginación de un listado
+// de auditoría (P14/P22): límite por defecto si no llega (o no es positivo),
+// tope duro, offset no negativo y semirango `[from, to)` con `from <= to`.
+func normalizeAuditFilter(filter AuditFilter) (AuditFilter, error) {
+	if filter.From != nil && filter.To != nil && filter.From.After(*filter.To) {
+		return AuditFilter{}, apperr.Invalid(
+			"El rango de fechas no es válido",
+			apperr.WithDetails(map[string]any{"from": "no puede ser posterior a to"}),
+		)
+	}
+	if filter.Limit <= 0 {
+		filter.Limit = paginate.DefaultLimit
+	}
+	if filter.Limit > paginate.MaxLimit {
+		filter.Limit = paginate.MaxLimit
+	}
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+	return filter, nil
 }
 
 // logError registra el fallo con el logger de la petición (que lleva el
@@ -116,11 +228,14 @@ func (s *auditService) logError(ctx context.Context, message string, err error) 
 	logger.Error(message, slog.Any("error", err))
 }
 
-// denialAction traduce method+path a la acción administrativa denegada. Devuelve
-// false cuando la petición no corresponde a una acción sensible (p. ej. un GET
-// del panel): esas denegaciones no entran en `admin_actions` (R23).
-func denialAction(denial audit.Denial) (audit.Action, bool) {
-	segments := splitPath(denial.Path)
+// actionFromRoute traduce method+path a la acción administrativa sensible del
+// registro (FR-023) y su objetivo. Devuelve false cuando la petición no
+// corresponde a ninguna acción (p. ej. un GET del panel o las rutas de
+// auditoría): esas peticiones no dejan fila (R23). La tabla es la única fuente
+// que comparten las denegaciones (result='denied') y los rechazos por datos
+// inválidos (result='failure', P20).
+func actionFromRoute(method, path string) (audit.Action, bool) {
+	segments := splitPath(path)
 	if len(segments) < 4 || segments[0] != "api" || segments[1] != "v1" || segments[2] != "admin" {
 		return audit.Action{}, false
 	}
@@ -128,32 +243,29 @@ func denialAction(denial audit.Denial) (audit.Action, bool) {
 	hasID := len(segments) >= 5
 	id := parsePathUUID(segments, 4)
 
-	action := audit.Action{
-		ActorUserID: denial.ActorUserID,
-		Result:      audit.ResultDenied,
-	}
+	action := audit.Action{}
 
 	switch {
-	case resource == "usuarios" && denial.Method == http.MethodPost && !hasID:
+	case resource == "usuarios" && method == http.MethodPost && !hasID:
 		action.Code = audit.ActionUserCreate
 		action.TargetKind = audit.TargetUser
-	case resource == "usuarios" && denial.Method == http.MethodPost && hasID &&
+	case resource == "usuarios" && method == http.MethodPost && hasID &&
 		len(segments) == 6 && segments[5] == "password":
 		action.Code = audit.ActionUserPasswordReset
 		action.TargetKind = audit.TargetUser
 		action.TargetUserID = id
-	case resource == "usuarios" && denial.Method == http.MethodPatch && hasID:
+	case resource == "usuarios" && method == http.MethodPatch && hasID:
 		action.Code = audit.ActionUserUpdate
 		action.TargetKind = audit.TargetUser
 		action.TargetUserID = id
-	case resource == "roles" && denial.Method == http.MethodPost && !hasID:
+	case resource == "roles" && method == http.MethodPost && !hasID:
 		action.Code = audit.ActionRoleCreate
 		action.TargetKind = audit.TargetRole
-	case resource == "roles" && denial.Method == http.MethodPatch && hasID:
+	case resource == "roles" && method == http.MethodPatch && hasID:
 		action.Code = audit.ActionRoleUpdate
 		action.TargetKind = audit.TargetRole
 		action.TargetRoleID = id
-	case resource == "roles" && denial.Method == http.MethodDelete && hasID:
+	case resource == "roles" && method == http.MethodDelete && hasID:
 		action.Code = audit.ActionRoleDelete
 		action.TargetKind = audit.TargetRole
 		action.TargetRoleID = id

@@ -8,12 +8,15 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
+	"simiente-santa/backend/internal/platform/apperr"
 	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/httpserver"
 	applogger "simiente-santa/backend/internal/platform/logger"
+	"simiente-santa/backend/internal/platform/paginate"
 	"simiente-santa/backend/internal/platform/testutil"
 )
 
@@ -26,6 +29,13 @@ type fakeAuditRepo struct {
 	events  []audit.Event
 	actions []audit.Action
 	err     error
+
+	// Datos de consulta pre-sembrados y el total que devuelve Count*.
+	accessEvents []AccessEvent
+	adminEntries []AdminActionEntry
+	accessTotal  int64
+	adminTotal   int64
+	listFilters  []AuditFilter
 }
 
 func (f *fakeAuditRepo) InsertLoginEvent(_ context.Context, event audit.Event) (LoginEvent, error) {
@@ -46,6 +56,48 @@ func (f *fakeAuditRepo) InsertAdminAction(_ context.Context, action audit.Action
 	defer f.mu.Unlock()
 	f.actions = append(f.actions, action)
 	return AdminAction{Action: action.Code, Result: action.Result}, nil
+}
+
+func (f *fakeAuditRepo) ListLoginEvents(_ context.Context, filter AuditFilter) ([]AccessEvent, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listFilters = append(f.listFilters, filter)
+	return f.accessEvents, nil
+}
+
+func (f *fakeAuditRepo) CountLoginEvents(_ context.Context, _ AuditFilter) (int64, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+	return f.accessTotal, nil
+}
+
+func (f *fakeAuditRepo) ListAdminActions(_ context.Context, filter AuditFilter) ([]AdminActionEntry, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.listFilters = append(f.listFilters, filter)
+	return f.adminEntries, nil
+}
+
+func (f *fakeAuditRepo) CountAdminActions(_ context.Context, _ AuditFilter) (int64, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+	return f.adminTotal, nil
+}
+
+func (f *fakeAuditRepo) filters() []AuditFilter {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]AuditFilter, len(f.listFilters))
+	copy(out, f.listFilters)
+	return out
 }
 
 func (f *fakeAuditRepo) eventCount() int {
@@ -261,4 +313,213 @@ func sameUUID(a, b *uuid.UUID) bool {
 	default:
 		return *a == *b
 	}
+}
+
+// --- Consulta de audituría (T238, FR-024/FR-025) ---
+
+func TestListAccessEventsWrapsPage(t *testing.T) {
+	repo := &fakeAuditRepo{
+		accessEvents: []AccessEvent{
+			sampleAccessEvent(true),
+			sampleAccessEvent(false),
+		},
+		accessTotal: 2,
+	}
+	service := NewAuditService(repo, nil)
+
+	list, err := service.ListAccessEvents(context.Background(), AuditFilter{Limit: 1, Offset: 1})
+	if err != nil {
+		t.Fatalf("ListAccessEvents: %v", err)
+	}
+	if len(list.Items) != 2 {
+		t.Fatalf("items = %d, se esperaban 2", len(list.Items))
+	}
+	if list.Total != 2 || list.Limit != 1 || list.Offset != 1 {
+		t.Fatalf("sobre = %+v", list)
+	}
+	if list.Items[0].UserEmail == nil || *list.Items[0].UserEmail != "ana@ejemplo.com" {
+		t.Fatalf("userEmail derivado = %v", list.Items[0].UserEmail)
+	}
+	// El intento sin cuenta no lleva correo ni nombre (F-01/FR-026).
+	anon := list.Items[1]
+	if anon.UserID != nil || anon.UserEmail != nil || anon.UserName != nil {
+		t.Fatalf("el intento sin cuenta filtró datos: %+v", anon)
+	}
+	filters := repo.filters()
+	if len(filters) != 1 || filters[0].Limit != 1 || filters[0].Offset != 1 {
+		t.Fatalf("filtro enviado al repo = %+v", filters)
+	}
+}
+
+func TestListAdminActionsWrapsPage(t *testing.T) {
+	actor := uuid.New()
+	email := "admin@ejemplo.com"
+	name := "Admin Uno"
+	label := "Editor"
+	repo := &fakeAuditRepo{
+		adminEntries: []AdminActionEntry{{
+			ID: uuid.New(), ActorUserID: &actor, ActorEmail: &email, ActorName: &name,
+			Action: audit.ActionRoleDelete, TargetKind: audit.TargetRole, TargetLabel: &label,
+			Result: audit.ResultDenied,
+		}},
+		adminTotal: 1,
+	}
+	service := NewAuditService(repo, nil)
+
+	list, err := service.ListAdminActions(context.Background(), AuditFilter{UserID: &actor})
+	if err != nil {
+		t.Fatalf("ListAdminActions: %v", err)
+	}
+	if list.Total != 1 || len(list.Items) != 1 {
+		t.Fatalf("sobre = %+v", list)
+	}
+	item := list.Items[0]
+	if item.ActorID == nil || *item.ActorID != actor.String() {
+		t.Fatalf("actorId = %v", item.ActorID)
+	}
+	if item.Action != audit.ActionRoleDelete || item.Result != string(audit.ResultDenied) {
+		t.Fatalf("acción/resultado = %+v", item)
+	}
+	filters := repo.filters()
+	if len(filters) != 1 || filters[0].UserID == nil || *filters[0].UserID != actor {
+		t.Fatalf("filtro por cuenta no llegó: %+v", filters)
+	}
+}
+
+func TestListAuditRejectsInvertedRange(t *testing.T) {
+	from := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	to := from.Add(-time.Hour)
+	repo := &fakeAuditRepo{}
+	service := NewAuditService(repo, nil)
+
+	if _, err := service.ListAccessEvents(context.Background(), AuditFilter{From: &from, To: &to}); !isInvalid(err) {
+		t.Fatalf("ListAccessEvents(from>to) = %v, se esperaba 400 invalid", err)
+	}
+	if _, err := service.ListAdminActions(context.Background(), AuditFilter{From: &from, To: &to}); !isInvalid(err) {
+		t.Fatalf("ListAdminActions(from>to) = %v, se esperaba 400 invalid", err)
+	}
+	if len(repo.filters()) != 0 {
+		t.Fatal("un rango inválido no debe consultar el repositorio")
+	}
+}
+
+func TestListAuditNormalizesPagination(t *testing.T) {
+	repo := &fakeAuditRepo{}
+	service := NewAuditService(repo, nil)
+	ctx := context.Background()
+
+	defaultList, err := service.ListAccessEvents(ctx, AuditFilter{})
+	if err != nil {
+		t.Fatalf("ListAccessEvents: %v", err)
+	}
+	if defaultList.Limit != paginate.DefaultLimit || defaultList.Offset != 0 {
+		t.Fatalf("defecto = limit %d offset %d", defaultList.Limit, defaultList.Offset)
+	}
+
+	capped, err := service.ListAccessEvents(ctx, AuditFilter{Limit: paginate.MaxLimit + 50, Offset: -3})
+	if err != nil {
+		t.Fatalf("ListAccessEvents(tope): %v", err)
+	}
+	if capped.Limit != paginate.MaxLimit || capped.Offset != 0 {
+		t.Fatalf("tope = limit %d offset %d", capped.Limit, capped.Offset)
+	}
+}
+
+func TestListAuditEmptyIsEmptySlice(t *testing.T) {
+	service := NewAuditService(&fakeAuditRepo{}, nil)
+	ctx := context.Background()
+
+	access, err := service.ListAccessEvents(ctx, AuditFilter{})
+	if err != nil {
+		t.Fatalf("ListAccessEvents: %v", err)
+	}
+	if access.Items == nil || len(access.Items) != 0 {
+		t.Fatalf("items de accesos = %#v, se esperaba [] no nil", access.Items)
+	}
+	actions, err := service.ListAdminActions(ctx, AuditFilter{})
+	if err != nil {
+		t.Fatalf("ListAdminActions: %v", err)
+	}
+	if actions.Items == nil || len(actions.Items) != 0 {
+		t.Fatalf("items de acciones = %#v, se esperaba [] no nil", actions.Items)
+	}
+}
+
+func TestAuditQueriesNeverWrite(t *testing.T) {
+	repo := &fakeAuditRepo{accessEvents: []AccessEvent{sampleAccessEvent(true)}, accessTotal: 1}
+	service := NewAuditService(repo, nil)
+	ctx := context.Background()
+
+	if _, err := service.ListAccessEvents(ctx, AuditFilter{}); err != nil {
+		t.Fatalf("ListAccessEvents: %v", err)
+	}
+	if _, err := service.ListAdminActions(ctx, AuditFilter{}); err != nil {
+		t.Fatalf("ListAdminActions: %v", err)
+	}
+	if repo.eventCount() != 0 || repo.actionCount() != 0 {
+		t.Fatalf("la consulta escribió: eventos=%d acciones=%d (FR-025)", repo.eventCount(), repo.actionCount())
+	}
+}
+
+func TestRecordRejectedResolvesActionFromRoute(t *testing.T) {
+	repo := &fakeAuditRepo{}
+	logger, _ := testutil.NewLogger()
+	service := NewAuditService(repo, logger)
+	ctx := context.Background()
+	actor := uuid.New()
+	target := uuid.New()
+
+	service.RecordRejectedBestEffort(ctx, Rejection{
+		ActorUserID: &actor,
+		Method:      http.MethodPatch,
+		Path:        "/api/v1/admin/usuarios/" + target.String(),
+	})
+	if repo.actionCount() != 1 {
+		t.Fatalf("rechazo no registrado")
+	}
+	last := repo.actions[0]
+	if last.Code != audit.ActionUserUpdate || last.Result != audit.ResultFailure {
+		t.Fatalf("acción de rechazo = %+v", last)
+	}
+	if last.ActorUserID == nil || *last.ActorUserID != actor {
+		t.Fatalf("actor = %v", last.ActorUserID)
+	}
+	if !sameUUID(last.TargetUserID, &target) {
+		t.Fatalf("objetivo = %v, se esperaba %v", last.TargetUserID, target)
+	}
+
+	// Un rechazo de una petición que no corresponde a ninguna acción sensible
+	// (inicialización pública) no deja fila (R23).
+	before := repo.actionCount()
+	service.RecordRejectedBestEffort(ctx, Rejection{Method: http.MethodPost, Path: "/api/v1/setup/initialize"})
+	if repo.actionCount() != before {
+		t.Fatal("la inicialización no es una acción administrativa")
+	}
+}
+
+// sampleAccessEvent construye un intento identificado (identified=true) o sin
+// cuenta asociada.
+func sampleAccessEvent(identified bool) AccessEvent {
+	event := AccessEvent{
+		ID:        uuid.New(),
+		Result:    audit.ResultFailure,
+		IP:        "10.0.0.1",
+		CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC),
+	}
+	if identified {
+		userID := uuid.New()
+		email := "ana@ejemplo.com"
+		name := "Ana Pérez"
+		event.UserID = &userID
+		event.UserEmail = &email
+		event.UserName = &name
+		event.Result = audit.ResultSuccess
+	}
+	return event
+}
+
+// isInvalid indica si el error es un 400 del contrato (apperr.Invalid).
+func isInvalid(err error) bool {
+	var domainErr *apperr.Error
+	return errors.As(err, &domainErr) && domainErr.Kind == apperr.KindInvalid
 }
