@@ -76,11 +76,14 @@ func TestInitializeAndRoleInputValidation(t *testing.T) {
 	if err := validate.Struct(init); err != nil {
 		t.Fatalf("InitializeInput válido devolvió error: %v", err)
 	}
-	if err := validate.Struct(RoleCreateInput{Name: "Editor"}); err == nil {
-		t.Fatal("rol sin permisos debería fallar (FR-014)")
+	if err := validate.Struct(RoleCreateInput{Name: "Editor"}); err != nil {
+		t.Fatalf("el DTO sin permisos ya no falla en la forma: el mínimo de un permiso lo exige el service (FR-014): %v", err)
 	}
 	if err := validate.Struct(RoleCreateInput{Name: "Editor", Permissions: []string{"eventos"}}); err != nil {
 		t.Fatalf("rol válido devolvió error: %v", err)
+	}
+	if err := validate.Struct(RoleCreateInput{Name: "  "}); err == nil {
+		t.Fatal("un rol sin nombre debería fallar en la forma")
 	}
 }
 

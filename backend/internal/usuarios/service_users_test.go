@@ -235,6 +235,16 @@ func (f *fakeUserRepo) SetUserMustChangePassword(_ context.Context, id uuid.UUID
 	return nil
 }
 
+// UpdateRoleName, DeleteRolePermissions y DeleteRole completan GuardTx; la
+// gestión de cuentas no las usa (son de la gestión de roles, T236).
+func (f *fakeUserRepo) UpdateRoleName(context.Context, uuid.UUID, string) (Role, error) {
+	return Role{}, nil
+}
+
+func (f *fakeUserRepo) DeleteRolePermissions(context.Context, uuid.UUID) error { return nil }
+
+func (f *fakeUserRepo) DeleteRole(context.Context, uuid.UUID) (int64, error) { return 0, nil }
+
 // --- Fakes de dependencias ---
 
 type fakeActionRecorder struct {

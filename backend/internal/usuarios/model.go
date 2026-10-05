@@ -244,10 +244,13 @@ type ChangePasswordInput struct {
 	NewPassword     string `json:"newPassword" validate:"required,min=8,max=64"`
 }
 
-// RoleCreateInput es el cuerpo de POST /api/v1/admin/roles (FR-014).
+// RoleCreateInput es el cuerpo de POST /api/v1/admin/roles (FR-014). El mínimo
+// de un permiso lo comprueba el service (mensaje propio de FR-014: "un rol debe
+// tener al menos un permiso"), no la etiqueta `required` del DTO, que daría un
+// mensaje genérico.
 type RoleCreateInput struct {
 	Name        string   `json:"name" validate:"required,min=1,max=80"`
-	Permissions []string `json:"permissions" validate:"required"`
+	Permissions []string `json:"permissions" validate:"omitempty"`
 }
 
 // RoleUpdateInput es el cuerpo de PATCH /api/v1/admin/roles/{id} (FR-017).

@@ -131,6 +131,16 @@ func (f *fakeInitRepo) UpdateUserPassword(context.Context, uuid.UUID, string) er
 
 func (f *fakeInitRepo) SetUserMustChangePassword(context.Context, uuid.UUID, bool) error { return nil }
 
+// UpdateRoleName, DeleteRolePermissions y DeleteRole completan GuardTx; la
+// inicialización no las usa (son de la gestión de roles, T236).
+func (f *fakeInitRepo) UpdateRoleName(context.Context, uuid.UUID, string) (Role, error) {
+	return Role{}, nil
+}
+
+func (f *fakeInitRepo) DeleteRolePermissions(context.Context, uuid.UUID) error { return nil }
+
+func (f *fakeInitRepo) DeleteRole(context.Context, uuid.UUID) (int64, error) { return 0, nil }
+
 // sampleCatalog devuelve los nueve permisos del catálogo fijo (FR-015).
 func sampleCatalog() []Permission {
 	codes := []string{

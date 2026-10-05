@@ -172,10 +172,11 @@ func (r *repository) withTx(ctx context.Context, fn func(tx *repository) error) 
 }
 
 // GuardTx es la vista de datos disponible dentro de una transacción del guard
-// anti-bloqueo (P7/P8). Se declara como interfaz para que los services que mutan
-// dentro del guard dependan de un puerto (skill `go-backend`) y puedan probarse
-// con fakes que no tocan PostgreSQL. Crece con cada operación que necesite
-// ejecutarse dentro del guard.
+// anti-bloqueo (P7/P8) o de una transacción de mutación sin guard (WithTx). Se
+// declara como interfaz para que los services que mutan dentro de ella dependan
+// de un puerto (skill `go-backend`) y puedan probarse con fakes que no tocan
+// PostgreSQL. Crece con cada operación que necesite ejecutarse dentro de una
+// transacción.
 type GuardTx interface {
 	CountUsers(ctx context.Context) (int64, error)
 	InsertRole(ctx context.Context, name string) (Role, error)
@@ -191,6 +192,23 @@ type GuardTx interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	UpdateUserPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	SetUserMustChangePassword(ctx context.Context, id uuid.UUID, must bool) error
+	// UpdateRoleName, DeleteRolePermissions y DeleteRole las usa la gestión de
+	// roles (T236): editar el nombre, reemplazar los permisos (DELETE + INSERT)
+	// y eliminar un rol sin cuentas, cada una en la misma transacción que su
+	// registro de auditoría y el guard anti-bloqueo.
+	UpdateRoleName(ctx context.Context, id uuid.UUID, name string) (Role, error)
+	DeleteRolePermissions(ctx context.Context, roleID uuid.UUID) error
+	DeleteRole(ctx context.Context, id uuid.UUID) (int64, error)
+}
+
+// WithTx ejecuta una mutación y su registro en una transacción SIN el guard
+// anti-bloqueo. Lo usa la creación de roles (T235): crear un rol no puede dejar
+// el panel sin administración (el guard solo aplica a lo que retira acceso), de
+// modo que no toma el advisory lock ni exige que ya exista un administrador.
+func (r *repository) WithTx(ctx context.Context, mutate func(tx GuardTx) error) error {
+	return r.withTx(ctx, func(tx *repository) error {
+		return mutate(tx)
+	})
 }
 
 // WithAdminGuard ejecuta la mutación dentro de una transacción serializada por
