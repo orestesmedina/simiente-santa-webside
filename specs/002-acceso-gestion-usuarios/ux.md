@@ -45,7 +45,7 @@
 - **Activar / desactivar**: en el listado, acción por fila "Desactivar"/"Activar" con confirmación solo al desactivar. Intentos que violan la regla del último administrador activo resultan en error explicado (FR-008).
 - **Crear/editar rol**: Inicio → "Roles" → "Crear rol" o "Editar" → nombre + casillas de permisos → éxito → listado.
 - **Eliminar rol**: fila → "Eliminar" → confirmación → si hay cuentas asignadas, se impide con mensaje "primero reasígalas" (no se deshabilita a ciegas; el intento siempre da una explicación). US6.5
-- **Cambiar mi contraseña**: menú de cuenta → "Cambiar contraseña" (actual + nueva) o la versión obligatoria tras restablecimiento.
+- **Cambiar mi contraseña**: menú de cuenta → "Cambiar contraseña" (actual + nueva) o la versión obligatoria tras restablecimiento (que también pide la actual: la contraseña temporal del administrador, §3.8).
 - **Consultar la auditoría** (solo con permiso de administración, US8): Inicio → "Auditoría" → pestaña "Historial de accesos" o "Acciones administrativas" → filtrar por cuenta y por rango de fechas → leer registros paginados. No hay nada que crear ni modificar: es una consulta.
 
 ---
@@ -123,12 +123,13 @@
 - **Propósito**: crear o editar nombre y permisos de un rol (FR-014, FR-017).
 - **Contenido**: Nombre (+ aviso de normalización) y **casillas por módulo** de FR-015: Portada e información general; Eventos; Actividades; Grupos de conexión; Ministerios; Donaciones; Noticias y galería; Medios; Administración de usuarios y roles. Los módulos F3–F9 (que aún no existen) aparecen con el sello "disponible más adelante" y sin efecto de acceso hasta que construyan: es válido y esperado.
 - **Reglas visibles**: al menos un permiso (botón "Guardar" deshabilitado + texto explicativo "Un rol necesita al menos un permiso."); sin catálogo previo (Decisión 5). Al editar el rol "Administración de usuarios y roles" aplican las mismas reglas del último administrador (FR-008).
+- **Nota de implementación**: las casillas de permisos son `<input type="checkbox">` nativos (uno por módulo, `label` explícito), no un componente del inventario de 13 (T242): `PermissionsGroup` (`features/roles`) los agrupa y compone, reutilizando el markup nativo sin duplicar componentes.
 
 ### 3.8 Cambiar contraseña — `/cambiar-contrasena`
 
 - **Propósito**: cambiar mi propia contraseña (US7; FR-020) y el cambio obligatorio tras una contraseña definida/restablecida por un administrador (FR-010).
-- **Contenido**: Contraseña actual (no se pide en el modo "obligatorio" del primer cambio), Contraseña nueva y Confirmar nueva, **check-list en vivo de la política** igual que en 3.5 (mín. 8, mayúsculas, minúsculas, números, caracteres especiales, distinta del nombre, los apellidos y el correo, máx. 64), botón "Guardar" (deshabilitado hasta que todo cumpla).
-- **Modo obligatorio**: idéntico pero sin navegación (ni menú ni enlaces) y con texto "Por seguridad, cambia esta contraseña antes de continuar."; al terminar → `/panel` con aviso de éxito.
+- **Contenido**: Contraseña **actual** (obligatoria en ambos modos: voluntario y obligatorio; el contrato `ChangePasswordInput.currentPassword` la exige y el backend la valida), Contraseña nueva y Confirmar nueva, **check-list en vivo de la política** igual que en 3.5 (mín. 8, mayúsculas, minúsculas, números, caracteres especiales, distinta del nombre, los apellidos y el correo, máx. 64), botón "Guardar" (deshabilitado hasta que todo cumpla).
+- **Modo obligatorio**: mismo formulario **con contraseña actual también** (US7 esc. 2): la persona usa aquí la contraseña temporal que le dio el administrador; bajo el campo, ayuda contextual "Escribe la contraseña temporal que te dio el administrador." La única diferencia con el modo voluntario es que no hay navegación (ni menú ni enlaces) y se muestra el texto "Por seguridad, cambia esta contraseña antes de continuar."; al terminar → `/panel` con aviso de éxito.
 
 ### 3.9 Sin permiso — `/sin-permiso`
 
@@ -200,7 +201,7 @@
 ### e. Cambiar contraseña
 
 - Éxito: "Contraseña cambiada. La próxima vez que entres, usa la nueva." (modos obligatorio y normal) y vuelve al panel.
-- Errores: la actual no es correcta ("Tu contraseña actual no coincide. Vuelve a escribirla."), la nueva no cumple un requisito (el checklist lo señala en rojo, con texto que nombra el requisito, no un texto genérico).
+- Errores: la actual no es correcta ("Tu contraseña actual no coincide. Vuelve a escribirla.") — se aplica igual en modo obligatorio (la contraseña temporal del administrador es aquí la "actual"); la nueva no cumple un requisito (el checklist lo señala en rojo, con texto que nombra el requisito, no un texto genérico).
 
 ### g. Auditoría (§3.10)
 
