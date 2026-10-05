@@ -184,6 +184,13 @@ type GuardTx interface {
 	InsertUser(ctx context.Context, user NewUser) (User, error)
 	InsertAdminAction(ctx context.Context, action audit.Action) (AdminAction, error)
 	UpdateUser(ctx context.Context, update UserUpdate) (User, error)
+	// GetUserByID, UpdateUserPassword y SetUserMustChangePassword las usa la
+	// gestión de cuentas (T232/T233): leer la cuenta dentro del lock y escribir
+	// la contraseña y su obligación de cambio en la misma transacción que su
+	// registro.
+	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	UpdateUserPassword(ctx context.Context, id uuid.UUID, passwordHash string) error
+	SetUserMustChangePassword(ctx context.Context, id uuid.UUID, must bool) error
 }
 
 // WithAdminGuard ejecuta la mutación dentro de una transacción serializada por

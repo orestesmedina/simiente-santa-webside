@@ -121,6 +121,16 @@ func (f *fakeInitRepo) UpdateUser(context.Context, UserUpdate) (User, error) {
 	return User{}, nil
 }
 
+// GetUserByID, UpdateUserPassword y SetUserMustChangePassword completan GuardTx;
+// la inicialización no las usa (T232/T233).
+func (f *fakeInitRepo) GetUserByID(context.Context, uuid.UUID) (User, error) {
+	return User{}, nil
+}
+
+func (f *fakeInitRepo) UpdateUserPassword(context.Context, uuid.UUID, string) error { return nil }
+
+func (f *fakeInitRepo) SetUserMustChangePassword(context.Context, uuid.UUID, bool) error { return nil }
+
 // sampleCatalog devuelve los nueve permisos del catálogo fijo (FR-015).
 func sampleCatalog() []Permission {
 	codes := []string{
