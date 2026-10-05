@@ -85,17 +85,29 @@ func main() {
 		Repository: repo,
 		Logger:     appLog,
 	})
+	// Gestión de cuentas (T231–T234): reutiliza el mismo repositorio, el Store
+	// de sesiones (revocación al desactivar/restablecer) y el servicio de
+	// auditoría (registro best-effort de los fallos).
+	userSvc := usuarios.NewUserService(usuarios.UserServiceDeps{
+		Repository: repo,
+		Sessions:   sessions,
+		Audit:      auditSvc,
+		Logger:     appLog,
+	})
+
+	handler := usuarios.NewHandler(usuarios.HandlerDeps{
+		Access:     authSvc,
+		Setup:      initSvc,
+		Users:      userSvc,
+		SetupToken: cfg.BootstrapToken,
+		Logger:     appLog,
+	})
 
 	appLog.Info("api arrancando", "env", cfg.AppEnv, "port", cfg.HTTPPort)
 
 	deps := apiDeps{
-		statusRepo: status.NewRepository(pool),
-		authHandler: usuarios.NewHandler(usuarios.HandlerDeps{
-			Access:     authSvc,
-			Setup:      initSvc,
-			SetupToken: cfg.BootstrapToken,
-			Logger:     appLog,
-		}),
+		statusRepo:  status.NewRepository(pool),
+		authHandler: handler,
 		public: usuarios.PublicDeps{
 			// Rate-limit por IP de la superficie pública escribible (P17):
 			// POST /auth/login y POST /setup/initialize.
@@ -120,9 +132,9 @@ func main() {
 				CSRFSecret: cfg.SessionSecret,
 				Logger:     appLog,
 			},
-			// Los handlers de panel llegan en T234/T237/T238; el grupo ya queda
-			// montado con su cadena y su guard.
-			Routes: nil,
+			// Las rutas de cuentas (T234) ya se publican desde este handler; las
+			// de roles y auditoría llegan en T237/T238/T240.
+			Handler: handler,
 		},
 	}
 

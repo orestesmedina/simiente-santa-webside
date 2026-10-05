@@ -62,6 +62,7 @@ type SetupService interface {
 type Handler struct {
 	access     AccessService
 	setup      SetupService
+	users      UsersService
 	setupToken string
 	logger     *slog.Logger
 }
@@ -75,6 +76,9 @@ type HandlerDeps struct {
 	// Setup es el servicio de inicialización única. Opcional: si es nil, la ruta
 	// /api/v1/setup/initialize no se publica.
 	Setup SetupService
+	// Users es el servicio de gestión de cuentas. Opcional: si es nil, las rutas
+	// /api/v1/admin/usuarios* no se publican (T234).
+	Users UsersService
 	// SetupToken es el valor esperado de la cabecera X-Setup-Token
 	// (BOOTSTRAP_TOKEN). Nunca se registra ni se devuelve (RG13).
 	SetupToken string
@@ -92,6 +96,7 @@ func NewHandler(deps HandlerDeps) *Handler {
 	return &Handler{
 		access:     deps.Access,
 		setup:      deps.Setup,
+		users:      deps.Users,
 		setupToken: deps.SetupToken,
 		logger:     logger,
 	}

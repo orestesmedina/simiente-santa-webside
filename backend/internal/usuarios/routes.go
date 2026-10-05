@@ -40,8 +40,13 @@ type AdminDeps struct {
 	// Deps son las dependencias de la cadena del panel, que arma
 	// middleware.AdminChain en el orden aprobado.
 	Deps middleware.AdminDeps
-	// Routes publica las rutas de administración dentro del grupo ya protegido.
-	// T234/T237/T238 las añaden; puede ser nil mientras no existan.
+	// Handler trae los servicios de panel. Si no es nil, RegisterAdmin publica
+	// las rutas de cuentas (T234); T237/T238/T240 añadirán las de roles y
+	// auditoría.
+	Handler *Handler
+	// Routes publica rutas adicionales dentro del grupo ya protegido. Se
+	// mantiene como punto de extensión para las pruebas y las rutas futuras;
+	// puede ser nil.
 	Routes func(httpserver.Registrar)
 }
 
@@ -77,4 +82,7 @@ func RegisterAdmin(root httpserver.Registrar, deps AdminDeps) {
 	if deps.Routes != nil {
 		deps.Routes(group)
 	}
+	// Rutas de gestión de cuentas (T234). RegisterUserRoutes no publica ninguna
+	// operación de borrado: las cuentas nunca se eliminan (FR-013).
+	RegisterUserRoutes(group, deps.Handler)
 }
