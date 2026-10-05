@@ -54,7 +54,7 @@ Redis:       sess:<sha256(token)>      → sesión (TTL 30 min, vida absoluta 1 
 | `login_events` | `internal/usuarios` (auditoría) | FR-022, FR-025, FR-026 |
 | `admin_actions` | `internal/usuarios` (auditoría) | FR-023, FR-025, FR-026 |
 | Redis: `sess:*` / `user_sessions:*` | `internal/platform/session` (implementación Redis de `session.Store`) | FR-001, FR-004, FR-005, FR-012 |
-| Redis: `login:fail:*` / `login:block:*` | `internal/usuarios` | FR-006 (solo el **contador de bloqueo**, efímero) |
+| Redis: `login:fail:*` / `login:block:*` | **mecanismo** en `internal/platform/session` (throttle sobre el `Store` de Redis) · **semántica y constantes** (`maxFailedAttempts = 5`, `lockoutDuration = 15 min`) en el dominio `internal/usuarios` | FR-006 (solo el **contador de bloqueo**, efímero) |
 
 ## Migraciones
 
@@ -70,6 +70,8 @@ CREATE TABLE permissions (
 );
 
 -- Catálogo fijo de FR-015: módulos del producto + administración de usuarios y roles.
+-- Los `code` son los identificadores estables del catálogo (los usan el contrato y `AuthzByModule`);
+-- `admin_usuarios_roles` es "el permiso de administrar usuarios y roles" de la spec (FR-015/FR-016/FR-024).
 -- Los de F3–F9 quedan reservados: existen pero no dan acceso a nada hasta que se construyan.
 INSERT INTO permissions (code, label) VALUES
     ('portada',             'Portada e información general'),
@@ -166,7 +168,7 @@ Notas:
   (nombre) y `last_name` (apellidos) son **campos obligatorios separados**, `email` es la
   identificación de acceso y `phone` es **obligatorio** con formato telefónico razonable (FR-009:
   dígitos con espacios, guiones o paréntesis, prefijo internacional opcional y ≥ 7 dígitos). No hay
-  documento de identidad: el riesgo R3 del plan queda **cerrado**.
+  documento de identidad: el riesgo RG3 del plan queda **cerrado**.
 - `password_hash` guarda el hash **bcrypt** (nunca la contraseña, §IV); ningún DTO de salida incluye
   este campo (FR-003).
 - `must_change_password = true` cuando un administrador define/restablece la contraseña (US3 esc. 6,
@@ -268,6 +270,14 @@ Notas de las tablas de auditoría:
   cuándo (la acción `user.password_reset` no lleva ningún valor de contraseña). Tampoco se guarda
   el correo de un intento **no identificado**: solo `user_id` cuando la cuenta existe (mínimo dato
   necesario; los correos inventados no dejan "cuentas fantasma" ni datos de terceros en el registro).
+- **Nombres y correos del contrato: derivados, nunca guardados (F-01)**: `userName`/`userEmail`
+  (`AccessEventItem`) y `actorName`/`actorEmail` (`AdminActionItem`) se resuelven con un
+  `LEFT JOIN users` al consultar (`ListLoginEvents`/`ListAdminActions`): el nombre es
+  `firstName lastName` y el correo es el `users.email` actual. **No hay columnas de nombre ni de
+  correo en las tablas del registro**: no se duplica el dato (solo `target_label` captura la
+  etiqueta del momento). Cuando el intento no se asoció a ninguna cuenta (correo inexistente), esos
+  campos son `NULL` y **no se guarda ni se muestra el correo probado** (FR-026): la interfaz
+  muestra **"Intento sin cuenta asociada"**.
 - **IP de origen**: texto de la dirección del par (`net.SplitHostPort(r.RemoteAddr)`), IPv4 o IPv6
   (longitud 3–45). No se lee `X-Forwarded-For` porque no hay proxy documentado en el MVP; si algún
   día lo hay, será una decisión nueva (ahora mismo se registraría la IP del proxy).
@@ -298,10 +308,12 @@ Notas de las tablas de auditoría:
 - **Decisión**: `users.last_login_at` (fecha y hora) y `users.last_login_ip` (origen) son dos
   columnas **anulables** actualizadas **solo por el login exitoso**, en el mismo paso que inserta la
   fila en `login_events`. Una cuenta que nunca ha iniciado sesión las tiene en `NULL` y la ficha lo
-  indica sin inventar ningún acceso (US8 esc. 6).
+  indica sin inventar ningún acceso (US8 esc. 6). La **ficha** de la cuenta es su
+  **detalle/edición** (`GET /admin/usuarios/{id}` → `UserItem`): la UI muestra
+  `lastLoginAt`/`lastLoginIp` ahí **y** en la fila del listado (`GET /admin/usuarios`).
 - **Por qué columnas y no derivado del historial**: la ficha (`GET /admin/usuarios/{id}`) y el
   listado muestran el último acceso sin una subconsulta sobre una tabla que crece sin límite; y si
-  algún día hay una política de retención/purga del registro (hoy fuera de alcance, riesgo R17 del
+  algún día hay una política de retención/purga del registro (hoy fuera de alcance, riesgo RG17 del
   plan), el último acceso de la ficha **debe seguir mostrándose**. El coste son dos columnas y un
   `UPDATE` puntual por login exitoso.
 - **Alternativa descartada**: derivarlo de `login_events` con
@@ -321,14 +333,17 @@ Quedan **fuera de PostgreSQL** la sesión y los contadores de FR-006: `sessions`
 `research.md` R1/R5). El contrato con Redis se documenta aquí porque es parte del modelo de datos
 aunque viva fuera de la base relacional. Cliente: `github.com/redis/go-redis/v9` (justificado en
 `research.md` R16); la interfaz `session.Store` y su implementación viven en
-`internal/platform/session`, y los contadores de acceso se manejan desde el dominio `usuarios`.
+`internal/platform/session`, y los contadores de acceso se manejan con ese mismo `Store`/throttle desde
+`internal/platform/session`, mientras que su **semántica y sus constantes** (5 fallos / 15 min) las
+decide el dominio `usuarios` (reparto F-13: el mecanismo efímero vive en el plumbing, la regla de
+negocio en el dominio).
 
 | Clave | Tipo | Valor | TTL | Para qué |
 |---|---|---|---|---|
 | `sess:<sha256(token)>` | string | JSON: `userId`, `createdAt`, `lastSeenAt`, `absoluteExpiresAt` | **30 min de inactividad**, refrescado en cada actividad y acotado a la vida absoluta (`min(30 min, absoluteExpiresAt - now)`) | Sesión de la cookie `ss_session` (FR-001/FR-005). El token en claro **nunca** se guarda |
 | `user_sessions:<userId>` | set | hashes de token de las sesiones abiertas (la clave `sess:*` se reconstruye con `sess:<hash>`) | ≤ 1 h (vida absoluta) | Revocar **todas** las sesiones de una cuenta al desactivarla o al definir/restablecer su contraseña (FR-012, R17), sin `SCAN` |
-| `login:fail:<identificador>` | string (contador) | número de fallos consecutivos | 15 min | FR-006: `INCR` por fallo, `DEL` al entrar bien; con 5 fallos se crea la bandera de bloqueo |
-| `login:block:<identificador>` | string (bandera) | `"1"` | 15 min (la crea el 5.º fallo) | Bloqueo vigente → `429` con `Retry-After` = TTL restante |
+| `login:fail:<identificador>` | string (contador) | número de fallos consecutivos | 15 min | FR-006: `INCR` por **cada** fallo, `DEL` al entrar bien; el **5.º fallo** crea la bandera de bloqueo (y aún responde el `401` genérico) |
+| `login:block:<identificador>` | string (bandera) | `"1"` | 15 min (la crea el 5.º fallo) | Con la bandera vigente, **desde el 6.º intento** cada intento responde `429` con `Retry-After` = TTL restante |
 
 Notas:
 
@@ -336,6 +351,10 @@ Notas:
   comportamiento del bloqueo (mensaje, código y tiempos) es idéntico en ambos casos y por eso no
   revela existencia (FR-003/SC-008, `research.md` R5). Los valores **5 intentos** y **15 minutos**
   siguen siendo constantes de código (confirmados por el humano el 2026-10-04).
+- **Semántica del 5.º intento (FR-006)**: el contador se incrementa con **cada** fallo; el **5.º
+  fallo** responde el error genérico `401` **y crea el bloqueo** (bandera `login:block:*`); desde el
+  **6.º intento** —y durante los 15 minutos— cada intento responde `429` con el mensaje de bloqueo y
+  `Retry-After`. Pasados los 15 min se puede volver a intentar.
 - **Vida absoluta de 1 h + inactividad de 30 min** (confirmadas el 2026-10-04, `research.md` R15):
   la vida absoluta no se implementa con TTL sino con `absoluteExpiresAt` **inmóvil** dentro del
   valor de la sesión; el TTL de la clave es siempre el de inactividad, acotado al tiempo que quede
@@ -346,7 +365,7 @@ Notas:
 - Redis guarda **estado efímero y sin persistencia** (confirmado por el humano el 2026-10-04): el
   servicio `redis` de `docker-compose.yml` corre **sin `appendonly`, sin `save` y sin volumen**. Un
   reinicio solo obliga a volver a iniciar sesión y reinicia los contadores de intentos (riesgo
-  aceptado, R16 del plan; `research.md` R21); **no toca la auditoría**, que vive en PostgreSQL.
+  aceptado, RG16 del plan; `research.md` R21); **no toca la auditoría**, que vive en PostgreSQL.
 
 ### Relación Redis ↔ PostgreSQL (contadores vs. auditoría)
 
@@ -356,7 +375,7 @@ Son dos responsabilidades distintas y **no se solapan** (decisión del cambio de
 | | **Redis** (estado efímero) | **PostgreSQL** (registro duradero) |
 |---|---|---|
 | Qué guarda | Sesiones (`sess:*`, `user_sessions:*`) y **contadores de bloqueo** de FR-006 (`login:fail:*`, `login:block:*`) | **Auditoría**: `login_events` (cada intento de acceso) y `admin_actions` (cada acción administrativa) |
-| Cuánto dura | TTL 15 min (contadores) / 30 min + vida absoluta 1 h (sesiones) | Indefinido en el MVP: sin purga ni retención (Out of Scope; riesgo R17 del plan) |
+| Cuánto dura | TTL 15 min (contadores) / 30 min + vida absoluta 1 h (sesiones) | Indefinido en el MVP: sin purga ni retención (Out of Scope; riesgo RG17 del plan) |
 | Para qué | Aplicar **ahora** el bloqueo de 5 intentos / 15 min y mantener la sesión | Responder **después** qué pasó, quién, desde dónde y cuándo (US8, FR-021…FR-025) |
 | Si se pierde | Reinicio de Redis: se reabre la ventana de intentos y hay que volver a entrar | No se pierde: es la fuente duradera |
 
@@ -376,7 +395,7 @@ Todas parametrizadas, sin `SELECT *`, con `ORDER BY` determinista y `LIMIT`/`OFF
 | `users.sql` | `InsertUser`, `GetUserByID`, `GetUserByEmail`, `GetUserAuthByEmail` (correo + hash + estado + rol + permisos, para login/`authn`), `ListUsers` (con `total` aparte), `CountUsers`, `UpdateUser` (nombre, apellidos, correo, teléfono, rol, activo), `UpdateUserPassword`, `SetUserMustChangePassword`, `UpdateUserLastLogin` (`last_login_at`/`last_login_ip`, solo por login exitoso — FR-021), `CountActiveAdmins` (recuento **post-mutación** para FR-008), `CountUsersByRole` |
 | `roles.sql` | `InsertRole`, `GetRoleByID`, `GetRoleByNameLower`, `ListRoles` (+ `CountRoles`), `UpdateRoleName`, `DeleteRolePermissions`, `InsertRolePermission`, `DeleteRole`, `CountRoleUsers` |
 | `permissions.sql` | `ListPermissions` (catálogo), `GetPermissionIDsByCodes` (para crear/editar roles) |
-| `audit.sql` | `InsertLoginEvent`, `ListLoginEvents` (+ `CountLoginEvents`, filtros `userId`/`from`/`to`), `InsertAdminAction`, `ListAdminActions` (+ `CountAdminActions`, filtros por cuenta involucrada `actor OR target` y rango de fechas). **Sin `UPDATE`/`DELETE`**: el registro es de solo inserción (FR-025) |
+| `audit.sql` | `InsertLoginEvent`, `ListLoginEvents` (+ `CountLoginEvents`, filtros `userId`/`from`/`to`, con `LEFT JOIN users` para derivar `userEmail`/`userName`), `InsertAdminAction`, `ListAdminActions` (+ `CountAdminActions`, filtros por cuenta involucrada `actor OR target` y rango de fechas, con `LEFT JOIN users` para derivar `actorEmail`/`actorName`). **Sin `UPDATE`/`DELETE`**: el registro es de solo inserción (FR-025) |
 
 **No hay `sessions.sql` ni contadores de intentos en sqlc**: la sesión y el bloqueo de FR-006 viven
 en Redis (sección anterior; interfaz `session.Store` en `internal/platform/session` y contadores en
@@ -402,7 +421,7 @@ dentro de lo que D-A3 permite (SQL normal dentro del repository; **no** es un st
 | Nombre de rol único normalizado (Q5) | Service (mensaje claro) | `UNIQUE (lower(name))` |
 | Siempre ≥1 cuenta activa con `admin_usuarios_roles` (FR-008) | Service, transacción + advisory lock | Índice parcial `users_is_active_idx` |
 | Inicialización única (FR-007) | Service, transacción + advisory lock + `users` vacío | — (la transacción serializada lo garantiza) |
-| Bloqueo 5 intentos / 15 min (FR-006) | Service (contadores `login:fail:*` / `login:block:*` en Redis) | TTL de 15 min + clave por identificador normalizado (exista o no la cuenta) |
+| Bloqueo 5 intentos / 15 min (FR-006) | Service (contadores `login:fail:*` / `login:block:*` en Redis; mecanismo en `platform/session`, constantes en el dominio) | TTL de 15 min + clave por identificador normalizado (exista o no la cuenta). El **5.º fallo** crea el bloqueo y aún responde `401`; **desde el 6.º** intento → `429` |
 | Sesión válida solo con cuenta activa (FR-012) | `authn` en **cada petición** + revocación de claves al desactivar (`user_sessions:*`) | TTL de inactividad + `absoluteExpiresAt` inmóvil en Redis |
 | Todo intento de acceso queda en `login_events` (FR-022), asociado a la cuenta solo si existe | Service (`service_auth.go`, los cuatro desenlaces: éxito, fallo, cuenta inactiva, bloqueo) | `user_id` anulable con FK; sin columna de correo para intentos no identificados |
 | Toda acción administrativa sensible queda en `admin_actions`, también si falla o se deniega (FR-023) | Service (éxito y fallo de negocio) + `handler` (JSON inválido/validación) + `authz` (denegación) — P20 del plan | `result` con `success`/`failure`/`denied`; `CHECK` de acción/actor |

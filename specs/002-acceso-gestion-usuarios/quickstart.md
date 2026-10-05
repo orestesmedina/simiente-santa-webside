@@ -163,12 +163,13 @@ ni nombre de rol casi duplicado (SC-011).
 ## 8. Bloqueo por intentos y superficie pública (FR-006, FR-003, SC-008, SC-011)
 
 ```bash
-for i in 1 2 3 4 5; do
+for i in 1 2 3 4 5 6; do
   curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8080/api/v1/auth/login \
     -H "Content-Type: application/json" \
     -d '{"email":"carlos@ejemplo.com","password":"incorrecta"}'
 done
-# 401 401 401 401 429   ← el 5.º intento ya bloquea
+# 401 401 401 401 401 429   ← el 5.º fallo crea el bloqueo (responde el 401 genérico);
+#                              el 6.º intento ya responde 429
 curl -i -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"carlos@ejemplo.com","password":"correcta_incluso"}'   # 429 durante 15 min
@@ -199,23 +200,26 @@ servidor verifica todo).
 ## 10. Auditoría: registro de accesos y de acciones (FR-021…FR-026, US8, SC-012, SC-013)
 
 Genera primero actividad con las cuentas de las secciones anteriores: un login correcto de Ana, un
-login de Carlos con contraseña incorrecta, un login contra `nadie@ejemplo.com`, los 5 intentos de §8
-(bloqueo) y varias acciones de gestión (crear una cuenta, editarla, desactivarla, reactivarla,
+login de Carlos con contraseña incorrecta, un login contra `nadie@ejemplo.com`, los intentos de §8
+(el 5.º crea el bloqueo y el 6.º recibe `429`) y varias acciones de gestión (crear una cuenta, editarla, desactivarla, reactivarla,
 restablecer su contraseña, crear un rol, editar sus permisos, eliminar un rol sin uso).
 
 1. **Historial de accesos** (solo lectura):
 
    ```bash
    curl -i -b /tmp/f2-cookies.txt "http://localhost:8080/api/v1/admin/auditoria/accesos?limit=20&offset=0"
-   # → items con createdAt, result (success/failure), ip, userId y userEmail
+   # → items con createdAt, result (success/failure), ip, userId, userEmail y userName
+   #   (userEmail/userName se derivan por JOIN con users cuando hay cuenta asociada)
 
    curl -i -b /tmp/f2-cookies.txt "http://localhost:8080/api/v1/admin/auditoria/accesos?userId=<id-de-carlos>&from=2026-10-01T00:00:00Z&to=2026-10-05T00:00:00Z"
    # → solo los intentos de Carlos en el rango [from, to)
    ```
 
    Los intentos con contraseña incorrecta y los hechos durante el bloqueo aparecen como `failure`;
-   el intento contra `nadie@ejemplo.com` aparece con `userId: null` y `userEmail: null`, **sin
-   asociarse a ninguna cuenta** y sin crear nada (US8 esc. 7): comprueba en `GET /admin/usuarios`
+   el intento contra `nadie@ejemplo.com` aparece con `userId: null`, `userEmail: null` y
+   `userName: null`, **sin asociarse a ninguna cuenta** y sin crear nada (US8 esc. 7): **su correo
+   no se guarda ni se muestra** (F-01/FR-026) — la UI indica "Intento sin cuenta asociada" —.
+   Comprueba en `GET /admin/usuarios`
    que no hay ninguna cuenta "fantasma".
 
 2. **Historial de acciones administrativas**:
@@ -224,7 +228,8 @@ restablecer su contraseña, crear un rol, editar sus permisos, eliminar un rol s
    curl -i -b /tmp/f2-cookies.txt "http://localhost:8080/api/v1/admin/auditoria/acciones?limit=20&offset=0"
    ```
 
-   Cada fila dice quién (`actorId`/`actorEmail`), qué (`action`), sobre qué (`targetKind`,
+   Cada fila dice quién (`actorId`/`actorEmail`/`actorName`, derivados por `JOIN` con `users`),
+   qué (`action`), sobre qué (`targetKind`,
    `targetId`, `targetLabel`), cuándo (`createdAt`) y con qué resultado (US8 esc. 8). Comprueba:
 
    - la **inicialización** de §1 aparece como `user.create` **sin actor** (FR-007: cuenta como
@@ -244,7 +249,8 @@ restablecer su contraseña, crear un rol, editar sus permisos, eliminar un rol s
    1 minuto (SC-012).
 
 4. **Último acceso** (FR-021, US8 esc. 6): `GET /api/v1/admin/usuarios/{id}` de Ana →
-   `lastLoginAt`/`lastLoginIp` de su último acceso **exitoso**; el de una cuenta creada y nunca
+   `lastLoginAt`/`lastLoginIp` de su último acceso **exitoso** (la **ficha** es el detalle/edición de
+   la cuenta; el listado también muestra el último acceso en cada fila); el de una cuenta creada y nunca
    usada → `null` (la ficha indica "aún no ha iniciado sesión", sin inventar ninguna fecha). Un
    login fallido no lo mueve.
 
@@ -267,7 +273,7 @@ go test ./...                          # unitarias (service, handler, platform, 
 go test -tags=integration ./...        # integración: PostgreSQL real + Redis (testcontainers, ver abajo)
 npm test -- --run                      # frontend (Vitest + Testing Library + MSW)
 make e2e                               # Playwright: frontend/e2e/acceso.spec.ts + auditoria.spec.ts
-make ci                                # lint + pruebas + migraciones + govulncheck + npm audit
+make ci                                # lint + test + security (govulncheck + npm audit); db-migrate es aparte (§0)
 ```
 
 Las pruebas de integración necesitan **Docker** (que ya lo requiere `make up`): levantan Redis
@@ -278,7 +284,7 @@ GitHub Actions tienen Docker disponible.
 
 El e2e recorre el camino completo: inicializar → login → crear rol → crear cuenta → entrar con ella
 (contraseña forzada) → ver solo sus módulos → cambiar contraseña → desactivarla → acceso cortado →
-5 intentos fallidos → bloqueo. Cubre SC-002, SC-005, SC-006, SC-007, SC-010 y SC-011. El e2e de
+intentos fallidos (el 5.º crea el bloqueo, el 6.º recibe `429`). Cubre SC-002, SC-005, SC-006, SC-007, SC-010 y SC-011. El e2e de
 auditoría (`auditoria.spec.ts`) genera accesos y acciones y recorre la sección de registro: ambos
 historiales, filtros por cuenta y rango de fechas, paginación, último acceso en la ficha, intento
 fallido sin cuenta asociada y registro sin controles de edición (cubre SC-012 y SC-013, ver §10).

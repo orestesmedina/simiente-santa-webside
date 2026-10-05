@@ -4,7 +4,9 @@
 2026-10-04; **cambio de alcance: auditoría** re-aprobado el 2026-10-04 — US8, FR-021…FR-026)
 
 Formato: Decisión / Justificación / Alternativas consideradas. Cierra además las preguntas abiertas
-2–5 de `docs/tecnico/decisiones.md` (D-A7, chi, `platform/validate`, tipos UUID). **R1–R4 aterrizan
+2–5 de `docs/tecnico/decisiones.md` (D-A7, chi, `platform/validate`, tipos UUID). **Numeración**:
+las decisiones de este documento son **R1–R23**; la tabla de Riesgos de `plan.md` usa **RG1–RG19**
+para que las dos numeraciones no colisionen. **R1–R4 aterrizan
 D-A7, CONFIRMADA por el humano el 2026-10-04** con un cambio explícito: **la sesión vive en Redis**
 (no en PostgreSQL). Ese día confirmó además los tiempos de sesión (R15: vida absoluta 1 h +
 inactividad 30 min) y los datos de la cuenta (nombre, apellidos, correo y teléfono; reflejados en
@@ -44,7 +46,7 @@ día): Redis **sin persistencia** confirmado, tablas duraderas del registro y su
   - *Tabla PostgreSQL `sessions`* (la propuesta original de D-A7): **descartada por la decisión
     explícita del humano el 2026-10-04 de vivir en Redis**. Sus ventajas quedan registradas para el
     plan B: cero servicios nuevos, transaccional con `users`, durabilidad y revisión por SQL. Es la
-    opción a la que se volvería si Redis no fuera viable (ver riesgo R15/R16 del plan).
+    opción a la que se volvería si Redis no fuera viable (ver riesgo RG15/RG16 del plan).
   - *JWT autocontenido en cookie*: rechazado (y ya lo estaba en D-A7) — revocación al desactivar
     forzada con lista negra; más superficie (algoritmo, expiración, refresco) para el mismo
     resultado.
@@ -123,11 +125,15 @@ día): Redis **sin persistencia** confirmado, tablas duraderas del registro y su
   es **autodescriptivo** (`$2a$…`), de modo que un futuro paso a argon2id no rompe nada: se
   re-hashea al verificar/autenticar. Cost 12 ≈ 250 ms por verificación: cómodo para el usuario y
   caro para la prueba masiva de contraseñas (se combina con el bloqueo de R5 y el rate-limit de R12).
-- **Política FR-010 (implementación)**: longitud **8–64 caracteres y ≤ 72 bytes** (límite duro de
-  bcrypt: rechaza entradas mayores de 72 bytes — por eso la validación lo advierte antes), al menos
-  una mayúscula, una minúscula, un número y un carácter especial, y **distinta del nombre, de los
-  apellidos y del correo** comparada de forma normalizada (trim + minúsculas). El error identifica
-  el requisito incumplido (`details.newPassword`).
+- **Política FR-010 (implementación)**: longitud **entre 8 y 64 caracteres** (el tope del contrato
+  es `maxLength: 64` en **todos** los campos de contraseña), al menos una mayúscula, una minúscula,
+  un número y un carácter especial, y **distinta de** —igualdad con comparación normalizada
+  (trim + minúsculas), **no de contenido**: la contraseña puede contener esos datos; lo que se
+  rechaza es que sea **igual** a cualquiera de ellos— el nombre, los apellidos y el correo. El error
+  identifica el requisito incumplido (`details.newPassword`). El límite duro de bcrypt (72 bytes) se
+  mantiene solo como **comprobación técnica** (solo puede chocar con contraseñas de 64 caracteres
+  *multi-byte*) y se rechaza con mensaje claro; no forma parte de la política que ve la persona ni
+  del contrato.
 - **Alternativas consideradas**:
   - *argon2id*: válida por §IV y más resistente a GPU/ASIC, pero añade parámetros que afinar
     (memoria, iteraciones, paralelismo) sin una necesidad hoy; además usa **la misma** dependencia.
@@ -135,7 +141,8 @@ día): Redis **sin persistencia** confirmado, tablas duraderas del registro y su
   - *pbkdf2/scrypt de la stdlib*: rechazado — §IV dice literalmente bcrypt o argon2.
   - *Un hash "propio" (SHA-256 + sal)*: rechazado — viola §IV y es criptográficamente insuficiente
     (rápido de fuerza bruta).
-- **Constantes de código**: `bcryptCost = 12`, longitud 8–64 caracteres, 72 bytes. No se pasan por
+- **Constantes de código**: `bcryptCost = 12`, longitud **8–64 caracteres** (el límite de 72 bytes
+  de bcrypt solo como comprobación técnica). No se pasan por
   variables de entorno: son exigencias de la política confirmada por el humano (2026-10-04), no
   ajustes operativos.
 
@@ -144,12 +151,14 @@ día): Redis **sin persistencia** confirmado, tablas duraderas del registro y su
 - **Decisión**: los contadores viven en **Redis**, con una entrada **por identificador normalizado
   (el correo), exista o no la cuenta**. Dos claves: `login:fail:<identificador>` (contador que se
   incrementa con `INCR` en cada fallo, TTL 15 min) y `login:block:<identificador>` (bandera de
-  bloqueo con TTL 15 min, creada al llegar a **5** fallos). Si hay bloqueo vigente, la respuesta es
-  `429 rate_limited` con el mensaje de bloqueo y `Retry-After` = TTL restante; si no, la respuesta
-  es siempre el mismo `401 unauthenticated` genérico. Un inicio de sesión correcto borra las dos
-  claves; el bloqueo vencido lo borra el propio TTL (sin limpieza manual). Los valores **5** y
-  **15 minutos** siguen siendo **constantes de código** (`maxFailedAttempts`, `lockoutDuration`)
-  porque el humano los confirmó el 2026-10-04.
+  bloqueo con TTL 15 min, creada por el **5.º** fallo). **Semántica del 5.º intento (FR-006)**: el
+  contador se incrementa con **cada** fallo; el **5.º fallo** responde el error genérico `401
+  unauthenticated` **y crea el bloqueo**; desde el **6.º intento** —y durante esos 15 minutos— cada
+  intento responde `429 rate_limited` con el mensaje de bloqueo y `Retry-After` = TTL restante.
+  Fuera de bloqueo, la respuesta es siempre el mismo `401` genérico. Un inicio de sesión correcto
+  borra las dos claves; el bloqueo vencido lo borra el propio TTL (sin limpieza manual). Los
+  valores **5** y **15 minutos** siguen siendo **constantes de código** (`maxFailedAttempts`,
+  `lockoutDuration`) porque el humano los confirmó el 2026-10-04.
 - **Justificación**: FR-006 pide bloquear tras 5 intentos y FR-003/SC-008 piden que ningún mensaje
   revele si la cuenta existe. Si el contador viviera solo en `users`, el mensaje de bloqueo
   **solo** aparecería para cuentas reales → enumeración garantizada. Contando por identificador
@@ -167,9 +176,10 @@ día): Redis **sin persistencia** confirmado, tablas duraderas del registro y su
     por IP como única medida* (no frena la prueba masiva de contraseñas contra **una** cuenta desde
     una IP); *bloqueo permanente hasta intervención de un administrador* (no lo pide la spec y
     bloquea al usuario legítimo).
-- **Mensajes** (siempre en español, sin datos internos): intentos 1–4 → *"Correo o contraseña
-  incorrectos"* (genérico); desde el 5.º y durante el bloqueo → *"Demasiados intentos fallidos. El
-  acceso queda bloqueado temporalmente durante 15 minutos"*, con `Retry-After` en segundos.
+- **Mensajes** (siempre en español, sin datos internos): intentos 1–5 → *"Correo o contraseña
+  incorrectos"* (genérico; el 5.º crea el bloqueo pero recibe este mismo error); desde el 6.º
+  intento y durante el bloqueo → *"Demasiados intentos fallidos. El acceso queda bloqueado
+  temporalmente durante 15 minutos"*, con `Retry-After` en segundos.
 - **Riesgo registrado**: si Redis se reinicia sin persistencia, se pierden los contadores (y las
   sesiones, que solo obligan a volver a entrar). Un atacante no puede forzar ese reinicio, así que
   la pérdida es aceptable; **la persistencia de Redis queda descartada a propósito** (sin
@@ -201,7 +211,7 @@ día): Redis **sin persistencia** confirmado, tablas duraderas del registro y su
   §IV CWE-798); primera cuenta auto-registrable con un código por correo (rechazada: no hay servicio
   de correo en el MVP y la spec prohíbe el auto-servicio).
 - **Operativa**: `BOOTSTRAP_TOKEN` se documenta en `.env.example` (valor de ejemplo) y en
-  `quickstart.md` §1. Si el humano **no** quiere el token (R13 del plan), se retira esta única
+  `quickstart.md` §1. Si el humano **no** quiere el token (RG13 del plan), se retira esta única
   validación y queda el guard de `users` vacío + rate-limit.
 
 ## R7. Regla anti-bloqueo (FR-008) y sus carreras
@@ -307,8 +317,8 @@ día): Redis **sin persistencia** confirmado, tablas duraderas del registro y su
 - **Justificación**: D23/D-A9 fijaban este punto de decisión en "el primer endpoint público
   escribible" — ese momento ha llegado con F2 (login). El bloqueo por cuenta (R5) protege una
   cuenta; el rate-limit por IP amortigua la prueba masiva de contraseñas y el bombardeo del endpoint
-  de inicialización (DOS a bcrypt, R14 del plan).
-- **Limitación declarada**: en memoria no comparte umbrales entre instancias (R5 del plan). Hoy hay
+  de inicialización (DOS a bcrypt, RG14 del plan).
+- **Limitación declarada**: en memoria no comparte umbrales entre instancias (RG5 del plan). Hoy hay
   una instancia; si se escalase, la decisión se reabre en esa funcionalidad.
 - **Alternativas consideradas**: no hacerlo (dejaría el diferido sin decidir y el login sin
   amortiguación por IP); `golang.org/x/time/rate` (dependencia para ~40 líneas); Redis (servicio
@@ -442,14 +452,14 @@ llega al binario de producción). Todas pasan `govulncheck`/`npm audit` (§IV) e
 - **Consecuencias**: los tests de integración exigen Docker (ya lo exigía `make up`); el primer
   arranque descarga `redis:7-alpine` (~15 MB); si el runner no tuviera Docker o fallara la descarga
   de imágenes, la integración fallaría **sin** poder remediarse desde el CI — registrado como
-  riesgo R15 del plan.
+  riesgo RG15 del plan.
 
 ## R20. Datos de la cuenta: nombre, apellidos, correo y teléfono *(confirmados el 2026-10-04)*
 
 - **Decisión**: la cuenta del panel tiene **nombre** (`users.first_name`), **apellidos**
   (`users.last_name`), **correo** (`users.email`, identificación de acceso) y **teléfono**
   (`users.phone`); los cuatro obligatorios, con nombre y apellidos como campos separados. La spec
-  ya está actualizada (FR-009, FR-011 y el glosario) y esto cierra el riesgo R3 del plan
+  ya está actualizada (FR-009, FR-011 y el glosario) y esto cierra el riesgo RG3 del plan
   ("identificación" ambigua) y la duda sobre un eventual documento de identidad: **no hace falta**.
 - **Justificación**: son los datos que el equipo de la iglesia necesita para identificar a cada
   persona y contactarla; el teléfono se valida con un formato telefónico razonable (FR-009:
@@ -483,7 +493,7 @@ llega al binario de producción). Todas pasan `govulncheck`/`npm audit` (§IV) e
   que importa va a PostgreSQL—; guardar el registro de auditoría también en Redis (contradice
   FR-025: el registro debe sobrevivir reinicios y purgas de caché); un Redis con `maxmemory` y
   política de evicción (innecesario con este volumen; se reabre si crece).
-- **Estado**: confirmado por el humano el 2026-10-04. Aterrizado en el plan (P23, riesgo R16),
+- **Estado**: confirmado por el humano el 2026-10-04. Aterrizado en el plan (P23, riesgo RG16),
   `data-model.md` (sección Redis ↔ PostgreSQL) y `quickstart.md` §3 y §10.
 
 ## R22. Auditoría duradera: `login_events`, `admin_actions` y el último acceso por cuenta
@@ -514,7 +524,11 @@ llega al binario de producción). Todas pasan `govulncheck`/`npm audit` (§IV) e
   y **tampoco** el correo de un intento no identificado (evita "cuentas fantasma" y datos de
   terceros), ni *user-agent*, ni la IP de las acciones administrativas (no la pide la spec). La IP
   se toma de `RemoteAddr` (`net.SplitHostPort`); `X-Forwarded-For` queda fuera hasta que haya un
-  proxy documentado (decisión futura).
+  proxy documentado (decisión futura). Los nombres y correos que muestra el contrato
+  (`userName`/`userEmail` en los accesos, `actorName`/`actorEmail` en las acciones) se **derivan por
+  `JOIN` con `users`** al consultar —no se guardan como dato duplicado— y son `null` cuando no hay
+  cuenta asociada: en ese caso **no se guarda ni se muestra el correo probado** y la interfaz
+  muestra **"Intento sin cuenta asociada"**.
 - **Alternativas consideradas**: *una sola tabla `audit_log` polivalente* (campos según el tipo de
   evento: casi todo anulable y con `CHECK` frágiles; la spec distingue dos historiales con datos
   distintos); *log estructurado en archivos* (sin consultas ni filtros, difícil de paginar y de

@@ -58,10 +58,12 @@ info:
     | 403 | `forbidden` | sin el permiso del módulo, cuenta desactivada al iniciar sesión, o obligación de cambiar la contraseña |
     | 404 | `not_found` | cuenta o rol inexistente |
     | 409 | `conflict` | correo/nombre de rol duplicado, rol en uso, o operación que dejaría el panel sin administración |
-    | 429 | `rate_limited` | bloqueo por intentos fallidos (5 / 15 min) o rate-limit por IP |
+    | 429 | `rate_limited` | bloqueo por intentos fallidos (creado por el 5.º fallo; activo desde el 6.º intento) o rate-limit por IP |
 
     El sobre de error (`ErrorEnvelope`) y su registro de códigos son los del
-    documento vivo: este delta solo añade respuestas reutilizables.
+    documento vivo: este delta solo añade respuestas reutilizables. El `404`
+    `not_found` **se reutiliza** —es el mismo código que F1 define para rutas
+    inexistentes— para "cuenta/rol inexistente": no se añade ningún código nuevo.
   contact:
     name: Equipo del proyecto
 servers:
@@ -97,8 +99,11 @@ paths:
           `401` genérico y el mismo tiempo de respuesta (FR-003, SC-008).
         - Credenciales correctas con la cuenta desactivada → `403`
           (`access_disabled`), mensaje comprensible (US1 esc. 3).
-        - 5 intentos fallidos → `429 rate_limited` durante 15 minutos (FR-006),
-          con el mismo mensaje exista o no la cuenta.
+        - El contador de fallos se incrementa con **cada** intento fallido: el
+          **5.º fallo** responde este mismo `401` genérico y **crea el bloqueo**
+          temporal de 15 minutos; desde el **6.º intento** (y durante esos 15
+          minutos) la respuesta es `429 rate_limited` con `Retry-After`, con el
+          **mismo** mensaje exista o no la cuenta (FR-006).
       security: []
       requestBody:
         required: true
@@ -184,10 +189,11 @@ paths:
       summary: Cambiar mi propia contraseña
       description: |
         Cambio de contraseña de la cuenta iniciada (FR-020). Exige la contraseña
-        actual y una nueva que cumpla la política (FR-010): mínimo 8 caracteres,
-        con mayúsculas, minúsculas, números y caracteres especiales, y distinta
-        del nombre, de los apellidos y del correo. La nueva contraseña debe medir como máximo 64
-        caracteres y 72 bytes (límite de bcrypt). Revoca las demás sesiones de la
+        actual y una nueva que cumpla la política (FR-010): entre **8 y 64
+        caracteres**, con mayúsculas, minúsculas, números y caracteres
+        especiales, y **distinta de** (igualdad con comparación normalizada, no
+        de contenido: puede contener esos datos) el nombre, los apellidos y el
+        correo. Revoca las demás sesiones de la
         cuenta. Si la cuenta tenía `mustChangePassword`, queda resuelto (US7
         esc. 4). Requiere CSRF.
       requestBody:
@@ -591,9 +597,14 @@ paths:
       description: |
         Historial de **intentos de inicio de sesión** —exitosos y fallidos— con
         fecha y hora, resultado e IP de origen, asociado a la cuenta cuando se
-        pudo identificar (FR-022). Un intento con un correo que no corresponde a
-        ninguna cuenta aparece **sin cuenta asociada**, no crea nada y el mensaje
-        que vio esa persona nunca reveló si la cuenta existía (FR-003).
+        pudo identificar (FR-022). El nombre y el correo de la cuenta que se
+        muestran (`userName`, `userEmail`) se **derivan por `JOIN` con `users`**
+        cuando el intento se identificó con una cuenta; no son datos guardados
+        en el registro. Un intento con un correo que no corresponde a ninguna
+        cuenta aparece **sin cuenta asociada** (`userId`/`userEmail`/`userName`
+        en `null`): **no se guarda ni se muestra ese correo**, la interfaz indica
+        "Intento sin cuenta asociada", no se crea nada y el mensaje que vio esa
+        persona nunca reveló si la cuenta existía (FR-003).
 
         **Solo lectura** (FR-025): no existe ninguna operación de escritura sobre
         el registro; no se puede editar ni borrar por ninguna vía de la interfaz.
@@ -634,7 +645,10 @@ paths:
         Historial de **acciones administrativas sensibles de gestión** (FR-023):
         quién la hizo, qué hizo, sobre qué cuenta o rol, cuándo y con qué
         resultado —incluidos los intentos que no se completan y los denegados por
-        falta de permiso—. Cubre crear, editar, activar y desactivar cuentas,
+        falta de permiso—. El nombre y el correo de quien la hizo (`actorName`,
+        `actorEmail`) se **derivan por `JOIN` con `users`** cuando hay actor (no
+        se guardan como dato duplicado); en la inicialización del sistema son
+        `null`. Cubre crear, editar, activar y desactivar cuentas,
         restablecer contraseñas, crear, editar y eliminar roles, y la
         inicialización del sistema (que se registra como creación de cuenta sin
         actor). De un restablecimiento de contraseña solo queda quién lo hizo,
@@ -725,8 +739,11 @@ components:
         Filtra por cuenta (FR-024). En `/admin/auditoria/accesos`, la cuenta que
         intentó el acceso; en `/admin/auditoria/acciones`, la cuenta involucrada
         (la que hizo la acción **o** la cuenta sobre la que se hizo). Los
-        registros sin cuenta asociada (un intento contra un correo inexistente o
-        una inicialización) solo aparecen cuando **no** se envía este filtro.
+        registros que **no** tienen ninguna cuenta asociada (hoy: los intentos de
+        acceso contra un correo inexistente) solo aparecen cuando **no** se envía
+        este filtro. La **inicialización del sistema sí tiene cuenta asociada**
+        —su cuenta objetivo (`target_user_id`)—, de modo que aparece al filtrar
+        por esa cuenta.
       schema:
         type: string
         format: uuid
@@ -762,7 +779,7 @@ components:
         password:
           type: string
           format: password
-          maxLength: 72
+          maxLength: 64
           description: Contraseña en texto plano (solo viaja aquí; nunca se devuelve ni se guarda).
       additionalProperties: false
     SessionUser:
@@ -817,16 +834,17 @@ components:
         currentPassword:
           type: string
           format: password
-          maxLength: 72
+          maxLength: 64
         newPassword:
           type: string
           format: password
           minLength: 8
-          maxLength: 72
+          maxLength: 64
           description: |
-            Política FR-010: 8–64 caracteres y ≤72 bytes, con mayúsculas,
-            minúsculas, números y caracteres especiales, y distinta del nombre,
-            de los apellidos y del correo.
+            Política FR-010: entre 8 y 64 caracteres, con mayúsculas,
+            minúsculas, números y caracteres especiales, y **distinta de** (no
+            de contenido: se rechaza que sea **igual**, con comparación
+            normalizada) el nombre, los apellidos y el correo.
       additionalProperties: false
     PasswordChangedResponse:
       type: object
@@ -865,7 +883,7 @@ components:
           type: string
           format: password
           minLength: 8
-          maxLength: 72
+          maxLength: 64
           description: Contraseña del administrador inicial (misma política FR-010; no exige cambio al entrar).
       additionalProperties: false
     CreateUserInput:
@@ -903,7 +921,7 @@ components:
           type: string
           format: password
           minLength: 8
-          maxLength: 72
+          maxLength: 64
           description: Contraseña inicial definida por el administrador (FR-010); su titular debe cambiarla al entrar.
       additionalProperties: false
     UpdateUserInput:
@@ -946,7 +964,7 @@ components:
           type: string
           format: password
           minLength: 8
-          maxLength: 72
+          maxLength: 64
           description: Contraseña nueva definida por el administrador (FR-010).
       additionalProperties: false
     PasswordResetResponse:
@@ -1124,7 +1142,7 @@ components:
         Registro de un intento de inicio de sesión (FR-022). **Solo lectura**
         (FR-025) y sin credenciales (FR-026): de un inicio de sesión solo queda
         su resultado, nunca la contraseña probada.
-      required: [id, userId, userEmail, result, ip, createdAt]
+      required: [id, userId, userEmail, userName, result, ip, createdAt]
       properties:
         id:
           type: string
@@ -1140,9 +1158,19 @@ components:
           type: [string, "null"]
           format: email
           description: |
-            Correo de la cuenta asociada (valor actual de `users.email`; los
-            registros se conservan aunque la cuenta se edite, FR-025). `null` si
-            el intento no se asoció a ninguna cuenta.
+            Correo de la cuenta asociada, **derivado por `JOIN` con `users`**
+            (valor actual de `users.email`; no se guarda como dato duplicado en
+            el registro). `null` si el intento no se asoció a ninguna cuenta: en
+            ese caso **no se guarda ni se muestra ningún correo** (ni siquiera el
+            probado) y la interfaz indica "Intento sin cuenta asociada".
+        userName:
+          type: [string, "null"]
+          description: |
+            Nombre de la cuenta asociada (`firstName lastName`), **derivado por
+            `JOIN` con `users`** cuando el intento se identificó con una cuenta
+            (FR-022); no es un dato guardado en el registro. `null` cuando el
+            intento quedó sin cuenta asociada: la interfaz muestra entonces
+            "Intento sin cuenta asociada", sin mostrar ningún correo.
         result:
           type: string
           enum: [success, failure]
@@ -1186,7 +1214,7 @@ components:
         **Solo lectura** (FR-025) y sin credenciales (FR-026): de un
         restablecimiento de contraseña solo queda quién lo hizo, sobre qué cuenta
         y cuándo.
-      required: [id, actorId, actorEmail, action, targetKind, targetId, targetLabel, result, createdAt]
+      required: [id, actorId, actorEmail, actorName, action, targetKind, targetId, targetLabel, result, createdAt]
       properties:
         id:
           type: string
@@ -1201,8 +1229,15 @@ components:
           type: [string, "null"]
           format: email
           description: |
-            Correo de quien hizo la acción (valor actual de `users.email`). `null`
-            en la inicialización del sistema.
+            Correo de quien hizo la acción, **derivado por `JOIN` con `users`**
+            (valor actual de `users.email`; no se guarda como dato duplicado en
+            el registro). `null` en la inicialización del sistema (sin actor).
+        actorName:
+          type: [string, "null"]
+          description: |
+            Nombre de quien hizo la acción (`firstName lastName`), **derivado por
+            `JOIN` con `users`** cuando hay actor (FR-023); no es un dato
+            guardado en el registro. `null` en la inicialización del sistema.
         action:
           type: string
           enum:
@@ -1325,8 +1360,9 @@ components:
     TooManyRequests:
       description: |
         Demasiadas peticiones: bloqueo temporal por intentos fallidos de inicio
-        de sesión (5 intentos / 15 minutos, FR-006) o `rate-limit` por IP. El
-        mensaje de bloqueo es idéntico exista o no la cuenta (FR-003).
+        de sesión (creado por el **5.º fallo**; cada intento desde el **6.º** y
+        durante 15 minutos recibe esta respuesta, FR-006) o `rate-limit` por IP.
+        El mensaje de bloqueo es idéntico exista o no la cuenta (FR-003).
       headers:
         Retry-After:
           description: Segundos hasta que se pueda volver a intentar.

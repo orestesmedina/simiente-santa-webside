@@ -22,8 +22,9 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 - **P1/P9**: sesión en **Redis** (cookie `ss_session` `HttpOnly`/`SameSite=Lax`/`Secure` configurable,
   token opaco y solo su SHA-256 en Redis; TTL de inactividad **30 min** + vida absoluta **1 h**).
 - **P5**: contraseñas con **bcrypt cost 12** y política FR-010 centralizada en `platform/password`.
-- **P6**: bloqueo FR-006 con contadores Redis (`login:fail:*`/`login:block:*`, **5 intentos / 15 min**,
-  por correo normalizado exista o no la cuenta).
+- **P6**: bloqueo FR-006 con contadores Redis (`login:fail:*`/`login:block:*`, **5 fallos / 15 min**,
+  por correo normalizado exista o no la cuenta); **el 5.º fallo responde el `401` genérico y crea el
+  bloqueo, y el `429` aplica desde el 6.º intento** (F-03).
 - **P7/P8**: regla anti-bloqueo (FR-008) e inicialización única (FR-007) dentro de transacción con
   `pg_advisory_xact_lock`; la inicialización exige además `X-Setup-Token` = `BOOTSTRAP_TOKEN`.
 - **P10/P11/P17**: CSRF *double-submit* firmado con `SESSION_SECRET`, CORS con credenciales y
@@ -36,24 +37,28 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 - **P19**: el delta de `contracts/openapi.yaml` se fusiona **aditivamente** en
   `backend/api/openapi.yaml` (`info.version` 0.2.0 → **0.3.0**); el snapshot de `specs/` no se edita.
 
-## Huecos y discrepancias reportados (no se suponen: decisión pendiente del orquestador/humano)
+## Discrepancias del `analyze` ya resueltas (orquestador, 2026-10-04; no se reabren)
 
-1. **Nomenclatura de rutas frontend**: `plan.md` P18 y `quickstart.md` §2 usan `/login` y
-   `/cambiar-contrasena`; `ux.md` §2 propone `/entrar`, `/panel/cuenta` y `/sin-permiso`. **Default
-   aplicado en estas tareas: las rutas del plan** (`/login`, `/cambiar-contrasena`) más las que solo
-   existen en `ux.md` (`/sin-permiso`, `/panel/auditoria`), porque el plan está aprobado y
-   `quickstart.md` es el documento de aceptación. Los **contenidos, textos y estados siguen siendo
-   los de `ux.md`** (§3, §4, §7). Si el humano prefiere la nomenclatura de `ux.md`, el cambio es un
-   renombrado localizado en `src/app/router.tsx`, sus pruebas y los e2e (T244, T251, T252).
-2. **Pantalla de "Puesta en marcha"** (`ux.md` §3.2) **no se construye en F2**: el plan decide que la
-   inicialización única es una operación de despliegue vía `POST /api/v1/setup/initialize` con
-   `X-Setup-Token` (P8), documentada en `quickstart.md` §1, y la estructura frontend del plan no
-   incluye esa pantalla. Además falta decidir de dónde obtendría la UI el valor de `BOOTSTRAP_TOKEN`.
-   El e2e ejecuta la inicialización **vía API**. Si el humano quiere la pantalla, se abre tarea nueva.
-3. **Contadores FR-006**: su implementación Redis vive en el plumbing `platform/session` (donde el
-   plan sitúa las pruebas de integración de "sesión/contadores") y las constantes **5 intentos / 15
-   min** las decide el dominio `usuarios`; es una decisión menor de reparto, no de comportamiento.
-4. **`platform/testutil` se amplía** con helpers de `testcontainers-go` (Redis y PostgreSQL) para no
+1. **Nomenclatura de rutas frontend (F-05)**: se usan **las 7 rutas del plan** —`/login`,
+   `/cambiar-contrasena`, `/panel`, `/panel/usuarios`, `/panel/roles`, `/panel/auditoria`,
+   `/sin-permiso`— en todas las tareas y en los e2e (T244, T251, T252). Los **contenidos, textos y
+   estados siguen siendo los de `ux.md`** (§3, §4, §7), que alinea sus rutas (`disenador-ux`).
+2. **Pantalla de "Puesta en marcha" (F-06)** **no se construye en F2**: la inicialización única es
+   una operación de despliegue vía `POST /api/v1/setup/initialize` con `X-Setup-Token` (P8),
+   documentada en `quickstart.md` §1; el e2e la ejecuta **vía API**. La retirada de esa pantalla de
+   `ux.md` la hace `disenador-ux`.
+3. **Listado de usuarios (F-04)**: se mantiene la **paginación** (`platform/paginate`) y se retira
+   del MVP el **buscador de texto libre** (no está en la spec): ninguna tarea lo crea.
+4. **Contadores FR-006 (F-13)**: el **mecanismo** Redis (`login:fail:*`/`login:block:*`) vive en el
+   plumbing `platform/session` (junto al `Store` de sesiones) y la **semántica y las constantes**
+   (5 fallos / 15 min) en el dominio `usuarios`. **Semántica del 5.º intento (F-03)**: el contador
+   se incrementa con cada fallo; el **5.º fallo** responde el `401` genérico **y crea el bloqueo**;
+   desde el **6.º intento** (dentro de los 15 min) responde `429` con `Retry-After`.
+5. **Componentes UI (F-10)**: inventario fijo con **nombres de código en inglés** (`Table`, `Tabs`,
+   `Pagination`, `DateRangeFilter`, `StatusPill`, `Notice`, `ModalDialog`, `Field`, `ConfirmDialog`,
+   `EmptyState`) en T242; `disenador-ux` da en `ux.md` el mapeo a sus etiquetas en español. Las
+   features los **reutilizan sin duplicar markup** (lo revisa `revisor-codigo`).
+6. **`platform/testutil` se amplía** con helpers de `testcontainers-go` (Redis y PostgreSQL) para no
    duplicar el arranque de servicios en las pruebas de integración (R19). Extensión del helper de F1,
    sin cambios en su API pública.
 
@@ -111,20 +116,21 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 | T239 | Puntos de escritura de auditoría restantes: `authz` (denied) y `handler` (JSON inválido) | `[backend]` | 9 | — | T224, T227, T228 |
 | T240 | `usuarios`: `handler_audit.go` + `GET /api/v1/admin/auditoria/*` + cableado | `[backend]` | 9 | — | T238, T239, T228 |
 | T241 | `api/client.ts` (credenciales + `X-CSRF-Token`) y `api/auth.ts` | `[frontend]` | 10 | P5 | T204 |
-| T242 | Componentes compartidos (`Field`, `ConfirmDialog`, `EmptyState`) y `lib/` (permisos, formato) | `[frontend]` | 10 | P5 | — |
+| T242 | Componentes compartidos (`Table`, `Tabs`, `Pagination`, `DateRangeFilter`, `StatusPill`, `Notice`, `ModalDialog`, `Field`, `ConfirmDialog`, `EmptyState`) y `lib/` (permisos, formato) | `[frontend]` | 10 | P5 | — |
 | T243 | `api/usuarios.ts`, `api/roles.ts`, `api/auditoria.ts` | `[frontend]` | 10 | — | T241 |
-| T244 | Guards (`RequireAuth`, `RequirePermiso`, `RequirePasswordChange`), router y layout por permisos | `[frontend]` | 10 | — | T241, T242 |
+| T244 | Guards (`RequireAuth`, `RequirePermission`, `RequirePasswordChange`), router y layout por permisos | `[frontend]` | 10 | — | T241, T242 |
 | T245 | `features/auth`: LoginPage y hooks de sesión | `[frontend]` | 10 | — | T244 |
 | T246 | `features/auth`: ChangePasswordPage, guard de cambio obligatorio y aviso de sesión | `[frontend]` | 10 | — | T245 |
 | T247 | `features/usuarios`: UsersPage (listado con estado, correo, rol y último acceso) | `[frontend]` | 10 | P6 | T243, T244 |
 | T248 | `features/usuarios`: UserForm, activar/desactivar y restablecer contraseña | `[frontend]` | 10 | — | T247 |
 | T249 | `features/roles`: RolesPage y RoleForm con permisos por módulo | `[frontend]` | 10 | P6 | T243, T244 |
 | T250 | `features/auditoria`: AuditPage de solo lectura con filtros y paginación | `[frontend]` | 10 | P6 | T243, T244 |
-| T251 | E2E Playwright `acceso.spec.ts` (recorrido de `quickstart.md` §11) | `[frontend]` | 10 | P7 | T245, T246, T248, T249 |
+| T254 | `features/panel`: Inicio del panel (`/panel`) — "Mi cuenta", accesos rápidos y estado "cuenta sin permisos de módulo" *(nueva por el `analyze` F-02)* | `[frontend]` | 10 | P6 | T241, T242, T244, T245 |
+| T251 | E2E Playwright `acceso.spec.ts` (recorrido de `quickstart.md` §11) | `[frontend]` | 10 | P7 | T245, T246, T248, T249, T254 |
 | T252 | E2E Playwright `auditoria.spec.ts` (recorrido de `quickstart.md` §10) | `[frontend]` | 10 | P7 | T250 |
 | T253 | Verificación de cierre: `make ci`, `make e2e`, `quickstart.md` §0–§12 y mapa SC | `[infra]` | 11 | — | todas |
 
-**Total: 53 tareas** — 31 `[backend]` · 14 `[frontend]` · 5 `[db]` · 3 `[infra]` · 21 marcadas `[P]`.
+**Total: 54 tareas** — 31 `[backend]` · 15 `[frontend]` · 5 `[db]` · 3 `[infra]` · 22 marcadas `[P]`.
 
 ## Grupos de paralelismo
 
@@ -135,7 +141,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 | P3 | T213 · T214 · T215 · T216 · T217 · T219 | Paquetes `platform` distintos (solo T213 necesita T212 ya integrado) |
 | P4 | T221 · T222 · T223 | `repository_users.go`, `repository_roles.go` y `repository_audit.go` son archivos distintos del mismo paquete; todos parten de T220 |
 | P5 | T241 · T242 | `src/api/` y `src/components/`+`src/lib/` no se solapan |
-| P6 | T247 · T249 · T250 | Features `usuarios`, `roles` y `auditoria` en carpetas distintas, cada una con su módulo de API (T243) |
+| P6 | T247 · T249 · T250 · T254 | Features `usuarios`, `roles`, `auditoria` y `panel` (Inicio) en carpetas distintas; las tres primeras con su módulo de API (T243) y el Inicio solo con los hooks de sesión (T245) |
 | P7 | T251 · T252 | Dos specs e2e independientes (`e2e/acceso.spec.ts` y `e2e/auditoria.spec.ts`) |
 
 > **Nota sobre la auditoría (P20)**: el **registro** se construye junto a cada productor
@@ -153,11 +159,13 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO). *No* se toca
     `specs/002-acceso-gestion-usuarios/contracts/openapi.yaml` (snapshot inmutable, P19).
   - **Qué hace**: funde **aditivamente** el delta aprobado en el contrato vivo: esquema de seguridad
-    `sessionCookie`, las 14 operaciones nuevas (`/api/v1/auth/*`, `/api/v1/setup/initialize`,
+    `sessionCookie`, las **18** operaciones nuevas (`/api/v1/auth/*`, `/api/v1/setup/initialize`,
     `/api/v1/admin/usuarios*`, `/api/v1/admin/roles*`, `/api/v1/admin/permisos`,
     `/api/v1/admin/auditoria/*`) y sus schemas (`LoginInput`, `SessionUser`, `UserItem`, `RoleItem`,
-    `AccessEventItem`, `AdminActionItem`…) reutilizando `ErrorEnvelope`/`ErrorBody` de F1; sube
-    `info.version` a **0.3.0**. El registro de `error.code` **no cambia** (P19). *Cubre el contrato de
+    `AccessEventItem` con `userName`/`userEmail`, `AdminActionItem` con `actorName`/`actorEmail`…)
+    reutilizando `ErrorEnvelope`/`ErrorBody` de F1; sube
+    `info.version` a **0.3.0**. El registro de `error.code` **no cambia** (P19): el `404`
+    `not_found` de F1 **se reutiliza** para "cuenta/rol inexistente". *Cubre el contrato de
     todos los FR*; es el que garantiza **FR-025** (solo `GET` sobre `/admin/auditoria/*`) y **FR-003**
     (ningún DTO de salida contiene contraseñas ni hashes).
   - **Pruebas incluidas** (§III): — (artefacto de contrato). **Cómo se verifica**: el YAML parsea sin
@@ -380,7 +388,8 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     `go test ./internal/platform/validate/` en verde: cada etiqueta acepta lo válido y rechaza lo
     inválido con el campo exacto en `details`; casos `phone` (`"+34 612 345 678"` ok, `"12"` y
     `"no es un teléfono"` → `details.phone`); un DTO válido produce `nil`.
-  - **Criterio de terminado**: los 6 tipos de etiqueta cubiertos; el mensaje de cada campo es
+  - **Criterio de terminado**: las **7** etiquetas cubiertas (`required`, `omitempty`, `min`, `max`,
+    `email`, `oneof`, `phone`); el mensaje de cada campo es
     comprensible para personas no técnicas (spec, "Errores esperados").
   - **Commit sugerido**: `feat(platform): validate por etiquetas con details por campo`
 
@@ -401,13 +410,17 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Archivos**: `backend/internal/platform/password/password.go`, `password_test.go` (NUEVOS).
   - **Qué hace**: `Hash`/`Verify` con **bcrypt cost 12** (`golang.org/x/crypto/bcrypt`, P5) y la
     política FR-010 centralizada (se aplica en los 3 flujos: creación, restablecimiento y cambio
-    propio): **8–64 caracteres**, **≤ 72 bytes** (límite de bcrypt, riesgo R6), combinación de
-    **mayúsculas, minúsculas, números y caracteres especiales**, y **distinta del nombre, de los
-    apellidos y del correo** (que recibe como contexto). La contraseña nunca se loguea ni se devuelve.
+    propio): **entre 8 y 64 caracteres** (tope `maxLength: 64` del contrato en todos los campos de
+    contraseña), combinación de
+    **mayúsculas, minúsculas, números y caracteres especiales**, y **distinta de** —igualdad con
+    comparación normalizada (trim + minúsculas), **no de contenido**: puede contener esos datos— el
+    nombre, los apellidos y el correo (que recibe como contexto). El límite de 72 bytes de bcrypt se
+    mantiene como comprobación técnica (riesgo RG6). La contraseña nunca se loguea ni se devuelve.
   - **Pruebas incluidas** (§III): tabla de casos de la política + criptografía. **Cómo se verifica**:
     `go test ./internal/platform/password/` en verde: cada requisito incumplido produce el error que
     nombra el requisito (spec, "Errores esperados"); hash distinto por sal; `Verify` correcto/incorrecto;
-    cost observado = 12; contraseñas >72 bytes rechazadas.
+    cost observado = 12; más de 64 caracteres → rechazada; y una contraseña **igual** al nombre, a los
+    apellidos o al correo (normalizada) rechazada mientras que una que los **contenga** se acepta.
   - **Criterio de terminado**: los tres flujos de contraseña del dominio pueden compartir una única
     implementación de la política (§IV, CWE-256).
   - **Commit sugerido**: `feat(platform): password con bcrypt cost 12 y política FR-010`
@@ -469,15 +482,19 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     (`github.com/redis/go-redis/v9`): claves `sess:<sha256>` con JSON `userId`/`createdAt`/
     `lastSeenAt`/`absoluteExpiresAt`, **TTL de inactividad 30 min** refrescado por actividad
     (estrangulado a 1/min) y **acotado a la vida absoluta de 1 h** (`absoluteExpiresAt` inmóvil,
-    R15), índice `user_sessions:<userId>` para revocar por cuenta (FR-012); (e) **contadores de
-    FR-006** (P6): `login:fail:<identificador>` (`INCR`/`DEL`, TTL 15 min) y `login:block:<identificador>`
-    (bandera con TTL 15 min creada en el 5.º fallo) con el resto de `Retry-After`. *Cubre FR-001,
+    R15), índice `user_sessions:<userId>` para revocar por cuenta (FR-012); (e) **mecanismo de los
+    contadores de FR-006** (P6, reparto F-13): `login:fail:<identificador>` (`INCR`/`DEL`, TTL 15 min)
+    y `login:block:<identificador>` (bandera con TTL 15 min creada por el 5.º fallo) con el resto de
+    `Retry-After`. La **semántica y las constantes** (5 fallos / 15 min, y que el 5.º fallo aún
+    responde `401`) las define el dominio `usuarios` (T225): este paquete solo aporta el mecanismo.
+    *Cubre FR-001,
     FR-004, FR-005, FR-006 (mecanismo), FR-012 (revocación)*.
   - **Pruebas incluidas** (§III): unitarias (token distinto por llamada, SHA-256 estable, atributos de
     cada cookie, verificación del HMAC CSRF) + **integración** `//go:build integration` contra Redis
     real (T219): crear/resolver sesión; el TTL se refresca con la actividad pero el corte a los
     60 min se produce aunque haya actividad; revocación por cuenta borra `sess:*` y `user_sessions:*`;
-    contadores: 5 fallos → bloqueo, `Retry-After` = TTL restante, `DEL` al entrar bien.
+    contadores: el contador crece con cada fallo y el **5.º fallo** crea la bandera de bloqueo (sin
+    responder aún `429`: eso lo decide el dominio), `Retry-After` = TTL restante, `DEL` al entrar bien.
   - **Criterio de terminado**: `go test ./internal/platform/session/` y
     `go test -tags=integration ./internal/platform/session/` en verde; ningún valor de contraseña
     pasa por este paquete.
@@ -549,7 +566,9 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     `repository_audit_integration_test.go` (`//go:build integration`; NUEVOS).
   - **Qué hace**: inserción y consulta del registro: `InsertLoginEvent`, `InsertAdminAction`,
     `ListLoginEvents`/`CountLoginEvents` y `ListAdminActions`/`CountAdminActions` con los filtros
-    `userId`/`from`/`to` (semirango `[from, to)`) y `LIMIT`/`OFFSET` (P22). **Solo `INSERT`/`SELECT`**
+    `userId`/`from`/`to` (semirango `[from, to)`) y `LIMIT`/`OFFSET` (P22); los listados llevan
+    `LEFT JOIN users` para **derivar** `userEmail`/`userName` y `actorEmail`/`actorName` (F-01: no se
+    guardan como dato duplicado). **Solo `INSERT`/`SELECT`**
     (FR-025). El correo de un intento no identificado **no se guarda** (mínimo dato, FR-026).
   - **Pruebas incluidas** (§III): **integración** (T219): cada desenlace inserta su fila (incluido el
     correo inexistente con `user_id` NULL y **sin crear nada**, US8 esc. 7); los filtros por cuenta y
@@ -586,19 +605,24 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
   - **Archivos**: `backend/internal/usuarios/service_auth.go`, `service_auth_test.go` (NUEVOS).
   - **Qué hace**: `Login` (FR-002/FR-003/US1): normaliza el correo (Q5), comprueba el bloqueo FR-006
-    (**5 intentos / 15 min** por identificador normalizado exista o no la cuenta, P6 — mensaje
-    idéntico en ambos casos), verifica con bcrypt **con verificación dummy para tiempos uniformes**
+    (**5 fallos / 15 min** por identificador normalizado exista o no la cuenta, P6 — mensaje
+    idéntico en ambos casos; **semántica del 5.º intento, F-03**: el contador se incrementa con cada
+    fallo, el **5.º fallo** responde el `401` genérico **y crea el bloqueo**, y el `429` aplica
+    **desde el 6.º** intento dentro de los 15 min), verifica con bcrypt **con verificación dummy para tiempos uniformes**
     (R18), rechaza cuentas inactivas con el mensaje de "acceso desactivado" (US1 esc. 3) y, en éxito,
     limpia el contador, escribe `login_events` + `last_login_*` (FR-021/FR-022; **sin registro, sin
     acceso**), crea la sesión en Redis (P1/P9) y emite las cookies; `Logout` (FR-004): borra la sesión
     y las cookies; `Resolve` (implementa `session.Resolver`): resuelve `Identity` con permisos del rol
     **por petición** (FR-018/SC-009) y exige cuenta activa (FR-012). Todo desenlace queda registrado
     vía `service_audit` (FR-022). Códigos: credenciales incorrectas o correo inexistente → el
-    **mismo** `401` genérico (FR-003/SC-008); bloqueo → `429` con `Retry-After`.
+    **mismo** `401` genérico (FR-003/SC-008), **también en el 5.º fallo** (que crea el bloqueo);
+    desde el 6.º intento y durante el bloqueo → `429` con `Retry-After`.
   - **Pruebas incluidas** (§III): unitarias con fakes de repositorio, `session.Store` y contadores.
     **Cómo se verifica**: `go test ./internal/usuarios/` en verde con cobertura del service **≥ 80 %**
     (§III): éxito; credenciales incorrectas y correo inexistente producen idéntico mensaje y código;
-    cuenta inactiva → `Forbidden` con su mensaje; 5 fallos → `429` y, pasados los 15 min, se permite
+    cuenta inactiva → `Forbidden` con su mensaje; el **5.º fallo** responde `401` genérico y crea el
+    bloqueo, el **6.º** y los siguientes (dentro de los 15 min) → `429` con `Retry-After`, y pasados
+    los 15 min se permite
     de nuevo; éxito limpia el contador; cada desenlace deja `login_events` con la IP; el mensaje de
     error nunca revela existencia (SC-008) y ninguna respuesta contiene la contraseña.
   - **Criterio de terminado**: US1 y FR-002…FR-006, FR-022 cubiertos en el service; `Logout` deja la
@@ -631,7 +655,10 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Qué hace**: (a) `authn` (P1/P9): lee `ss_session`, resuelve la sesión en Redis comprobando
     inactividad y vida absoluta, resuelve `Identity` vía `session.Resolver`, comprueba que la cuenta
     siga **activa** (FR-012, red de seguridad por petición) y la deja en el contexto; sin sesión →
-    `401 unauthenticated`. (b) `passwordguard`: la cadena de cambio obligatorio (T226). (c)
+    `401 unauthenticated`. (b) `passwordguard`: la cadena de cambio obligatorio (T226); se monta
+    **solo en el grupo `/api/v1/admin`** (entre `authn` y `authz`), y las rutas
+    `/api/v1/auth/session`, `/auth/logout` y `/auth/password` quedan **blanqueadas** (viven en el
+    grupo `/api/v1/auth`, que no lo monta). (c)
     `AuthzByModule(código)` (P16/FR-016): exige el permiso del módulo; sin permiso → `403` con
     mensaje claro y **registro del intento** vía `audit.Recorder` (`result='denied'`, P20). (d)
     `CSRF` (P10): solo métodos no seguros; exige `X-CSRF-Token` = cookie `csrf_token` firmada. (e)
@@ -658,14 +685,21 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     que rechaza un JSON/DTO inválido **registra el intento**, P20 — se conecta del todo en T239);
     `handler_auth.go` con `POST /api/v1/auth/login`, `POST /api/v1/auth/logout`,
     `GET /api/v1/auth/session` y `POST /api/v1/auth/password` según el contrato (T201); `routes.go`
-    publica `/api/v1/auth` (login con `rate-limit`; el resto con `authn → CSRF`) y deja listo
-    `RegisterAdmin`. `main.go`: DI manual con el **cliente Redis**, `session.Store`, el resolver del
+    publica `/api/v1/auth` (login con `rate-limit`; el resto con `authn → CSRF`, **sin guard**: son
+    las rutas blanqueadas `/auth/session`, `/auth/logout` y `/auth/password` que necesita una cuenta
+    con `mustChangePassword`) y deja listo
+    `RegisterAdmin` **con el guard de cambio obligatorio montado solo en el grupo `/api/v1/admin`**
+    (entre `authn` y `authz`; F-15: ahí y no en `/auth/*`). `main.go`: DI manual con el **cliente
+    Redis**, `session.Store`, el resolver del
     dominio, `audit.Recorder` y los grupos de la cadena aprobada; `main_test.go` amplía el humo
     (rutas nuevas con su sobre y `/healthz` intacto, §8.1.9).
   - **Pruebas incluidas** (§III): `httptest` con service falso. **Cómo se verifica**:
     `go test ./internal/usuarios/ ./cmd/api/` en verde: cada operación con sus códigos
     200/201/400/401/403/429 y su sobre (éxito = DTO directo; error = `ErrorEnvelope`); `details` por
     campo en validaciones; **ninguna respuesta contiene `password` ni `passwordHash`** (FR-003);
+    una cuenta con `mustChangePassword` recibe `403` con
+    `details.reason="password_change_required"` en `/api/v1/admin/*` y en cambio `/auth/session`,
+    `/auth/logout` y `/auth/password` le responden (rutas blanqueadas);
     logout borra cookies; el humo de `cmd/api` publica las rutas y `/healthz` responde igual.
   - **Criterio de terminado**: US1 es usable de punta a punta por API (`quickstart.md` §2–§3); la
     superficie pública queda auditable de un vistazo en `routes.go`.
@@ -902,9 +936,12 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Qué hace**: **solo** `GET /api/v1/admin/auditoria/accesos` y
     `GET /api/v1/admin/auditoria/acciones` (FR-024/FR-025, P22) bajo el permiso
     `admin_usuarios_roles` (misma decisión que la gestión: sin él → `403` con mensaje claro, US8
-    esc. 5), con parámetros `userId`/`from`/`to`/`limit`/`offset`, `AccessEventItem` (con `userId`
-    y `userEmail` anulables: un intento contra un correo inexistente queda **sin asociación**, US8
-    esc. 7) y `AdminActionItem` (actor, acción, objetivo con `targetLabel` preservado, resultado).
+    esc. 5), con parámetros `userId`/`from`/`to`/`limit`/`offset`, `AccessEventItem` (con `userId`,
+    `userEmail` y `userName` anulables y **derivados por `JOIN` con `users`**: un intento contra un
+    correo inexistente queda **sin asociación** y **sin guardar ni mostrar correo** —la UI muestra
+    "Intento sin cuenta asociada"—, US8 esc. 7, F-01) y `AdminActionItem` (actor con
+    `actorId`/`actorEmail`/`actorName` derivados igualmente, acción, objetivo con `targetLabel`
+    preservado, resultado).
   - **Pruebas incluidas** (§III): `httptest` con service falso. **Cómo se verifica**:
     `go test ./internal/usuarios/` en verde: ambos historiales responden `200` con
     `{items,total,limit,offset}`; filtros aplicados; `from > to` → `400`; sin permiso → `403`
@@ -941,19 +978,29 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
 - [ ] T242 · Componentes compartidos y helpers de `lib/` · `[frontend]` `[P5]`
 
-  - **Archivos**: `frontend/src/components/Field.tsx`, `ConfirmDialog.tsx`, `EmptyState.tsx` (+
-    tests) y `frontend/src/lib/permissions.ts`, `format.ts` (+ tests) (NUEVOS).
-  - **Qué hace**: los componentes genéricos que pide `ux.md` §5 (campo con etiqueta, error y
-    `autocomplete`; diálogo de confirmación accesible; estado vacío con texto comprensible — p. ej.
-    "no hay registros que coincidan con esos filtros") y los helpers: `hasPermission(session, code)`
-    y formato de fecha/hora en español (para `lastLoginAt` y los historiales). Accesibilidad:
-    `getByRole`, foco visible, `aria-live` para avisos (§6).
+  - **Archivos**: `frontend/src/components/` (NUEVOS, **nombres de código en inglés**):
+    `Table.tsx`, `Tabs.tsx`, `Pagination.tsx`, `DateRangeFilter.tsx`, `StatusPill.tsx`, `Notice.tsx`,
+    `ModalDialog.tsx`, `Field.tsx`, `ConfirmDialog.tsx`, `EmptyState.tsx` (+ tests) y
+    `frontend/src/lib/permissions.ts`, `format.ts` (+ tests) (NUEVOS).
+  - **Qué hace**: el inventario de componentes genéricos que necesita F2 (F-10), sin duplicar markup
+    en las features: **`Table`** (tabla accesible),
+    **`Tabs`** (los dos historiales de auditoría), **`Pagination`** (`limit`/`offset`, conserva los
+    filtros), **`DateRangeFilter`** (`from`/`to`), **`StatusPill`** (estado de cuenta y resultado de
+    registro: texto además de color), **`Notice`** (avisos con `aria-live`), **`Field`** (campo con
+    etiqueta, error y `autocomplete`), **`ModalDialog`** (diálogo accesible),
+    **`ConfirmDialog`** (confirmación accesible) y **`EmptyState`** (estado vacío comprensible —
+    p. ej. "no hay registros que coincidan con esos filtros"). Los nombres de código son en inglés;
+    **`ux.md` (disenador-ux) da el mapeo** a sus etiquetas en español y los textos. Helpers:
+    `hasPermission(session, code)` y formato de fecha/hora en español (para `lastLoginAt` y los
+    historiales). Accesibilidad: `getByRole`, foco visible, `aria-live` para avisos (§6).
   - **Pruebas incluidas** (§III): Vitest + Testing Library. **Cómo se verifica**:
-    `npm test -- --run` en verde: cada componente renderiza sus estados (con/sin error, vacío) y el
-    diálogo expone roles accesibles; `hasPermission` cubre con/sin permiso y cuenta sin permisos de
-    módulo (Edge Case válido); `format` formatea fechas y el caso "sin accesos".
-  - **Criterio de terminado**: las features de la Fase 10 reutilizan estos componentes (sin duplicar
-    markup; lo revisa `revisor-codigo`).
+    `npm test -- --run` en verde: cada componente renderiza sus estados (con/sin error, vacío,
+    paginación, pestañas) y los diálogos exponen roles accesibles; `hasPermission` cubre con/sin
+    permiso y cuenta sin permisos de módulo (Edge Case válido); `format` formatea fechas y el caso
+    "sin accesos".
+  - **Criterio de terminado**: las features de la Fase 10 (T244–T250, T254) reutilizan estos
+    componentes (sin duplicar markup; lo revisa `revisor-codigo`) y `ux.md` documenta su mapeo de
+    nombres.
   - **Commit sugerido**: `feat(frontend): componentes compartidos y helpers de permisos y formato`
 
 - [ ] T243 · `api/usuarios.ts`, `api/roles.ts`, `api/auditoria.ts` · `[frontend]`
@@ -977,7 +1024,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Qué hace**: rutas `/login`, `/cambiar-contrasena`, `/sin-permiso`, `/panel`, `/panel/usuarios`,
     `/panel/roles`, `/panel/auditoria` (P18 + `ux.md` §2; ver "Huecos…", punto 1) con los guards
     `RequireAuth` (sin sesión o `401` → `/login` con `destino`, FR-001/SC-001),
-    `RequirePermiso(code)` (sin permiso → `/sin-permiso`, sin adivinar nada) y
+    `RequirePermission(code)` (sin permiso → `/sin-permiso`, sin adivinar nada) y
     `RequirePasswordChange` (`mustChangePassword` → cambio obligatorio). Layout del panel (ux §3.3):
     navegación **filtrada por permisos** (Usuarios/Roles/Auditoría solo con
     `admin_usuarios_roles`; una cuenta sin permisos de módulo ve solo Inicio), "Salir" y menú móvil.
@@ -1032,13 +1079,18 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Archivos**: `frontend/src/features/usuarios/pages/UsersPage.tsx`, `hooks/useUsers.ts` y
     `usuarios.test.tsx` (NUEVOS).
   - **Qué hace**: el listado de cuentas (ux §3.5) con **estado (activo/inactivo), correo y rol**
-    (FR-019) y el **último acceso** en la ficha (`lastLoginAt`/`lastLoginIp`, FR-021): la cuenta que
+    (FR-019) y el **último acceso en cada fila** (`lastLoginAt`/`lastLoginIp`, FR-021; la **ficha**
+    de la cuenta es su detalle/edición y va en T248): la cuenta que
     nunca ha iniciado sesión indica "sin accesos" sin inventar fechas (US8 esc. 6). Tarjetas en
-    móvil y tabla desde tableta (ux §4.b); paginación con `limit`/`offset`; estado de carga y estado
+    móvil y tabla desde tableta (ux §4.b) con los componentes `Table`/`Pagination`/`StatusPill`/
+    `EmptyState` (T242, sin duplicar markup); **paginación** con `limit`/`offset` y **sin buscador
+    de texto libre** (F-04: fuera del MVP, no está en la spec); estado de carga y estado
     vacío.
   - **Pruebas incluidas** (§III): Vitest + Testing Library + MSW. **Cómo se verifica**:
-    `npm test -- --run` en verde: el listado muestra estado, correo, rol y último acceso; la cuenta
-    sin accesos muestra la indicación correcta; la paginación pasa de página conservando el estado;
+    `npm test -- --run` en verde: el listado muestra estado, correo, rol y último acceso en cada
+    fila; la cuenta
+    sin accesos muestra la indicación correcta; la paginación pasa de página conservando el estado
+    y **no existe** ningún buscador de texto libre (F-04);
     accesibilidad de la tabla (`getByRole("table")`).
   - **Criterio de terminado**: FR-019 y FR-021 visibles en la interfaz.
   - **Commit sugerido**: `feat(frontend): listado de cuentas con estado, rol y último acceso`
@@ -1048,8 +1100,11 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Archivos**: `frontend/src/features/usuarios/components/UserForm.tsx`,
     `ResetPasswordDialog.tsx`, `hooks/useCreateUser.ts`, `useUpdateUser.ts`, `useResetPassword.ts`,
     `useSetUserActive.ts` y tests (NUEVOS).
-  - **Qué hace**: crear/editar cuenta (ux §3.6) con React Hook Form + Zod: nombre, apellidos, correo,
-    teléfono, rol y contraseña inicial (solo al crear); validación en cliente **y** manejo de los
+  - **Qué hace**: la **ficha = detalle/edición** de la cuenta y sus acciones (ux §3.6) con React
+    Hook Form + Zod: nombre, apellidos, correo,
+    teléfono, rol y contraseña inicial (solo al crear); en la ficha se muestran también
+    `lastLoginAt`/`lastLoginIp` (FR-021; la cuenta que nunca entró indica "aún no ha iniciado
+    sesión"/"sin accesos", US8 esc. 6). Validación en cliente **y** manejo de los
     `details` del servidor (correo duplicado → "ya está en uso", teléfono → `details.phone`, rol
     inexistente → `details.roleId`, FR-009/US3 esc. 2–5). Acciones: **activar/desactivar** con
     `ConfirmDialog` (US5; el texto explica que los datos se conservan, FR-012/FR-013) y
@@ -1057,7 +1112,8 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     (ux §3.2).
   - **Pruebas incluidas** (§III): Vitest + Testing Library + MSW. **Cómo se verifica**:
     `npm test -- --run` en verde: envío válido llama a la API y refresca el listado; cada error del
-    servidor se muestra en su campo (SC-011: duplicado "casi igual" no crea nada); desactivar pide
+    servidor se muestra en su campo (SC-011: duplicado "casi igual" no crea nada); la ficha muestra
+    el último acceso y el caso "sin accesos"; desactivar pide
     confirmación y refleja el estado nuevo; restablecer exige la política; ningún campo de
     contraseña se reenvía ni se muestra después de guardar (FR-003/FR-026).
   - **Criterio de terminado**: US3/US5 y FR-009…FR-013 cubiertos en la interfaz.
@@ -1089,16 +1145,44 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Qué hace**: la sección de registro (ux §3.11, US8) con **dos historiales** (accesos y acciones
     administrativas), filtros por **cuenta** y **rango de fechas** (`from`/`to`), **paginación** que
     conserva los filtros (FR-024/US8 esc. 2–3), resultado e IP de origen en los accesos y
-    actor/objetivo/resultado en las acciones (FR-022/FR-023), estado vacío con el texto de
+    actor/objetivo/resultado en las acciones (FR-022/FR-023; la fila de un intento sin cuenta
+    asociada muestra **"Intento sin cuenta asociada"**, sin mostrar ningún correo — F-01), estado
+    vacío con el texto de
     "no hay registros que coincidan con esos filtros" y **sin ningún control de edición ni borrado**
     (FR-025/US8 esc. 4). Solo visible con `admin_usuarios_roles` (FR-024/US8 esc. 5).
   - **Pruebas incluidas** (§III): Vitest + Testing Library + MSW. **Cómo se verifica**:
-    `npm test -- --run` en verde: ambos historiales con sus columnas; los filtros por cuenta y fechas
+    `npm test -- --run` en verde: ambos historiales con sus columnas (incluido `userName`/
+    `actorName`); el intento sin cuenta asociada se muestra como "Intento sin cuenta asociada" y sin
+    correo (F-01); los filtros por cuenta y fechas
     se envían a la API y la paginación los conserva; la página vacía muestra el estado vacío; la
     pantalla **no contiene** botones ni acciones de edición/borrado (aserción explícita, SC-013);
     sin permiso → `403` mostrado con mensaje claro.
   - **Criterio de terminado**: US8 y FR-021…FR-025 cubiertos en la interfaz (SC-012, SC-013).
   - **Commit sugerido**: `feat(frontend): sección de auditoría de solo lectura con filtros`
+
+- [ ] T254 · `features/panel`: Inicio del panel (`/panel`) · `[frontend]` `[P6]`
+  *(añadida por el `analyze` F-02)*
+
+  - **Archivos**: `frontend/src/features/panel/pages/InicioPage.tsx`,
+    `components/MiCuentaCard.tsx`, `components/AccesosRapidos.tsx` y `panel.test.tsx` (NUEVOS).
+  - **Qué hace**: la página de **Inicio del panel** (`/panel`, ruta 4 de las 7 de P18) que toda
+    cuenta autenticada ve al entrar: (a) tarjeta **"Mi cuenta"** con los datos de la sesión (nombre,
+    apellidos, correo y rol) y enlace a `/cambiar-contrasena`; (b) **accesos rápidos** solo a las
+    secciones autorizadas por permiso (`/panel/usuarios`, `/panel/roles`, `/panel/auditoria` con
+    `admin_usuarios_roles`; `hasPermission` de `lib/permissions`); (c) el estado **"cuenta sin
+    permisos de módulo"** (Edge Case de la spec: "entra pero no ve ninguna sección de gestión; esto
+    es válido y no debe romper el panel"): aviso comprensible que no rompe la página ni deja
+    secciones vacías a la vista. Reutiliza `Notice`, `EmptyState` y `StatusPill` de T242 (sin
+    duplicar markup) y `useSession` de T245.
+  - **Pruebas incluidas** (§III): Vitest + Testing Library + MSW. **Cómo se verifica**:
+    `npm test -- --run` en verde: la tarjeta "Mi cuenta" muestra los datos de la sesión y el enlace
+    de cambio de contraseña; los accesos rápidos muestran **solo** las secciones autorizadas; una
+    cuenta **sin ningún permiso de módulo** ve el estado "cuenta sin permisos de módulo" y ningún
+    enlace a secciones (Edge Case, caso incluido de forma explícita); ningún componente hace `fetch`
+    directo.
+  - **Criterio de terminado**: `/panel` es usable para toda cuenta autenticada y el Edge Case "cuenta
+    sin permisos de módulo" queda cubierto con su prueba (F-02).
+  - **Commit sugerido**: `feat(frontend): inicio del panel con Mi cuenta, accesos rápidos y estado sin permisos`
 
 - [ ] T251 · E2E `acceso.spec.ts` · `[frontend]` `[P7]`
 
@@ -1106,7 +1190,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Qué hace**: el recorrido completo de `quickstart.md` §11 con Playwright (ejecución **local**;
     el CI del kit no corre e2e y no se toca): inicializar (vía API, ver "Huecos…", punto 2) → login →
     crear rol → crear cuenta → entrar con ella (contraseña forzada → cambio) → ver solo sus módulos →
-    desactivarla → acceso cortado → 5 intentos fallidos → bloqueo → logout. Cubre **SC-002, SC-005,
+    desactivarla → acceso cortado → intentos fallidos (el 5.º crea el bloqueo, el 6.º recibe `429`) → logout. Cubre **SC-002, SC-005,
     SC-006, SC-007, SC-010, SC-011**.
   - **Pruebas incluidas** (§III): la propia prueba e2e **es** el objeto de la tarea. **Cómo se
     verifica**: `make up && make e2e` en verde contra el stack levantado (con `BOOTSTRAP_TOKEN` de
@@ -1137,8 +1221,10 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit.
   - **Qué hace**: ejecuta la verificación completa de F2 y la registra como evidencia:
-    `make ci` (lint + `go test ./...` + `go test -tags=integration ./...` + migraciones +
-    `govulncheck` + `npm audit`), `make e2e`, `make sqlc-verify` y `make api-gen` sin deriva, y el
+    `make ci` (**lint + test + security**: `security` son `govulncheck` y `npm audit`; `test` ya
+    incluye `go test ./...` y `go test -tags=integration ./...`. **`make db-migrate` es un comando
+    aparte** y no forma parte de `make ci` — se ejecuta al preparar el entorno, §0), `make e2e`,
+    `make sqlc-verify` y `make api-gen` sin deriva, y el
     recorrido manual de `quickstart.md` §0–§12 (mapa §12: SC-001…SC-013). Comprueba además que
     `GET /healthz` responde igual que en F1 y que una ruta inexistente responde `404` con
     `ErrorEnvelope` (§8.1.9), y que la cobertura del service es ≥ 80 % (`go test -cover`).
@@ -1162,7 +1248,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 | FR-003 (mensaje genérico, sin credenciales) | T225, T228, T230 | suite de handlers · quickstart §8 (SC-008) |
 | FR-004 (cerrar sesión) | T225, T241, T245 | quickstart §3 |
 | FR-005 (1 h absoluta + 30 min inactividad) | T218, T225, T246 | integración Redis · quickstart §3 |
-| FR-006 (5 intentos / 15 min) | T218, T225 | pruebas del service + integración · quickstart §8 |
+| FR-006 (5 fallos / 15 min; `429` desde el 6.º intento) | T218, T225 | pruebas del service + integración · quickstart §8 |
 | FR-007 (inicialización única) | T229, T230 | integración concurrente · quickstart §1 (SC-003) |
 | FR-008 (nunca sin administración) | T222, T232, T236 | integración concurrente · quickstart §6 (SC-004) |
 | FR-009 (crear cuenta con datos y teléfono) | T213, T231 | pruebas de service/handler · quickstart §4 |
@@ -1172,14 +1258,19 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 | FR-013 (nunca se eliminan cuentas) | T208, T221, T234 | 0 rutas/consultas de borrado · revisión |
 | FR-014 (roles con ≥1 permiso, nombre único) | T207, T235, T236 | pruebas de service · quickstart §4 |
 | FR-015 (catálogo = módulos del producto) | T207, T237 | `GET /admin/permisos` · data-model |
-| FR-016 (permiso por operación) | T227, T234, T237, T240 | pruebas de middleware/handler (SC-007) |
+| FR-016 (permiso por operación) | T227, T234, T237, T240 (+ T244/T254: la UI solo muestra lo autorizado) | pruebas de middleware/handler (SC-007) |
 | FR-017 (un rol por cuenta; eliminar solo sin uso) | T208, T232, T236 | integración (`RESTRICT`) · quickstart §4/§6 |
 | FR-018 (cambios de rol inmediatos) | T225, T236 | e2e T251 · quickstart §6 (SC-009) |
 | FR-019 (listado con estado, correo, rol) | T234, T247 | quickstart §4 |
 | FR-020 (cambiar la propia contraseña) | T226, T246 | quickstart §5 (SC-010) |
-| FR-021 (último acceso en la ficha) | T209, T225, T234, T248 | integración de coherencia · e2e T252 (SC-012) |
+| FR-021 (último acceso en la ficha) | T209, T225, T234, T247 (fila del listado), T248 (**ficha = detalle/edición**, con `lastLoginAt`/`lastLoginIp`) | integración de coherencia · e2e T252 (SC-012) |
 | FR-022 (historial de accesos) | T209, T223, T224, T225, T240 | pruebas de service/handler/integración · e2e T252 (SC-013) |
 | FR-023 (acciones administrativas) | T209, T223, T224, T231–T236, T239 | pruebas de service/handler · quickstart §10 |
 | FR-024 (sección con filtros y paginación) | T238, T240, T250 | quickstart §10 · e2e T252 (SC-012) |
 | FR-025 (registro de solo lectura) | T211, T223, T240, T250 | sin `UPDATE`/`DELETE` ni rutas de escritura · SC-013 |
 | FR-026 (sin credenciales en el registro) | T224, T239 + DTOs | suite de handlers · auditoría de `seguridad` |
+
+También quedan cubiertos los Edge Cases de la spec sin FR propio: el **"cuenta sin ningún permiso
+de módulo"** (entra al panel, no ve secciones de gestión y no se rompe nada) lo cubre **T254**
+(Inicio del panel) con **T244** (navegación filtrada), y el **"intento sin cuenta asociada"** (sin
+guardar ni mostrar correo) lo cubren T223/T240/T250 (F-01).
