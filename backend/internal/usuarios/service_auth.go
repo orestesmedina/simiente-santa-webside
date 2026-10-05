@@ -58,6 +58,10 @@ const (
 	// currentPasswordDetail es la clave de Details del error de contraseña actual
 	// incorrecta (el campo del contrato al que corresponde).
 	currentPasswordDetail = "currentPassword"
+	// accessDisabledReason es el `details.reason` del 403 de una cuenta
+	// desactivada al iniciar sesión (contrato `login`, US1 esc. 3): permite a la
+	// UI distinguirlo del 403 genérico y mostrar el aviso dedicado.
+	accessDisabledReason = "access_disabled"
 )
 
 // ErrAccountInactive indica que la cuenta de una identidad que se resuelve ya
@@ -195,7 +199,10 @@ func (s *authService) Login(ctx context.Context, in LoginInput, ip string) (Sess
 		// inicio de sesión fallido y cuenta para FR-006.
 		s.registerFailure(ctx, identifier)
 		s.recordFailure(ctx, &auth.ID, ip)
-		return SessionUser{}, nil, apperr.Forbidden(accountInactiveMessage)
+		return SessionUser{}, nil, apperr.Forbidden(
+			accountInactiveMessage,
+			apperr.WithDetails(map[string]any{"reason": accessDisabledReason}),
+		)
 	}
 
 	// Éxito. Se relee la ficha porque UserAuth no trae el teléfono que exige el

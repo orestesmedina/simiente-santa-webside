@@ -460,6 +460,11 @@ func TestLoginInactiveAccountForbidden(t *testing.T) {
 	if domainErr.Message != accountInactiveMessage {
 		t.Fatalf("mensaje = %q", domainErr.Message)
 	}
+	// El contrato exige `details.reason = "access_disabled"` para que la UI
+	// muestre el aviso dedicado en lugar del error genérico (US1 esc. 3).
+	if domainErr.Details["reason"] != accessDisabledReason {
+		t.Fatalf("details.reason = %v, se esperaba %q", domainErr.Details["reason"], accessDisabledReason)
+	}
 	if recorder.count() != 1 || recorder.events[0].UserID == nil {
 		t.Fatalf("la cuenta inactiva debe dejar su intento: %+v", recorder.events)
 	}
