@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 002-acceso-gestion-usuarios |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (en curso: 40/54 tareas; backend completo) |
-| Ciclo de corrección | 2/3 (1er ciclo documental cerrado; 1 corrección de integración aplicada) |
-| Próximo paso | Fase 10 (`[frontend]`): T241 (api client/auth) + T242 (componentes compartidos) → `dev-frontend` |
+| Fase | 7/9 · Validado (QA/revisor/seguridad en verde; correcciones aplicadas) |
+| Ciclo de corrección | 3/3 (validación: 5 correcciones aplicadas + 2 documentales) |
+| Próximo paso | Fase 9: actualizar docs (documentador), abrir el Pull Request y pedir aprobación humana del merge |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -48,11 +48,14 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 - 2026-10-05 — **T225 (Retry-After):** `httpserver.WriteError` no emitía la cabecera `Retry-After` que el contrato documenta; se corrigió (bug de F1).
 - 2026-10-05 — **Discrepancia pendiente de validar (T226):** `ux.md` §3.8 dice que el cambio obligatorio de contraseña no pide la actual, pero el contrato (aprobado) marca `currentPassword` como `required` y T226 dice "exige la contraseña actual". Se implementó lo del contrato; lo revisa `revisor-codigo`/`disenador-ux` en la fase 7. **No se reabre la spec sin aprobación.**
 - 2026-10-05 — **T227 (`authn`):** cualquier error del `Resolver` (incluido un fallo transitorio de BD) se traduce a `401 unauthenticated` (fail-closed). Se deja señalado para la revisión de seguridad/arquitectura.
+- 2026-10-05 — **Decisión (validación): contraseña actual en el cambio obligatorio.** La spec (US7 esc. 2) y el contrato (`currentPassword: required`) la exigen; `ux.md` §3.8 decía lo contrario y se **corrigió el documento** (no se reabre spec ni plan). Exigir la actual evita que quien robe la sesión fije su propia contraseña.
+- 2026-10-05 — **Hallazgos menores aceptados:** casilla nativa (`<input type="checkbox">`) en el formulario de roles (M7), inmutabilidad del registro solo por convención+prueba (S1), timeout de mutaciones de 5 s (S2), `normalizeConflict` por restricción pendiente (S3) y e2e con `--workers=1` por el rate-limit (M-4 de QA). Se registran como deuda para F3.
 
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-05 — **Validación (fase 7) y correcciones.** QA **APROBADO**; revisor **APROBADO CON OBSERVACIONES**; seguridad **APROBADO CON OBSERVACIONES** (0 bloqueantes). Reportes: `revision-2026-10-05-{qa,codigo,seguridad}.md`. Correcciones aplicadas: M1 (auditoría no pierde filas con objetivo inexistente, FR-023), M2 (SESSION_SECRET vacío/corto no arranca en producción), M3 (cambio de contraseña atómico), M4 (TTL atómico del contador de fallos), M5 (`retryAfterSeconds` consistente), M6 (`details.roleId` en la FK de rol) y M9 (log de causa en `authn`). Documental: `ux.md` §3.8 (la contraseña actual se pide también en el cambio obligatorio) y el e2e de acceso desactivado. Menor aceptada: casilla nativa en el formulario de roles (M7). `make ci`, `sqlc-verify` y `api-gen` sin deriva en verde; e2e 3/3 (vía imagen Docker de Playwright; en el host faltan librerías de Chromium).
 - 2026-10-05 — **Backend completo (40/54).** Fases 6–9: inicialización única (T229–T230), gestión de cuentas (T231–T234), roles y permisos (T235–T237) y auditoría de solo lectura (T238–T240). Corregido otro bug de F1: `httpserver` no rellenaba `PathValue` en rutas con parámetros (`{id}`). `go test ./...` y `go test -tags=integration ./...` en verde.
 - 2026-10-05 — **Implementación (fase 6/9): 28/54 tareas.** Completadas las fases 3–5: migraciones `000002`–`000004` y consultas sqlc (T207–T211); núcleo `platform` (T212–T219, incluida la sesión en Redis); dominio `usuarios` (T220–T228: repositorios, auditoría, login/logout/Resolve, cambio de contraseña, middleware y handlers de acceso). Corregido un ciclo de imports de pruebas de integración (`session`→`testutil`→`middleware`→`session`) extrayendo los helpers de contenedores a `testutil/containers`. Próximo: T229/T230 (inicialización única).
 - 2026-10-04 — **Implementación iniciada (fase 6/9).** Fases 1–2 completadas y commiteadas: T201 (contrato 0.3.0), T202 (deps Go), T203 (deps npm), T204 (regenerar `schema.d.ts`) y T205/T206 (Redis en Compose + `.env.example`). 6/54 tareas. Próximo: T207 (migración `000002`). Nota T201: el snapshot `contracts/openapi.yaml` no era YAML válido (escalares con `:`) y la corrección se aplicó **solo** al contrato vivo (el snapshot no se edita, P19).

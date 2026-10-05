@@ -967,7 +967,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 > del servidor vía TanStack Query; formularios con React Hook Form + Zod; sin `fetch` fuera de
 > `src/api/client.ts`; sin tokens en `localStorage` (CWE-79).
 
-- [ ] T241 · `api/client.ts` con credenciales/CSRF y `api/auth.ts` · `[frontend]` `[P5]`
+- [X] T241 · `api/client.ts` con credenciales/CSRF y `api/auth.ts` · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/api/client.ts` (EDITADO), `frontend/src/api/auth.ts`,
     `client.test.ts`/`auth.test.ts` (NUEVOS/EDITADOS).
@@ -983,7 +983,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     `npm run typecheck` en verde.
   - **Commit sugerido**: `feat(frontend): cliente con credenciales y CSRF, y API de autenticación`
 
-- [ ] T242 · Componentes compartidos y helpers de `lib/` · `[frontend]` `[P5]`
+- [X] T242 · Componentes compartidos y helpers de `lib/` · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/components/` (NUEVOS, **nombres de código en inglés**):
     `Field.tsx`, `PasswordField.tsx`, `Select.tsx`, `Button.tsx`, `Notice.tsx`, `ConfirmDialog.tsx`,
@@ -1017,7 +1017,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     nombres.
   - **Commit sugerido**: `feat(frontend): componentes compartidos y helpers de permisos y formato`
 
-- [ ] T243 · `api/usuarios.ts`, `api/roles.ts`, `api/auditoria.ts` · `[frontend]`
+- [X] T243 · `api/usuarios.ts`, `api/roles.ts`, `api/auditoria.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/usuarios.ts`, `roles.ts`, `auditoria.ts` y sus tests (NUEVOS).
   - **Qué hace**: las funciones tipadas de cada dominio según el contrato: usuarios (`listUsers`,
@@ -1031,7 +1031,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: las features consumen estas funciones (sin `fetch` propio).
   - **Commit sugerido**: `feat(frontend): APIs tipadas de usuarios, roles y auditoría`
 
-- [ ] T244 · Guards, router y layout con navegación por permisos · `[frontend]`
+- [X] T244 · Guards, router y layout con navegación por permisos · `[frontend]`
 
   - **Archivos**: `frontend/src/app/router.tsx` (EDITADO), `frontend/src/app/guards.tsx`,
     `frontend/src/app/layout.tsx` (EDITADO) y sus tests (NUEVOS/EDITADOS).
@@ -1052,7 +1052,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     lo autorizado (US4 esc. 6; la autoridad real sigue siendo el servidor).
   - **Commit sugerido**: `feat(frontend): guards de sesión, permiso y cambio de contraseña con navegación filtrada`
 
-- [ ] T245 · `features/auth`: pantalla de acceso y hooks · `[frontend]`
+- [X] T245 · `features/auth`: pantalla de acceso y hooks · `[frontend]`
 
   - **Archivos**: `frontend/src/features/auth/pages/LoginPage.tsx`, `hooks/useSession.ts`,
     `useLogin.ts`, `useLogout.ts` y `auth.test.tsx` (NUEVOS).
@@ -1070,7 +1070,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: US1 usable en el navegador; los textos respetan `ux.md` §7.
   - **Commit sugerido**: `feat(frontend): pantalla de acceso con los estados de error de la spec`
 
-- [ ] T246 · `features/auth`: cambio de contraseña y aviso de sesión · `[frontend]`
+- [X] T246 · `features/auth`: cambio de contraseña y aviso de sesión · `[frontend]`
 
   - **Archivos**: `frontend/src/features/auth/pages/ChangePasswordPage.tsx`,
     `hooks/useChangePassword.ts`, `components/SessionWarning.tsx` y tests (NUEVOS).
@@ -1088,7 +1088,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: US7 y FR-005/FR-010/FR-020 cubiertos en la interfaz (SC-010).
   - **Commit sugerido**: `feat(frontend): cambio de contraseña con política y aviso de sesión`
 
-- [ ] T247 · `features/usuarios`: listado de cuentas · `[frontend]` `[P6]`
+- [X] T247 · `features/usuarios`: listado de cuentas · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/src/features/usuarios/pages/UsersPage.tsx`, `hooks/useUsers.ts` y
     `usuarios.test.tsx` (NUEVOS).
@@ -1109,7 +1109,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: FR-019 y FR-021 visibles en la interfaz.
   - **Commit sugerido**: `feat(frontend): listado de cuentas con estado, rol y último acceso`
 
-- [ ] T248 · `features/usuarios`: formulario de cuenta y acciones · `[frontend]`
+- [X] T248 · `features/usuarios`: formulario de cuenta y acciones · `[frontend]`
 
   - **Archivos**: `frontend/src/features/usuarios/components/UserForm.tsx`,
     `ResetPasswordDialog.tsx`, `hooks/useCreateUser.ts`, `useUpdateUser.ts`, `useResetPassword.ts`,
@@ -1133,7 +1133,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: US3/US5 y FR-009…FR-013 cubiertos en la interfaz.
   - **Commit sugerido**: `feat(frontend): alta, edición, activación y restablecimiento de cuentas`
 
-- [ ] T249 · `features/roles`: listado y formulario de roles · `[frontend]` `[P6]`
+- [X] T249 · `features/roles`: listado y formulario de roles · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/src/features/roles/pages/RolesPage.tsx`, `components/RoleForm.tsx`,
     `hooks/useRoles.ts`, `useCreateRole.ts`, `useUpdateRole.ts`, `useDeleteRole.ts`,
@@ -1152,7 +1152,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: US4/US6 y FR-014…FR-018 cubiertos en la interfaz.
   - **Commit sugerido**: `feat(frontend): gestión de roles con permisos por módulo`
 
-- [ ] T250 · `features/auditoria`: sección de registro · `[frontend]` `[P6]`
+- [X] T250 · `features/auditoria`: sección de registro · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/src/features/auditoria/pages/AuditPage.tsx`, `hooks/useAccessEvents.ts`,
     `useAdminActions.ts` y `auditoria.test.tsx` (NUEVOS).
@@ -1174,7 +1174,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: US8 y FR-021…FR-025 cubiertos en la interfaz (SC-012, SC-013).
   - **Commit sugerido**: `feat(frontend): sección de auditoría de solo lectura con filtros`
 
-- [ ] T254 · `features/panel`: Inicio del panel (`/panel`) · `[frontend]` `[P6]`
+- [X] T254 · `features/panel`: Inicio del panel (`/panel`) · `[frontend]` `[P6]`
   *(añadida por el `analyze` F-02)*
 
   - **Archivos**: `frontend/src/features/panel/pages/InicioPage.tsx`,
@@ -1198,7 +1198,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
     sin permisos de módulo" queda cubierto con su prueba (F-02).
   - **Commit sugerido**: `feat(frontend): inicio del panel con Mi cuenta, accesos rápidos y estado sin permisos`
 
-- [ ] T251 · E2E `acceso.spec.ts` · `[frontend]` `[P7]`
+- [X] T251 · E2E `acceso.spec.ts` · `[frontend]` `[P7]`
 
   - **Archivos**: `frontend/e2e/acceso.spec.ts` (NUEVO; config existente de F1 sin cambios).
   - **Qué hace**: el recorrido completo de `quickstart.md` §11 con Playwright (ejecución **local**;
@@ -1212,7 +1212,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
   - **Criterio de terminado**: el flujo crítico de acceso y gestión queda cubierto de punta a punta.
   - **Commit sugerido**: `test(e2e): recorrido de acceso y gestión con Playwright`
 
-- [ ] T252 · E2E `auditoria.spec.ts` · `[frontend]` `[P7]`
+- [X] T252 · E2E `auditoria.spec.ts` · `[frontend]` `[P7]`
 
   - **Archivos**: `frontend/e2e/auditoria.spec.ts` (NUEVO).
   - **Qué hace**: el recorrido de `quickstart.md` §10 con Playwright: generar accesos (exitosos y
@@ -1230,7 +1230,7 @@ plataforma de F1 (`specs/001-estructura-base/tasks.md`) ya integrada.
 
 ## Fase 11 — Cierre
 
-- [ ] T253 · Verificación de cierre · `[infra]`
+- [X] T253 · Verificación de cierre · `[infra]`
 
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit.
