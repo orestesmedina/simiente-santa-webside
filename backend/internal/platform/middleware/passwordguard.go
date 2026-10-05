@@ -33,9 +33,7 @@ func PasswordGuard(logger *slog.Logger) httpserver.Middleware {
 			ctx := r.Context()
 			identity, ok := session.IdentityFromContext(ctx)
 			if !ok {
-				httpserver.WriteError(ctx, w, logger, apperr.Unauthenticated(
-					"Necesitas iniciar sesión para continuar",
-				))
+				httpserver.WriteError(ctx, w, logger, apperr.Unauthenticated(messageUnauthenticated))
 				return
 			}
 			if identity.MustChangePassword {

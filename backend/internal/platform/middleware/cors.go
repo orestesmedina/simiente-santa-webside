@@ -7,24 +7,34 @@ import (
 	"simiente-santa/backend/internal/platform/httpserver"
 )
 
-// Cabeceras CORS que maneja el middleware mínimo de F1 (D16): una respuesta
-// simple sin credenciales y los preflight.
+// Cabeceras CORS (D16 ampliado en P11/R13): la sesión viaja en cookie, así que
+// las respuestas van con credenciales y el Origin se refleja exacto (nunca `*`
+// con credenciales).
 const (
-	headerOrigin        = "Origin"
-	headerAllowOrigin   = "Access-Control-Allow-Origin"
-	headerAllowMethods  = "Access-Control-Allow-Methods"
-	headerAllowHeaders  = "Access-Control-Allow-Headers"
-	headerMaxAge        = "Access-Control-Max-Age"
-	headerRequestMethod = "Access-Control-Request-Method"
-	headerVary          = "Vary"
-	allowMethodsValue   = "GET, OPTIONS"
-	allowHeadersValue   = "Content-Type, X-Request-ID"
-	allowMaxAgeValue    = "600"
+	headerOrigin           = "Origin"
+	headerAllowOrigin      = "Access-Control-Allow-Origin"
+	headerAllowMethods     = "Access-Control-Allow-Methods"
+	headerAllowHeaders     = "Access-Control-Allow-Headers"
+	headerAllowCredentials = "Access-Control-Allow-Credentials"
+	headerExposeHeaders    = "Access-Control-Expose-Headers"
+	headerMaxAge           = "Access-Control-Max-Age"
+	headerRequestMethod    = "Access-Control-Request-Method"
+	headerVary             = "Vary"
+	allowMethodsValue      = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+	allowHeadersValue      = "Content-Type, X-CSRF-Token, X-Request-ID"
+	exposeHeadersValue     = "X-Request-ID"
+	allowCredentialsValue  = "true"
+	allowMaxAgeValue       = "600"
 )
 
-// CORS responde los preflight OPTIONS y fija Access-Control-Allow-Origin solo
-// para los orígenes permitidos (CORS_ALLOWED_ORIGINS). Escrito a mano, sin
-// dependencias. No usa credenciales en F1 (D16).
+// CORS responde los preflight OPTIONS y fija las cabeceras CORS solo para los
+// orígenes permitidos (CORS_ALLOWED_ORIGINS). Escrito a mano, sin dependencias.
+//
+// A diferencia de F1, la respuesta admite credenciales (P11): echo exacto del
+// Origin permitido —nunca `*`, incompatible con cookies—, Allow-Credentials,
+// las cabeceras del contrato (Content-Type, X-CSRF-Token, X-Request-ID) y
+// Expose-Headers para que la SPA pueda leer X-Request-ID. Vary: Origin evita
+// que una caché sirva la respuesta de un origen a otro.
 func CORS(allowedOrigins []string) httpserver.Middleware {
 	allowed := make(map[string]struct{}, len(allowedOrigins))
 	for _, origin := range allowedOrigins {
@@ -44,6 +54,8 @@ func CORS(allowedOrigins []string) httpserver.Middleware {
 			}
 			if permitted {
 				w.Header().Set(headerAllowOrigin, origin)
+				w.Header().Set(headerAllowCredentials, allowCredentialsValue)
+				w.Header().Set(headerExposeHeaders, exposeHeadersValue)
 			}
 
 			if isPreflight(r) {
