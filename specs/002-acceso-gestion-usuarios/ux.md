@@ -1,6 +1,6 @@
 # UX: F2 — Acceso y gestión de usuarios
 
-> Documento de diseño para `disenador-ux`. Fuente: `spec.md` (aprobada 2026-10-04) y skill `react-frontend`.
+> Documento de diseño para `disenador-ux`. Fuente: `spec.md` (aprobada 2026-10-04, con cambio de alcance auditoría US8/FR-021–FR-026 incorporado el 2026-10-04) y skill `react-frontend`.
 > No es código: el `dev-frontend` lo implementa. Las decisiones de rutas/contratos concretos las fija el `arquitecto` en `plan.md`; aquí se proponen.
 
 ## 0. Principios de diseño
@@ -46,6 +46,7 @@
 - **Crear/editar rol**: Inicio → "Roles" → "Crear rol" o "Editar" → nombre + casillas de permisos → éxito → listado.
 - **Eliminar rol**: fila → "Eliminar" → confirmación → si hay cuentas asignadas, se impide con mensaje "primero reasígalas" (no se deshabilita a ciegas; el intento siempre da una explicación). US6.5
 - **Cambiar mi contraseña**: menú de cuenta → "Cambiar contraseña" (actual + nueva) o la versión obligatoria tras restablecimiento.
+- **Consultar la auditoría** (solo con permiso de administración, US8): Inicio → "Auditoría" → pestaña "Historial de accesos" o "Acciones administrativas" → filtrar por cuenta y por rango de fechas → leer registros paginados. No hay nada que crear ni modificar: es una consulta.
 
 ---
 
@@ -59,6 +60,7 @@
   /panel            → "Inicio" (Mi cuenta: datos, cambiar contraseña, salir)
   /panel/usuarios   RequirePermiso(users-admin). Listado + crear/editar
   /panel/roles      RequirePermiso(users-admin). Listado + crear/editar/eliminar
+  /panel/auditoria  RequirePermiso(users-admin). Registro de solo lectura
   /panel/cuenta     Cambiar contraseña (autenticado, sin permiso extra)
 ```
 
@@ -89,13 +91,14 @@
 - **Contenido móvil primero**: barra superior con título de sección, botón de menú (hamburguesa) que abre un panel lateral con la navegación; en ≥ tablet, barra lateral fija con el mismo menú. Pie de barra: mi nombre + rol, "Salir". Navegación (solo módulos existentes y autorizados):
   - "Inicio" (todos).
   - "Usuarios" y "Roles" (solo con permiso de administración de usuarios y roles).
+  - "Auditoría" (mismo permiso de administración de usuarios y roles; no existe un permiso propio de auditoría, FR-024).
   - Sin permiso adicional: no aparece ninguna otra sección; una cuenta sin permisos ve solo Inicio (Edge Case válido, FR-016).
 - Del panel de navegación quedan fuera (no se pintan ni se habilitan) los módulos F3–F9; sus permisos ya se eligen al crear roles, marcados como "disponible más adelante" (§4.d).
 
 ### 3.4 Inicio del panel — `/panel` (índice)
 
 - **Propósito**: aterrizaje con lo mínimo útil: cuenta propia y accesos rápidos; aquí aterriza quien no tiene permiso de administración.
-- **Contenido**: tarjeta "Mi cuenta" (nombre, correo, rol, estado del sistema de F1 como mini-resumen si procede), tarjeta "Gestión" con los accesos autorizados (Usuarios, Roles) si procede, botón "Cambiar contraseña", botón "Salir".
+- **Contenido**: tarjeta "Mi cuenta" (nombre, correo, rol, estado del sistema de F1 como mini-resumen si procede), tarjeta "Gestión" con los accesos autorizados (Usuarios, Roles, Auditoría) si procede, botón "Cambiar contraseña", botón "Salir".
 - Un usuario sin ningún permiso de módulo ve solo "Mi cuenta" y un texto propio: "Tu cuenta está activa. Aún no tienes secciones asignadas; si necesitas acceso, habla con tu administrador."
 
 ### 3.5 Usuarios — `/panel/usuarios` (solo con permiso de administración)
@@ -105,6 +108,7 @@
 - **Contenido por fila**: nombre y apellidos, correo, rol (texto plano), estado (`Activo`/`Inactivo` en una "píldora" con color Y texto), y acciones: **Editar**, **Desactivar** o **Activar**. Sin acción de eliminar (FR-013): no existe y no aparece ningún botón gris que confunda.
 - **Encabezado**: contador ("8 usuarios"), buscador de texto libre (nombre, apellidos o correo, filtro en cliente, sin paginar en MVP), botón principal "Crear usuario".
 - **Detalle del formulario**: ver `FormularioUsuario` (§4.c).
+- **Último acceso (FR-021)**: en la tarjeta móvil y en la tabla se muestra, bajo el correo o como última columna, el **último acceso exitoso** con fecha, hora e IP de origen ("Último acceso: 03/10/2026 a las 17:42, desde 189.2.4.15"). Si la cuenta **aún no ha entrado nunca**: texto "Nunca ha entrado al panel." — nunca una fecha inventada ni un guion ambiguo.
 
 ### 3.6 Crear/editar usuario (modal o página, solo con permiso de administración)
 
@@ -138,7 +142,22 @@
 - **Contenido**: título "No tienes acceso a esta sección", texto "Si necesitas entrar aquí, pide a un administrador de la iglesia que actualice tu rol.", botón "Volver al inicio del panel" y "Cerrar sesión". Sin detalles internos del rechazo.
 - También la navegación evita llegar: los módulos sin permiso no se muestran en el menú (§3.3).
 
-### 3.11 Aviso de sesión por caducar (superposición global en el layout del panel)
+### 3.11 Auditoría — `/panel/auditoria` (solo con permiso de administración; US8, FR-021–FR-026)
+
+- **Propósito**: consulta **de solo lectura** de los registros de la administración: quién entró, quién no pudo y qué cambios se hicieron sobre cuentas y roles (US8). Nada se crea, edita ni borra aquí: **no hay botones de "Editar", "Eliminar" ni acciones por fila** (FR-025) — la vista no los pinta siquiera gris.
+- **Estructura**: título "Auditoría" + **dos pestañas** grandes y etiquetadas con texto (nunca solo iconos):
+  - **"Historial de accesos"**: intentos de inicio de sesión, exitosos y fallidos.
+    - Móvil: tarjetas; tableta en adelante: tabla. Por fila: **fecha y hora** ("03/10/2026, 17:42"), **cuenta** (nombre y correo; para un intento sin cuenta identificable: "Correo no registrado: {correo}" — el dato ya queda en el registro, no revela nada nuevo), **resultado** en píldora con texto ("Exitoso" / "Fallido", más que color) e **IP de origen**. Sin contraseñas ni credenciales (FR-026).
+  - **"Acciones administrativas"**: lo que hicieron los administradores.
+    - Por fila: **quién** (nombre y correo de quien hizo la acción), **qué hizo** ("Creó una cuenta", "Restableció la contraseña", "Desactivó una cuenta", "Editó un rol", "Eliminó un rol"…), **sobre qué** (la cuenta o el rol afectado, con su nombre y correo si aplica), **cuándo** (fecha y hora) y **resultado** ("Completada" / "No completada" — el intento que falló o fue denegado también aparece, FR-023). Sin credenciales (FR-026).
+- **Filtros** (encima del listado, en línea en tablet, apilados en móvil):
+  - **Cuenta**: selector con las cuentas existentes ("Todas" por defecto); en "Acciones administrativas", el filtro se aplica a "quién la hizo" y a "sobre qué cuenta" según la pestaña (lo concreto lo fija el contrato del `arquitecto`).
+  - **Rango de fechas**: campo "Desde" y campo "Hasta" con selector de date; por defecto vacíos ("todo el histórico").
+  - Botón "Filtrar" (aplica) y enlace/botón "Quitar filtros".
+- **Paginación** (obligatoria, FR-024): al pie, "Anterior" / "Siguiente" con texto "Mostrando {a}–{b} de {total}"; página actual no repetible como hipervínculo. La paginación se reinicia a la página 1 al aplicar filtros.
+- **Nota**: a diferencia de Usuarios y Roles (§8), aquí **sí** se pagina: es requisito de la spec (FR-024), no una mejora futura.
+
+### 3.12 Aviso de sesión por caducar (superposición global en el layout del panel)
 
 - **Propósito**: advertir el cierre inminente por inactividad y permitir continuar con "Sigo aquí" (renueva la actividad); si no se pulsa, expira (FR-005). Dos límites fijados por la spec: **30 minutos de inactividad** con aviso 2 minutos antes, y un **techo absoluto de 1 hora** de sesión aunque haya actividad; al llegar el techo, la sesión se cierra sin aviso previo posible (el usuario ve "Tu sesión terminó." al hacer la siguiente acción).
 - Doble capa: **banda superior** fina amarilla 2 minutos antes del cierre por inactividad + **modal** de confirmación con botones "Sigo aquí" (primario) / "Salir". En el aviso no se anuncia "cada segundo" (algo ruidoso para lectores de pantalla): se anuncia al abrirse y con la cuenta de tiempo redondeada ("quedan menos de 2 minutos").
@@ -189,6 +208,19 @@
 - Éxito: "Contraseña cambiada. La próxima vez que entres, usa la nueva." (modos obligatorio y normal) y vuelve al panel.
 - Errores: la actual no es correcta ("Tu contraseña actual no coincide. Vuelve a escribirla."), la nueva no cumple un requisito (el checklist lo señala en rojo, con texto que nombra el requisito, no un texto genérico).
 
+### g. Auditoría (§3.11)
+
+| Estado | Qué ve |
+|---|---|
+| Cargando | "Cargando registros…" en la zona de resultados; los filtros siguen interactivos. Al cambiar de pestaña o página, la zona se recarga sin perder los filtros. |
+| Vacío | "Todavía no hay registros." Con filtros aplicados, se añade: "Prueba a quitar los filtros o usar un rango de fechas más amplio." Sin filtros (sistema recién instalado): "Todavía no hay registros de actividad. Aparecerán cuando alguien entre al panel o se gestione una cuenta o un rol." |
+| Error | "No se pudo cargar el registro." + botón "Reintentar". |
+| Éxito | Tabla/tarjetas paginadas con resumen "Mostrando {a}–{b} de {total} registros" (`role="status"` para anunciar el total al aplicar filtros). |
+| Sin permiso | Ruta protegida con el mismo permiso que Usuarios y Roles (§3.10). |
+| Pestañas y filtros | Cada pestaña mantiene su propia búsqueda y paginación al alternar; aplicar un filtro vuelve a la página 1. |
+
+- La vista no tiene estados de acción en curso ni confirmaciones: no hay acciones (FR-025).
+
 ### f. Aviso de sesión
 
 - Cargando sesión: al entrar al panel se pide una vez "mi sesión". Error → banda "No se pudo verificar tu acceso" con "Reintentar" y, si vuelve a fallar con 401, salida limpia.
@@ -212,6 +244,9 @@
 | `EstadoCarga` / `EstadoVacio` / `EstadoError` | `mensaje`, `accion?` | Los tres estados obligatorios de las skill. |
 | `PildoraEstado` | `valor` ('activo' \| 'inactivo') | Color + texto (más que color). |
 | `Tabla` | cabeceras + filas; en móvil se compone como lista de tarjetas | Usuarios y roles (móvil primero). |
+| `Pestannas` | `pestanias[{id, texto}]`, `activa`, `alCambiar` | Las dos vistas de la Auditoría; texto visible + `aria-current`. |
+| `Paginacion` | `pagina`, `totalPaginas`, `alCambiar`, `textoResumen` | Pie de la Auditoría: "Anterior" / "Siguiente" deshabilitados en los extremos. |
+| `FiltrosFecha` | candidato a envolver dos `Campo` tipo date + botones "Filtrar" / "Quitar filtros" | Rango de fechas de la Auditoría. |
 | `ModalDialog` | `titulo`, `descripcion?`, `alCerrar` | Formularios en modal (Crear/editar usuario/rol). |
 
 ### De funcionalidad (`features/acceso/`, `features/usuarios/`, `features/roles/`, `features/cuenta/`)
@@ -228,8 +263,10 @@
 | `PaginaSinPermiso` | §3.10. |
 | `PaginaCambiarContrasena` | Cambio propio y modo obligatorio. |
 | Hooks de datos | `useUsuarios`, `useCrearUsuario`, `useEditarUsuario`, `useCambiarEstadoUsuario`, `useRoles`, `useCrearRol`, `useEditarRol`, `useEliminarRol`, `useCambiarMiContrasena`, `useIniciarSesion`, `useCerrarSesion` sobre TanStack Query; ningún `fetch` en componentes. |
+| `PaginaAuditoria`, `ListaAccesos`, `ListaAccionesAdmin`, `FiltrosAuditoria` | Auditoría (§3.11): dos pestañas reutilizando `Tabla`, filtros y paginación; sin botones de edición ni borrado. |
+| `useAuditoria` | Carga paginada con filtros (pestaña, cuenta, rango de fechas, página) sobre TanStack Query: una consulta por pestaña. |
 
-**Con pruebas** (Vitest + Testing Library, lógica visible): `FormularioAcceso` (estados de error y bloqueo), `AvisoSesion` (cuenta atrás), `RequirePermiso`, formularios de usuario y rol (Zod y errores del servidor), `GrupoPermisos`. El `dev-frontend` las escribe con MSW.
+**Con pruebas** (Vitest + Testing Library, lógica visible): `FormularioAcceso` (estados de error y bloqueo), `AvisoSesion` (cuenta atrás), `RequirePermiso`, formularios de usuario y rol (Zod y errores del servidor), `GrupoPermisos`. El `dev-frontend` las escribe con MSW. En la **Auditoría**: `useAuditoria` (filtros + página, el cambio de filtro reinicia a la página 1), cambio de pestaña conservando búsqueda, y el último acceso en la ficha de usuario (con y sin accesos, FR-021). También: que la vista de auditoría no ofrece ninguna acción de edición o borrado (FR-025).
 
 ---
 
@@ -237,7 +274,7 @@
 
 - **Teclado**: todo interactivo alcanzable y visible; orden de tabulación lógico (título → campos → botón). `Enter` envía el formulario de acceso. En listados, las acciones por fila son botones reales.
 - **Foco**: visible siempre (`focus-visible` con anillo de 2 px `slate-900`); al aparecer un error, el foco va al `Aviso` y, si es de campo, al primer campo inválido; tras iniciar sesión, foco en el `h1` del panel.
-- **Semántica**: `<h1>` único por página; formularios con `<label>` explícito; errores con `aria-invalid` + `aria-describedby`; navegación con `<nav aria-label="Navegación del panel">`; listados con tablas semánticas (th con ámbito) y tarjetas equivalentes en móvil.
+- **Semántica**: `<h1>` único por página; formularios con `<label>` explícito; errores con `aria-invalid` + `aria-describedby`; navegación con `<nav aria-label="Navegación del panel">`; listados con tablas semánticas (th con ámbito) y tarjetas equivalentes en móvil. En la Auditoría: las pestañas son botones con estado `aria-current` (o patrón de pestañas ARIA con flechas); la paginación se anuncia con el resumen "Mostrando {a}–{b} de {total}" tras cada cambio (`role="status"`).
 - **Avisos**: error/alerta como `role="alert"`, éxito como `role="status"`. El aviso de sesión usa `role="alertdialog"` y trampa de foco.
 - **Más que color**: activo/inactivo y permisos llevan texto explícito, nunca solo rojo/verde. Los errores no se comunican solo con color del borde.
 - **Contraste y letra**: la base del panel es 18 px y 1.5 de interlineado; botones ≥ 44 px; sin texto por debajo de 12 px. La marca visual es el texto real, no `title` ni `placeholder`.
@@ -276,6 +313,11 @@
 | Sesión expirada al intentar acción | "Tu sesión terminó. Entra de nuevo y vuelve a hacer la acción; no se guardó a medias." |
 | Error del sistema | "No se pudo completar la operación. Vuelve a intentarlo en unos minutos; si sigue, avísanos." |
 | Confirmaciones destructivas | Desactivar: "La persona perderá el acceso de inmediato, aunque tenga sesión abierta; sus datos se conservan." · Eliminar rol: "Se borrará el rol '{nombre}' con sus {N} permisos. Las cuentas que lo usen no se verán afectadas si antes les asignas otro." |
+| Auditoría vacía | "Todavía no hay registros." (+ con filtros: "Prueba a quitar los filtros o usar un rango de fechas más amplio.") |
+| Último acceso de la cuenta | "{fecha}, a las {hora}, desde {IP}" · Sin accesos: "Nunca ha entrado al panel." |
+| Resultado del acceso (píldora) | "Exitoso" / "Fallido" · Intento sin cuenta identificable: fila con "Correo no registrado". |
+| Resultado de la acción (píldora) | "Completada" / "No completada" |
+| Error de la auditoría | "No se pudo cargar el registro. Vuelve a intentarlo en unos minutos; si sigue, avísanos." |
 
 ---
 
@@ -283,5 +325,7 @@
 
 - La **lógica con pruebas** está en hooks y formularios: política de contraseñas en Zod (compartida con el backend vía contrato, incluida la distinción con nombre/apellidos/correo), validators de obligatorios (nombre, apellidos, correo, teléfono), cuenta atrás del bloqueo y de la sesión (30 min inactividad + techo absoluto de 1 hora, se congelan tiempos), y guardas de ruta.
 - Cualquier hora ("a partir de las HH:MM") se calcula en cliente con la zona del navegador; el backend aporta la marca de tiempo.
-- El listado no pagina en el MVP (equipo pequeño); el filtro es de texto en cliente. Si crece, se paginará después (fuera de alcance ahora).
+- El listado no pagina en el MVP (equipo pequeño); el filtro es de texto en cliente. Si crece, se paginará después (fuera de alcance ahora). **Excepción: la Auditoría sí pagina** — es requisito de la spec (FR-024).
+- La Auditoría es de solo lectura en toda la pila: el `dev-frontend` no implementa ninguna acción sobre los registros (FR-025) y el `qa-tester` verifica que intentar editar/borrar desde el panel no existe en la interfaz.
+- Verificar también el **último acceso** en el listado de usuarios: cuenta nueva sin entrada → "Nunca ha entrado al panel." (FR-021).
 - El diseño móvil primero se verifica a 320 px: tarjetas, sin desbordes, targets de 44 px.

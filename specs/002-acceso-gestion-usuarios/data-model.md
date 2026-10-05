@@ -1,6 +1,7 @@
 # Data Model — F2 Acceso y gestión de usuarios
 
-**Fecha**: 2026-10-04 · **Rama**: `002-acceso-gestion-usuarios` · **Spec**: `spec.md` (aprobada)
+**Fecha**: 2026-10-04 · **Rama**: `002-acceso-gestion-usuarios` · **Spec**: `spec.md` (aprobada;
+**cambio de alcance: auditoría** re-aprobado el 2026-10-04 — US8, FR-021…FR-026)
 · **Convenciones**: `specs/001-estructura-base/data-model.md` (migraciones), skill `postgres-db`,
 `docs/tecnico/arquitectura.md` §8.1 (PK UUID, mapeo `pgtype`, orden de listados).
 
@@ -17,24 +18,31 @@ módulo (p. ej. `role_permissions`). Este plan la **simplifica y completa** así
 | `roles` | **Se mantiene** | Roles creados por el administrador (FR-014/FR-017) |
 | `user_roles` | **Se elimina** | La decisión Q4 fija **un solo rol por cuenta**: la relación es `users.role_id` (FK). Una tabla de unión permitiría varios roles, exactamente lo que la spec prohíbe |
 | permisos por módulo (ej. `role_permissions`) | **Se mantiene `role_permissions`** y se **añade `permissions`** como catálogo fijo sembrado por la migración | FK y unicidad reales + `GET /api/v1/admin/permisos` puede listar el catálogo con etiquetas sin duplicarlo en código |
-| (no previsto) `login_attempts` | **No es tabla: contadores en Redis con TTL** | FR-006 (5 intentos / 15 min) sin enumerar cuentas (`research.md` R5). El estado es efímero por definición y Redis ya existe por la sesión: su TTL reemplaza a la limpieza manual |
+| (no previsto) `login_attempts` | **No es tabla: contadores en Redis con TTL** | FR-006 (5 intentos / 15 min) sin enumerar cuentas (`research.md` R5). El estado es efímero por definición y Redis ya existe por la sesión: su TTL reemplaza a la limpieza manual. **No confundir con `login_events`** (abajo): esa tabla descartada era el *contador de bloqueo*; el **historial de auditoría** sí es tabla porque debe durar |
+| (no previsto por F1) `login_events` | **Tabla nueva** *(cambio de alcance: auditoría, 2026-10-04)* | Historial duradero de intentos de acceso (FR-022); `research.md` R22 |
+| (no previsto por F1) `admin_actions` | **Tabla nueva** *(cambio de alcance: auditoría, 2026-10-04)* | Historial duradero de acciones administrativas (FR-023); `research.md` R22 |
 
 Reglas que se respetan de las convenciones: nombres en inglés y plural; `id UUID PRIMARY KEY
 DEFAULT gen_random_uuid()`; `created_at`/`updated_at TIMESTAMPTZ NOT NULL DEFAULT now()`; `NOT NULL`
 por defecto; `TEXT` con `CHECK` de longitud; claves foráneas explícitas con `ON DELETE` decidido;
 índices en FK y en las columnas de `WHERE`/`ORDER BY`; `UNIQUE`/`CHECK` **en la base**, no solo en el
-código; `up`/`down` completos; **nunca** se edita una migración aplicada. **F2 consta de dos
-migraciones, `000002` y `000003`** (la numeración sigue desde el baseline `000001` de F1; al no
-crear tablas de sesión ni de intentos no hay huecos que renumerar).
+código; `up`/`down` completos; **nunca** se edita una migración aplicada. **F2 consta de tres
+migraciones, `000002`, `000003` y `000004`** (la numeración sigue desde el baseline `000001` de F1 y
+no hay huecos; al no crear tablas de sesión ni de contadores no faltan números. `000004` es la del
+**cambio de alcance: auditoría** y lleva además la proyección del último acceso en `users`).
 
 ## Resumen de tablas
 
 ```text
 PostgreSQL:  permissions ──< role_permissions >── roles ──< users
+                                                               ├─< login_events   (historial de accesos, FR-022)
+                                                               ├─< admin_actions  (quién actuó, FR-023)
+                                                               └── last_login_at / last_login_ip (proyección del último acceso, FR-021)
+             roles >─ (admin_actions.target_role_id, ON DELETE SET NULL)
 
 Redis:       sess:<sha256(token)>      → sesión (TTL 30 min, vida absoluta 1 h)
              user_sessions:<user_id>   → SET de sesiones abiertas (revocación por cuenta)
-             login:fail:<identificador>  /  login:block:<identificador>  → intentos y bloqueo
+             login:fail:<identificador>  /  login:block:<identificador>  → contadores de intentos y bloqueo (FR-006)
 ```
 
 | Tabla / almacén | Propietario (paquete) | Reglas que cubre |
@@ -42,9 +50,11 @@ Redis:       sess:<sha256(token)>      → sesión (TTL 30 min, vida absoluta 1 
 | `permissions` | `internal/usuarios` | FR-015 (catálogo = módulos del producto) |
 | `roles` | `internal/usuarios` | FR-014, FR-017 |
 | `role_permissions` | `internal/usuarios` | FR-014 (≥1 permiso), FR-018 |
-| `users` | `internal/usuarios` | FR-009…FR-013, FR-017 (un rol), FR-019 |
+| `users` | `internal/usuarios` | FR-009…FR-013, FR-017 (un rol), FR-019, FR-021 (`last_login_at`/`last_login_ip`) |
+| `login_events` | `internal/usuarios` (auditoría) | FR-022, FR-025, FR-026 |
+| `admin_actions` | `internal/usuarios` (auditoría) | FR-023, FR-025, FR-026 |
 | Redis: `sess:*` / `user_sessions:*` | `internal/platform/session` (implementación Redis de `session.Store`) | FR-001, FR-004, FR-005, FR-012 |
-| Redis: `login:fail:*` / `login:block:*` | `internal/usuarios` | FR-006 |
+| Redis: `login:fail:*` / `login:block:*` | `internal/usuarios` | FR-006 (solo el **contador de bloqueo**, efímero) |
 
 ## Migraciones
 
@@ -171,14 +181,147 @@ Notas:
 DROP TABLE IF EXISTS users;
 ```
 
-## Almacenamiento en Redis (sesiones e intentos de acceso)
+### `000004_create_login_events_and_admin_actions.up.sql`
 
-No hay más migraciones: `sessions` y `login_attempts` **no** se crean en PostgreSQL (decisión
-confirmada del humano el 2026-10-04; `research.md` R1/R5). El contrato con Redis se documenta aquí
-porque es parte del modelo de datos aunque viva fuera de la base relacional. Cliente:
-`github.com/redis/go-redis/v9` (justificado en `research.md` R16); la interfaz `session.Store` y su
-implementación viven en `internal/platform/session`, y los contadores de acceso se manejan desde el
-dominio `usuarios`.
+Migración del **cambio de alcance: auditoría** (US8, FR-021…FR-026). Añade las dos tablas duraderas
+del registro y la proyección del último acceso en `users`. Se añade como migración propia (y no
+editando el diseño de `000003`) para que el cambio de alcance quede aislado y reversible; la
+numeración queda sin huecos: `000001` (F1) → `000002` → `000003` → `000004`.
+
+```sql
+-- Proyección del último acceso exitoso (FR-021): dos columnas en users para que la ficha y el
+-- listado la muestren sin consultar el historial (ver "Último acceso por cuenta" más abajo).
+-- Solo las escribe el login exitoso, en el mismo paso que inserta su fila en login_events.
+ALTER TABLE users
+    ADD COLUMN last_login_at TIMESTAMPTZ NULL,
+    ADD COLUMN last_login_ip TEXT NULL CHECK (char_length(last_login_ip) BETWEEN 3 AND 45);
+
+-- Historial de intentos de inicio de sesión (FR-022): una fila por intento, exitoso o fallido.
+-- user_id queda NULL cuando el correo no corresponde a ninguna cuenta: el intento se registra
+-- igual pero no se asocia a nada y no se crea ninguna cuenta (FR-003, sin "cuentas fantasma").
+CREATE TABLE login_events (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    UUID NULL REFERENCES users(id) ON DELETE RESTRICT,
+    result     TEXT NOT NULL CHECK (result IN ('success', 'failure')),
+    ip         TEXT NOT NULL CHECK (char_length(ip) BETWEEN 3 AND 45),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Orden por defecto del historial (§8.1.7) y filtro por cuenta + rango de fechas (FR-024).
+CREATE INDEX login_events_created_at_id_idx ON login_events (created_at DESC, id DESC);
+CREATE INDEX login_events_user_created_at_id_idx ON login_events (user_id, created_at DESC, id DESC);
+
+-- Historial de acciones administrativas sensibles (FR-023): quién, qué, sobre qué, cuándo y con
+-- qué resultado —incluidos los intentos que no se completan y los denegados por falta de permiso.
+CREATE TABLE admin_actions (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    actor_user_id  UUID NULL REFERENCES users(id) ON DELETE RESTRICT,
+    action         TEXT NOT NULL CHECK (action IN (
+                       'user.create', 'user.update', 'user.activate', 'user.deactivate',
+                       'user.password_reset', 'role.create', 'role.update', 'role.delete')),
+    target_kind    TEXT NOT NULL CHECK (target_kind IN ('user', 'role')),
+    target_user_id UUID NULL REFERENCES users(id) ON DELETE RESTRICT,
+    target_role_id UUID NULL REFERENCES roles(id) ON DELETE SET NULL,
+    target_label   TEXT NULL CHECK (char_length(target_label) BETWEEN 1 AND 254),
+    result         TEXT NOT NULL CHECK (result IN ('success', 'failure', 'denied')),
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Sin actor solo puede quedar la inicialización del sistema (FR-007), que cuenta como
+    -- creación de cuenta y por eso se registra como 'user.create'.
+    CHECK (actor_user_id IS NOT NULL OR action = 'user.create'),
+    -- Cada objetivo usa la FK de su tipo. Ambas son anulables: una creación rechazada no llega a
+    -- tener id, y un rol eliminado (FR-017) deja target_role_id en NULL conservando target_label.
+    CHECK ((target_kind = 'user' AND target_role_id IS NULL) OR
+           (target_kind = 'role' AND target_user_id IS NULL))
+);
+
+CREATE INDEX admin_actions_created_at_id_idx ON admin_actions (created_at DESC, id DESC);
+CREATE INDEX admin_actions_actor_created_at_id_idx ON admin_actions (actor_user_id, created_at DESC, id DESC);
+CREATE INDEX admin_actions_target_user_created_at_id_idx ON admin_actions (target_user_id, created_at DESC, id DESC);
+CREATE INDEX admin_actions_target_role_id_idx ON admin_actions (target_role_id);
+```
+
+### `000004_create_login_events_and_admin_actions.down.sql`
+
+```sql
+DROP TABLE IF EXISTS admin_actions;
+DROP TABLE IF EXISTS login_events;
+ALTER TABLE users
+    DROP COLUMN IF EXISTS last_login_ip,
+    DROP COLUMN IF EXISTS last_login_at;
+```
+
+Notas de las tablas de auditoría:
+
+- **Solo inserción (FR-025)**: no existe `UPDATE` ni `DELETE` sobre `login_events` ni
+  `admin_actions` en ninguna consulta de sqlc, servicio ni contrato: el registro es de solo lectura
+  desde el panel y se conserva aunque la cuenta se desactive o se le editen los datos (FR-012,
+  FR-013, FR-025). Por eso `updated_at` es siempre igual a `created_at`; se mantiene para respetar
+  la convención de esquema (`id`, `created_at`, `updated_at`), no porque haya nada que actualizar.
+- **`created_at` es la fecha y hora del intento o de la acción**: la fila se inserta en el mismo
+  proceso que lo registra, de modo que es el "cuándo" que piden FR-022/FR-023 y el campo por el que
+  se filtra el rango de fechas (FR-024). El orden por defecto de ambos historiales es
+  `created_at DESC, id DESC` (§8.1.7) y sus índices lo reflejan.
+- **Sin credenciales en el registro (FR-026)**: de un inicio de sesión solo queda su resultado
+  (`success`/`failure`); de un restablecimiento de contraseña solo quién lo hizo, sobre qué cuenta y
+  cuándo (la acción `user.password_reset` no lleva ningún valor de contraseña). Tampoco se guarda
+  el correo de un intento **no identificado**: solo `user_id` cuando la cuenta existe (mínimo dato
+  necesario; los correos inventados no dejan "cuentas fantasma" ni datos de terceros en el registro).
+- **IP de origen**: texto de la dirección del par (`net.SplitHostPort(r.RemoteAddr)`), IPv4 o IPv6
+  (longitud 3–45). No se lee `X-Forwarded-For` porque no hay proxy documentado en el MVP; si algún
+  día lo hay, será una decisión nueva (ahora mismo se registraría la IP del proxy).
+- **`admin_actions.action`**: los ocho códigos que pide FR-023. La **inicialización** (FR-007) se
+  registra como `user.create` con `actor_user_id = NULL` —único caso permitido sin actor, por el
+  `CHECK`— y `target_user_id` = la cuenta inicial: cuenta como creación de cuenta y debe registrarse.
+  El rol "Administrador" que nace con ella forma parte de esa misma acción (no hubo un administrador
+  que "creara un rol", que es lo que registra `role.create`).
+- **Objetivos que desaparecen**: `users` nunca se borra (FR-013) → sus FK van con `ON DELETE
+  RESTRICT` y no hay problema; los **roles sí se pueden eliminar** (FR-017) → `target_role_id` va
+  con `ON DELETE SET NULL` y el registro sobrevive con `target_label` (el nombre del rol en el
+  momento de la acción). Sin ese `target_label`, el "sobre qué" del registro dejaría de responderse
+  al eliminar un rol, y FR-025 exige que el registro se conserve íntegro.
+- **`result`**: `login_events` usa solo `success`/`failure` (FR-022: "exitoso/fallido"; los intentos
+  durante un bloqueo temporal de FR-006 se registran como `failure`). `admin_actions` añade
+  `denied` para separar la denegación por falta de permiso (FR-016) del intento que falló por datos
+  inválidos, duplicado o por la regla anti-bloqueo; ambas clases "no se completan" y las dos deben
+  quedar registradas (Edge Cases de la spec).
+- **Qué pasa si el registro no se puede escribir**: el éxito de una operación sensible y su registro
+  van en la **misma transacción** (o ambos, o ninguno); un login exitoso también deja su fila de
+  `login_events` y su `last_login_*` antes de emitir la sesión (**sin registro, sin acceso**). Si lo
+  que falla es el registro de un **intento que ya va a fallar** (un login con mala contraseña, una
+  operación denegada), se loguea el error con `request_id` y se devuelve el error original: el
+  registro nunca cambia la respuesta que ve la persona, pero su fallo queda en el log.
+
+## Último acceso por cuenta (FR-021) — columnas en `users`, no derivado
+
+- **Decisión**: `users.last_login_at` (fecha y hora) y `users.last_login_ip` (origen) son dos
+  columnas **anulables** actualizadas **solo por el login exitoso**, en el mismo paso que inserta la
+  fila en `login_events`. Una cuenta que nunca ha iniciado sesión las tiene en `NULL` y la ficha lo
+  indica sin inventar ningún acceso (US8 esc. 6).
+- **Por qué columnas y no derivado del historial**: la ficha (`GET /admin/usuarios/{id}`) y el
+  listado muestran el último acceso sin una subconsulta sobre una tabla que crece sin límite; y si
+  algún día hay una política de retención/purga del registro (hoy fuera de alcance, riesgo R17 del
+  plan), el último acceso de la ficha **debe seguir mostrándose**. El coste son dos columnas y un
+  `UPDATE` puntual por login exitoso.
+- **Alternativa descartada**: derivarlo de `login_events` con
+  `WHERE user_id = $1 AND result = 'success' ORDER BY created_at DESC LIMIT 1` (índice parcial).
+  Funciona, pero añade una consulta por cuenta en cada listado, hace que la ficha dependa del
+  crecimiento y la retención del historial y complica el DTO. La fuente de la verdad del "qué pasó"
+  sigue siendo `login_events`; las columnas son su **proyección** y hay una prueba de coherencia:
+  tras cualquier login, el `last_login_at` de la ficha coincide con la fila `success` más reciente
+  del historial de esa cuenta.
+- **Quién las escribe**: solo el flujo de login exitoso. Ningún DTO de entrada las acepta
+  (`UpdateUserInput` no las incluye): no se pueden editar desde la API ni desde el panel.
+
+## Almacenamiento en Redis (sesiones y contadores de acceso)
+
+Quedan **fuera de PostgreSQL** la sesión y los contadores de FR-006: `sessions` y `login_attempts`
+(el contador de bloqueo) **no** se crean como tablas (decisión confirmada del humano el 2026-10-04;
+`research.md` R1/R5). El contrato con Redis se documenta aquí porque es parte del modelo de datos
+aunque viva fuera de la base relacional. Cliente: `github.com/redis/go-redis/v9` (justificado en
+`research.md` R16); la interfaz `session.Store` y su implementación viven en
+`internal/platform/session`, y los contadores de acceso se manejan desde el dominio `usuarios`.
 
 | Clave | Tipo | Valor | TTL | Para qué |
 |---|---|---|---|---|
@@ -200,9 +343,28 @@ Notas:
 - Sesión válida solo si la clave existe, `now < absoluteExpiresAt` y **la cuenta sigue activa**:
   `authn` revalida la cuenta en cada petición (red de seguridad de FR-012). El `lastSeenAt` se
   escribe estrangulado a una vez por minuto.
-- Redis guarda estado efímero: un reinicio sin persistencia solo obliga a volver a iniciar sesión
-  (y reinicia los contadores de intentos — riesgo aceptado y registrado en el plan). Si en
-  despliegue se exigiera dureza, se activa AOF/RDB.
+- Redis guarda **estado efímero y sin persistencia** (confirmado por el humano el 2026-10-04): el
+  servicio `redis` de `docker-compose.yml` corre **sin `appendonly`, sin `save` y sin volumen**. Un
+  reinicio solo obliga a volver a iniciar sesión y reinicia los contadores de intentos (riesgo
+  aceptado, R16 del plan; `research.md` R21); **no toca la auditoría**, que vive en PostgreSQL.
+
+### Relación Redis ↔ PostgreSQL (contadores vs. auditoría)
+
+Son dos responsabilidades distintas y **no se solapan** (decisión del cambio de alcance,
+`research.md` R21/R22):
+
+| | **Redis** (estado efímero) | **PostgreSQL** (registro duradero) |
+|---|---|---|
+| Qué guarda | Sesiones (`sess:*`, `user_sessions:*`) y **contadores de bloqueo** de FR-006 (`login:fail:*`, `login:block:*`) | **Auditoría**: `login_events` (cada intento de acceso) y `admin_actions` (cada acción administrativa) |
+| Cuánto dura | TTL 15 min (contadores) / 30 min + vida absoluta 1 h (sesiones) | Indefinido en el MVP: sin purga ni retención (Out of Scope; riesgo R17 del plan) |
+| Para qué | Aplicar **ahora** el bloqueo de 5 intentos / 15 min y mantener la sesión | Responder **después** qué pasó, quién, desde dónde y cuándo (US8, FR-021…FR-025) |
+| Si se pierde | Reinicio de Redis: se reabre la ventana de intentos y hay que volver a entrar | No se pierde: es la fuente duradera |
+
+El **mismo intento de login** deja huella en los dos lados con distinto objetivo: incrementa el
+contador efímero (`login:fail:<correo>`, que decide si se bloquea) y añade una fila duradera en
+`login_events` (que cuenta para el historial y para el último acceso). Un reinicio de Redis no borra
+ninguna fila del historial; una purga futura del historial (si la hubiera) no afectaría a los
+contadores, porque son de minutos.
 
 ## Consultas sqlc (`backend/internal/db/queries/`)
 
@@ -211,13 +373,15 @@ Todas parametrizadas, sin `SELECT *`, con `ORDER BY` determinista y `LIMIT`/`OFF
 
 | Archivo | Consultas |
 |---|---|
-| `users.sql` | `InsertUser`, `GetUserByID`, `GetUserByEmail`, `GetUserAuthByEmail` (correo + hash + estado + rol + permisos, para login/`authn`), `ListUsers` (con `total` aparte), `CountUsers`, `UpdateUser` (nombre, apellidos, correo, teléfono, rol, activo), `UpdateUserPassword`, `SetUserMustChangePassword`, `CountActiveAdmins` (recuento **post-mutación** para FR-008), `CountUsersByRole` |
+| `users.sql` | `InsertUser`, `GetUserByID`, `GetUserByEmail`, `GetUserAuthByEmail` (correo + hash + estado + rol + permisos, para login/`authn`), `ListUsers` (con `total` aparte), `CountUsers`, `UpdateUser` (nombre, apellidos, correo, teléfono, rol, activo), `UpdateUserPassword`, `SetUserMustChangePassword`, `UpdateUserLastLogin` (`last_login_at`/`last_login_ip`, solo por login exitoso — FR-021), `CountActiveAdmins` (recuento **post-mutación** para FR-008), `CountUsersByRole` |
 | `roles.sql` | `InsertRole`, `GetRoleByID`, `GetRoleByNameLower`, `ListRoles` (+ `CountRoles`), `UpdateRoleName`, `DeleteRolePermissions`, `InsertRolePermission`, `DeleteRole`, `CountRoleUsers` |
 | `permissions.sql` | `ListPermissions` (catálogo), `GetPermissionIDsByCodes` (para crear/editar roles) |
+| `audit.sql` | `InsertLoginEvent`, `ListLoginEvents` (+ `CountLoginEvents`, filtros `userId`/`from`/`to`), `InsertAdminAction`, `ListAdminActions` (+ `CountAdminActions`, filtros por cuenta involucrada `actor OR target` y rango de fechas). **Sin `UPDATE`/`DELETE`**: el registro es de solo inserción (FR-025) |
 
-**No hay `sessions.sql` ni `login_attempts.sql`**: la sesión y los contadores de acceso viven en
-Redis (sección anterior; interfaz `session.Store` en `internal/platform/session` y contadores en el
-dominio `usuarios`), fuera de sqlc.
+**No hay `sessions.sql` ni contadores de intentos en sqlc**: la sesión y el bloqueo de FR-006 viven
+en Redis (sección anterior; interfaz `session.Store` en `internal/platform/session` y contadores en
+el dominio `usuarios`), fuera de sqlc. El **historial** de accesos sí es SQL (`audit.sql`): no se
+confunde con el contador descartado de `login_attempts`.
 
 Los tipos que emite sqlc (`pgtype.*`) se traducen **solo** en `repository.go`/`mapRow` (§8.1.6);
 `sqlc.yaml` no lleva `overrides`. El guard anti-bloqueo usa `database.WithTx` (transacción) y una
@@ -240,17 +404,28 @@ dentro de lo que D-A3 permite (SQL normal dentro del repository; **no** es un st
 | Inicialización única (FR-007) | Service, transacción + advisory lock + `users` vacío | — (la transacción serializada lo garantiza) |
 | Bloqueo 5 intentos / 15 min (FR-006) | Service (contadores `login:fail:*` / `login:block:*` en Redis) | TTL de 15 min + clave por identificador normalizado (exista o no la cuenta) |
 | Sesión válida solo con cuenta activa (FR-012) | `authn` en **cada petición** + revocación de claves al desactivar (`user_sessions:*`) | TTL de inactividad + `absoluteExpiresAt` inmóvil en Redis |
+| Todo intento de acceso queda en `login_events` (FR-022), asociado a la cuenta solo si existe | Service (`service_auth.go`, los cuatro desenlaces: éxito, fallo, cuenta inactiva, bloqueo) | `user_id` anulable con FK; sin columna de correo para intentos no identificados |
+| Toda acción administrativa sensible queda en `admin_actions`, también si falla o se deniega (FR-023) | Service (éxito y fallo de negocio) + `handler` (JSON inválido/validación) + `authz` (denegación) — P20 del plan | `result` con `success`/`failure`/`denied`; `CHECK` de acción/actor |
+| Registro de solo lectura (FR-025) | No existe operación | Sin `UPDATE`/`DELETE` en `audit.sql`; contrato solo con `GET` sobre `/admin/auditoria/*` |
+| Sin credenciales en el registro (FR-026) | Service + revisiones de `seguridad` | Ninguna columna admite contraseñas: solo resultado, actor, objetivo y fechas |
+| Último acceso = último login exitoso (FR-021) | Service (`UpdateUserLastLogin` solo en el éxito) | Columnas anulables en `users`; ninguna vía de API las escribe |
 
 ## Validación del modelo (qué se comprobará en implementación)
 
-1. `make db-migrate` aplica `000002` y `000003` y `migrate down` las revierte por completo, en
-   orden inverso.
+1. `make db-migrate` aplica `000002`, `000003` y `000004` y `migrate down` las revierte por completo,
+   en orden inverso (incluidas las columnas `last_login_*` de `users`).
 2. Pruebas de integración (`//go:build integration`) contra PostgreSQL real:
    duplicados normalizados rechazados (`UNIQUE`), `ON DELETE RESTRICT`, `CHECK` de
    normalización del correo, **carrera anti-bloqueo** (dos transacciones concurrentes no dejan 0
    administradores) e **inicialización única** (dos peticiones simultáneas → una sola crea).
-3. Pruebas de integración de Redis (real, levantado con `testcontainers-go` — ver `research.md`
+3. Pruebas de integración de las tablas de auditoría: cada desenlace de login inserta su fila
+   (incluido el correo inexistente, con `user_id` NULL y sin crear nada), el login exitoso
+   actualiza `last_login_*` y coincide con la última fila `success` del historial, los filtros por
+   cuenta y rango de fechas y la paginación devuelven lo esperado, eliminar un rol deja el registro
+   con `target_role_id` NULL y `target_label` intacto, y **no existe** consulta de `UPDATE`/`DELETE`
+   sobre `login_events`/`admin_actions`.
+4. Pruebas de integración de Redis (real, levantado con `testcontainers-go` — ver `research.md`
    R19): crear/resolver sesión, TTL de inactividad y su refresco, corte por vida absoluta de 1 h,
    revocación por cuenta (`user_sessions:*`), contadores de intentos y bloqueo con `Retry-After`.
-4. `make sqlc-verify` sin diferencias (el código generado acompaña al SQL).
-5. `GET /healthz` sigue respondiendo igual tras las migraciones (el esquema nuevo no afecta a F1).
+5. `make sqlc-verify` sin diferencias (el código generado acompaña al SQL).
+6. `GET /healthz` sigue respondiendo igual tras las migraciones (el esquema nuevo no afecta a F1).

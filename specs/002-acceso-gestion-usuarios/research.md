@@ -1,13 +1,15 @@
 # Research — F2 Acceso y gestión de usuarios
 
-**Fecha**: 2026-10-04 · **Rama**: `002-acceso-gestion-usuarios` · **Spec**: `spec.md` (aprobada el 2026-10-04)
+**Fecha**: 2026-10-04 · **Rama**: `002-acceso-gestion-usuarios` · **Spec**: `spec.md` (aprobada el
+2026-10-04; **cambio de alcance: auditoría** re-aprobado el 2026-10-04 — US8, FR-021…FR-026)
 
 Formato: Decisión / Justificación / Alternativas consideradas. Cierra además las preguntas abiertas
 2–5 de `docs/tecnico/decisiones.md` (D-A7, chi, `platform/validate`, tipos UUID). **R1–R4 aterrizan
 D-A7, CONFIRMADA por el humano el 2026-10-04** con un cambio explícito: **la sesión vive en Redis**
 (no en PostgreSQL). Ese día confirmó además los tiempos de sesión (R15: vida absoluta 1 h +
 inactividad 30 min) y los datos de la cuenta (nombre, apellidos, correo y teléfono; reflejados en
-`data-model.md` y en el contrato).
+`data-model.md` y en el contrato). **R21–R23** son del **cambio de alcance: auditoría** (ese mismo
+día): Redis **sin persistencia** confirmado, tablas duraderas del registro y sus puntos de escritura.
 
 ## R1. Dónde vive la sesión *(D-A7 — CONFIRMADA el 2026-10-04: en Redis)*
 
@@ -170,7 +172,10 @@ inactividad 30 min) y los datos de la cuenta (nombre, apellidos, correo y teléf
   acceso queda bloqueado temporalmente durante 15 minutos"*, con `Retry-After` en segundos.
 - **Riesgo registrado**: si Redis se reinicia sin persistencia, se pierden los contadores (y las
   sesiones, que solo obligan a volver a entrar). Un atacante no puede forzar ese reinicio, así que
-  la pérdida es aceptable; si en despliegue se exigiera dureza, se activa AOF/RDB de Redis.
+  la pérdida es aceptable; **la persistencia de Redis queda descartada a propósito** (sin
+  `appendonly`, sin volumen — confirmado por el humano el 2026-10-04, R21) y **el registro duradero
+  no depende de Redis**: cada intento deja fila en PostgreSQL (`login_events`, R22), de modo que un
+  reinicio no borra el historial.
 
 ## R6. Inicialización única del administrador (FR-007)
 
@@ -227,7 +232,10 @@ inactividad 30 min) y los datos de la cuenta (nombre, apellidos, correo y teléf
   **Se añade `permissions`** como catálogo fijo sembrado por la migración (los 9 módulos de
   FR-015, incluidos los reservados de F3–F9). **`sessions` y `login_attempts` no son tablas**: la
   sesión vive en Redis (R1) y los contadores de intentos de acceso también (R5), por decisión
-  confirmada del humano el 2026-10-04. Detalle completo en `data-model.md` (tablas y claves Redis).
+  confirmada del humano el 2026-10-04. *(Actualizado por el cambio de alcance: la auditoría añade
+  además `login_events` y `admin_actions` y las columnas `users.last_login_*` — R22—; lo que sigue
+  en pie aquí es la simplificación de `user_roles` y el catálogo de permisos.)* Detalle completo en
+  `data-model.md` (tablas y claves Redis).
 - **Justificación**: `user_roles` permitiría varios roles por cuenta, exactamente lo que Q4 prohíbe;
   conservarlo "por si acaso" añadiría una tabla y reglas de "rol efectivo" que la spec no quiere. La
   tabla `permissions` da FK y unicidad reales a `role_permissions` y permite al panel listar el
@@ -453,3 +461,105 @@ llega al binario de producción). Todas pasan `govulncheck`/`npm audit` (§IV) e
   separados); documento de identidad aparte (no lo pide la spec; quedaría como columna nueva si
   algún día aparece); teléfono opcional (la spec lo hace obligatorio); guardar solo dígitos o
   normalizar a E.164 (se pierde la forma de presentación sin ganar unicidad ni búsquedas).
+
+## R21. Redis sin persistencia *(CONFIRMADO por el humano el 2026-10-04)*
+
+- **Decisión**: el servicio `redis` de `docker-compose.yml` corre **sin persistencia**: **sin
+  `appendonly` (AOF), sin `save` (RDB) y sin volumen**. Es estado efímero por definición: un
+  reinicio de Redis (o de su contenedor) borra las sesiones abiertas y los contadores de intentos,
+  y **nada más**. Quien tenía sesión vuelve a iniciar sesión; el bloqueo de FR-006 empieza de cero.
+- **Justificación**: es la decisión confirmada del humano (2026-10-04), coherente con lo que Redis
+  guarda en F2: sesiones (ya caducables a las 2 h como mucho) y contadores con TTL de 15 min. Ninguno
+  de los dos merece durar un reinicio; persistirlos solo añadiría operativa (volúmenes, AOF,
+  copias) para datos que se reconstruyen con un re-login. Lo que sí debe durar —el registro de
+  auditoría (R22)— vive en **PostgreSQL**, que ya es el almacén duradero del proyecto.
+- **Qué pasa exactamente al reiniciar Redis**: (1) todas las sesiones desaparecen → hay que volver
+  a entrar (la cookie deja de resolver); (2) los contadores `login:fail:*`/`login:block:*` se
+  borran → la ventana de 5 intentos / 15 min se reinicia; (3) el **historial de accesos, el de
+  acciones administrativas y el último acceso de cada cuenta siguen intactos**, porque están en
+  PostgreSQL. Se comprueba en `quickstart.md` §10 (`docker compose restart redis`).
+- **Alternativas consideradas**: *AOF (`appendonly yes`)* y *RDB (snapshots `save`)* con volumen
+  —**descartados por decisión humana**: nada de lo que guarda Redis tiene valor duradero y la dureza
+  que importa va a PostgreSQL—; guardar el registro de auditoría también en Redis (contradice
+  FR-025: el registro debe sobrevivir reinicios y purgas de caché); un Redis con `maxmemory` y
+  política de evicción (innecesario con este volumen; se reabre si crece).
+- **Estado**: confirmado por el humano el 2026-10-04. Aterrizado en el plan (P23, riesgo R16),
+  `data-model.md` (sección Redis ↔ PostgreSQL) y `quickstart.md` §3 y §10.
+
+## R22. Auditoría duradera: `login_events`, `admin_actions` y el último acceso por cuenta
+
+- **Decisión**: el registro de la auditoría de F2 son **dos tablas de PostgreSQL** de solo inserción
+  (detalle completo —columnas, `CHECK`, índices, `up`/`down`— en `data-model.md`, migración
+  `000004`):
+  - `login_events` — una fila por **intento de inicio de sesión** (FR-022): fecha y hora
+    (`created_at`), resultado (`success`/`failure`), IP de origen y `user_id` **anulable** (solo
+    cuando la cuenta existe; un correo inexistente deja fila sin asociación y sin crear nada,
+    FR-003).
+  - `admin_actions` — una fila por **acción administrativa sensible** (FR-023): quién
+    (`actor_user_id`, anulable solo en la inicialización), qué (`action`, los ocho códigos de la
+    spec), sobre qué (`target_kind` + FK a `users`/`roles` + `target_label` con la etiqueta del
+    momento), cuándo (`created_at`) y resultado (`success`/`failure`/`denied`).
+  - El **último acceso exitoso** (FR-021) son dos columnas en `users` (`last_login_at`,
+    `last_login_ip`) escritas solo por el login exitoso: la ficha y el listado las muestran sin
+    consultar el historial y siguen funcionando aunque en el futuro haya retención del registro.
+- **Justificación**: la spec (cambio de alcance) pide que el registro **dure** y se conserve aunque
+  la cuenta se desactive o se edite (FR-025), así que no puede vivir en Redis (R21) ni ser un log
+  que se rote. PostgreSQL da dureza, consultas con filtros (FR-024) y revisión por SQL. La
+  proyección del último acceso en `users` evita una subconsulta por cuenta en cada listado y
+  desacopla la ficha del crecimiento del historial. `target_label` (y no solo la FK) hace que el
+  "sobre qué" del registro siga respondiéndose cuando un rol se elimina (FR-017): la FK es
+  `ON DELETE SET NULL` y la etiqueta capturada se conserva.
+- **Mínimo dato necesario (FR-026, constitución §IV)**: el registro no contiene contraseñas ni
+  credenciales —de un login solo su resultado y de un restablecimiento solo quién/sobre qué/cuándo—
+  y **tampoco** el correo de un intento no identificado (evita "cuentas fantasma" y datos de
+  terceros), ni *user-agent*, ni la IP de las acciones administrativas (no la pide la spec). La IP
+  se toma de `RemoteAddr` (`net.SplitHostPort`); `X-Forwarded-For` queda fuera hasta que haya un
+  proxy documentado (decisión futura).
+- **Alternativas consideradas**: *una sola tabla `audit_log` polivalente* (campos según el tipo de
+  evento: casi todo anulable y con `CHECK` frágiles; la spec distingue dos historiales con datos
+  distintos); *log estructurado en archivos* (sin consultas ni filtros, difícil de paginar y de
+  proteger con permisos); *Redis Streams / lista con TTL* (se purgan solas: contradicen FR-025);
+  *derivar el último acceso del historial* (ver arriba: consulta extra y dependencia de la
+  retención); *guardar el correo de todo intento* (PII de terceros y "cuentas fantasma");
+  *snapshot completo de los datos cambiados en cada acción* (JSONB con antes/después) — la spec lo
+  marca como "deseable pero revisable" y no requisito del MVP, así que queda como ampliación.
+
+## R23. Dónde se escribe el registro (y qué pasa si falla)
+
+- **Decisión**: el registro se escribe desde el dominio `internal/usuarios` (`service_audit.go` +
+  `repository_audit.go`), que es el único dueño de las tablas. Hay **tres puntos de escritura**,
+  porque FR-022/FR-023 piden registrar **todo** intento y **toda** acción, también las que fallan o
+  se deniegan:
+  1. `service_auth.go` — cada intento de login deja su fila en `login_events` en los cuatro
+     desenlaces: éxito (que además actualiza `last_login_*`), credenciales incorrectas, cuenta
+     inactiva e intento durante un bloqueo temporal (el Edge Case de la spec lo exige).
+  2. Los services de gestión (`service_users.go`, `service_roles.go`, `service_auth.go` en la
+     inicialización) — cada operación sensible deja su fila en `admin_actions` **también al
+     fallar** (duplicado, rol en uso, regla anti-bloqueo, no encontrado, política de contraseña);
+     en el éxito, el `INSERT` va en la **misma transacción** que la mutación.
+  3. Lo que muere antes del service: el helper común de decodificación/validación del `handler.go`
+     registra el JSON inválido o el DTO no válido, y `middleware.AuthzByModule` registra la
+     denegación por falta de permiso (`result='denied'`) vía la interfaz de plumbing
+     `audit.Recorder` (`internal/platform/audit`, mismo precedente que `session.Identity`/`Resolver`
+     de R14): la acción y el objetivo se resuelven desde `method`+`path` con una tabla del dominio,
+     de modo que `platform` sigue sin conocer dominios (R1).
+- **Si el registro falla**: si la operación **iba a completarse**, su registro es requisito —misma
+  transacción: o ambos o ninguno, y el login exitoso deja su fila antes de emitir la sesión—. Si
+  falla el registro de un **intento que ya va a fallar** (un login con mala contraseña, una
+  operación denegada), se loguea el error con `request_id` y se devuelve el error original: el
+  registro nunca cambia la respuesta que ve la persona.
+- **Límite declarado**: lo que se rechaza antes de identificar una operación de gestión —CSRF
+  inválido, sesión inexistente o expirada (401), `rate-limit`, guard de cambio de contraseña— **no**
+  entra en `admin_actions`: no son acciones administrativas con actor y objeto identificables y
+  quedan en el log de la aplicación con su `request_id`. Es un default revisable (si se quisiera un
+  registro de seguridad más allá de la auditoría de gestión, sería una ampliación).
+- **Alternativas consideradas**: *registrar solo desde el handler con un decorador por ruta* (no ve
+  el id recién creado ni distingue el objetivo de una creación, y las denegaciones ocurren fuera);
+  *un middleware único que mire el código de estado y lea la respuesta* (acoplado a la forma de los
+  DTO y a los cuerpos de respuesta); *registrar solo los éxitos* (contradice el Edge Case de la
+  spec); *triggers de BD sobre las tablas de negocio* (la lógica de qué es una acción sensible vive
+  fuera del service, es difícil de probar y de traducir a `apperr`, y no cubre los fallos de
+  validación que ocurren antes de tocar la base).
+- **Consecuencia para F3–F9**: toda operación sensible nueva de otros módulos deberá añadir su
+  código a la tabla de acciones y su punto de registro (hoy fuera de alcance: la auditoría cubre
+  solo el ámbito de F2, Out of Scope de la spec). Queda anotado para `revisor-codigo`.

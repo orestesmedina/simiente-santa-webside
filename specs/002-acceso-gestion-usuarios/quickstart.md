@@ -10,7 +10,7 @@ Docker, `make up` levantado, `make db-migrate` aplicado, hooks con `make instala
 
 ```bash
 make up                      # levanta db, redis, backend y frontend
-make db-migrate              # aplica 000001…000003 (F2: tablas de usuarios/roles/permisos)
+make db-migrate              # aplica 000001…000004 (F2: usuarios/roles/permisos + auditoría)
 docker compose ps            # db y redis deben estar "healthy"
 ```
 
@@ -61,6 +61,10 @@ panel redirige a `/login` (SC-001).
 ## 3. Sesión actual y cierre (FR-004, FR-005)
 
 La sesión vive en **Redis** (D-A7 confirmada el 2026-10-04): puedes verla mientras existe.
+**Redis corre sin persistencia** (confirmado: sin `appendonly`, sin `save` y sin volumen — P23/R21):
+`docker compose restart redis` borra las sesiones (hay que volver a entrar) y los contadores de
+intentos (el bloqueo empieza de cero), pero **no toca el registro de auditoría**, que vive en
+PostgreSQL (se comprueba en §10).
 
 ```bash
 docker compose exec redis redis-cli --scan --pattern 'sess:*'      # hay 1 clave con la sesión abierta
@@ -192,13 +196,77 @@ curl -i -b /tmp/f2-cookies.txt -X POST http://localhost:8080/api/v1/admin/roles 
 Lo mismo con la cabecera igual al valor de la cookie `csrf_token` → pasa al handler (SC-007: el
 servidor verifica todo).
 
-## 10. Pruebas automatizadas y veredicto completo
+## 10. Auditoría: registro de accesos y de acciones (FR-021…FR-026, US8, SC-012, SC-013)
+
+Genera primero actividad con las cuentas de las secciones anteriores: un login correcto de Ana, un
+login de Carlos con contraseña incorrecta, un login contra `nadie@ejemplo.com`, los 5 intentos de §8
+(bloqueo) y varias acciones de gestión (crear una cuenta, editarla, desactivarla, reactivarla,
+restablecer su contraseña, crear un rol, editar sus permisos, eliminar un rol sin uso).
+
+1. **Historial de accesos** (solo lectura):
+
+   ```bash
+   curl -i -b /tmp/f2-cookies.txt "http://localhost:8080/api/v1/admin/auditoria/accesos?limit=20&offset=0"
+   # → items con createdAt, result (success/failure), ip, userId y userEmail
+
+   curl -i -b /tmp/f2-cookies.txt "http://localhost:8080/api/v1/admin/auditoria/accesos?userId=<id-de-carlos>&from=2026-10-01T00:00:00Z&to=2026-10-05T00:00:00Z"
+   # → solo los intentos de Carlos en el rango [from, to)
+   ```
+
+   Los intentos con contraseña incorrecta y los hechos durante el bloqueo aparecen como `failure`;
+   el intento contra `nadie@ejemplo.com` aparece con `userId: null` y `userEmail: null`, **sin
+   asociarse a ninguna cuenta** y sin crear nada (US8 esc. 7): comprueba en `GET /admin/usuarios`
+   que no hay ninguna cuenta "fantasma".
+
+2. **Historial de acciones administrativas**:
+
+   ```bash
+   curl -i -b /tmp/f2-cookies.txt "http://localhost:8080/api/v1/admin/auditoria/acciones?limit=20&offset=0"
+   ```
+
+   Cada fila dice quién (`actorId`/`actorEmail`), qué (`action`), sobre qué (`targetKind`,
+   `targetId`, `targetLabel`), cuándo (`createdAt`) y con qué resultado (US8 esc. 8). Comprueba:
+
+   - la **inicialización** de §1 aparece como `user.create` **sin actor** (FR-007: cuenta como
+     creación de cuenta);
+   - el restablecimiento de contraseña aparece como `user.password_reset` con quién, sobre qué
+     cuenta y cuándo, y **ninguna contraseña en ninguna parte** (FR-026);
+   - las operaciones que fallaron (correo duplicado, eliminar un rol en uso, el `409` anti-bloqueo
+     de §6) también quedaron registradas, con `result: failure`;
+   - el intento de Carlos (sin permiso) sobre `/admin/usuarios` quedó con `result: denied`;
+   - el cambio de la propia contraseña (§5) **no** aparece: no es acción administrativa.
+
+3. **Filtros y paginación** (FR-024, SC-012): filtra por `userId` y por `from`/`to` en los dos
+   historiales → solo esos registros; `limit`/`offset` pagina **sin perder los filtros** (`total`
+   cuadra con lo que se ve); un rango sin resultados → `items: []` y la UI indica que no hay
+   registros que coincidan. En `/acciones`, `userId` devuelve lo que esa cuenta hizo **y** lo que se
+   hizo sobre ella. Encontrar los accesos y las acciones de una cuenta concreta debe llevar menos de
+   1 minuto (SC-012).
+
+4. **Último acceso** (FR-021, US8 esc. 6): `GET /api/v1/admin/usuarios/{id}` de Ana →
+   `lastLoginAt`/`lastLoginIp` de su último acceso **exitoso**; el de una cuenta creada y nunca
+   usada → `null` (la ficha indica "aún no ha iniciado sesión", sin inventar ninguna fecha). Un
+   login fallido no lo mueve.
+
+5. **Solo lectura** (FR-025, SC-013): el contrato solo publica `GET` sobre
+   `/api/v1/admin/auditoria/…` —`POST`/`PATCH`/`DELETE` sobre esas rutas no existen (`405`/`404`
+   con `ErrorEnvelope`)— y la sección del panel no ofrece editar ni borrar registros. Los registros
+   se conservan tras desactivar la cuenta de Carlos (§7) y tras editar sus datos.
+
+6. **Sin permiso** (US8 esc. 5): con la cuenta de Carlos (rol "Contenido"),
+   `GET /api/v1/admin/auditoria/accesos` → `403`, y en el panel la sección no le aparece (SC-007).
+
+7. **Auditoría y Redis** (R21/R22): `docker compose restart redis` → vuelve a entrar (las sesiones
+   se perdieron) y comprueba que los **dos historiales siguen intactos** y que el último acceso de
+   la ficha no cambió: la auditoría vive en PostgreSQL, no en Redis.
+
+## 11. Pruebas automatizadas y veredicto completo
 
 ```bash
 go test ./...                          # unitarias (service, handler, platform, middleware)
 go test -tags=integration ./...        # integración: PostgreSQL real + Redis (testcontainers, ver abajo)
 npm test -- --run                      # frontend (Vitest + Testing Library + MSW)
-make e2e                               # Playwright: frontend/e2e/acceso.spec.ts
+make e2e                               # Playwright: frontend/e2e/acceso.spec.ts + auditoria.spec.ts
 make ci                                # lint + pruebas + migraciones + govulncheck + npm audit
 ```
 
@@ -210,23 +278,28 @@ GitHub Actions tienen Docker disponible.
 
 El e2e recorre el camino completo: inicializar → login → crear rol → crear cuenta → entrar con ella
 (contraseña forzada) → ver solo sus módulos → cambiar contraseña → desactivarla → acceso cortado →
-5 intentos fallidos → bloqueo. Cubre SC-002, SC-005, SC-006, SC-007, SC-010 y SC-011.
+5 intentos fallidos → bloqueo. Cubre SC-002, SC-005, SC-006, SC-007, SC-010 y SC-011. El e2e de
+auditoría (`auditoria.spec.ts`) genera accesos y acciones y recorre la sección de registro: ambos
+historiales, filtros por cuenta y rango de fechas, paginación, último acceso en la ficha, intento
+fallido sin cuenta asociada y registro sin controles de edición (cubre SC-012 y SC-013, ver §10).
 
 Comprobación funcional mínima (§8.1.9): `curl -i http://localhost:8080/healthz` sigue respondiendo
 `200`/`503` igual que en F1 y una ruta inexistente responde `404` con `ErrorEnvelope`.
 
-## 11. Mapa de criterios → secciones
+## 12. Mapa de criterios → secciones
 
 | Criterio | Sección |
 |---|---|
 | SC-001 (panel exige sesión) | §2 |
-| SC-002 (login < 30 s) | §2, §10 |
+| SC-002 (login < 30 s) | §2, §11 |
 | SC-003 (inicialización única) | §1 |
 | SC-004 (nunca sin administración) | §6 |
-| SC-005 (cuenta+rol+asociar < 3 min) | §4, §10 |
-| SC-006 (desactivada sin acceso) | §7, §10 |
-| SC-007 (permiso en cada operación) | §6, §9, §10 |
+| SC-005 (cuenta+rol+asociar < 3 min) | §4, §11 |
+| SC-006 (desactivada sin acceso) | §7, §11 |
+| SC-007 (permiso en cada operación) | §6, §9, §11 |
 | SC-008 (sin revelar existencia) | §2, §8 |
 | SC-009 (cambios de permisos inmediatos) | §6 |
-| SC-010 (cambio de contraseña < 1 min) | §5, §10 |
+| SC-010 (cambio de contraseña < 1 min) | §5, §11 |
 | SC-011 (0 rol en uso eliminado / 0 repeticiones / 0 duplicados) | §1, §4, §6, §8 |
+| SC-012 (auditoría: encontrar accesos y acciones de una cuenta < 1 min) | §10, §11 |
+| SC-013 (auditoría: todo registrado; 0 registros editables/borrables) | §10, §11 |
