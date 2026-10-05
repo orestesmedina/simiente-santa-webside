@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import { Link, useRoutes, type RouteObject } from 'react-router-dom';
 import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
+import { AuditPage } from '../features/auditoria/pages/AuditPage';
+import { InicioPage } from '../features/panel/pages/InicioPage';
+import { RolesPage } from '../features/roles/pages/RolesPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
 import { UsersPage } from '../features/usuarios/pages/UsersPage';
 import { ADMIN_USERS_ROLES } from '../lib/permissions';
@@ -9,10 +12,9 @@ import { RequireAuth, RequirePasswordChange, RequirePermission } from './guards'
 import { AppLayout, PanelLayout } from './layout';
 
 /**
- * Pantallas provisionales de F2 que T247–T250 y T254 sustituyen por las páginas
- * de `features/`; existen aquí para que las 7 rutas de P18 y sus guards sigan
- * navegables hasta que se implementen (T244). El acceso y el cambio de
- * contraseña ya son las páginas reales de `features/auth` (T245/T246).
+ * Pantalla provisional de `/sin-permiso` (T244). Las páginas de panel (`/panel`,
+ * `/panel/roles`, `/panel/auditoria`) ya son las reales de `features/` (T249,
+ * T250 y T254); el acceso y el cambio de contraseña se implementaron en T245/T246.
  */
 function PendingPage({ title, children }: { title: string; children?: ReactNode }) {
   return (
@@ -37,18 +39,6 @@ function ForbiddenPending() {
       </Link>
     </PendingPage>
   );
-}
-
-function PanelHomePending() {
-  return <PendingPage title="Inicio" />;
-}
-
-function RolesPending() {
-  return <PendingPage title="Roles" />;
-}
-
-function AuditPending() {
-  return <PendingPage title="Auditoría" />;
 }
 
 function NotFoundPage() {
@@ -85,13 +75,13 @@ const appRoutes: RouteObject[] = [
             path: '/panel',
             element: <PanelLayout />,
             children: [
-              { index: true, element: <PanelHomePending /> },
+              { index: true, element: <InicioPage /> },
               {
                 element: <RequirePermission code={ADMIN_USERS_ROLES} />,
                 children: [
                   { path: 'usuarios', element: <UsersPage /> },
-                  { path: 'roles', element: <RolesPending /> },
-                  { path: 'auditoria', element: <AuditPending /> },
+                  { path: 'roles', element: <RolesPage /> },
+                  { path: 'auditoria', element: <AuditPage /> },
                 ],
               },
             ],
