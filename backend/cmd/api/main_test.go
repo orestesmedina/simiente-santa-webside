@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -46,6 +47,27 @@ func (fakeAuthService) ChangeMyPassword(context.Context, session.Identity, strin
 	return nil
 }
 
+// fakeSetupService guioniza la inicialización única para el humo de composición:
+// devuelve la cuenta del DTO sin tocar PostgreSQL.
+type fakeSetupService struct{}
+
+// setupSmokeBody es un InitializeInput válido para el humo.
+const setupSmokeBody = `{"firstName":"Ana","lastName":"Responsable","email":"ana@ejemplo.com","phone":"+34 612 345 678","password":"Semilla.2026"}`
+
+func (fakeSetupService) Initialize(_ context.Context, in usuarios.InitializeInput) (usuarios.UserItem, error) {
+	return usuarios.UserItem{
+		ID:        uuid.New().String(),
+		Email:     in.Email,
+		FirstName: in.FirstName,
+		LastName:  in.LastName,
+		Phone:     in.Phone,
+		RoleID:    uuid.New().String(),
+		RoleName:  "Administrador",
+		IsActive:  true,
+		CreatedAt: time.Now(),
+	}, nil
+}
+
 // fakeSessionStore no tiene sesiones: cualquier token es inexistente. Basta para
 // el humo de composición (peticiones sin sesión).
 type fakeSessionStore struct{}
@@ -70,8 +92,13 @@ func (fakeResolver) Resolve(context.Context, uuid.UUID) (session.Identity, error
 // cadena aprobada queda montada.
 func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
 	return apiDeps{
-		statusRepo:  repo,
-		authHandler: usuarios.NewHandler(fakeAuthService{}, log),
+		statusRepo: repo,
+		authHandler: usuarios.NewHandler(usuarios.HandlerDeps{
+			Access:     fakeAuthService{},
+			Setup:      fakeSetupService{},
+			SetupToken: "token-de-prueba",
+			Logger:     log,
+		}),
 		public: usuarios.PublicDeps{
 			Login: nil,
 			Session: []httpserver.Middleware{
@@ -183,6 +210,31 @@ func TestNewRoutesSmoke(t *testing.T) {
 		}
 		if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
 			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("setup sin token responde 401", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodPost, "/api/v1/setup/initialize", setupSmokeBody,
+			map[string]string{"Content-Type": "application/json"})
+		if resp.Status != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("setup con token responde 201", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodPost, "/api/v1/setup/initialize", setupSmokeBody,
+			map[string]string{"Content-Type": "application/json", "X-Setup-Token": "token-de-prueba"})
+		if resp.Status != http.StatusCreated {
+			t.Fatalf("status = %d, se esperaba 201 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"roleName":"Administrador"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+		if strings.Contains(string(resp.Body), "password") {
+			t.Errorf("la respuesta filtra credenciales: %s", resp.Body)
 		}
 	})
 

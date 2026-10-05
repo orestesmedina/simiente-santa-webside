@@ -67,8 +67,9 @@ func main() {
 	}
 
 	// DI manual del dominio usuarios: el repositorio sobre el pool, el servicio
-	// de auditoría (que también es el audit.Recorder de la cadena) y el servicio
-	// de acceso, que resuelve la identidad de cada petición (session.Resolver).
+	// de auditoría (que también es el audit.Recorder de la cadena), el servicio
+	// de acceso, que resuelve la identidad de cada petición (session.Resolver), y
+	// el de inicialización única (FR-007).
 	repo := usuarios.NewRepository(pool)
 	auditSvc := usuarios.NewAuditService(repo, appLog)
 	authSvc := usuarios.NewAuthService(usuarios.AuthServiceDeps{
@@ -80,14 +81,24 @@ func main() {
 		CSRFSecret:  cfg.SessionSecret,
 		Logger:      appLog,
 	})
+	initSvc := usuarios.NewInitService(usuarios.InitServiceDeps{
+		Repository: repo,
+		Logger:     appLog,
+	})
 
 	appLog.Info("api arrancando", "env", cfg.AppEnv, "port", cfg.HTTPPort)
 
 	deps := apiDeps{
-		statusRepo:  status.NewRepository(pool),
-		authHandler: usuarios.NewHandler(authSvc, appLog),
+		statusRepo: status.NewRepository(pool),
+		authHandler: usuarios.NewHandler(usuarios.HandlerDeps{
+			Access:     authSvc,
+			Setup:      initSvc,
+			SetupToken: cfg.BootstrapToken,
+			Logger:     appLog,
+		}),
 		public: usuarios.PublicDeps{
-			// Rate-limit por IP de la superficie pública escribible (P17).
+			// Rate-limit por IP de la superficie pública escribible (P17):
+			// POST /auth/login y POST /setup/initialize.
 			Login: []httpserver.Middleware{
 				middleware.RateLimit(middleware.RateLimitConfig{Paths: middleware.DefaultRateLimitPaths()}, appLog),
 			},
@@ -95,6 +106,9 @@ func main() {
 			Session: []httpserver.Middleware{
 				middleware.Authn(sessions, authSvc, appLog),
 				middleware.CSRF(cfg.SessionSecret, appLog),
+			},
+			Setup: []httpserver.Middleware{
+				middleware.RateLimit(middleware.RateLimitConfig{Paths: middleware.DefaultRateLimitPaths()}, appLog),
 			},
 		},
 		admin: usuarios.AdminDeps{

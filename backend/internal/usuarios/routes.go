@@ -27,6 +27,10 @@ type PublicDeps struct {
 	// modo que una cuenta con mustChangePassword pueda ver su sesión, salir y
 	// cambiar la contraseña (rutas blanqueadas; F-15).
 	Session []httpserver.Middleware
+	// Setup se monta en el grupo /api/v1/setup: rate-limit por IP (P17), porque
+	// es la otra superficie pública escribible. La ruta solo se publica si el
+	// Handler trae servicio de inicialización cableado (T229/T230).
+	Setup []httpserver.Middleware
 }
 
 // AdminDeps reúne la configuración del grupo de panel (T228).
@@ -42,8 +46,10 @@ type AdminDeps struct {
 }
 
 // RegisterPublic publica la superficie de acceso del dominio: login (público,
-// con rate-limit) y las rutas de sesión (authn → CSRF, sin guard). La cadena
-// completa por grupo es la del plan §"Cadena de middleware".
+// con rate-limit), las rutas de sesión (authn → CSRF, sin guard) y, cuando el
+// Handler trae el servicio cableado, la inicialización única (pública, con
+// rate-limit). La cadena completa por grupo es la del plan §"Cadena de
+// middleware".
 func RegisterPublic(root httpserver.Registrar, h *Handler, deps PublicDeps) {
 	login := root.Group("/api/v1/auth", deps.Login...)
 	login.Handle(http.MethodPost, "/login", h.Login)
@@ -52,6 +58,14 @@ func RegisterPublic(root httpserver.Registrar, h *Handler, deps PublicDeps) {
 	session.Handle(http.MethodGet, "/session", h.GetSession)
 	session.Handle(http.MethodPost, "/logout", h.Logout)
 	session.Handle(http.MethodPost, "/password", h.ChangePassword)
+
+	// La inicialización única (FR-007) es pública pero exige X-Setup-Token y va
+	// rate-limited (P8/P17). No se publica si no hay servicio: en las pruebas de
+	// acceso (y en cualquier composición sin init) la ruta no debe existir.
+	if h.setup != nil {
+		setup := root.Group("/api/v1/setup", deps.Setup...)
+		setup.Handle(http.MethodPost, "/initialize", h.Initialize)
+	}
 }
 
 // RegisterAdmin publica el grupo /api/v1/admin con la cadena aprobada (arq. §6):

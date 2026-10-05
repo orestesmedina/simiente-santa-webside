@@ -47,22 +47,54 @@ type AccessService interface {
 	ChangeMyPassword(ctx context.Context, identity session.Identity, currentToken string, in ChangePasswordInput) error
 }
 
+// SetupService es el puerto que el handler de inicialización única necesita del
+// servicio (FR-007). Lo implementa *initService (service_init.go).
+type SetupService interface {
+	// Initialize crea el administrador inicial y devuelve su DTO; repetirla con
+	// cuentas existentes devuelve apperr.Conflict (409).
+	Initialize(ctx context.Context, in InitializeInput) (UserItem, error)
+}
+
 // Handler expone las operaciones del dominio usuarios. Es solo HTTP: decodifica
 // y valida, delega en el service y responde con el sobre uniforme de éxito (el
 // DTO directo) o deriva cualquier error a httpserver.WriteError, el único punto
 // de traducción (arq. R7). No conoce SQL ni las reglas de negocio.
 type Handler struct {
-	access AccessService
-	logger *slog.Logger
+	access     AccessService
+	setup      SetupService
+	setupToken string
+	logger     *slog.Logger
 }
 
-// NewHandler construye el Handler del dominio usuarios. Si logger es nil se usa
+// HandlerDeps reúne las dependencias del Handler del dominio. Es un struct para
+// no encadenar parámetros y para que el cableado (cmd/api) sea explícito.
+type HandlerDeps struct {
+	// Access es el servicio de acceso al panel (login, logout, sesión y cambio
+	// de la propia contraseña). Obligatorio.
+	Access AccessService
+	// Setup es el servicio de inicialización única. Opcional: si es nil, la ruta
+	// /api/v1/setup/initialize no se publica.
+	Setup SetupService
+	// SetupToken es el valor esperado de la cabecera X-Setup-Token
+	// (BOOTSTRAP_TOKEN). Nunca se registra ni se devuelve (RG13).
+	SetupToken string
+	// Logger registra errores; nil usa el logger por defecto.
+	Logger *slog.Logger
+}
+
+// NewHandler construye el Handler del dominio usuarios. Si Logger es nil se usa
 // el logger por defecto.
-func NewHandler(access AccessService, logger *slog.Logger) *Handler {
+func NewHandler(deps HandlerDeps) *Handler {
+	logger := deps.Logger
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Handler{access: access, logger: logger}
+	return &Handler{
+		access:     deps.Access,
+		setup:      deps.Setup,
+		setupToken: deps.SetupToken,
+		logger:     logger,
+	}
 }
 
 // decodeAndValidate decodifica el cuerpo JSON de la petición en dto y lo valida
