@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 3/9 · Tareas y coherencia |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Redactar `tasks.md` (`arquitecto`) y luego `analyze` (`revisor-codigo`) |
+| Próximo paso | Ejecutar `analyze` (`revisor-codigo`) y corregir incoherencias críticas |
 | Bloqueado por | — |
 | Actualizado | 2026-10-04 |
 
@@ -46,6 +46,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-04 — **`tasks.md` redactado** por `arquitecto` (53 tareas, T201–T253). Pendiente `analyze`.
 - 2026-10-04 — **Plan de F2 aprobado por el humano** ("apruebo el plan"). Inicio de la fase 3 (tareas y coherencia).
 - 2026-10-04 — Plan y `ux.md` actualizados con la **auditoría** (tablas `login_events`/`admin_actions`, endpoints de consulta, pantalla `/panel/auditoria`) y Redis sin persistencia. Pendiente la aprobación del plan.
 - 2026-10-04 — **Spec actualizada re-aprobada por el humano** ("apruebo la spec actualizada") con la auditoría incluida. Se actualiza el plan.
