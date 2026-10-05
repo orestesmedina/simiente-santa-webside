@@ -86,6 +86,55 @@ func TestIntegrationThrottleCountsAndFlag(t *testing.T) {
 	}
 }
 
+// TestIntegrationThrottleFailureKeyAlwaysHasTTL fija M4: el TTL del contador
+// `login:fail:*` se fija de forma atómica con el incremento, incluso si la clave
+// ya existía sin expiración (residuo de una versión anterior).
+func TestIntegrationThrottleFailureKeyAlwaysHasTTL(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+
+	lockout := 15 * time.Minute
+	throttle, err := NewThrottle(client, 5, lockout)
+	if err != nil {
+		t.Fatalf("NewThrottle() error: %v", err)
+	}
+
+	identifier := "ttl@ejemplo.com"
+	failKey := loginFailKeyPrefix + identifier
+
+	// Primera falla: la clave nace con TTL.
+	if _, err := throttle.RegisterFailure(ctx, identifier); err != nil {
+		t.Fatalf("RegisterFailure() error: %v", err)
+	}
+	ttl, err := client.TTL(ctx, failKey).Result()
+	if err != nil {
+		t.Fatalf("TTL() error: %v", err)
+	}
+	if ttl <= 0 {
+		t.Fatalf("la clave de fallos se creó sin TTL: %v", ttl)
+	}
+
+	// Residuo sin TTL: el siguiente fallo le repone la expiración de forma
+	// atómica.
+	if err := client.Set(ctx, failKey, "4", 0).Err(); err != nil {
+		t.Fatalf("Set() error: %v", err)
+	}
+	count, err := throttle.RegisterFailure(ctx, identifier)
+	if err != nil {
+		t.Fatalf("RegisterFailure() error: %v", err)
+	}
+	if count != 5 {
+		t.Fatalf("contador = %d, se esperaba 5", count)
+	}
+	ttl, err = client.TTL(ctx, failKey).Result()
+	if err != nil {
+		t.Fatalf("TTL() error: %v", err)
+	}
+	if ttl <= 0 {
+		t.Fatalf("la clave de fallos quedó sin TTL: %v", ttl)
+	}
+}
+
 func TestIntegrationThrottleLockoutExpires(t *testing.T) {
 	client := newTestClient(t)
 	ctx := context.Background()

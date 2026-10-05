@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -15,6 +16,20 @@ const (
 	loginBlockKeyPrefix = "login:block:"
 	blockFlagValue      = "1"
 )
+
+// registerFailureScript incrementa el contador de fallos y fija su TTL en una
+// sola operación atómica de Redis (M4): no puede quedar una clave de
+// `login:fail:*` sin expiración. Además crea la bandera de bloqueo con su TTL
+// cuando el contador alcanza el máximo. Argumentos: [ttlSegundos, maxAttempts,
+// valorBandera]; devuelve el contador acumulado.
+var registerFailureScript = redis.NewScript(`
+local count = redis.call('INCR', KEYS[1])
+redis.call('EXPIRE', KEYS[1], ARGV[1])
+if count >= tonumber(ARGV[2]) then
+    redis.call('SET', KEYS[2], ARGV[3], 'EX', ARGV[1])
+end
+return count
+`)
 
 // Throttle es el MECANISMO de los contadores de intentos fallidos de FR-006
 // (reparto F-13): sabe incrementar el contador, crear la bandera de bloqueo con
@@ -67,20 +82,16 @@ func (t *Throttle) Blocked(ctx context.Context, identifier string) (blocked bool
 // respuesta (el intento que alcanza el máximo todavía responde 401; el bloqueo
 // se aplica a partir del siguiente, que ya ve la bandera).
 func (t *Throttle) RegisterFailure(ctx context.Context, identifier string) (int64, error) {
-	failKey := t.failKey(identifier)
-	count, err := t.client.Incr(ctx, failKey).Result()
+	ttlSeconds := int64(math.Ceil(t.lockout.Seconds()))
+	if ttlSeconds < 1 {
+		ttlSeconds = 1
+	}
+	count, err := registerFailureScript.Run(ctx, t.client,
+		[]string{t.failKey(identifier), t.blockKey(identifier)},
+		ttlSeconds, t.maxAttempts, blockFlagValue,
+	).Int64()
 	if err != nil {
-		return 0, fmt.Errorf("incrementar intentos fallidos: %w", err)
-	}
-	if count == 1 {
-		if err := t.client.Expire(ctx, failKey, t.lockout).Err(); err != nil {
-			return count, fmt.Errorf("fijar TTL de intentos fallidos: %w", err)
-		}
-	}
-	if count >= int64(t.maxAttempts) {
-		if err := t.client.Set(ctx, t.blockKey(identifier), blockFlagValue, t.lockout).Err(); err != nil {
-			return count, fmt.Errorf("crear bloqueo: %w", err)
-		}
+		return 0, fmt.Errorf("registrar intento fallido: %w", err)
 	}
 	return count, nil
 }
