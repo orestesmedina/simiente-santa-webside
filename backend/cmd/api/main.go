@@ -34,6 +34,12 @@ func main() {
 	}
 	appLog := logger.New(cfg.LogLevel)
 
+	// Avisos de configuración no fatales (p. ej. SESSION_SECRET débil en
+	// desarrollo): se registran sin impedir el arranque.
+	for _, warning := range cfg.Warnings {
+		appLog.Warn(warning)
+	}
+
 	// El pool es perezoso: una BD ausente o lenta no impide arrancar (R7).
 	pool, err := database.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {

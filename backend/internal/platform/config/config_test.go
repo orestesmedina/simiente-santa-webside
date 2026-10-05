@@ -11,6 +11,9 @@ import (
 // obligatoria (T216/R1), así que las pruebas que no la ejercitan la definen.
 const testRedisURL = "redis://localhost:6379/0"
 
+// testSessionSecret cumple la longitud mínima de SESSION_SECRET en producción.
+const testSessionSecret = "secreto-de-prueba-con-longitud-suficiente-123456"
+
 // canonicalKeys son todas las variables que lee platform/config. Deben coincidir
 // con .env.example (T206) y con lo que inyecta docker-compose.yml (T205).
 func canonicalKeys() []string {
@@ -280,6 +283,7 @@ func TestLoadProductionRequiresSecureCookie(t *testing.T) {
 		setRedis(t)
 		t.Setenv(envAppEnv, EnvProduction)
 		t.Setenv(envSessionCookieSecure, "false")
+		t.Setenv(envSessionSecret, testSessionSecret)
 
 		_, err := Load()
 		if err == nil {
@@ -295,6 +299,7 @@ func TestLoadProductionRequiresSecureCookie(t *testing.T) {
 		setRedis(t)
 		t.Setenv(envAppEnv, EnvProduction)
 		t.Setenv(envSessionCookieSecure, "true")
+		t.Setenv(envSessionSecret, testSessionSecret)
 
 		cfg, err := Load()
 		if err != nil {
@@ -304,6 +309,79 @@ func TestLoadProductionRequiresSecureCookie(t *testing.T) {
 			t.Errorf("SessionCookieSecure = false, se esperaba true")
 		}
 	})
+}
+
+// TestLoadSessionSecretValidation fija M-1: en producción SESSION_SECRET vacío
+// o corto impide el arranque; en desarrollo avisa pero permite trabajar.
+func TestLoadSessionSecretValidation(t *testing.T) {
+	t.Run("producción sin secreto falla", func(t *testing.T) {
+		clearEnv(t)
+		setRedis(t)
+		t.Setenv(envAppEnv, EnvProduction)
+		t.Setenv(envSessionCookieSecure, "true")
+		t.Setenv(envSessionSecret, "")
+
+		_, err := Load()
+		if err == nil {
+			t.Fatalf("Load() no devolvió error en producción con %s vacío", envSessionSecret)
+		}
+		if !strings.Contains(err.Error(), envSessionSecret) {
+			t.Errorf("el error %q no identifica la variable %q", err.Error(), envSessionSecret)
+		}
+	})
+
+	t.Run("producción con secreto corto falla", func(t *testing.T) {
+		clearEnv(t)
+		setRedis(t)
+		t.Setenv(envAppEnv, EnvProduction)
+		t.Setenv(envSessionCookieSecure, "true")
+		t.Setenv(envSessionSecret, strings.Repeat("s", minSessionSecretLength-1))
+
+		_, err := Load()
+		if err == nil {
+			t.Fatalf("Load() no devolvió error en producción con %s corto", envSessionSecret)
+		}
+		if !strings.Contains(err.Error(), envSessionSecret) {
+			t.Errorf("el error %q no identifica la variable %q", err.Error(), envSessionSecret)
+		}
+	})
+
+	t.Run("producción con secreto fuerte arranca sin aviso", func(t *testing.T) {
+		clearEnv(t)
+		setRedis(t)
+		t.Setenv(envAppEnv, EnvProduction)
+		t.Setenv(envSessionCookieSecure, "true")
+		t.Setenv(envSessionSecret, testSessionSecret)
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() devolvió error con un %s válido: %v", envSessionSecret, err)
+		}
+		if warnsAbout(cfg.Warnings, envSessionSecret) {
+			t.Errorf("no debería avisar de %s con un valor válido: %v", envSessionSecret, cfg.Warnings)
+		}
+	})
+
+	t.Run("desarrollo sin secreto avisa y arranca", func(t *testing.T) {
+		clearEnv(t)
+		setRedis(t)
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("Load() devolvió error en desarrollo: %v", err)
+		}
+		if cfg.SessionSecret != "" {
+			t.Errorf("SessionSecret = %q, se esperaba vacío", cfg.SessionSecret)
+		}
+		if !warnsAbout(cfg.Warnings, envSessionSecret) {
+			t.Errorf("no avisó de %s débil en desarrollo: %v", envSessionSecret, cfg.Warnings)
+		}
+	})
+}
+
+// warnsAbout indica si algún aviso menciona la variable indicada.
+func warnsAbout(warnings []string, key string) bool {
+	return strings.Contains(strings.Join(warnings, "\n"), key)
 }
 
 // TestLoadIgnoresUnknownKeys fija que HTTP_ADDR no existe: definirla no cambia

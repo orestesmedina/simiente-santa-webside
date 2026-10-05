@@ -62,6 +62,11 @@ const (
 	defaultSessionAbsoluteTTLMinutes = 60
 )
 
+// minSessionSecretLength es la longitud mínima razonable de SESSION_SECRET: la
+// clave HMAC firma la cookie CSRF, y una clave corta es atacable por fuerza
+// bruta (CWE-326). En producción es obligatoria (error de arranque).
+const minSessionSecretLength = 32
+
 // Config es la configuración validada de la aplicación.
 type Config struct {
 	// AppEnv identifica el entorno (APP_ENV); viaja en los logs.
@@ -93,6 +98,10 @@ type Config struct {
 	// (BOOTSTRAP_TOKEN, cabecera X-Setup-Token). Secreto: sin valor por
 	// defecto en el código (§IV).
 	BootstrapToken string
+	// Warnings son avisos de configuración no fatales que el arranque debe
+	// registrar sin impedirlo (p. ej. SESSION_SECRET débil en desarrollo o
+	// BOOTSTRAP_TOKEN vacío). En producción esas mismas debilidades son errores.
+	Warnings []string
 }
 
 // Addr devuelve la dirección de escucha del servidor HTTP (":8080").
@@ -166,7 +175,40 @@ func Load() (Config, error) {
 		)
 	}
 
+	// M-1: SESSION_SECRET firma la cookie CSRF. Vacío o corto degrada el
+	// double-submit firmado a uno simple, así que en producción impide el
+	// arranque y en desarrollo avisa.
+	if err := validateSessionSecret(cfg.AppEnv, cfg.SessionSecret, &cfg.Warnings); err != nil {
+		return Config{}, err
+	}
+	if cfg.BootstrapToken == "" {
+		cfg.Warnings = append(cfg.Warnings, fmt.Sprintf(
+			"%s está vacío: la inicialización única del administrador quedará deshabilitada",
+			envBootstrapToken,
+		))
+	}
+
 	return cfg, nil
+}
+
+// validateSessionSecret exige SESSION_SECRET no vacío y con longitud mínima
+// (minSessionSecretLength) cuando APP_ENV=production, con un error que nombra la
+// variable. En el resto de entornos permite arrancar pero acumula un aviso.
+func validateSessionSecret(appEnv, secret string, warnings *[]string) error {
+	if secret != "" && len(secret) >= minSessionSecretLength {
+		return nil
+	}
+	if appEnv == EnvProduction {
+		return fmt.Errorf(
+			"%s: es obligatoria y debe tener al menos %d caracteres cuando %s=%s (firma la cookie CSRF)",
+			envSessionSecret, minSessionSecretLength, envAppEnv, EnvProduction,
+		)
+	}
+	*warnings = append(*warnings, fmt.Sprintf(
+		"%s vacío o con menos de %d caracteres: la firma del CSRF queda degradada; define un valor aleatorio largo",
+		envSessionSecret, minSessionSecretLength,
+	))
+	return nil
 }
 
 // getString devuelve el valor de key sin espacios o def si está ausente o en

@@ -66,7 +66,10 @@ services:
       # Redis por defecto ya indica 30 min de inactividad + 1 h absoluta (P9),
       # valores que T216 lee con platform/config y .env.example puede
       # sobrescribir.
-      SESSION_SECRET: ${SESSION_SECRET:-}
+      # SESSION_SECRET firma la cookie CSRF. El valor por defecto es CLARAMENTE
+      # de desarrollo (nunca vacío y >= 32 caracteres): en producción el arranque
+      # exige el valor propio que inyecte el despliegue (platform/config).
+      SESSION_SECRET: ${SESSION_SECRET:-dev-insecure-session-secret-not-for-production}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       SESSION_IDLE_TTL_MINUTES: ${SESSION_IDLE_TTL_MINUTES:-30}
       SESSION_ABSOLUTE_TTL_MINUTES: ${SESSION_ABSOLUTE_TTL_MINUTES:-60}
