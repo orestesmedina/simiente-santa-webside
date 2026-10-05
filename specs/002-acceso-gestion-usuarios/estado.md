@@ -15,9 +15,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 7/9 · Validado (QA/revisor/seguridad en verde; correcciones aplicadas) |
 | Ciclo de corrección | 3/3 (validación: 5 correcciones aplicadas + 2 documentales) |
-| Próximo paso | Fase 9: actualizar docs (documentador), abrir el Pull Request y pedir aprobación humana del merge |
+| Próximo paso | Revisión local del humano (sin push). Tras aprobar: push de `002-acceso-gestion-usuarios`, abrir el PR (roadmap → en revisión), aprobar el merge y `make costos CERRAR=1`. |
 | Bloqueado por | — |
-| Actualizado | 2026-10-04 |
+| Actualizado | 2026-10-05 |
 
 ## Aprobaciones
 
@@ -55,6 +55,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-05 — **Sesión pausada por decisión del humano: sin push todavía.** F2 completa y validada, documentación de entrega lista, todo en local. Próximo paso: revisión local → push + PR → `make costos CERRAR=1` al aprobar. Costo abierto: **$5.99**.
 - 2026-10-05 — **Validación (fase 7) y correcciones.** QA **APROBADO**; revisor **APROBADO CON OBSERVACIONES**; seguridad **APROBADO CON OBSERVACIONES** (0 bloqueantes). Reportes: `revision-2026-10-05-{qa,codigo,seguridad}.md`. Correcciones aplicadas: M1 (auditoría no pierde filas con objetivo inexistente, FR-023), M2 (SESSION_SECRET vacío/corto no arranca en producción), M3 (cambio de contraseña atómico), M4 (TTL atómico del contador de fallos), M5 (`retryAfterSeconds` consistente), M6 (`details.roleId` en la FK de rol) y M9 (log de causa en `authn`). Documental: `ux.md` §3.8 (la contraseña actual se pide también en el cambio obligatorio) y el e2e de acceso desactivado. Menor aceptada: casilla nativa en el formulario de roles (M7). `make ci`, `sqlc-verify` y `api-gen` sin deriva en verde; e2e 3/3 (vía imagen Docker de Playwright; en el host faltan librerías de Chromium).
 - 2026-10-05 — **Backend completo (40/54).** Fases 6–9: inicialización única (T229–T230), gestión de cuentas (T231–T234), roles y permisos (T235–T237) y auditoría de solo lectura (T238–T240). Corregido otro bug de F1: `httpserver` no rellenaba `PathValue` en rutas con parámetros (`{id}`). `go test ./...` y `go test -tags=integration ./...` en verde.
 - 2026-10-05 — **Implementación (fase 6/9): 28/54 tareas.** Completadas las fases 3–5: migraciones `000002`–`000004` y consultas sqlc (T207–T211); núcleo `platform` (T212–T219, incluida la sesión en Redis); dominio `usuarios` (T220–T228: repositorios, auditoría, login/logout/Resolve, cambio de contraseña, middleware y handlers de acceso). Corregido un ciclo de imports de pruebas de integración (`session`→`testutil`→`middleware`→`session`) extrayendo los helpers de contenedores a `testutil/containers`. Próximo: T229/T230 (inicialización única).
