@@ -1,10 +1,14 @@
 import { delay, http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '../test/server';
-import { API_BASE_URL, ApiError, apiFetch, type ErrorEnvelope } from './client';
+import { API_BASE_URL, ApiError, apiFetch, readCookie, type ErrorEnvelope } from './client';
 import { getSystemStatus } from './status';
 
 const healthzUrl = `${API_BASE_URL}/healthz`;
+
+function clearCsrfCookie() {
+  document.cookie = 'csrf_token=; Max-Age=0; path=/';
+}
 
 const databaseUnavailable: ErrorEnvelope = {
   error: {
@@ -165,5 +169,99 @@ describe('getSystemStatus', () => {
     expect(error.reason).toBe('http');
     expect(error.code).toBe('database_unavailable');
     expect(error.details).toEqual({ database: 'disconnected' });
+  });
+});
+
+describe('apiFetch credenciales y CSRF', () => {
+  afterEach(() => {
+    clearCsrfCookie();
+    vi.restoreAllMocks();
+  });
+
+  it('envía siempre credenciales incluidas', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    server.use(
+      http.get(healthzUrl, () => HttpResponse.json({ status: 'ok', database: 'connected' })),
+    );
+
+    await apiFetch('/healthz');
+
+    const init = fetchSpy.mock.calls[0]?.[1];
+    expect(init?.credentials).toBe('include');
+  });
+
+  it('añade X-CSRF-Token en métodos no seguros leyendo la cookie', async () => {
+    document.cookie = 'csrf_token=token-de-prueba';
+    let cabecera: string | null = null;
+    server.use(
+      http.post(`${API_BASE_URL}/api/v1/auth/logout`, ({ request }) => {
+        cabecera = request.headers.get('X-CSRF-Token');
+        return HttpResponse.json({ loggedOut: true });
+      }),
+    );
+
+    await apiFetch('/api/v1/auth/logout', { method: 'POST' });
+
+    expect(cabecera).toBe('token-de-prueba');
+  });
+
+  it('no añade X-CSRF-Token en métodos seguros', async () => {
+    document.cookie = 'csrf_token=token-de-prueba';
+    let cabecera: string | null = 'no-consultada';
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/auth/session`, ({ request }) => {
+        cabecera = request.headers.get('X-CSRF-Token');
+        return HttpResponse.json({});
+      }),
+    );
+
+    await apiFetch('/api/v1/auth/session');
+
+    expect(cabecera).toBeNull();
+  });
+
+  it('respeta una cabecera X-CSRF-Token explícita del llamador', async () => {
+    document.cookie = 'csrf_token=de-la-cookie';
+    let cabecera: string | null = null;
+    server.use(
+      http.post(`${API_BASE_URL}/api/v1/auth/logout`, ({ request }) => {
+        cabecera = request.headers.get('X-CSRF-Token');
+        return HttpResponse.json({ loggedOut: true });
+      }),
+    );
+
+    await apiFetch('/api/v1/auth/logout', {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': 'explicita' },
+    });
+
+    expect(cabecera).toBe('explicita');
+  });
+
+  it('sin cookie no envía la cabecera CSRF', async () => {
+    let cabecera: string | null = 'no-consultada';
+    server.use(
+      http.post(`${API_BASE_URL}/api/v1/auth/login`, ({ request }) => {
+        cabecera = request.headers.get('X-CSRF-Token');
+        return HttpResponse.json({});
+      }),
+    );
+
+    await apiFetch('/api/v1/auth/login', { method: 'POST' });
+
+    expect(cabecera).toBeNull();
+  });
+});
+
+describe('readCookie', () => {
+  afterEach(() => clearCsrfCookie());
+
+  it('devuelve el valor de la cookie existente', () => {
+    document.cookie = 'csrf_token=abc123';
+    expect(readCookie('csrf_token')).toBe('abc123');
+  });
+
+  it('devuelve null si la cookie no existe', () => {
+    expect(readCookie('csrf_token')).toBeNull();
   });
 });
