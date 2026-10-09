@@ -25,6 +25,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
     -ldflags="-s -w" \
     -o /out/api ./cmd/api
 
+# Directorio de subidas vacío (T304): se copia en la imagen final con
+# propietario nonroot para que un volumen nombrado nuevo que se monte en
+# /var/lib/simiente/uploads herede ese propietario (distroless no tiene
+# shell ni mkdir en ejecución; sin esto nonroot no puede escribir).
+RUN mkdir -p /out/uploads
+
 # --- Imagen final de ejecución (mínima) ---
 FROM gcr.io/distroless/static-debian12:latest
 
@@ -39,6 +45,13 @@ WORKDIR /app
 # Binario compilado. Distroless/static ya incluye ca-certificates.crt y
 # tzdata, así que no hay que copiarlos.
 COPY --from=build /out/api /api
+
+# /var/lib/simiente/uploads (T304): se copia el directorio vacío de la etapa
+# de build con propietario 65532 (nonroot) para que un volumen nombrado NUEVO
+# montado aquí herede ese propietario y nonroot pueda escribir las imágenes
+# (distroless no tiene shell ni chmod en ejecución; sin esto, un volumen con
+# propietario root provoca "permission denied" al guardar).
+COPY --chown=65532:65532 --from=build /out/uploads /var/lib/simiente/uploads/
 
 # Distroless/static-debian12 trae de serie el usuario no-root "nonroot"
 # (uid/gid 65532); lo fijamos para no ejecutar como root (defensa en
