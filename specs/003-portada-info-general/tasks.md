@@ -794,7 +794,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     extensiones (documentadas aquí; lo revisa `revisor-codigo`).
   - **Commit sugerido**: `feat(frontend): Button accent y StatusPill draft/published`
 
-- [ ] T330 · `api/portada.ts`: cliente público y de panel · `[frontend]`
+- [X] T330 · `api/portada.ts`: cliente público y de panel · `[frontend]`
 
   - **Archivos**: `frontend/src/api/portada.ts` y `portada.test.ts` (NUEVOS).
   - **Qué hace**: cliente sobre el tipo generado (T303) con el `client.ts` de F2 (credenciales +
