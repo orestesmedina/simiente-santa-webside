@@ -19,6 +19,27 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    # P23 (decisión humana, 2026-10-04): Redis sin persistencia a propósito —
+    # sin volumen, sin `appendonly` y sin `save`. El estado de Redis (sesión y
+    # contadores de intentos) es efímero: un reinicio solo obliga a
+    # re-loguearse y reinicia contadores; lo duradero (auditoría) vive en
+    # PostgreSQL (servicio `db`).
+    image: redis:7-alpine
+    # P23: la persistencia está DESACTIVADA a propósito — `--save ""` quita la
+    # instantánea RDB por defecto, `--appendonly no` el AOF y `--dir /tmp`
+    # evita cargar o escribir ningún dump en el volumen anónimo `/data` de la
+    # propia imagen. Sin volumen en compose: todo lo que guarda Redis es
+    # efímero y un reinicio lo borra.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--dir", "/tmp"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build: ./backend
     # Sin env_file (D2, FR-001): el clon limpio levanta con estos valores por
@@ -35,10 +56,30 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app_dev_password}@db:5432/${POSTGRES_DB:-app}?sslmode=disable
+      # REDIS_URL se construye SIEMPRE aquí apuntando al host `redis`
+      # (igual que DATABASE_URL con `db`): nunca hereda un REDIS_URL del .env
+      # del host con `localhost`, que dentro del contenedor no es Redis.
+      REDIS_URL: redis://redis:6379/0
+      # Sesión (P1/P9/P10) e inicialización (P8). SESSION_COOKIE_SECURE va a
+      # `false` por defecto: en desarrollo el panel se sirve por HTTP; en un
+      # despliegue con HTTPS ponerlo a `true` en el .env (nunca así en local).
+      # Redis por defecto ya indica 30 min de inactividad + 1 h absoluta (P9),
+      # valores que T216 lee con platform/config y .env.example puede
+      # sobrescribir.
+      # SESSION_SECRET firma la cookie CSRF. El valor por defecto es CLARAMENTE
+      # de desarrollo (nunca vacío y >= 32 caracteres): en producción el arranque
+      # exige el valor propio que inyecte el despliegue (platform/config).
+      SESSION_SECRET: ${SESSION_SECRET:-dev-insecure-session-secret-not-for-production}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_IDLE_TTL_MINUTES: ${SESSION_IDLE_TTL_MINUTES:-30}
+      SESSION_ABSOLUTE_TTL_MINUTES: ${SESSION_ABSOLUTE_TTL_MINUTES:-60}
+      BOOTSTRAP_TOKEN: ${BOOTSTRAP_TOKEN:-}
     ports:
       - "${HTTP_PORT:-8080}:8080"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   frontend:

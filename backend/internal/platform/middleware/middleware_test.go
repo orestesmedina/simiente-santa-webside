@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -10,9 +11,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"simiente-santa/backend/internal/platform/apperr"
+	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/httpserver"
+	"simiente-santa/backend/internal/platform/session"
 )
 
 // --- captura de logs en memoria (sin dependencias) ---
@@ -340,7 +346,7 @@ func TestCORSPreflight(t *testing.T) {
 	t.Run("origen permitido recibe sus cabeceras", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodOptions, "/healthz", nil)
 		req.Header.Set(headerOrigin, allowedOrigin)
-		req.Header.Set(headerRequestMethod, "GET")
+		req.Header.Set(headerRequestMethod, "POST")
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
 
@@ -350,13 +356,27 @@ func TestCORSPreflight(t *testing.T) {
 		if got := rec.Header().Get(headerAllowOrigin); got != allowedOrigin {
 			t.Errorf("Allow-Origin = %q, se esperaba %q", got, allowedOrigin)
 		}
-		if got := rec.Header().Get(headerAllowMethods); got != "GET, OPTIONS" {
-			t.Errorf("Allow-Methods = %q, se esperaba \"GET, OPTIONS\" (solo lo registrado)", got)
+		if got := rec.Header().Get(headerAllowOrigin); got == "*" {
+			t.Error("Allow-Origin nunca puede ser * con credenciales")
 		}
-		for _, verb := range []string{"POST", "PUT", "PATCH", "DELETE"} {
-			if strings.Contains(rec.Header().Get(headerAllowMethods), verb) {
-				t.Errorf("Allow-Methods no debe pre-conceder el verbo %s: %q", verb, rec.Header().Get(headerAllowMethods))
+		if got := rec.Header().Get(headerAllowCredentials); got != "true" {
+			t.Errorf("Allow-Credentials = %q, se esperaba true (las cookies exigen credenciales)", got)
+		}
+		if got := rec.Header().Get(headerAllowMethods); got != allowMethodsValue {
+			t.Errorf("Allow-Methods = %q, se esperaba %q", got, allowMethodsValue)
+		}
+		for _, verb := range []string{"POST", "PATCH", "DELETE"} {
+			if !strings.Contains(rec.Header().Get(headerAllowMethods), verb) {
+				t.Errorf("Allow-Methods no concede %s, que la superficie de F2 usa: %q", verb, rec.Header().Get(headerAllowMethods))
 			}
+		}
+		for _, header := range []string{"Content-Type", "X-CSRF-Token", "X-Request-ID"} {
+			if !strings.Contains(rec.Header().Get(headerAllowHeaders), header) {
+				t.Errorf("Allow-Headers no incluye %s: %q", header, rec.Header().Get(headerAllowHeaders))
+			}
+		}
+		if !strings.Contains(rec.Header().Get(headerVary), headerOrigin) {
+			t.Errorf("falta Vary: Origin: %q", rec.Header().Get(headerVary))
 		}
 	})
 
@@ -373,6 +393,9 @@ func TestCORSPreflight(t *testing.T) {
 		if rec.Header().Get(headerAllowMethods) != "" {
 			t.Error("se enviaron métodos CORS a un origen no permitido")
 		}
+		if got := rec.Header().Get(headerAllowCredentials); got != "" {
+			t.Errorf("Allow-Credentials = %q, se esperaba vacío en un origen no permitido", got)
+		}
 	})
 
 	t.Run("GET simple permitido llega al handler", func(t *testing.T) {
@@ -386,6 +409,563 @@ func TestCORSPreflight(t *testing.T) {
 		}
 		if got := rec.Header().Get(headerAllowOrigin); got != allowedOrigin {
 			t.Errorf("Allow-Origin = %q, se esperaba %q", got, allowedOrigin)
+		}
+		if got := rec.Header().Get(headerAllowCredentials); got != "true" {
+			t.Errorf("Allow-Credentials = %q, se esperaba true", got)
+		}
+		if got := rec.Header().Get(headerExposeHeaders); got != exposeHeadersValue {
+			t.Errorf("Expose-Headers = %q, se esperaba %q", got, exposeHeadersValue)
+		}
+	})
+}
+
+// --- dobles de las dependencias de la cadena de sesión ---
+
+// stubSessionStore implementa session.Store para las pruebas de authn.
+type stubSessionStore struct {
+	sess  session.Session
+	err   error
+	token string
+}
+
+func (s *stubSessionStore) Create(context.Context, uuid.UUID) (string, error) { return "", nil }
+
+func (s *stubSessionStore) Resolve(_ context.Context, token string) (session.Session, error) {
+	s.token = token
+	return s.sess, s.err
+}
+
+func (s *stubSessionStore) Revoke(context.Context, string) error { return nil }
+
+func (s *stubSessionStore) RevokeUser(context.Context, uuid.UUID) error { return nil }
+
+func (s *stubSessionStore) RevokeUserExcept(context.Context, uuid.UUID, string) error { return nil }
+
+// stubResolver implementa session.Resolver para las pruebas de authn.
+type stubResolver struct {
+	identity session.Identity
+	err      error
+	userID   uuid.UUID
+}
+
+func (r *stubResolver) Resolve(_ context.Context, userID uuid.UUID) (session.Identity, error) {
+	r.userID = userID
+	return r.identity, r.err
+}
+
+// stubRecorder implementa audit.Recorder para las pruebas de authz.
+type stubRecorder struct {
+	denials []audit.Denial
+	err     error
+}
+
+func (r *stubRecorder) RecordDenied(_ context.Context, denial audit.Denial) error {
+	r.denials = append(r.denials, denial)
+	return r.err
+}
+
+// serve ejecuta un middleware sobre okHandler y devuelve la grabación.
+func serve(mw httpserver.Middleware, req *http.Request) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	mw(okHandler()).ServeHTTP(rec, req)
+	return rec
+}
+
+// sessionRequest construye una petición con (o sin) la cookie de sesión.
+func sessionRequest(method, path, token string) *http.Request {
+	req := httptest.NewRequest(method, path, nil)
+	if token != "" {
+		req.AddCookie(&http.Cookie{Name: session.CookieSession, Value: token})
+	}
+	return req
+}
+
+// csrfRequest construye una petición con la cookie y la cabecera CSRF.
+func csrfRequest(method, path, cookieToken, headerToken string) *http.Request {
+	req := httptest.NewRequest(method, path, nil)
+	if cookieToken != "" {
+		req.AddCookie(&http.Cookie{Name: session.CookieCSRF, Value: cookieToken})
+	}
+	if headerToken != "" {
+		req.Header.Set(session.HeaderCSRF, headerToken)
+	}
+	return req
+}
+
+// remoteRequest construye una petición con la IP de origen indicada.
+func remoteRequest(method, path, remoteAddr string) *http.Request {
+	req := httptest.NewRequest(method, path, nil)
+	req.RemoteAddr = remoteAddr
+	return req
+}
+
+// --- authn ---
+
+func TestAuthnRejectsInvalidSessions(t *testing.T) {
+	userID := uuid.New()
+	live := session.Session{UserID: userID, AbsoluteExpiresAt: time.Now().Add(time.Hour)}
+
+	tests := []struct {
+		name        string
+		token       string
+		stored      session.Session
+		storeErr    error
+		resolverErr error
+	}{
+		{name: "sin cookie", token: "", stored: live},
+		{name: "cookie inválida", token: "desconocido", storeErr: session.ErrSessionNotFound},
+		{name: "sesión expirada", token: "caducada", stored: session.Session{UserID: userID, AbsoluteExpiresAt: time.Now().Add(-time.Minute)}},
+		{name: "cuenta inactiva", token: "viva", stored: live, resolverErr: errors.New("cuenta inactiva")},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			store := &stubSessionStore{sess: tc.stored, err: tc.storeErr}
+			resolver := &stubResolver{identity: session.Identity{UserID: userID}, err: tc.resolverErr}
+			rec := serve(Authn(store, resolver, discardLogger()),
+				sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", tc.token))
+
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, se esperaba 401", rec.Code)
+			}
+			code, _, _ := decodeEnvelope(t, rec.Body.Bytes())
+			if code != "unauthenticated" {
+				t.Errorf("code = %q, se esperaba unauthenticated", code)
+			}
+		})
+	}
+}
+
+func TestAuthnLeavesResolvedIdentityInContext(t *testing.T) {
+	userID := uuid.New()
+	identity := session.Identity{
+		UserID:      userID,
+		Email:       "ana@ejemplo.com",
+		Permissions: []string{"admin_usuarios_roles"},
+	}
+	store := &stubSessionStore{sess: session.Session{UserID: userID, AbsoluteExpiresAt: time.Now().Add(time.Hour)}}
+	resolver := &stubResolver{identity: identity}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got, ok := session.IdentityFromContext(r.Context())
+		if !ok {
+			t.Error("authn no dejó la identidad en el contexto")
+			return
+		}
+		_, _ = w.Write([]byte(got.UserID.String()))
+	})
+
+	rec := httptest.NewRecorder()
+	Authn(store, resolver, discardLogger())(handler).
+		ServeHTTP(rec, sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", "viva"))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200", rec.Code)
+	}
+	if rec.Body.String() != userID.String() {
+		t.Errorf("identidad = %q, se esperaba %q", rec.Body.String(), userID.String())
+	}
+	if resolver.userID != userID {
+		t.Errorf("resolver recibió %v, se esperaba %v", resolver.userID, userID)
+	}
+}
+
+// TestAuthnLogsInfrastructureFailures fija M-2: un fallo del Store o del
+// Resolver queda en el log a nivel Error (sin token) y el cliente recibe el 401
+// uniforme. Un token desconocido o la ausencia de cookie no son errores.
+func TestAuthnLogsInfrastructureFailures(t *testing.T) {
+	userID := uuid.New()
+	live := session.Session{UserID: userID, AbsoluteExpiresAt: time.Now().Add(time.Hour)}
+
+	tests := []struct {
+		name        string
+		token       string
+		storeErr    error
+		resolverErr error
+		wantLog     string
+	}{
+		{name: "store caído", token: "viva", storeErr: errors.New("redis caído"), wantLog: "redis caído"},
+		{name: "resolver caído", token: "viva", resolverErr: errors.New("postgres caído"), wantLog: "postgres caído"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			logger, store := captureLogger()
+			st := &stubSessionStore{sess: live, err: tc.storeErr}
+			resolver := &stubResolver{identity: session.Identity{UserID: userID}, err: tc.resolverErr}
+			rec := serve(Authn(st, resolver, logger), sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", tc.token))
+
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, se esperaba 401", rec.Code)
+			}
+			record, ok := store.find(slog.LevelError)
+			if !ok {
+				t.Fatal("la causa del fallo no quedó en el log a nivel Error")
+			}
+			if got, _ := record.attrs["error"].(string); !strings.Contains(got, tc.wantLog) {
+				t.Errorf("log error = %q, se esperaba contener %q", got, tc.wantLog)
+			}
+			if record.attrs["cause"] == "" {
+				t.Errorf("falta el campo cause en el log: %v", record.attrs)
+			}
+		})
+	}
+}
+
+// TestAuthnDoesNotLogExpectedUnauthenticated fija que la ausencia de cookie y un
+// token desconocido no son fallos de infraestructura y no se registran a Error.
+func TestAuthnDoesNotLogExpectedUnauthenticated(t *testing.T) {
+	t.Run("sin cookie", func(t *testing.T) {
+		logger, store := captureLogger()
+		rec := serve(Authn(&stubSessionStore{}, &stubResolver{}, logger),
+			sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", ""))
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401", rec.Code)
+		}
+		if _, ok := store.find(slog.LevelError); ok {
+			t.Error("«sin cookie» no es un fallo de infraestructura")
+		}
+	})
+
+	t.Run("token desconocido", func(t *testing.T) {
+		logger, store := captureLogger()
+		st := &stubSessionStore{err: session.ErrSessionNotFound}
+		rec := serve(Authn(st, &stubResolver{}, logger),
+			sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", "desconocido"))
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401", rec.Code)
+		}
+		if _, ok := store.find(slog.LevelError); ok {
+			t.Error("un token desconocido no es un fallo de infraestructura")
+		}
+	})
+}
+
+// --- authz ---
+
+func TestAuthzByModuleAllowsWithPermission(t *testing.T) {
+	identity := session.Identity{UserID: uuid.New(), Permissions: []string{"admin_usuarios_roles"}}
+	mw := AuthzByModule("admin_usuarios_roles", &stubRecorder{}, discardLogger())
+
+	rec := httptest.NewRecorder()
+	withIdentity(identity, mw(okHandler())).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/admin/usuarios", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200", rec.Code)
+	}
+}
+
+func TestAuthzByModuleDeniesAndRecordsWithoutPermission(t *testing.T) {
+	userID := uuid.New()
+	identity := session.Identity{UserID: userID, Permissions: []string{"otro_modulo"}}
+	recorder := &stubRecorder{}
+	mw := AuthzByModule("admin_usuarios_roles", recorder, discardLogger())
+
+	rec := httptest.NewRecorder()
+	withIdentity(identity, mw(okHandler())).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/admin/usuarios", nil))
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, se esperaba 403", rec.Code)
+	}
+	code, message, _ := decodeEnvelope(t, rec.Body.Bytes())
+	if code != "forbidden" {
+		t.Errorf("code = %q, se esperaba forbidden", code)
+	}
+	if message == "" {
+		t.Error("el 403 no lleva mensaje claro")
+	}
+
+	if len(recorder.denials) != 1 {
+		t.Fatalf("denegaciones registradas = %d, se esperaba 1", len(recorder.denials))
+	}
+	denial := recorder.denials[0]
+	if denial.ActorUserID == nil || *denial.ActorUserID != userID {
+		t.Errorf("actor = %v, se esperaba %v", denial.ActorUserID, userID)
+	}
+	if denial.Method != http.MethodPost || denial.Path != "/api/v1/admin/usuarios" {
+		t.Errorf("método/ruta registrados = %s %s, se esperaba POST /api/v1/admin/usuarios", denial.Method, denial.Path)
+	}
+}
+
+func TestAuthzByModuleWithoutIdentityIsUnauthenticated(t *testing.T) {
+	mw := AuthzByModule("admin_usuarios_roles", &stubRecorder{}, discardLogger())
+	rec := serve(mw, httptest.NewRequest(http.MethodGet, "/api/v1/admin/usuarios", nil))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, se esperaba 401 sin identidad", rec.Code)
+	}
+}
+
+func TestAuthzByModuleRecordsDenialBestEffort(t *testing.T) {
+	// El registro de la denegación entrega actor, método y ruta (el dominio
+	// resuelve acción y objetivo, P20); un fallo al persistir no cambia el 403
+	// (R23).
+	userID := uuid.New()
+	target := uuid.New()
+	identity := session.Identity{UserID: userID, Permissions: []string{"otro_modulo"}}
+	recorder := &stubRecorder{err: errors.New("bd caída")}
+	mw := AuthzByModule("admin_usuarios_roles", recorder, discardLogger())
+	path := "/api/v1/admin/usuarios/" + target.String()
+
+	rec := httptest.NewRecorder()
+	withIdentity(identity, mw(okHandler())).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, path, nil))
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, se esperaba 403 aunque falle el registro", rec.Code)
+	}
+	if len(recorder.denials) != 1 {
+		t.Fatalf("denegaciones registradas = %d, se esperaba 1", len(recorder.denials))
+	}
+	denial := recorder.denials[0]
+	if denial.ActorUserID == nil || *denial.ActorUserID != userID {
+		t.Errorf("actor = %v, se esperaba %v", denial.ActorUserID, userID)
+	}
+	if denial.Method != http.MethodPatch || denial.Path != path {
+		t.Errorf("método/ruta = %s %s, se esperaba PATCH %s", denial.Method, denial.Path, path)
+	}
+}
+
+// --- CSRF ---
+
+func TestCSRF(t *testing.T) {
+	const secret = "secreto-de-prueba"
+	valid, err := session.NewCSRFToken(secret)
+	if err != nil {
+		t.Fatalf("generar token CSRF: %v", err)
+	}
+	mw := CSRF(secret, discardLogger())
+
+	t.Run("método seguro pasa sin token", func(t *testing.T) {
+		rec := serve(mw, httptest.NewRequest(http.MethodGet, "/api/v1/auth/session", nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200", rec.Code)
+		}
+	})
+
+	t.Run("método inseguro sin token", func(t *testing.T) {
+		rec := serve(mw, httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil))
+		assertCSRFForbidden(t, rec)
+	})
+
+	t.Run("método inseguro con cookie y cabecera desalineadas", func(t *testing.T) {
+		other, err := session.NewCSRFToken(secret)
+		if err != nil {
+			t.Fatalf("generar segundo token CSRF: %v", err)
+		}
+		rec := serve(mw, csrfRequest(http.MethodPost, "/api/v1/auth/logout", valid, other))
+		assertCSRFForbidden(t, rec)
+	})
+
+	t.Run("método inseguro con firma inválida", func(t *testing.T) {
+		const forged = "nonce.firmaFalsa"
+		rec := serve(mw, csrfRequest(http.MethodPost, "/api/v1/auth/logout", forged, forged))
+		assertCSRFForbidden(t, rec)
+	})
+
+	t.Run("método inseguro con par válido pasa", func(t *testing.T) {
+		rec := serve(mw, csrfRequest(http.MethodPost, "/api/v1/auth/logout", valid, valid))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200", rec.Code)
+		}
+	})
+}
+
+func assertCSRFForbidden(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, se esperaba 403", rec.Code)
+	}
+	code, _, _ := decodeEnvelope(t, rec.Body.Bytes())
+	if code != "forbidden" {
+		t.Errorf("code = %q, se esperaba forbidden", code)
+	}
+}
+
+// --- rate-limit ---
+
+func TestRateLimitBlocksAfterThreshold(t *testing.T) {
+	now := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	mw := RateLimit(RateLimitConfig{
+		Limit:  3,
+		Window: time.Minute,
+		Paths:  DefaultRateLimitPaths(),
+		Now:    func() time.Time { return now },
+	}, discardLogger())
+
+	for i := 1; i <= 3; i++ {
+		rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "203.0.113.7:5555"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("petición %d: status = %d, se esperaba 200", i, rec.Code)
+		}
+	}
+
+	rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "203.0.113.7:5555"))
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, se esperaba 429", rec.Code)
+	}
+	code, _, details := decodeEnvelope(t, rec.Body.Bytes())
+	if code != "rate_limited" {
+		t.Errorf("code = %q, se esperaba rate_limited", code)
+	}
+	if rec.Header().Get("Retry-After") == "" {
+		t.Error("falta la cabecera Retry-After")
+	}
+	if details["retryAfterSeconds"] == nil {
+		t.Errorf("falta details.retryAfterSeconds: %v", details)
+	}
+}
+
+func TestRateLimitWindowSlides(t *testing.T) {
+	base := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	now := base
+	mw := RateLimit(RateLimitConfig{
+		Limit:  2,
+		Window: time.Minute,
+		Now:    func() time.Time { return now },
+	}, discardLogger())
+
+	for i := 1; i <= 2; i++ {
+		if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "203.0.113.7:1")); rec.Code != http.StatusOK {
+			t.Fatalf("petición %d: status = %d, se esperaba 200", i, rec.Code)
+		}
+	}
+	if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "203.0.113.7:1")); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, se esperaba 429 dentro de la ventana", rec.Code)
+	}
+
+	now = base.Add(2 * time.Minute)
+	if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "203.0.113.7:1")); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 al deslizar la ventana", rec.Code)
+	}
+}
+
+func TestRateLimitIsPerIP(t *testing.T) {
+	now := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	mw := RateLimit(RateLimitConfig{
+		Limit:  1,
+		Window: time.Minute,
+		Now:    func() time.Time { return now },
+	}, discardLogger())
+
+	if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "203.0.113.7:1")); rec.Code != http.StatusOK {
+		t.Fatalf("primera IP: status = %d, se esperaba 200", rec.Code)
+	}
+	if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "198.51.100.9:2")); rec.Code != http.StatusOK {
+		t.Fatalf("segunda IP: status = %d, se esperaba 200", rec.Code)
+	}
+	if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", "203.0.113.7:3")); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("primera IP reincidente: status = %d, se esperaba 429", rec.Code)
+	}
+}
+
+func TestRateLimitOnlyScopesListedPaths(t *testing.T) {
+	now := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+	mw := RateLimit(RateLimitConfig{
+		Limit:  1,
+		Window: time.Minute,
+		Paths:  DefaultRateLimitPaths(),
+		Now:    func() time.Time { return now },
+	}, discardLogger())
+
+	const ip = "203.0.113.7:1"
+	if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", ip)); rec.Code != http.StatusOK {
+		t.Fatalf("login: status = %d, se esperaba 200", rec.Code)
+	}
+	if rec := serve(mw, remoteRequest(http.MethodPost, "/api/v1/auth/login", ip)); rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("login repetido: status = %d, se esperaba 429", rec.Code)
+	}
+	if rec := serve(mw, remoteRequest(http.MethodGet, "/api/v1/auth/session", ip)); rec.Code != http.StatusOK {
+		t.Fatalf("ruta no listada: status = %d, se esperaba 200 (sin límite)", rec.Code)
+	}
+}
+
+// --- orden de la cadena de panel ---
+
+func TestAdminChainOrderIsApproved(t *testing.T) {
+	const (
+		secret = "secreto-de-prueba"
+		module = "admin_usuarios_roles"
+	)
+	userID := uuid.New()
+	live := session.Session{UserID: userID, AbsoluteExpiresAt: time.Now().Add(time.Hour)}
+
+	build := func(identity session.Identity) http.Handler {
+		chain := AdminChain(module, AdminDeps{
+			Sessions:   &stubSessionStore{sess: live},
+			Resolver:   &stubResolver{identity: identity},
+			Recorder:   &stubRecorder{},
+			CSRFSecret: secret,
+			Logger:     discardLogger(),
+		})
+		if len(chain) != 4 {
+			t.Fatalf("AdminChain = %d middlewares, se esperaban 4", len(chain))
+		}
+		handler := http.Handler(okHandler())
+		for i := len(chain) - 1; i >= 0; i-- {
+			handler = chain[i](handler)
+		}
+		return handler
+	}
+
+	valid, err := session.NewCSRFToken(secret)
+	if err != nil {
+		t.Fatalf("generar token CSRF: %v", err)
+	}
+
+	t.Run("authn va primero: sin cookie → 401", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		build(session.Identity{UserID: userID}).ServeHTTP(rec,
+			csrfRequest(http.MethodPost, "/api/v1/admin/usuarios", valid, valid))
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401", rec.Code)
+		}
+	})
+
+	t.Run("el guard va antes de authz", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		build(session.Identity{UserID: userID, MustChangePassword: true}).ServeHTTP(rec,
+			sessionRequest(http.MethodGet, "/api/v1/admin/usuarios", "viva"))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, se esperaba 403", rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), passwordChangeRequiredReason) {
+			t.Errorf("se esperaba el guard de cambio obligatorio: %s", rec.Body.String())
+		}
+	})
+
+	t.Run("authz va antes de CSRF", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		build(session.Identity{UserID: userID}).ServeHTTP(rec,
+			sessionRequest(http.MethodPost, "/api/v1/admin/usuarios", "viva"))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, se esperaba 403", rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), messageForbidden) {
+			t.Errorf("se esperaba la denegación por permiso: %s", rec.Body.String())
+		}
+		if strings.Contains(rec.Body.String(), messageCSRF) {
+			t.Error("CSRF se evaluó antes que authz")
+		}
+	})
+
+	t.Run("CSRF va al final", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		build(session.Identity{UserID: userID, Permissions: []string{module}}).ServeHTTP(rec,
+			sessionRequest(http.MethodPost, "/api/v1/admin/usuarios", "viva"))
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, se esperaba 403", rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), messageCSRF) {
+			t.Errorf("se esperaba el fallo de CSRF: %s", rec.Body.String())
+		}
+	})
+
+	t.Run("cadena completa llega al handler", func(t *testing.T) {
+		req := csrfRequest(http.MethodPost, "/api/v1/admin/usuarios", valid, valid)
+		req.AddCookie(&http.Cookie{Name: session.CookieSession, Value: "viva"})
+		rec := httptest.NewRecorder()
+		build(session.Identity{UserID: userID, Permissions: []string{module}}).ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200", rec.Code)
 		}
 	})
 }

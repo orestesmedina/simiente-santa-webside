@@ -140,3 +140,23 @@ func TestEnvelopeFallbackConvertsStdlibFallbacks(t *testing.T) {
 		}
 	})
 }
+
+// TestEnvelopeFallbackExposesPathValues fija que los valores de ruta de los
+// patrones `/{id}` llegan al handler a través de NewHandler (el fallback no debe
+// invocar el handler con mux.Handler, que no los rellena).
+func TestEnvelopeFallbackExposesPathValues(t *testing.T) {
+	mux := http.NewServeMux()
+	NewMuxRegistrar(mux).Handle(http.MethodGet, "/items/{id}", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.PathValue("id")))
+	})
+
+	rec := httptest.NewRecorder()
+	NewHandler(mux, discardLogger()).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/items/abc-123", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200", rec.Code)
+	}
+	if rec.Body.String() != "abc-123" {
+		t.Fatalf("PathValue = %q, se esperaba abc-123", rec.Body.String())
+	}
+}

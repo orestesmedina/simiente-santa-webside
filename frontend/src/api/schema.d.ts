@@ -35,6 +35,402 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Iniciar sesión en el panel
+         * @description Autentica con correo y contraseña y emite la cookie de sesión
+         *     (`ss_session`, `HttpOnly`) y la cookie CSRF (`csrf_token`, leída por el
+         *     cliente para las cabeceras `X-CSRF-Token`).
+         *
+         *     - Credenciales incorrectas **o** correo inexistente → el **mismo**
+         *       `401` genérico y el mismo tiempo de respuesta (FR-003, SC-008).
+         *     - Credenciales correctas con la cuenta desactivada → `403`
+         *       (`access_disabled`), mensaje comprensible (US1 esc. 3).
+         *     - El contador de fallos se incrementa con **cada** intento fallido: el
+         *       **5.º fallo** responde este mismo `401` genérico y **crea el bloqueo**
+         *       temporal de 15 minutos; desde el **6.º intento** (y durante esos 15
+         *       minutos) la respuesta es `429 rate_limited` con `Retry-After`, con el
+         *       **mismo** mensaje exista o no la cuenta (FR-006).
+         */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cerrar la sesión actual
+         * @description Termina el acceso de esta sesión (borra la sesión en el servidor y las
+         *     cookies). Toda acción posterior exige iniciar sesión de nuevo (FR-004).
+         *     Requiere CSRF (método no seguro con sesión).
+         */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sesión actual
+         * @description Devuelve la identidad de la sesión iniciada con sus permisos por módulo
+         *     (FR-015/FR-016). El cliente lo usa al cargar el panel para decidir la
+         *     navegación (los permisos además se verifican en cada operación en el
+         *     servidor). Sin sesión válida → `401`.
+         */
+        get: operations["getCurrentSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cambiar mi propia contraseña
+         * @description Cambio de contraseña de la cuenta iniciada (FR-020). Exige la contraseña
+         *     actual y una nueva que cumpla la política (FR-010): entre **8 y 64
+         *     caracteres**, con mayúsculas, minúsculas, números y caracteres
+         *     especiales, y **distinta de** (igualdad con comparación normalizada, no
+         *     de contenido: puede contener esos datos) el nombre, los apellidos y el
+         *     correo. Revoca las demás sesiones de la
+         *     cuenta. Si la cuenta tenía `mustChangePassword`, queda resuelto (US7
+         *     esc. 4). Requiere CSRF.
+         */
+        post: operations["changeMyPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/setup/initialize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acción de inicialización única (primer administrador)
+         * @description Crea el rol "Administrador" (con los 9 permisos del catálogo) y la cuenta
+         *     inicial, capaz de crear usuarios y roles de inmediato (FR-007, US2).
+         *
+         *     - Solo funciona mientras **no exista ninguna cuenta**: repetirla → `409`.
+         *     - Exige la cabecera `X-Setup-Token` con el valor de `BOOTSTRAP_TOKEN`
+         *       (impide el uso abusivo por un tercero en una instalación recién
+         *       desplegada; decisión P8 del plan — puede retirarse por decisión humana).
+         *     - Va sujeta a `rate-limit` por IP (429).
+         *     La contraseña inicial se entrega fuera del sistema y su titular **no**
+         *     necesita cambiarla al entrar (ya la eligió quien inicializa).
+         */
+        post: operations["initializeSystem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/usuarios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar cuentas del panel
+         * @description Listado paginado de cuentas con su estado, correo y rol (FR-019).
+         *     Orden por defecto `createdAt DESC`. Defecto 20, tope 100. Requiere el
+         *     permiso `admin_usuarios_roles`.
+         */
+        get: operations["listUsers"];
+        put?: never;
+        /**
+         * Crear una cuenta del equipo
+         * @description Crea una cuenta activa con su contraseña inicial (definida por el
+         *     administrador, FR-010) y un rol válido (FR-009). El correo se normaliza
+         *     (trim + minúsculas): un duplicado que solo difiere en mayúsculas o
+         *     espacios se rechaza como `409` (Q5). La contraseña debe cumplir la
+         *     política (FR-010) y su titular deberá cambiarla al entrar (US3 esc. 6).
+         *     Requiere permiso `admin_usuarios_roles` y CSRF.
+         */
+        post: operations["createUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/usuarios/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) de la cuenta. */
+                id: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Ver una cuenta
+         * @description Detalle de una cuenta (para el formulario de edición). Requiere permiso `admin_usuarios_roles`.
+         */
+        get: operations["getUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Editar una cuenta (datos, rol o estado)
+         * @description Edita los datos de la cuenta (nombre, apellidos, correo y teléfono), el
+         *     rol asignado y/o el estado activo/inactivo (FR-011). Al asignar un rol nuevo, el nuevo **reemplaza**
+         *     al anterior (un solo rol por cuenta, Q4). Al desactivar se bloquea el
+         *     acceso de inmediato —también las sesiones abiertas— y se conservan los
+         *     datos (FR-012); reactivar restaura el acceso (US5 esc. 3). Ninguna
+         *     combinación puede dejar el panel sin una cuenta activa con permiso de
+         *     administrar usuarios y roles: eso se responde como `409` (FR-008). Los
+         *     duplicados por correo normalizado → `409`. Requiere CSRF.
+         */
+        patch: operations["updateUser"];
+        trace?: never;
+    };
+    "/api/v1/admin/usuarios/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) de la cuenta. */
+                id: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restablecer la contraseña de una cuenta
+         * @description El administrador define una contraseña nueva (debe cumplir la política,
+         *     FR-010). La cuenta queda con `mustChangePassword = true`: su titular
+         *     deberá cambiarla al entrar (US7 esc. 5) y **todas sus sesiones abiertas
+         *     quedan revocadas** (R17). No hay recuperación por auto-servicio en el MVP.
+         *     Requiere permiso `admin_usuarios_roles` y CSRF.
+         */
+        post: operations["resetUserPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Listar roles
+         * @description Listado paginado de roles con sus permisos y cuántas cuentas los usan
+         *     (para saber si se pueden eliminar, FR-017). Orden por defecto
+         *     `createdAt DESC`. Defecto 20, tope 100. Requiere permiso
+         *     `admin_usuarios_roles`.
+         */
+        get: operations["listRoles"];
+        put?: never;
+        /**
+         * Crear un rol con permisos por módulo
+         * @description Crea un rol con nombre único y **al menos un permiso** del catálogo,
+         *     combinados libremente (FR-014; no hay catálogo fijo de roles). El nombre
+         *     se normaliza (trim + colapso de espacios) y su unicidad es
+         *     insensible a mayúsculas: un duplicado "casi igual" → `409` (Q5). Un rol
+         *     sin permisos → `400`. Requiere permiso `admin_usuarios_roles` y CSRF.
+         */
+        post: operations["createRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/roles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del rol. */
+                id: components["parameters"]["RoleID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Ver un rol
+         * @description Detalle de un rol con sus permisos (para el formulario de edición). Requiere permiso `admin_usuarios_roles`.
+         */
+        get: operations["getRole"];
+        put?: never;
+        post?: never;
+        /**
+         * Eliminar un rol sin uso
+         * @description Elimina un rol **únicamente cuando ninguna cuenta lo tiene asignado**
+         *     (FR-017). Si hay cuentas con ese rol → `409` con el mensaje de que
+         *     primero deben reasignarse esas cuentas. La eliminación no afecta a
+         *     ninguna cuenta (US6 esc. 4). Requiere CSRF.
+         */
+        delete: operations["deleteRole"];
+        options?: never;
+        head?: never;
+        /**
+         * Editar un rol (nombre y permisos)
+         * @description Actualiza el nombre y/o los permisos del rol (FR-017, FR-018): los
+         *     cambios se reflejan de inmediato en las cuentas que lo tienen asignado.
+         *     Quitar todos los permisos → `400` (un rol conserva al menos uno). Un
+         *     nombre duplicado normalizado → `409`. Si la edición dejara el panel sin
+         *     una cuenta activa con permiso de administración → `409` (FR-008).
+         *     Requiere CSRF.
+         */
+        patch: operations["updateRole"];
+        trace?: never;
+    };
+    "/api/v1/admin/permisos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catálogo de permisos por módulo
+         * @description Lista el catálogo fijo de permisos (los módulos del producto más la
+         *     administración de usuarios y roles, FR-015). Es el que se usa para armar
+         *     roles; los módulos de F3–F9 aparecen como reservados hasta que se
+         *     construyan. Requiere permiso `admin_usuarios_roles`.
+         */
+        get: operations["listPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/auditoria/accesos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Historial de accesos al panel (solo lectura)
+         * @description Historial de **intentos de inicio de sesión** —exitosos y fallidos— con
+         *     fecha y hora, resultado e IP de origen, asociado a la cuenta cuando se
+         *     pudo identificar (FR-022). El nombre y el correo de la cuenta que se
+         *     muestran (`userName`, `userEmail`) se **derivan por `JOIN` con `users`**
+         *     cuando el intento se identificó con una cuenta; no son datos guardados
+         *     en el registro. Un intento con un correo que no corresponde a ninguna
+         *     cuenta aparece **sin cuenta asociada** (`userId`/`userEmail`/`userName`
+         *     en `null`): **no se guarda ni se muestra ese correo**, la interfaz indica
+         *     "Intento sin cuenta asociada", no se crea nada y el mensaje que vio esa
+         *     persona nunca reveló si la cuenta existía (FR-003).
+         *
+         *     **Solo lectura** (FR-025): no existe ninguna operación de escritura sobre
+         *     el registro; no se puede editar ni borrar por ninguna vía de la interfaz.
+         *     Accesible **solo** con el permiso `admin_usuarios_roles` (misma decisión
+         *     que la gestión de usuarios y roles, FR-024): sin él → `403`.
+         *
+         *     Filtros: `userId` (cuenta) y rango de fechas `from`/`to` (FR-024).
+         *     Paginación `platform/paginate` (§8.1.3): defecto 20, tope 100; sobre
+         *     `{items, total, limit, offset}`; orden `createdAt DESC` (los más
+         *     recientes primero).
+         */
+        get: operations["listAccessEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/auditoria/acciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Historial de acciones administrativas (solo lectura)
+         * @description Historial de **acciones administrativas sensibles de gestión** (FR-023):
+         *     quién la hizo, qué hizo, sobre qué cuenta o rol, cuándo y con qué
+         *     resultado —incluidos los intentos que no se completan y los denegados por
+         *     falta de permiso—. El nombre y el correo de quien la hizo (`actorName`,
+         *     `actorEmail`) se **derivan por `JOIN` con `users`** cuando hay actor (no
+         *     se guardan como dato duplicado); en la inicialización del sistema son
+         *     `null`. Cubre crear, editar, activar y desactivar cuentas,
+         *     restablecer contraseñas, crear, editar y eliminar roles, y la
+         *     inicialización del sistema (que se registra como creación de cuenta sin
+         *     actor). De un restablecimiento de contraseña solo queda quién lo hizo,
+         *     sobre qué cuenta y cuándo: **nunca** la contraseña (FR-026). El cambio de
+         *     la propia contraseña no figura aquí (no es acción administrativa).
+         *
+         *     **Solo lectura** (FR-025), con el mismo permiso `admin_usuarios_roles`
+         *     (FR-024): sin él → `403`.
+         *
+         *     Filtros: `userId` (la cuenta **involucrada**: la que hizo la acción o la
+         *     cuenta sobre la que se hizo) y rango de fechas `from`/`to` (FR-024).
+         *     Paginación `platform/paginate` (§8.1.3): defecto 20, tope 100; sobre
+         *     `{items, total, limit, offset}`; orden `createdAt DESC`.
+         */
+        get: operations["listAdminActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -94,6 +490,351 @@ export interface components {
             details?: {
                 [key: string]: unknown;
             };
+        };
+        LoginInput: {
+            /**
+             * Format: email
+             * @description Correo de la cuenta (se normaliza con trim + minúsculas).
+             */
+            email: string;
+            /**
+             * Format: password
+             * @description Contraseña en texto plano (solo viaja aquí; nunca se devuelve ni se guarda).
+             */
+            password: string;
+        };
+        /**
+         * @description Identidad de la sesión iniciada con sus permisos efectivos (los del rol
+         *     asignado; nunca la suma de varios roles, Q4). No contiene ningún dato
+         *     sensible de credenciales (FR-003).
+         */
+        SessionUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            /** @description Nombre de la persona (datos de la cuenta confirmados el 2026-10-04). */
+            firstName: string;
+            /** @description Apellidos de la persona. */
+            lastName: string;
+            /** @description Número de teléfono (formato telefónico razonable, FR-009). */
+            phone: string;
+            /** Format: uuid */
+            roleId: string;
+            roleName: string;
+            /** @description Códigos de permiso del catálogo (p. ej. `eventos`, `admin_usuarios_roles`). */
+            permissions: string[];
+            /** @description Si es `true`, la cuenta debe cambiar su contraseña antes de usar el panel (US7 esc. 4). */
+            mustChangePassword: boolean;
+        };
+        LogoutResponse: {
+            /** @constant */
+            loggedOut: true;
+        };
+        ChangePasswordInput: {
+            /** Format: password */
+            currentPassword: string;
+            /**
+             * Format: password
+             * @description Política FR-010: entre 8 y 64 caracteres, con mayúsculas,
+             *     minúsculas, números y caracteres especiales, y **distinta de** (no
+             *     de contenido: se rechaza que sea **igual**, con comparación
+             *     normalizada) el nombre, los apellidos y el correo.
+             */
+            newPassword: string;
+        };
+        PasswordChangedResponse: {
+            /** @constant */
+            passwordChanged: true;
+        };
+        /**
+         * @description Datos de la cuenta del primer administrador: los mismos campos
+         *     obligatorios de toda cuenta (nombre, apellidos, correo y teléfono;
+         *     confirmados el 2026-10-04) y su contraseña.
+         */
+        InitializeInput: {
+            firstName: string;
+            lastName: string;
+            /** Format: email */
+            email: string;
+            /** @description Formato telefónico razonable (FR-009), con dígitos, separadores habituales, prefijo internacional opcional y al menos 7 dígitos. */
+            phone: string;
+            /**
+             * Format: password
+             * @description Contraseña del administrador inicial (misma política FR-010; no exige cambio al entrar).
+             */
+            password: string;
+        };
+        CreateUserInput: {
+            /** @description Nombre de la persona (campo obligatorio y separado de los apellidos; FR-009). */
+            firstName: string;
+            /** @description Apellidos de la persona (campo obligatorio; FR-009). */
+            lastName: string;
+            /** Format: email */
+            email: string;
+            /**
+             * @description Número de teléfono obligatorio (FR-009): dígitos con espacios,
+             *     guiones o paréntesis como separadores habituales, un prefijo
+             *     internacional opcional y al menos 7 dígitos. Un formato que no es
+             *     telefónico → `400` con `details.phone`.
+             */
+            phone: string;
+            /**
+             * Format: uuid
+             * @description Rol existente (uno solo por cuenta, Q4). Un rol inexistente → `400` con `details.roleId`.
+             */
+            roleId: string;
+            /**
+             * Format: password
+             * @description Contraseña inicial definida por el administrador (FR-010); su titular debe cambiarla al entrar.
+             */
+            password: string;
+        };
+        /**
+         * @description Al menos un campo (nombre, apellidos, correo, teléfono, rol o estado;
+         *     mismas validaciones que al crear, FR-011). El nuevo rol reemplaza al
+         *     anterior (Q4). `isActive: false` bloquea el acceso de inmediato y
+         *     revoca las sesiones abiertas (FR-012); nunca se eliminan cuentas
+         *     (FR-013).
+         */
+        UpdateUserInput: {
+            firstName?: string;
+            lastName?: string;
+            /** Format: email */
+            email?: string;
+            phone?: string;
+            /** Format: uuid */
+            roleId?: string;
+            isActive?: boolean;
+        };
+        ResetPasswordInput: {
+            /**
+             * Format: password
+             * @description Contraseña nueva definida por el administrador (FR-010).
+             */
+            password: string;
+        };
+        PasswordResetResponse: {
+            /** @constant */
+            passwordReset: true;
+        };
+        /**
+         * @description Cuenta del panel en listados y detalle (FR-019). Incluye la fecha y el
+         *     origen de su último acceso exitoso (FR-021). Nunca incluye credenciales.
+         */
+        UserItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            /** @description Nombre de la persona. */
+            firstName: string;
+            /** @description Apellidos de la persona. */
+            lastName: string;
+            /** @description Número de teléfono (FR-009). */
+            phone: string;
+            /** Format: uuid */
+            roleId: string;
+            roleName: string;
+            /** @description Cuando es `false`, el acceso queda retirado (desactivada); los datos se conservan siempre (FR-012/FR-013). */
+            isActive: boolean;
+            mustChangePassword: boolean;
+            /**
+             * Format: date-time
+             * @description Fecha y hora del último acceso **exitoso** al panel (FR-021). `null`
+             *     si la cuenta aún no ha iniciado sesión: la ficha lo indica sin
+             *     mostrar ningún acceso inventado (US8 esc. 6). Solo lo escribe el
+             *     login exitoso; no es editable.
+             */
+            lastLoginAt: string | null;
+            /**
+             * @description Origen (IP) del último acceso exitoso (FR-021). `null` si aún no hay
+             *     accesos. Solo lo escribe el login exitoso; no es editable.
+             */
+            lastLoginIp: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UserList: {
+            items: components["schemas"]["UserItem"][];
+            /** Format: int64 */
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        RoleCreateInput: {
+            /** @description Nombre único (se normaliza con trim + colapso de espacios; unicidad sin distinguir mayúsculas). */
+            name: string;
+            /** @description Al menos un permiso del catálogo (FR-014); códigos repetidos se descartan. */
+            permissions: string[];
+        };
+        /** @description Al menos un campo. Si se envía `permissions`, debe traer al menos un permiso (FR-014). */
+        RoleUpdateInput: {
+            name?: string;
+            permissions?: string[];
+        };
+        RoleItem: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @description Códigos de permiso del rol (los efectivos de sus cuentas, Q4). */
+            permissions: string[];
+            /** @description Cuentas con este rol (0 = se puede eliminar, FR-017). */
+            userCount: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RoleList: {
+            items: components["schemas"]["RoleItem"][];
+            /** Format: int64 */
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        RoleDeletedResponse: {
+            /** @constant */
+            deleted: true;
+        };
+        PermissionItem: {
+            /** @description Código estable del módulo (p. ej. `eventos`, `admin_usuarios_roles`). */
+            code: string;
+            /** @description Etiqueta para la interfaz en español. */
+            label: string;
+        };
+        PermissionList: {
+            items: components["schemas"]["PermissionItem"][];
+        };
+        /**
+         * @description Registro de un intento de inicio de sesión (FR-022). **Solo lectura**
+         *     (FR-025) y sin credenciales (FR-026): de un inicio de sesión solo queda
+         *     su resultado, nunca la contraseña probada.
+         */
+        AccessEventItem: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Cuenta asociada cuando se pudo identificar (FR-022). `null` cuando el
+             *     correo no corresponde a ninguna cuenta: el intento queda registrado
+             *     igual, sin asociación y sin crear nada (FR-003, US8 esc. 7).
+             */
+            userId: string | null;
+            /**
+             * Format: email
+             * @description Correo de la cuenta asociada, **derivado por `JOIN` con `users`**
+             *     (valor actual de `users.email`; no se guarda como dato duplicado en
+             *     el registro). `null` si el intento no se asoció a ninguna cuenta: en
+             *     ese caso **no se guarda ni se muestra ningún correo** (ni siquiera el
+             *     probado) y la interfaz indica "Intento sin cuenta asociada".
+             */
+            userEmail: string | null;
+            /**
+             * @description Nombre de la cuenta asociada (`firstName lastName`), **derivado por
+             *     `JOIN` con `users`** cuando el intento se identificó con una cuenta
+             *     (FR-022); no es un dato guardado en el registro. `null` cuando el
+             *     intento quedó sin cuenta asociada: la interfaz muestra entonces
+             *     "Intento sin cuenta asociada", sin mostrar ningún correo.
+             */
+            userName: string | null;
+            /**
+             * @description `success` = acceso completado; `failure` = intento fallido (incluye
+             *     los de cuentas inactivas y los que ocurren durante un bloqueo
+             *     temporal de FR-006).
+             * @enum {string}
+             */
+            result: "success" | "failure";
+            /** @description IP de origen del intento (sin puerto). */
+            ip: string;
+            /**
+             * Format: date-time
+             * @description Fecha y hora del intento (ISO-8601 en UTC).
+             */
+            createdAt: string;
+        };
+        AccessEventList: {
+            /** @description Registros de la página (nunca `null`; vacío es `[]`). */
+            items: components["schemas"]["AccessEventItem"][];
+            /** Format: int64 */
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        /**
+         * @description Registro de una acción administrativa sensible (FR-023): quién la hizo,
+         *     qué hizo, sobre qué cuenta o rol, cuándo y con qué resultado —incluidos
+         *     los intentos que no se completan y los denegados por falta de permiso—.
+         *     **Solo lectura** (FR-025) y sin credenciales (FR-026): de un
+         *     restablecimiento de contraseña solo queda quién lo hizo, sobre qué cuenta
+         *     y cuándo.
+         */
+        AdminActionItem: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Cuenta que hizo la acción. `null` **solo** en la inicialización del
+             *     sistema (FR-007), cuando todavía no existía ninguna cuenta.
+             */
+            actorId: string | null;
+            /**
+             * Format: email
+             * @description Correo de quien hizo la acción, **derivado por `JOIN` con `users`**
+             *     (valor actual de `users.email`; no se guarda como dato duplicado en
+             *     el registro). `null` en la inicialización del sistema (sin actor).
+             */
+            actorEmail: string | null;
+            /**
+             * @description Nombre de quien hizo la acción (`firstName lastName`), **derivado por
+             *     `JOIN` con `users`** cuando hay actor (FR-023); no es un dato
+             *     guardado en el registro. `null` en la inicialización del sistema.
+             */
+            actorName: string | null;
+            /**
+             * @description Qué se hizo (FR-023). La inicialización del administrador inicial
+             *     (FR-007) se registra como `user.create` sin actor: cuenta como
+             *     creación de cuenta. El cambio de la propia contraseña (FR-020) **no**
+             *     aparece aquí.
+             * @enum {string}
+             */
+            action: "user.create" | "user.update" | "user.activate" | "user.deactivate" | "user.password_reset" | "role.create" | "role.update" | "role.delete";
+            /**
+             * @description Sobre qué se hizo (una cuenta o un rol).
+             * @enum {string}
+             */
+            targetKind: "user" | "role";
+            /**
+             * Format: uuid
+             * @description Cuenta o rol sobre el que se hizo. `null` cuando no llegó a existir
+             *     (p. ej. una creación rechazada por duplicado) o cuando el rol ya fue
+             *     eliminado (FR-017): el registro se conserva igualmente (FR-025) y su
+             *     `targetLabel` sigue diciendo sobre qué fue.
+             */
+            targetId: string | null;
+            /**
+             * @description Etiqueta del objetivo en el momento de la acción (correo de la cuenta
+             *     o nombre del rol). Se conserva aunque después se edite o elimine.
+             */
+            targetLabel: string | null;
+            /**
+             * @description `success` = completada; `failure` = intento que no se completó (datos
+             *     inválidos, duplicado, regla anti-bloqueo…); `denied` = denegada por
+             *     falta de permiso (FR-016).
+             * @enum {string}
+             */
+            result: "success" | "failure" | "denied";
+            /**
+             * Format: date-time
+             * @description Fecha y hora de la acción (ISO-8601 en UTC).
+             */
+            createdAt: string;
+        };
+        AdminActionList: {
+            /** @description Registros de la página (nunca `null`; vacío es `[]`). */
+            items: components["schemas"]["AdminActionItem"][];
+            /** Format: int64 */
+            total: number;
+            limit: number;
+            offset: number;
         };
     };
     responses: {
@@ -177,8 +918,155 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
+        /**
+         * @description Datos inválidos o incompletos, o contraseña que no cumple la política
+         *     (FR-010). `details` indica qué campo corregir; nunca expone información
+         *     interna.
+         */
+        Invalid: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": {
+                 *         "code": "invalid",
+                 *         "message": "Revisa los datos del formulario",
+                 *         "details": {
+                 *           "email": "no tiene un formato de correo válido"
+                 *         }
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /**
+         * @description Sin sesión válida (expirada por inactividad, cerrada o inexistente) o
+         *     credenciales de inicio de sesión incorrectas. El mensaje de login es
+         *     genérico y **no** revela si la cuenta existe (FR-003).
+         */
+        Unauthenticated: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": {
+                 *         "code": "unauthenticated",
+                 *         "message": "Correo o contraseña incorrectos"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /**
+         * @description Autenticado pero sin permiso para la operación (FR-016), o cuenta
+         *     desactivada al iniciar sesión (US1 esc. 3), o con la obligación de
+         *     cambiar la contraseña antes de usar el panel (en cuyo caso
+         *     `details.reason = "password_change_required"`).
+         */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": {
+                 *         "code": "forbidden",
+                 *         "message": "No tienes permiso para realizar esta operación"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /**
+         * @description Conflicto con el estado actual: correo o nombre de rol duplicado (Q5),
+         *     rol con cuentas asignadas al intentar eliminarlo (FR-017), inicialización
+         *     ya ejecutada (FR-007) u operación que dejaría el panel sin administración
+         *     (FR-008, en cuyo caso `details.reason = "admin_required"`).
+         */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": {
+                 *         "code": "conflict",
+                 *         "message": "Ese correo ya está en uso"
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /**
+         * @description Demasiadas peticiones: bloqueo temporal por intentos fallidos de inicio
+         *     de sesión (creado por el **5.º fallo**; cada intento desde el **6.º** y
+         *     durante 15 minutos recibe esta respuesta, FR-006) o `rate-limit` por IP.
+         *     El mensaje de bloqueo es idéntico exista o no la cuenta (FR-003).
+         */
+        TooManyRequests: {
+            headers: {
+                /** @description Segundos hasta que se pueda volver a intentar. */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "error": {
+                 *         "code": "rate_limited",
+                 *         "message": "Demasiados intentos fallidos. El acceso queda bloqueado temporalmente durante 15 minutos",
+                 *         "details": {
+                 *           "retryAfterSeconds": 900
+                 *         }
+                 *       }
+                 *     }
+                 */
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
     };
-    parameters: never;
+    parameters: {
+        /** @description Tamaño de página (por defecto 20, tope 100). */
+        Limit: number;
+        /** @description Filas a saltar (por defecto 0). */
+        Offset: number;
+        /** @description Identificador (UUID) de la cuenta. */
+        UserID: string;
+        /** @description Identificador (UUID) del rol. */
+        RoleID: string;
+        /**
+         * @description Filtra por cuenta (FR-024). En `/admin/auditoria/accesos`, la cuenta que
+         *     intentó el acceso; en `/admin/auditoria/acciones`, la cuenta involucrada
+         *     (la que hizo la acción **o** la cuenta sobre la que se hizo). Los
+         *     registros que **no** tienen ninguna cuenta asociada (hoy: los intentos de
+         *     acceso contra un correo inexistente) solo aparecen cuando **no** se envía
+         *     este filtro. La **inicialización del sistema sí tiene cuenta asociada**
+         *     —su cuenta objetivo (`target_user_id`)—, de modo que aparece al filtrar
+         *     por esa cuenta.
+         */
+        AuditUserFilter: string;
+        /**
+         * @description Inicio del rango de fechas (**incluido**), ISO-8601 en UTC (FR-024). Si se
+         *     envía `to` y `from` es posterior → `400 invalid`.
+         */
+        AuditFrom: string;
+        /**
+         * @description Fin del rango de fechas (**excluido**), ISO-8601 en UTC: el semirango es
+         *     `[from, to)` (FR-024). Para incluir un día entero, `to` es el inicio del
+         *     día siguiente.
+         */
+        AuditTo: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -213,6 +1101,572 @@ export interface operations {
             };
             500: components["responses"]["Internal"];
             503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "email": "ana@ejemplo.com",
+                 *       "password": "********"
+                 *     }
+                 */
+                "application/json": components["schemas"]["LoginInput"];
+            };
+        };
+        responses: {
+            /** @description Sesión iniciada. Emite `Set-Cookie` de sesión y de CSRF. */
+            200: {
+                headers: {
+                    /**
+                     * @description `ss_session=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=3600`
+                     *     (vida absoluta de 1 h; `Secure` según `SESSION_COOKIE_SECURE`) +
+                     *     `csrf_token=<nonce>.<hmac>; SameSite=Lax; Path=/`.
+                     */
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUser"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sesión cerrada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogoutResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    getCurrentSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Identidad de la sesión iniciada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionUser"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    changeMyPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordInput"];
+            };
+        };
+        responses: {
+            /** @description Contraseña cambiada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordChangedResponse"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    initializeSystem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Token de despliegue (`BOOTSTRAP_TOKEN`). */
+                "X-Setup-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InitializeInput"];
+            };
+        };
+        responses: {
+            /** @description Administrador inicial creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserItem"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: {
+                /** @description Tamaño de página (por defecto 20, tope 100). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Filas a saltar (por defecto 0). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado de cuentas. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    createUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateUserInput"];
+            };
+        };
+        responses: {
+            /** @description Cuenta creada (nunca devuelve la contraseña ni su hash). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserItem"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    getUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) de la cuenta. */
+                id: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cuenta solicitada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserItem"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    updateUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) de la cuenta. */
+                id: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserInput"];
+            };
+        };
+        responses: {
+            /** @description Cuenta actualizada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserItem"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    resetUserPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) de la cuenta. */
+                id: components["parameters"]["UserID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordInput"];
+            };
+        };
+        responses: {
+            /** @description Contraseña restablecida (nunca se devuelve el valor). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordResetResponse"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    listRoles: {
+        parameters: {
+            query?: {
+                /** @description Tamaño de página (por defecto 20, tope 100). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Filas a saltar (por defecto 0). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado de roles. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    createRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleCreateInput"];
+            };
+        };
+        responses: {
+            /** @description Rol creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleItem"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    getRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del rol. */
+                id: components["parameters"]["RoleID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rol solicitado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleItem"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    deleteRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del rol. */
+                id: components["parameters"]["RoleID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rol eliminado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleDeletedResponse"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    updateRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del rol. */
+                id: components["parameters"]["RoleID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleUpdateInput"];
+            };
+        };
+        responses: {
+            /** @description Rol actualizado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleItem"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    listPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catálogo de permisos. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    listAccessEvents: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Filtra por cuenta (FR-024). En `/admin/auditoria/accesos`, la cuenta que
+                 *     intentó el acceso; en `/admin/auditoria/acciones`, la cuenta involucrada
+                 *     (la que hizo la acción **o** la cuenta sobre la que se hizo). Los
+                 *     registros que **no** tienen ninguna cuenta asociada (hoy: los intentos de
+                 *     acceso contra un correo inexistente) solo aparecen cuando **no** se envía
+                 *     este filtro. La **inicialización del sistema sí tiene cuenta asociada**
+                 *     —su cuenta objetivo (`target_user_id`)—, de modo que aparece al filtrar
+                 *     por esa cuenta.
+                 */
+                userId?: components["parameters"]["AuditUserFilter"];
+                /**
+                 * @description Inicio del rango de fechas (**incluido**), ISO-8601 en UTC (FR-024). Si se
+                 *     envía `to` y `from` es posterior → `400 invalid`.
+                 */
+                from?: components["parameters"]["AuditFrom"];
+                /**
+                 * @description Fin del rango de fechas (**excluido**), ISO-8601 en UTC: el semirango es
+                 *     `[from, to)` (FR-024). Para incluir un día entero, `to` es el inicio del
+                 *     día siguiente.
+                 */
+                to?: components["parameters"]["AuditTo"];
+                /** @description Tamaño de página (por defecto 20, tope 100). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Filas a saltar (por defecto 0). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Historial de accesos paginado (puede venir vacío; la lista `items` es `[]`). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessEventList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    listAdminActions: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Filtra por cuenta (FR-024). En `/admin/auditoria/accesos`, la cuenta que
+                 *     intentó el acceso; en `/admin/auditoria/acciones`, la cuenta involucrada
+                 *     (la que hizo la acción **o** la cuenta sobre la que se hizo). Los
+                 *     registros que **no** tienen ninguna cuenta asociada (hoy: los intentos de
+                 *     acceso contra un correo inexistente) solo aparecen cuando **no** se envía
+                 *     este filtro. La **inicialización del sistema sí tiene cuenta asociada**
+                 *     —su cuenta objetivo (`target_user_id`)—, de modo que aparece al filtrar
+                 *     por esa cuenta.
+                 */
+                userId?: components["parameters"]["AuditUserFilter"];
+                /**
+                 * @description Inicio del rango de fechas (**incluido**), ISO-8601 en UTC (FR-024). Si se
+                 *     envía `to` y `from` es posterior → `400 invalid`.
+                 */
+                from?: components["parameters"]["AuditFrom"];
+                /**
+                 * @description Fin del rango de fechas (**excluido**), ISO-8601 en UTC: el semirango es
+                 *     `[from, to)` (FR-024). Para incluir un día entero, `to` es el inicio del
+                 *     día siguiente.
+                 */
+                to?: components["parameters"]["AuditTo"];
+                /** @description Tamaño de página (por defecto 20, tope 100). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Filas a saltar (por defecto 0). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Historial de acciones administrativas paginado (puede venir vacío; la lista `items` es `[]`). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminActionList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
         };
     };
 }

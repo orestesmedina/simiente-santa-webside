@@ -1,7 +1,9 @@
 # Arquitectura técnica — Sitio web de la Iglesia Simiente Santa
 
-**Estado:** documento fundacional · **Fecha:** 2026-09-30 · **Enmienda:** 2026-10-03 (§8.1: las
+**Estado:** documento fundacional · **Fecha:** 2026-09-30 · **Enmiendas:** 2026-10-03 (§8.1: las
 convenciones que faltaban, cerradas tras el ejercicio de verificación T030/SC-007) ·
+2026-10-05 (F2 entregado: **Redis 7** para sesión y contadores de intentos — D-A7 —, cadena de
+middleware del panel y grupos de rutas reales, contrato `0.3.0`, migraciones `000002`–`000004`) ·
 **Decisiones que lo respaldan:** [decisiones.md](./decisiones.md)
 
 Este documento describe **cómo se construye** el sistema: reglas de dependencia entre capas,
@@ -17,6 +19,9 @@ Fuentes que este documento respeta y no contradice:
   `.agents/skills/react-frontend/SKILL.md` — convenciones del stack.
 - `specs/001-estructura-base/plan.md` y `research.md` — plan vigente de F1 (el router, `sqlc` y
   la versión de Go aquí **cambian** respecto de él: ver D-A3, D-A4 y D-A5 de `decisiones.md`).
+- `specs/002-acceso-gestion-usuarios/plan.md` — F2 (acceso y gestión de usuarios): adopta
+  **Redis** para sesión y contadores de intentos (D-A7), contrato OpenAPI **0.3.0** y migraciones
+  `000002`–`000004`. Lo implementado en F2 queda reflejado en §2.1, §2.3, §3 y §6.
 - `docs/producto/roadmap.md` — F1…F9.
 
 > **Nota sobre `specs/`**: las specs son la fuente de verdad del **qué** (constitución §I). Este
@@ -30,11 +35,16 @@ Fuentes que este documento respeta y no contradice:
 ### 1.1 Diagrama de dependencias
 
 ```text
-cmd/api (main.go) ──► internal/<dominio> ──► internal/platform
+cmd/api (main.go) ──► internal/<dominio> ──► internal/platform ──► Redis (solo platform/session)
         │                    │
-        │                    └──► internal/db (generado por sqlc) ──► pgx
+        │                    └──► internal/db (generado por sqlc) ──► pgx ──► PostgreSQL
         └──► internal/platform
 ```
+
+Los dos almacenes son servicios externos de `docker-compose.yml` (§2.3): **PostgreSQL** es la
+única fuente duradera (negocio y auditoría) y **Redis 7** guarda solo estado efímero (sesiones y
+contadores de intentos, D-A7), sin persistencia a propósito. Solo `internal/platform/session/`
+habla con Redis (`github.com/redis/go-redis/v9`); ningún dominio lo importa (R1/R2).
 
 ### 1.2 Reglas (DEBE)
 
@@ -88,6 +98,9 @@ backend/
 │       ├── migrate/
 │       ├── validate/
 │       ├── paginate/
+│       ├── session/                 # mecanismo de sesión y contadores sobre Redis (D-A7)
+│       ├── password/                # hash bcrypt de contraseñas
+│       ├── audit/                   # interfaz Recorder de auditoría
 │       └── testutil/
 ├── migrations/                      # NNNNNN_nombre.up.sql / .down.sql (golang-migrate)
 ├── api/
@@ -112,11 +125,14 @@ conexiones (infraestructura); `internal/db/` es **código generado por sqlc** a 
 | `logger/` | Constructor de `*slog.Logger` en **JSON** con nivel desde `LOG_LEVEL`, y **logger por petición** (hij con `request_id`, ruta y método). | **F1** (la parte de petición llega con `middleware/request-id`) |
 | `apperr/` | Errores tipados de dominio: `Invalid` (400), `Unauthenticated` (401), `Forbidden` (403), `NotFound` (404), `MethodNotAllowed` (405), `Conflict` (409), `Internal` (500), `DatabaseUnavailable` (503) y `RateLimited` (429, con `rate-limit` en F2+). Llevan `Message` (seguro para el cliente), detalle de campos opcional y el error interno **envuelto** (`%w`), que nunca se serializa. | **F1** implementa solo los kinds que F1 emite: `NotFound` (404 del fallback del router), `MethodNotAllowed` (405 del fallback, p. ej. `POST /healthz`), `DatabaseUnavailable` (503 de `/healthz`, D7 del plan) e `Internal` (500); el resto **crecen bajo demanda** con F2+ |
 | `httpserver/` | Servidor HTTP con timeouts (`ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`) y **apagado ordenado** (`signal.NotifyContext` + `Shutdown` con periodo de gracia); la interfaz `Registrar` y el tipo `Middleware` (§4); helpers `WriteJSON` y `WriteError` (§5.11). | **F1** |
-| `middleware/` | Cadena transversal: `request-id`, `recover`, `logging`, `CORS`, `rate-limit`, `authn`, `authz` por módulo, `CSRF`. | **F1**: `request-id`, `recover`, `logging`, `CORS` mínimo (una cabecera, sin dependencias — D12 del plan). **Se difiere**: `rate-limit` y `CSRF` con el primer endpoint público escribible; `authn`/`authz` con **F2** (usuarios y permisos) |
+| `middleware/` | Cadena transversal: `request-id`, `recover`, `logging`, `CORS`, `rate-limit`, `authn`, `authz` por módulo, guard de cambio de contraseña y `CSRF`. Dos constructores únicos de composición (§6): `Chain` (global) y `AdminChain` (grupo de panel). | **F1**: `request-id`, `recover`, `logging`, `CORS` mínimo (una cabecera, sin dependencias — D12 del plan). **F2**: `authn`, `authz` por módulo, guard de cambio de contraseña, `CSRF` y `rate-limit` por IP en los grupos escribibles |
 | `database/` | Construcción del `*pgxpool.Pool` desde `DATABASE_URL`, helper `WithTx(ctx, fn)` para transacciones y helper de salud (`Ping` con timeout) usado por `/healthz`. | **F1** |
 | `migrate/` | Runner de migraciones **embebidas** (`//go:embed`), **opt-in por entorno** (`RUN_MIGRATIONS=true`). | **Se difiere**: en F1 mandan el CLI `golang-migrate` (target `make db-migrate` y el paso "Migraciones" del CI). El runner embebido llega cuando un entorno desplegado necesite auto-migrar sin CLI — decisión del plan de esa funcionalidad |
-| `validate/` | Validación de DTOs a partir de sus etiquetas (`required`, `max`, `email`…), produciendo `apperr.Invalid` con detalle por campo. | **Se difiere a F2** (primera vez que hay entradas de usuario de verdad). El mecanismo concreto (librería vs. implementación propia mínima) se decide en el plan de F2 — ver "Preguntas abiertas" de `decisiones.md` |
-| `paginate/` | Parseo y topes de paginación desde query string (`limit`, `offset` con máximos) y helper de cursor opaco para listados grandes (convención `postgres-db`). | **Se difiere a F2** (primer listado del panel) |
+| `validate/` | Validación de DTOs a partir de sus etiquetas (`required`, `max`, `email`…), produciendo `apperr.Invalid` con detalle por campo. | **F2** (primeras entradas de usuario de verdad): **implementación propia mínima**, sin dependencias (cierra la pregunta abierta 4 de `decisiones.md`) |
+| `paginate/` | Parseo y topes de paginación desde query string (`limit`, `offset` con máximos) y helper de cursor opaco para listados grandes (convención `postgres-db`). | **F2** (primeros listados del panel) |
+| `session/` | **Mecanismo** de sesión y de contadores de acceso sobre **Redis** (D-A7): `Store` con la sesión `sess:<sha256(token)>` (JSON con la identidad y TTL de inactividad/absoluta) e índice `user_sessions:<userId>` que permite **revocar todas las sesiones de una cuenta** (desactivar un usuario surte efecto inmediato); `Throttle` con los contadores `login:fail:*` y la bandera `login:block:*`; cookies `httpOnly` (`Secure`/`SameSite`) y helpers de token y cookie CSRF. La **semántica** (5 fallos → bloqueo de 15 min, `MaxFailedAttempts`/`LockoutDuration`) la fija el dominio `usuarios`; el mecanismo vive aquí (ver §2.3). | **F2** |
+| `password/` | Política de contraseñas (FR-010) y **hash bcrypt** con coste 12 (constitución §IV, CWE-256): `Hash`/`Compare`; nunca texto plano ni reversible (bcrypt corta en 72 bytes: la política ya lo limita). | **F2** |
+| `audit/` | Interfaz `Recorder` de auditoría (denegaciones de permiso, acciones administrativas); la implementa el dominio `usuarios` (R3). | **F2** |
 | `testutil/` | Helpers compartidos de prueba: conexión a `DATABASE_URL_TEST` con *skip* automático si no hay BD, builders/fixtures de dominio, utilidades de `httptest`. El paquete se llama **`testutil`** y no `testing` para no chocar con el paquete `testing` de la stdlib en cada `_test.go` (lo señalan también los linters): es el único paquete con ese conflicto. | **F1** (lo mínimo que use la prueba de `/healthz`; crece con las pruebas) |
 
 Fuera de `platform` pero igual de normativo: `internal/db/` (sqlc, §5.3) y `backend/migrations/`
@@ -131,16 +147,46 @@ regla de oro: **ningún componente llama a `fetch`**. Cada feature expone hooks
 respuesta salen **generados** del contrato (`frontend/src/api/schema.d.ts`, `npm run api:gen`).
 Prohibido `any`; sesión en cookie `HttpOnly`, nunca en `localStorage`.
 
+### 2.3 Componentes de ejecución (`docker-compose.yml`)
+
+| Servicio | Qué es | Persistencia | Detalle |
+|---|---|---|---|
+| `db` | **PostgreSQL 16** (`postgres:16-alpine`) | **Duradera** (volumen `pgdata`) | Única fuente de verdad: negocio y auditoría. |
+| `redis` | **Redis 7** (`redis:7-alpine`) | **Ninguna, a propósito (P23)** | Sin volumen, sin `appendonly` y sin `save`: `redis-server --save "" --appendonly no --dir /tmp`. Su estado es efímero: un reinicio solo obliga a re-loguearse y reinicia los contadores de intentos. |
+| `backend` | API Go | — | Compose construye `DATABASE_URL` y `REDIS_URL=redis://redis:6379/0` apuntando a los hosts `db`/`redis` (nunca heredan `localhost` del `.env`); `depends_on` con *healthcheck* de ambos. |
+| `frontend` | SPA React servida con nginx | — | `VITE_API_URL` se hornea en build. |
+
+**Qué guarda Redis (D-A7; el mecanismo está en `platform/session`, la semántica en el dominio
+`usuarios`):**
+
+- **Sesiones**: clave `sess:<sha256(token)>` con un JSON (identidad de la sesión) y **TTL** —
+  inactividad de 30 minutos y vida absoluta de 1 hora (`SESSION_IDLE_TTL_MINUTES` /
+  `SESSION_ABSOLUTE_TTL_MINUTES`; la actividad refresca el TTL acotado a la vida absoluta). La
+  cookie `httpOnly` solo lleva el token opaco; en Redis se guarda su **SHA-256**, nunca el token
+  en claro.
+- **Índice por cuenta** `user_sessions:<userId>`: permite **revocar todas las sesiones de un
+  usuario** de una vez — desactivar una cuenta surte efecto inmediato (imposible con un JWT
+  autocontenido).
+- **Contadores de intentos de acceso**: `login:fail:*` (contador de fallos, con TTL fijado de
+  forma atómica al incrementar) y `login:block:*` (bandera de bloqueo con TTL): **5 fallos →
+  bloqueo de 15 minutos**. El mecanismo (INCR/TTL/bandera) es `session.Throttle`; la semántica
+  (`MaxFailedAttempts = 5`, `LockoutDuration = 15 * time.Minute`) vive en `internal/usuarios`
+  (R1: el mecanismo no sabe cuándo se bloquea).
+
+Nada de esto es duradero por diseño; lo duradero (usuarios, roles, permisos, auditoría) vive en
+PostgreSQL. Las pruebas de integración de `platform/session` levantan su propio Redis con
+`testcontainers-go` (el CI del kit no se edita).
+
 ---
 
 ## 3. Qué hay en F1 y qué se difiere (resumen)
 
 | | F1 (estructura base) | Después |
 |---|---|---|
-| Dominios | `internal/status/` (solo `/healthz`) | `contacto`, `usuarios`… siguiendo §5 |
-| Platform | `config`, `logger`, `apperr`, `httpserver`, `middleware` (request-id, recover, logging, CORS), `database`, `testutil` | `validate`, `paginate`, `migrate` (F2); `authn`/`authz`/`CSRF`/`rate-limit` (F2); i18n (**F3**) |
-| Datos | pool `pgx` + `Ping` (sin tablas de negocio; migración baseline `000001`) | sqlc con la primera consulta de negocio (§5.3) |
-| Contrato | `backend/api/openapi.yaml` con `/healthz` | deltas por funcionalidad fusionados en el documento vivo |
+| Dominios | `internal/status/` (solo `/healthz`) | **F2 entregado**: `internal/usuarios/` (acceso, cuentas, roles, auditoría); después: `contacto`… siguiendo §5 |
+| Platform | `config`, `logger`, `apperr`, `httpserver`, `middleware` (request-id, recover, logging, CORS), `database`, `testutil` | **F2 entregado**: `session` (Redis), `password` (bcrypt), `audit`, `validate`, `paginate` y `middleware` (`authn`, `authz`, guard de cambio de contraseña, `CSRF`, `rate-limit`); pendiente: `migrate`, i18n (**F3**) |
+| Datos | pool `pgx` + `Ping` (migración baseline `000001`) | **F2**: sqlc + migraciones `000002_create_roles_and_permissions`, `000003_create_users` y `000004_create_login_events_and_admin_actions` (PostgreSQL); Redis sin tablas, solo claves efímeras (§2.3) |
+| Contrato | `backend/api/openapi.yaml` con `/healthz` | **F2**: versión **0.3.0** (acceso y gestión de usuarios, fundida aditivamente del delta de su spec); después: deltas por funcionalidad fusionados en el documento vivo |
 
 ---
 
@@ -249,8 +295,8 @@ func joinPath(a, b string) string {
 
 - `Handle` recibe `method` y `path` por separado en lugar de un patrón compuesto: obliga a que
   cada ruta declare su método, y hace el adaptador trivial de portar.
-- `Group` acumula middlewares **por grupo**; así las rutas del panel llevan `authn`+`authz`+`CSRF`
-  sin que los dominios los mencionen (§5.8).
+- `Group` acumula middlewares **por grupo**; así las rutas del panel llevan `authn` → guard de
+  cambio de contraseña → `authz` → `CSRF` sin que los dominios los mencionen (§5.8, §6).
 - `Middleware` es un alias del tipo stdlib (`type Middleware = func(http.Handler) http.Handler`),
   no un tipo nuevo: compatibilidad total con el ecosistema.
 
@@ -367,10 +413,11 @@ id DESC`— son convención del proyecto y están fijadas en §8.1 (puntos 2, 3 
 
 ### 5.2 Migración (`backend/migrations/`)
 
-Nunca se edita una migración aplicada: la siguiente libre (F1 ya usó `000001_baseline`).
+Nunca se edita una migración aplicada: la siguiente libre (F1 usó `000001_baseline`; **F2 usó
+`000002`–`000004`**, §3 — el ejemplo de aquí se aplicaría hoy como `000005`).
 
 ```sql
--- 000002_create_contacts.up.sql
+-- 000005_create_contacts.up.sql
 CREATE TABLE contacts (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
@@ -386,7 +433,7 @@ CREATE INDEX contacts_status_created_at_idx ON contacts (status, created_at DESC
 ```
 
 ```sql
--- 000002_create_contacts.down.sql
+-- 000005_create_contacts.down.sql
 DROP TABLE IF EXISTS contacts;
 ```
 
@@ -888,17 +935,26 @@ func main() {
 	contacto.RegisterPublic(root, contactH) // POST /api/v1/contacto
 
 	admin := root.Group("/api/v1/admin",
-		middleware.Authn(sessionStore),          // F2: cookie httpOnly → sesión
-		middleware.AuthzByModule("contactos"),   // F2: permiso del módulo
-		middleware.CSRF,                         // F2: métodos inseguros con sesión
+		// F2: cadena del panel armada por middleware.AdminChain (§6), el único
+		// constructor de esa composición: authn → guard de cambio de contraseña
+		// → authz(módulo) → CSRF. El dominio no la menciona.
+		middleware.AdminChain("contactos", middleware.AdminDeps{
+			Sessions:   sessions, // session.Store sobre Redis (platform/session)
+			Resolver:   authSvc,  // identidad + permisos vigentes (session.Resolver)
+			Recorder:   auditSvc, // audita la denegación de permiso (audit.Recorder)
+			CSRFSecret: cfg.SessionSecret,
+			Logger:     appLog,
+		})...,
 	)
 	contacto.RegisterAdmin(admin, contactH) // GET /api/v1/admin/contactos
 
-	// Cadena global (fuera de todo grupo): request-id → recover → logging → CORS → rate-limit
+	// Cadena global (fuera de todo grupo): request-id → recover → logging → CORS.
+	// middleware.Chain es el único constructor de esa composición (§6); el
+	// rate-limit va por grupo en los endpoints escribibles (§6).
 	srv := httpserver.New(mux,
 		httpserver.Options{Addr: cfg.HTTPAddr, ReadHeaderTimeout: 5 * time.Second, /* … */},
 		appLog,
-		middleware.RequestID, middleware.Recover(appLog), middleware.Logging(appLog), middleware.CORS(cfg.CORSAllowedOrigins),
+		middleware.Chain(appLog, cfg.CORSAllowedOrigins)...,
 	)
 
 	if err := srv.Run(ctx); err != nil { // apagado ordenado con Shutdown
@@ -910,10 +966,13 @@ func main() {
 
 Variables de entorno que toca este cableado (lista **canónica** que lee `platform/config`, la misma
 que documenta `.env.example`, valores por defecto de desarrollo): `APP_ENV`, `HTTP_PORT`,
-`DATABASE_URL`, `LOG_LEVEL`, `CORS_ALLOWED_ORIGINS`. `HTTP_PORT` es la única variable de
-dirección/puerto (el servidor escucha en `:$HTTP_PORT`, en todas las interfaces: dentro del
-contenedor `localhost` no es el host); `RUN_MIGRATIONS` solo la leerá el runner diferido
-`platform/migrate` (opt-in). Ningún secreto en el repo (constitución §IV).
+`DATABASE_URL`, `LOG_LEVEL`, `CORS_ALLOWED_ORIGINS` y, de F2, `REDIS_URL`, `SESSION_SECRET`,
+`SESSION_COOKIE_SECURE`, `SESSION_IDLE_TTL_MINUTES`, `SESSION_ABSOLUTE_TTL_MINUTES` y
+`BOOTSTRAP_TOKEN`. `HTTP_PORT` es la única variable de dirección/puerto (el servidor escucha en
+`:$HTTP_PORT`, en todas las interfaces: dentro del contenedor `localhost` no es el host);
+`RUN_MIGRATIONS` solo la leerá el runner diferido `platform/migrate` (opt-in). Ningún secreto en
+el repo (constitución §IV): `SESSION_SECRET` y `BOOTSTRAP_TOKEN` se inyectan por el entorno
+(compose trae valores claramente de desarrollo).
 
 ### 5.10 Frontend del ejemplo
 
@@ -1044,10 +1103,11 @@ Petición ejemplo: `POST /api/v1/contacto` con `{"name":"Ana","email":"ana@ejemp
 
 1. **Despacho del router.** `http.ServeMux` (tras el adaptador `Registrar`) casa el patrón
    `"POST /api/v1/contacto"` con el handler ya envuelto por la cadena de middlewares.
-2. **Cadena global** (la monta `httpserver.New`, en este orden; el primero es el más externo):
+2. **Cadena global** (la monta `middleware.Chain` dentro de `httpserver.New`, en este orden; el
+   primero es el más externo):
 
    ```text
-   request-id → recover → logging → CORS → rate-limit → [authn → authz → CSRF] → handler
+   request-id → recover → logging → CORS → [middlewares del grupo] → handler
    ```
 
    - `request-id`: toma `X-Request-ID` del cliente o genera uno; lo guarda en el `context` y crea
@@ -1057,10 +1117,26 @@ Petición ejemplo: `POST /api/v1/contacto` con `{"name":"Ana","email":"ana@ejemp
    - `logging`: registra al terminar método, ruta, status, duración y `request_id`.
    - `CORS`: responde los preflight `OPTIONS` y fija los headers permitidos
      (`CORS_ALLOWED_ORIGINS`); corta ahí los preflight.
-   - `rate-limit`: satura a la baja peticiones abusivas (429); con el primer endpoint público
-     escribible.
-   - `[authn → authz → CSRF]`: solo en **grupos** (p. ej. `/api/v1/admin`), añadidos con
-     `Group(...)` — el dominio no los ve.
+
+   **Grupos de rutas** (F2; los middlewares de grupo los acumula `Registrar.Group(...)`, el
+   dominio no los ve). Cada grupo monta solo lo que necesita:
+
+   | Grupo | Rutas (F2) | Middlewares de grupo |
+   |---|---|---|
+   | `/api/v1/auth` (login) | `POST /login` | `rate-limit` por IP (escribible público) |
+   | `/api/v1/auth` (sesión) | `GET /session`, `POST /logout`, `POST /password` | `authn → CSRF` (sin el guard de cambio obligatorio: una cuenta con cambio pendiente debe poder cambiarla) |
+   | `/api/v1/setup` | `POST /initialize` | `rate-limit` por IP (escribible; solo con inicialización pendiente) |
+   | `/api/v1/admin` | usuarios, roles, permisos y auditoría | `middleware.AdminChain`: `authn → guard de cambio de contraseña → authz(módulo) → CSRF` |
+
+   - `rate-limit`: satura a la baja peticiones abusivas (429); en F2 va por IP en los grupos
+     escribibles (`/api/v1/auth/login` y `/api/v1/setup/initialize`), **no** en la cadena global.
+   - `authn`: resuelve la cookie `httpOnly` contra la sesión de Redis (`platform/session`) y
+     coloca la identidad en el `context` (401 si no hay sesión válida).
+   - guard de cambio de contraseña: a una cuenta con `MustChangePassword` solo la dejan pasar las
+     rutas de sesión; hacia el panel responde con el detalle que fuerza el cambio (§5.11).
+   - `authz(módulo)`: exige el permiso del módulo (F2: `"admin_usuarios_roles"`; en el ejemplo de
+     §5, `"contactos"`); la denegación se audita (`audit.Recorder`). 403 si no lo tiene.
+   - `CSRF`: exige la doble cookie firmada en los métodos inseguros (403 si falta o no cuadra).
 3. **Handler** (`handler.go`): decodifica el JSON a `CreateContactInput`; si el cuerpo no es JSON
    válido → `WriteError(apperr.Invalid(...))` y se acabó. Valida con `platform/validate`
    (etiquetas del DTO) → 400 con `details` si falla. Llama a `Service.Create(ctx, in)`.
@@ -1075,9 +1151,9 @@ Petición ejemplo: `POST /api/v1/contacto` con `{"name":"Ana","email":"ana@ejemp
 8. **Cierre**: `logging` escribe la línea estructurada; si el cliente se desconectó, `ctx` ya está
    cancelado y las capas internas lo respetan.
 
-En las rutas del panel, entre 2 y 3 ocurren `authn` (cookie `httpOnly` → sesión, F2), `authz`
-(permiso del módulo `"contactos"`, F2) y `CSRF` (F2); un fallo en cualquiera de los tres responde
-401/403 y **nunca llega al handler**.
+En las rutas del panel (`/api/v1/admin`), entre 2 y 3 ocurren `authn` (cookie `httpOnly` → sesión
+en Redis, F2), el guard de cambio de contraseña, `authz` (permiso del módulo, F2) y `CSRF` (F2);
+un fallo en cualquiera de ellos responde 401/403 y **nunca llega al handler**.
 
 ---
 
@@ -1150,9 +1226,10 @@ Cobertura mínima exigida: **80 % en `service/`** (constitución §III); la veri
    una ruta: si el área no tiene superficie de panel, escribe **solo `RegisterPublic`** con un
    comentario que lo haga constar; nunca una `RegisterAdmin` vacía (§8.1 punto 4).
 9. **Cableado en `cmd/api/main.go`**: `NewRepository(pool)` → `NewService(repo)` →
-   `NewHandler(svc, logger)` → `RegisterPublic`/`RegisterAdmin(adminGroup, h)` (el grupo lleva
-   `authn`, `authz` por módulo y `CSRF` — F2). Las dependencias de los dominios entran en
-   `newMux` como **interfaces**, para que la prueba de humo pueda inyectar fakes (§8.1 punto 9).
+   `NewHandler(svc, logger)` → `RegisterPublic`/`RegisterAdmin(adminGroup, h)` (el grupo lleva la
+   cadena del panel de §6: `authn`, guard de cambio de contraseña, `authz` por módulo y `CSRF` —
+   F2). Las dependencias de los dominios entran en `newMux` como **interfaces**, para que la
+   prueba de humo pueda inyectar fakes (§8.1 punto 9).
 10. **Pruebas de las tres capas** (service con fake, handler con `httptest`, repository con
     `//go:build integration`) + frontend con MSW si hay UI + **prueba de humo del cableado** en
     `cmd/api/main_test.go` + `make ci` en verde. Y la comprobación funcional contra el entorno

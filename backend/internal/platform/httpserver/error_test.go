@@ -202,6 +202,26 @@ func TestWriteErrorTranslatesEachKind(t *testing.T) {
 	}
 }
 
+func TestWriteErrorSetsRetryAfterHeaderForRateLimited(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(context.Background(), rec, discardLogger(),
+		apperr.RateLimited("Demasiados intentos fallidos", apperr.WithRetryAfter(900)))
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, se esperaba 429", rec.Code)
+	}
+	if got := rec.Header().Get("Retry-After"); got != "900" {
+		t.Fatalf("Retry-After = %q, se esperaba \"900\"", got)
+	}
+
+	// Un error sin Retry-After no añade la cabecera.
+	rec = httptest.NewRecorder()
+	WriteError(context.Background(), rec, discardLogger(), apperr.Unauthenticated("Correo o contraseña incorrectos"))
+	if got := rec.Header().Get("Retry-After"); got != "" {
+		t.Fatalf("Retry-After inesperado en un 401: %q", got)
+	}
+}
+
 func TestWriteErrorInternalLogsDetailWithRequestID(t *testing.T) {
 	store := &memStore{}
 	logger := slog.New(newMemHandler(store))

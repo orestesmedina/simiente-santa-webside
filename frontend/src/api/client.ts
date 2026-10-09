@@ -10,6 +10,18 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:80
 /** Timeout de la consulta: 5 s con `AbortController` (D20). */
 export const REQUEST_TIMEOUT_MS = 5000;
 
+/** Nombre de la cookie *double-submit* firmada que emite el backend (P10). */
+export const CSRF_COOKIE_NAME = 'csrf_token';
+
+/** Cabecera que acompaña a todo método no seguro con sesión (P10). */
+export const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+/**
+ * Métodos que no modifican estado: para ellos no se exige CSRF. El resto
+ * (POST, PUT, PATCH, DELETE) es "no seguro" y lleva la cabecera si hay cookie.
+ */
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS', 'TRACE']);
+
 export type ApiErrorReason = 'http' | 'network' | 'timeout' | 'invalid-response';
 
 interface ApiErrorInit {
@@ -66,15 +78,66 @@ export type ApiFetchOptions = RequestInit & {
   timeoutMs?: number;
 };
 
+/**
+ * Construye una URL con sus parámetros de consulta, omitiendo los que no están
+ * definidos (o están vacíos). Sin parámetros devuelve el `path` tal cual.
+ */
+export function buildUrl(
+  path: string,
+  params: Record<string, string | number | undefined | null> = {},
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      search.set(key, String(value));
+    }
+  }
+  const query = search.toString();
+  return query ? `${path}?${query}` : path;
+}
+
+/**
+ * Lee una cookie del documento por nombre (P10). Devuelve `null` si no existe
+ * o si no hay `document` (entornos sin navegador). No accede a `localStorage`:
+ * la sesión vive en cookies `HttpOnly` gestionadas por el backend.
+ */
+export function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const prefix = `${name}=`;
+  for (const part of document.cookie.split(';')) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+  }
+  return null;
+}
+
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { timeoutMs = REQUEST_TIMEOUT_MS, headers, ...rest } = options;
+  const { timeoutMs = REQUEST_TIMEOUT_MS, headers, method, ...rest } = options;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const httpMethod = (method ?? 'GET').toUpperCase();
+  const requestHeaders = new Headers(headers);
+  if (!requestHeaders.has('Accept')) {
+    requestHeaders.set('Accept', 'application/json');
+  }
+  if (!SAFE_METHODS.has(httpMethod)) {
+    const csrfToken = readCookie(CSRF_COOKIE_NAME);
+    if (csrfToken !== null && !requestHeaders.has(CSRF_HEADER_NAME)) {
+      requestHeaders.set(CSRF_HEADER_NAME, csrfToken);
+    }
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       ...rest,
-      headers: { Accept: 'application/json', ...headers },
+      method: httpMethod,
+      credentials: 'include',
+      headers: requestHeaders,
       signal: controller.signal,
     });
 

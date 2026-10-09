@@ -96,11 +96,16 @@ func NewHandler(mux *http.ServeMux, logger *slog.Logger, mws ...Middleware) http
 // en el sobre de error (SC-008). Solo actúa cuando el ServeMux no casó ninguna
 // ruta (pattern == ""): las respuestas de los handlers —incluidos sus
 // WriteError— pasan intactas.
+//
+// Cuando la ruta SÍ casa se delega en mux.ServeHTTP y no en el handler devuelto
+// por mux.Handler: es ServeHTTP quien rellena los valores de ruta
+// (`r.PathValue("id")` de los patrones `/{id}`). Llamar al handler directamente
+// dejaría `PathValue` vacío.
 func envelopeFallback(mux *http.ServeMux, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h, pattern := mux.Handler(r)
 		if pattern != "" {
-			h.ServeHTTP(w, r)
+			mux.ServeHTTP(w, r)
 			return
 		}
 

@@ -18,6 +18,11 @@ func TestConstructorsMapKindToStatusAndCode(t *testing.T) {
 		{name: "NotFound", err: NotFound("Recurso no encontrado"), wantStatus: http.StatusNotFound, wantCode: "not_found"},
 		{name: "MethodNotAllowed", err: MethodNotAllowed("Método no permitido"), wantStatus: http.StatusMethodNotAllowed, wantCode: "method_not_allowed"},
 		{name: "DatabaseUnavailable", err: DatabaseUnavailable("La base de datos no está conectada"), wantStatus: http.StatusServiceUnavailable, wantCode: "database_unavailable"},
+		{name: "Invalid", err: Invalid("Datos inválidos"), wantStatus: http.StatusBadRequest, wantCode: "invalid"},
+		{name: "Unauthenticated", err: Unauthenticated("Correo o contraseña incorrectos"), wantStatus: http.StatusUnauthorized, wantCode: "unauthenticated"},
+		{name: "Forbidden", err: Forbidden("No tienes permiso para realizar esta operación"), wantStatus: http.StatusForbidden, wantCode: "forbidden"},
+		{name: "Conflict", err: Conflict("Ese correo ya está en uso"), wantStatus: http.StatusConflict, wantCode: "conflict"},
+		{name: "RateLimited", err: RateLimited("Demasiados intentos", WithRetryAfter(900)), wantStatus: http.StatusTooManyRequests, wantCode: "rate_limited"},
 		{name: "Internal", err: Internal(errors.New("boom")), wantStatus: http.StatusInternalServerError, wantCode: "internal"},
 	}
 

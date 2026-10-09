@@ -19,7 +19,7 @@ registro**; las tres diferencias conocidas están en D-A3 (sqlc como capa de dat
 | D-A4 | Router: `net/http` en F1 tras la interfaz `Registrar`; chi queda como opción de F2 | Aceptada (revisión en F2) | 2026-09-30 |
 | D-A5 | Versión del lenguaje: **Go 1.27** | Aceptada | 2026-09-30 |
 | D-A6 | Config por variables de entorno (stdlib), logs `log/slog` JSON, errores stdlib + errores de dominio tipados, inyección de dependencias manual | Aceptada | 2026-09-30 |
-| D-A7 | Sesiones de F2: cookie `httpOnly` con sesión en servidor, hash bcrypt/argon2id, permisos por módulo en tablas propias | **Propuesta — pendiente de confirmación del humano** | 2026-09-30 |
+| D-A7 | Sesiones de F2: cookie `httpOnly` con sesión en servidor **en Redis**, hash bcrypt, permisos por módulo en tablas propias | **Aceptada — confirmada por el humano el 2026-10-04 (sesión en Redis)** | 2026-09-30 · confirmada 2026-10-04 |
 | D-A8 | Dependencias mínimas: en F1 solo `pgx` entra al binario; toda dependencia nueva se justifica en el `plan.md` que la introduce | Aceptada | 2026-09-30 |
 | D-A9 | Diferidos a propósito: métricas/trazas, colas de trabajo, almacenamiento de imágenes, i18n y generación de handlers desde el contrato | Aceptada (diferimientos) | 2026-09-30 |
 
@@ -162,6 +162,11 @@ registro**; las tres diferencias conocidas están en D-A3 (sqlc como capa de dat
   - Podemos usar sin reservas los patrones `net/http` de Go 1.22+ en los que se apoya D-A4.
   - Al actualizar Go en el futuro se tocan dos puntos (`go.mod` y el `FROM` del Dockerfile) y se
     re-ejecuta `make ci`; la política "versión siempre en soporte" queda como criterio.
+  - > **2026-10-08** — Se fija el parche de la rama: `go 1.27.2` en `backend/go.mod` y
+    `golang:1.27.2` en `backend/Dockerfile`, para cerrar las **9** vulnerabilidades de la stdlib que
+    `govulncheck` v1.8.0 reportó con go1.27.1 y que go1.27.2 corrige: **GO-2026-6603, -6605, -6607,
+    -6608, -6610, -6611, -6612, -6613 y -6617** (net/http, HTTP/2, net/textproto y crypto/tls). La
+    rama sigue siendo 1.27; el escaneo sale en verde tras el cambio.
 
 ## D-A6 · Config por entorno (stdlib), logs `slog` JSON, errores stdlib + `apperr`, DI manual
 
@@ -190,35 +195,48 @@ registro**; las tres diferencias conocidas están en D-A3 (sqlc como capa de dat
   - `main.go` es el mapa de dependencias del sistema: se lee entero y se audita de un vistazo.
   - Configurar mal el entorno falla **al arrancar** con mensaje claro, no en caliente.
 
-## D-A7 · Sesiones de F2 *(propuesta — pendiente de confirmación del humano)*
+## D-A7 · Sesiones de F2 *(confirmada por el humano el 2026-10-04 — sesión en Redis)*
 
 - **Contexto.** F2 (acceso y gestión de usuarios) necesita sesión para el panel, y la skill
   `react-frontend` prohíbe tokens en `localStorage` (constitución §IV: contraseñas con
   bcrypt/argon2; §IV: los endpoints protegidos deben verificar authn/authz en el servidor).
-- **Decisión propuesta.**
-  - **Sesión en servidor** con cookie `httpOnly` (y `Secure`/`SameSite` en entornos con TLS):
-    la cookie solo lleva el identificador de sesión; revocar es borrar/desactivar la sesión, con
-    lo que **desactivar un usuario surte efecto inmediato** (imposible con un JWT autocontenido).
-  - **Hash de contraseñas con bcrypt o argon2id** (constitución §IV; CWE-256). Nunca en texto
+- **Decisión (confirmada por el humano el 2026-10-04).**
+  - **Sesión en servidor, en Redis** (cambio respecto de la propuesta original: el humano eligió
+    explícitamente Redis, con el objetivo de adoptar/probar la tecnología). La cookie `httpOnly`
+    (y `Secure`/`SameSite` en entornos con TLS) solo lleva el identificador de sesión (un token
+    opaco del que en Redis se guarda su **SHA-256**, nunca el token en claro); revocar es borrar la
+    clave, con lo que **desactivar un usuario surte efecto inmediato** (imposible con un JWT
+    autocontenido). Tiempos confirmados: **vida absoluta de 1 hora + inactividad de 30 minutos**.
+  - **Hash de contraseñas con bcrypt** (constitución §IV; CWE-256). Nunca en texto
     plano ni reversible.
   - **Permisos por módulo en tablas propias** (módulos: `contactos`, `eventos`, `ministerios`…),
     agrupados en roles creados por el administrador (decisión 5 de
     `docs/producto/roadmap.md`). La autorización se verifica **en el servidor** por módulo
     (`middleware.AuthzByModule`).
 - **Alternativas consideradas.**
+  - *Tabla `sessions` en PostgreSQL*: era la recomendación de la propuesta; **descartada por la
+    decisión explícita del humano del 2026-10-04**. Queda documentada como plan B (cero servicios
+    nuevos, transaccional con `users`, durabilidad) en
+    `specs/002-acceso-gestion-usuarios/research.md` R1.
   - *JWT autocontenido en cookie*: rechazado por defecto — la revocación al desactivar un usuario
     es inmediata con sesión en servidor y forzada con listas negras en JWT.
   - *Token en `localStorage`*: rechazado — expuesto a XSS (CWE-79) y prohibido por la skill.
   - *Framework de auth completo (p. ej. OIDC/Keycloak)*: rechazado — peso desproporcionado para
     un panel con pocos usuarios internos.
 - **Consecuencias.**
-  - Dos tablas nuevas en F2 (`sessions` además de `users`/`roles`/permisos) y un middleware de
-    `authn` en `platform/middleware`.
+  - Servicio **`redis`** en `docker-compose.yml`, variable `REDIS_URL` y dependencia de runtime
+    `github.com/redis/go-redis/v9` (justificada bajo D-A8 por esta decisión humana).
+  - **Sin** tabla `sessions` en PostgreSQL: las tablas de F2 son `users`, `roles`, `permissions` y
+    `role_permissions`; los intentos de acceso (bloqueo de 5 intentos / 15 min) también viven en
+    Redis con TTL.
+  - Un middleware de `authn` en `platform/middleware` y un `session.Store` en `platform/session`.
+  - Las pruebas de integración necesitan Redis y lo levantan con `testcontainers-go` dentro del
+    propio test: `.github/workflows/ci.yml` es del kit y **no se puede editar**.
   - CSRF pasa a ser obligatorio en rutas con sesión (por eso está en la cadena de grupos de
     [arquitectura.md](./arquitectura.md) §6).
-  - **Estado: propuesta.** No se implementa hasta que el humano confirme (ver "Preguntas
-    abiertas"). El detalle de *dónde* vive la sesión (tabla en PostgreSQL vs. almacenamiento
-    externo) se decide junto con esta confirmación.
+  - **Estado: aceptada.** Confirmada por el humano el 2026-10-04; el detalle de implementación
+    (claves, TTL y tiempos) está en `specs/002-acceso-gestion-usuarios/plan.md` (P1/P9) y en su
+    `data-model.md`.
 
 ## D-A8 · Dependencias mínimas
 
@@ -267,10 +285,11 @@ registro**; las tres diferencias conocidas están en D-A3 (sqlc como capa de dat
    incorpora **ampliando F1** (la spec de F1 se está actualizando en paralelo) o como una
    **funcionalidad nueva tipo F1.5** con su propia spec. Decisión del orquestador/humano; estos
    documentos no dependen de ella (describen el **cómo**, no el alcance de F1).
-2. **Confirmación de D-A7 (sesiones de F2).** Falta la aprobación humana de la propuesta
-   (cookie `httpOnly` + sesión en servidor, bcrypt/argon2id, permisos por módulo en tablas
-   propias) y del detalle asociado: **dónde vive la sesión** — recomendación: tabla en PostgreSQL
-   (`sessions`), sin dependencias nuevas y con revocación directa.
+2. **Confirmación de D-A7 (sesiones de F2) — RESUELTA el 2026-10-04.** El humano confirmó la
+   propuesta (cookie `httpOnly` + sesión en servidor, hash bcrypt, permisos por módulo en tablas
+   propias) y decidió el detalle asociado: **la sesión vive en Redis** (no en una tabla de
+   PostgreSQL), con vida absoluta de 1 hora e inactividad de 30 minutos. Ver D-A7 y
+   `specs/002-acceso-gestion-usuarios/plan.md` (P1/P9) y su `research.md` (R1/R15).
 3. **Trigger y decisión de chi en F2.** D-A4 deja chi como opción. El plan de F2 debe cerrarla
    explícitamente: seguir con `net/http` o adoptar chi con adaptador, según el peso que tengan los
    grupos de rutas con permisos por módulo.
