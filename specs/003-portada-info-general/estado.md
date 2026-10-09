@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
-| Fase | 1/9 · Especificar (spec redactada, pendiente de aprobación humana) |
+| Fase | 2/9 · Planificar (spec aprobada) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Aprobación humana de la spec (puerta 1). Luego Fase 2 (plan con `arquitecto` + `ux.md` con `disenador-ux`) |
+| Próximo paso | Redactar `plan.md` con `arquitecto` y `ux.md` con `disenador-ux` (en paralelo) |
 | Bloqueado por | — (nada) |
 | Actualizado | 2026-10-09 |
 
@@ -25,7 +25,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | pendiente | | | |
+| Spec | aprobado | humano | 2026-10-09 | "apruebo la spec" |
 | Plan | pendiente | | | |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
@@ -48,3 +48,4 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 Una línea por sesión o hito, la más reciente arriba.
 
 - 2026-10-09 — Inicio de F3: rama `003-portada-info-general` y spec redactada (19 FR, 13 SC), tras resolver 10 aclaraciones con el humano y leer su Manual de Identidad.
+- 2026-10-09 — **Puerta 1 superada**: el humano aprobó la spec («apruebo la spec»). Arranca Fase 2 (plan + UX).
