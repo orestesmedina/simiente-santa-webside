@@ -507,7 +507,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     dispersas.
   - **Commit sugerido**: `feat(portada): invariantes y constantes del dominio`
 
-- [ ] T318 · `portada`: `service_public.go` — portada localizada · `[backend]`
+- [X] T318 · `portada`: `service_public.go` — portada localizada · `[backend]`
 
   - **Archivos**: `backend/internal/portada/service_public.go`, `service_public_test.go` (NUEVOS).
   - **Qué hace**: `GetPortada(lang)` (FR-001/FR-008/FR-009): resuelve cada campo traducible con
