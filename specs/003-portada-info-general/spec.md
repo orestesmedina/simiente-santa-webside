@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-09
 
-**Status**: Draft — aclaraciones resueltas con el humano el 2026-10-09; pendiente de aprobación del humano
+**Status**: Aprobada (2026-10-09) — ajuste de la memoria del idioma incorporado por decisión del humano del 2026-10-09
 
 **Input**: User description: "F3 — Portada e información general (roadmap §3, `docs/producto/roadmap.md`): Cualquier visitante ve una portada con la identidad de la iglesia, quiénes somos, horario de servicios, canales de WhatsApp y redes sociales, en español e inglés; el equipo edita esa información desde el panel." Decisiones aplicables del roadmap: **Decisión 4** (contenido con estados borrador/publicado; solo lo publicado es visible al visitante), **Decisión 6** (el sitio público es bilingüe, español e inglés, con selección de idioma) y **Decisión 8** (cada contenido puede ingresarse en ambos idiomas o solo en español: el español es el idioma base y el inglés es opcional por contenido; la interfaz, en cambio, siempre es bilingüe). Restricción de `idea.md` §7 y del encargo (`idea.md` intro): el sitio debe adaptarse a cualquier dispositivo y ser apto para personas de todas las edades, incluidas con poca experiencia de internet. **Dependencia**: F2 (terminada) provee el acceso autenticado al panel, los roles con permisos por módulo, el patrón de autorización y el registro de auditoría; la spec de F2 ya reservó el permiso **«portada e información general»** dentro de su catálogo (FR-015 de F2) y esta funcionalidad lo activa. **Identidad de marca**: el cliente entregó el **Manual de Identidad de la Iglesia Simiente Santa** (`resources/MANUAL DE MARCA.pdf`, logotipo `resources/simiente.jpeg`), que es la guía visual que la portada DEBE respetar (FR-002); sus datos de marca y contenido real se recogen como referencia en *Identidad de marca — referencia para la fase de plan y UX*. **Aclaraciones resueltas con el humano el 2026-10-09**: las 10 preguntas abiertas de la primera versión quedan resueltas (ver *Aclaraciones resueltas (2026-10-09)*).
 
@@ -76,14 +76,15 @@ Como visitante que prefiere el inglés, quiero cambiar el idioma de la portada c
 
 **Why this priority**: La Decisión 6 y la Decisión 8 hacen del bilingüismo un compromiso del sitio: el objetivo de `idea.md` es dar a conocer la iglesia "en nuestra provincia y por qué no internacionalmente". Va como P2: el valor central (la información visible) ya está en US1, y el inglés amplía el alcance del público sin bloquear el resto.
 
-**Independent Test**: Se prueba de forma independiente con la portada publicada en ambos idiomas y con un contenido que solo tiene español: al elegir inglés, la interfaz y los contenidos traducidos se muestran en inglés, el contenido sin inglés se muestra en español y no aparece ningún campo vacío; al volver a español, todo se muestra en español. Entrega valor por sí sola: el público anglófono puede usar la portada.
+**Independent Test**: Se prueba de forma independiente con la portada publicada en ambos idiomas y con un contenido que solo tiene español: al elegir inglés, la interfaz y los contenidos traducidos se muestran en inglés, el contenido sin inglés se muestra en español y no aparece ningún campo vacío; al volver a español, todo se muestra en español. Se comprueba además que la elección persiste al navegar y en una visita posterior desde el mismo dispositivo, y que un dispositivo sin preferencia guardada se muestra en español. Entrega valor por sí sola: el público anglófono puede usar la portada.
 
 **Acceptance Scenarios**:
 
-1. **Dado** la portada en español, **cuando** el visitante elige inglés en el selector de idioma, **entonces** la interfaz y los contenidos con versión en inglés se muestran en inglés, y la elección se mantiene al navegar por el resto del sitio durante su visita.
+1. **Dado** la portada en español, **cuando** el visitante elige inglés en el selector de idioma, **entonces** la interfaz y los contenidos con versión en inglés se muestran en inglés, y la elección se mantiene al navegar por el resto del sitio y se recuerda entre visitas en el mismo dispositivo.
 2. **Dado** un contenido que solo tiene versión en español, **cuando** el visitante navega en inglés, **entonces** ese contenido se muestra en español (idioma base), nunca vacío ni traducido automáticamente.
-3. **Dado** una visita nueva al sitio, **cuando** el visitante abre la portada, **entonces** se muestra en español, que es el idioma base (Decisión 8).
+3. **Dado** un dispositivo sin ninguna preferencia de idioma guardada (primera visita), **cuando** el visitante abre la portada, **entonces** se muestra en español, que es el idioma base (Decisión 8).
 4. **Dado** la portada en inglés, **cuando** el visitante vuelve a elegir español en el selector, **entonces** toda la página se muestra de nuevo en español sin pérdida de información.
+5. **Dado** un visitante que eligió un idioma en una visita anterior desde el mismo dispositivo, **cuando** vuelve a abrir el sitio, **entonces** el idioma se muestra según su preferencia guardada, sin tener que elegirlo de nuevo.
 
 ---
 
@@ -159,7 +160,7 @@ Todos los mensajes deben ser comprensibles para personas no técnicas y nunca de
 
 - **FR-008**: Todo contenido de la portada DEBE poder ingresarse en español (idioma base, obligatorio) y opcionalmente en inglés, y la interfaz del sitio público DEBE estar siempre disponible en ambos idiomas (Decisión 6 y Decisión 8).
 - **FR-009**: Cuando un contenido no tiene versión en inglés y el visitante navega en inglés, el sistema DEBE mostrar la versión en español de ese contenido (idioma base); NUNCA DEBE mostrar un campo vacío ni una traducción automática de un contenido que no fue traducido.
-- **FR-010**: La portada DEBE ofrecer un selector de idioma visible (español/inglés); el cambio DEBE aplicarse de inmediato a la página visible y DEBE mantenerse al navegar por el resto del sitio durante la visita. El idioma por defecto de una visita nueva DEBE ser el español (Decisión 8).
+- **FR-010**: La portada DEBE ofrecer un selector de idioma visible (español/inglés); el cambio DEBE aplicarse de inmediato a la página visible, DEBE mantenerse al navegar por el resto del sitio y DEBE recordarse entre visitas en el mismo dispositivo (decisión del humano del 2026-10-09). Cuando el dispositivo no tiene ninguna preferencia de idioma guardada (primera visita), el sitio DEBE mostrarse en español, que es el idioma base (Decisión 8).
 
 **Administración desde el panel (patrón de F2)**
 
@@ -241,7 +242,7 @@ Queda explícitamente **fuera del alcance** de F3:
 
 Defaults razonables tomados donde la descripción no fija una regla; **son provisionales y revisables** por el humano. Los puntos que cambiaban el alcance fueron resueltos explícitamente en las aclaraciones del 2026-10-09 (ver *Aclaraciones resueltas*).
 
-- **Idioma por defecto y memoria del selector**: una visita nueva se muestra en español (Decisión 8); la elección del selector de idioma se mantiene durante toda la navegación de la visita y se conserva en el dispositivo del visitante entre visitas (default revisable). No se analiza el idioma del navegador para proponer otro idioma (default revisable).
+- **Memoria del idioma (decisión firme del humano del 2026-10-09)**: la elección del selector de idioma se mantiene al navegar por el sitio y **se recuerda entre visitas en el mismo dispositivo** (en la implementación se guarda en el propio dispositivo del visitante; está previsto `localStorage`). Un dispositivo sin ninguna preferencia de idioma guardada se muestra en **español** (idioma base, Decisión 8). No se analiza el idioma del navegador para proponer otro idioma (default revisable).
 - **Nivel de accesibilidad**: se toma **WCAG 2.1 nivel AA** como referencia de accesibilidad (default revisable); el requisito de fondo es el de `idea.md` §7: apto para personas de todas las edades y dispositivos.
 - **Idioma del panel**: se entrega en español, como el panel de F2; el bilingüismo del roadmap aplica al sitio público (Decisión 6).
 - **La portada es única y es la página de inicio** del sitio público: la información general se administra desde un único lugar del panel; no existen varias "portadas" ni micrositios.
@@ -261,7 +262,7 @@ Defaults razonables tomados donde la descripción no fija una regla; **son provi
 
 ## Aclaraciones resueltas (2026-10-09)
 
-**Ninguna aclaración pendiente.** Las diez preguntas abiertas de la primera versión se resolvieron con el humano el 2026-10-09 (quien decide: humano/cliente). Queda aquí el registro de la decisión tomada en cada una.
+**Ninguna aclaración pendiente.** Las diez preguntas abiertas de la primera versión se resolvieron con el humano el 2026-10-09 (quien decide: humano/cliente). Queda aquí el registro de la decisión tomada en cada una, más una decisión adicional del mismo día sobre la memoria del idioma (Q11).
 
 ### Q1 — Identidad de la iglesia y recursos gráficos (FR-002) — **Resuelta**
 
@@ -302,3 +303,7 @@ Defaults razonables tomados donde la descripción no fija una regla; **son provi
 ### Q10 — Secciones sin contenido publicado (Edge Cases) — **Resuelta**
 
 **Decisión**: **se oculta la sección vacía**; la portada se muestra coherente, sin secciones vacías ni campos en blanco.
+
+### Q11 — Memoria de la elección de idioma (FR-010, US4) — **Resuelta (decisión adicional del 2026-10-09)**
+
+**Decisión (humano, 2026-10-09)**: el sitio **recuerda la elección de idioma entre visitas en el mismo dispositivo** (persiste; en la implementación se guardará en `localStorage`). La **primera vez** que un dispositivo accede sin preferencia guardada, el sitio se muestra en **español** (idioma base, Decisión 8); a partir de una elección previa, esa preferencia se respeta en las visitas siguientes. El selector de idioma sigue visible y el cambio sigue aplicándose de inmediato y manteniéndose al navegar por el sitio.
