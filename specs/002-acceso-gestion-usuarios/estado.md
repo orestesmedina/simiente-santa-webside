@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 002-acceso-gestion-usuarios |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entrega — PR #4 abierto. Bug de CI (Go 1.27.2) corregido y validado; pendiente de push |
+| Fase | **Terminada** (F2 fusionada en `main`; PR #4 aprobado y mergeado el 2026-10-08) |
 | Ciclo de corrección | 3/3 (F2: 5 correcciones aplicadas + 2 documentales) · bug de CI: 1 ciclo, 0 bloqueantes |
-| Próximo paso | Push de los 6 commits del arreglo de CI en la rama (~5 archivos: infra, docs y estado) → CI del PR #4 en verde → aprobación humana del merge → `make costos CERRAR=1`. Luego F3 (Portada e información general). |
-| Bloqueado por | — (a la espera del push y de la aprobación del merge del PR #4) |
+| Próximo paso | F2 cerrada y costo congelado. Siguiente: **F3 — Portada e información general** (nueva spec con `equipo-feature`). Pendiente de despliegue a producción (aprobación humana). |
+| Bloqueado por | — (nada) |
 | Actualizado | 2026-10-08 |
 
 ## Aprobaciones
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-04 | "apruebo la spec actualizada" (con auditoría, US8 + FR-021…FR-026) |
 | Plan | aprobado | humano | 2026-10-04 | "apruebo el plan" |
-| PR / merge | pendiente | | | (PR #4 abierto; CI en rojo por el bug de Go 1.27.1, corregido el 2026-10-08) |
+| PR / merge | aprobado | humano | 2026-10-08 | "el PR estuvo bien, ya hice merge tambien" (PR #4 mergeado en `main`; antes se corrigió el bug de CI de Go 1.27.1) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -62,6 +62,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-08 — **F2 mergeada y cerrada.** El humano confirmó ("el PR estuvo bien, ya hice merge tambien") y **mergeó el PR #4 en `main`** (squash `1be5871`), con el arreglo de CI incluido (`go 1.27.2`, `golang:1.27.2` en `main`). Costo de la tarea **cerrado**: **$6.42 · 272.6 M tokens**. Próximo: **F3 — Portada e información general** (`equipo-feature`). Queda pendiente el despliegue a producción (aprobación humana).
 - 2026-10-08 — **Bug de CI corregido (Go 1.27.2).** El humano hizo push y abrió el **PR #4**; el CI falló en el paso «Vulnerabilidades» (`govulncheck`, exit 3) por 9 vulnerabilidades de la stdlib de **go1.27.1** (corregidas en **go1.27.2**), causadas por `go 1.27` sin parche en `backend/go.mod`. Diagnóstico → arreglo mínimo (`go 1.27.2` + `golang:1.27.2`) → validación en paralelo (**QA APROBADO**, **seguridad APROBADO**, **revisor APROBADO**; 1 hallazgo documental «Importante» cerrado en `a2ab81a`). Commits locales sin push: `b0cefda` (fix), `a2ab81a` (nota D-A5), `bf999e7` y `8336967` (CHANGELOG). Reporte: [`revision-2026-10-08-ci-go1272.md`](revision-2026-10-08-ci-go1272.md).
 - 2026-10-08 — **Sesión retomada brevemente y pausada de nuevo por decisión del humano.** Sin cambios de código; F2 sigue validada y en local, pendiente de revisión local → push + PR.
 - 2026-10-05 — **Sesión pausada por decisión del humano: sin push todavía.** F2 completa y validada, documentación de entrega lista, todo en local. Próximo paso: revisión local → push + PR → `make costos CERRAR=1` al aprobar. Costo abierto: **$5.99**.

@@ -1,8 +1,8 @@
 {
   "rama": "002-acceso-gestion-usuarios",
-  "estado": "abierto",
+  "estado": "cerrado",
   "inicio": "2026-10-04T20:06:29Z",
-  "cerrado": null,
+  "cerrado": "2026-10-09T02:48:40Z",
   "moneda": "USD",
   "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
   "precios": [
@@ -1951,6 +1951,34 @@
         }
       ],
       "hasta_ms": 1791508623678
+    },
+    {
+      "id": "ses_ee1d08b6dffefYYOfgdpHAvu7R",
+      "padre": null,
+      "titulo": "Govulncheck falla con 9 vulnerabilidades de Go stdlib",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T02:48:40Z",
+      "desde": "2026-10-09T01:28:14Z",
+      "hasta": "2026-10-09T02:47:59Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 14,
+          "respuestas_pico": 14,
+          "tokens": {
+            "input": 15787,
+            "output": 3316,
+            "reasoning": 7306,
+            "cache_read": 1212032,
+            "cache_write": 0
+          },
+          "costo": 0.024755,
+          "costo_opencode": 0.012377
+        }
+      ],
+      "hasta_ms": 1791514079592
     }
   ],
   "totales": {
@@ -2018,16 +2046,16 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 271,
+        "respuestas": 285,
         "tokens": {
-          "input": 903173,
-          "output": 117130,
-          "reasoning": 102149,
-          "cache_read": 28283648,
+          "input": 918960,
+          "output": 120446,
+          "reasoning": 109455,
+          "cache_read": 29495680,
           "cache_write": 0
         },
-        "costo": 0.456857,
-        "costo_opencode": 0.351893,
+        "costo": 0.481612,
+        "costo_opencode": 0.36427,
         "sin_precio": false
       },
       {
@@ -2121,8 +2149,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 271363302,
-    "costo": 6.399809,
-    "costo_opencode": 5.381309
+    "tokens": 272601743,
+    "costo": 6.424564,
+    "costo_opencode": 5.393686
   }
 }
