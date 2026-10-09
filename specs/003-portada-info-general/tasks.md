@@ -707,7 +707,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     mostrar la píldora de estado de cada elemento con esta única llamada.
   - **Commit sugerido**: `feat(portada): agregado del panel GET /api/v1/admin/portada`
 
-- [ ] T326 · `portada`: `routes.go` + `cmd/api/main.go` (permiso `portada` cableado) · `[backend]`
+- [X] T326 · `portada`: `routes.go` + `cmd/api/main.go` (permiso `portada` cableado) · `[backend]`
 
   - **Archivos**: `backend/internal/portada/routes.go` (NUEVO), `backend/cmd/api/main.go` y
     `main_test.go` (EDITADOS).
