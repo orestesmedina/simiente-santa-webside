@@ -606,7 +606,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 7 — Dominio `portada`: handlers, rutas y cableado
 
-- [ ] T322 · `portada`: `handler_public.go` — `GET /api/v1/portada` · `[backend]`
+- [X] T322 · `portada`: `handler_public.go` — `GET /api/v1/portada` · `[backend]`
 
   - **Archivos**: `backend/internal/portada/handler.go`, `handler_public.go`,
     `handler_public_test.go` (NUEVOS).
