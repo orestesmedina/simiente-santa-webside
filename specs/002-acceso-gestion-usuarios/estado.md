@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 9/9 · Entrega — PR #4 abierto. Bug de CI (Go 1.27.2) corregido y validado; pendiente de push |
 | Ciclo de corrección | 3/3 (F2: 5 correcciones aplicadas + 2 documentales) · bug de CI: 1 ciclo, 0 bloqueantes |
-| Próximo paso | Push de los commits del arreglo (`b0cefda`, `a2ab81a`, `bf999e7`, `8336967`) → CI del PR #4 en verde → aprobación humana del merge → `make costos CERRAR=1`. Luego F3 (Portada e información general). |
+| Próximo paso | Push de los 6 commits del arreglo de CI en la rama (~5 archivos: infra, docs y estado) → CI del PR #4 en verde → aprobación humana del merge → `make costos CERRAR=1`. Luego F3 (Portada e información general). |
 | Bloqueado por | — (a la espera del push y de la aprobación del merge del PR #4) |
 | Actualizado | 2026-10-08 |
 
