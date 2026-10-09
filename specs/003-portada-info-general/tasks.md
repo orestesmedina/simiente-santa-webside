@@ -344,7 +344,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 4 — Núcleo de plataforma (`backend/internal/platform/`)
 
-- [ ] T309 · `platform/storage`: interfaz `Store` + `LocalStore` seguro · `[backend]` `[P3]`
+- [X] T309 · `platform/storage`: interfaz `Store` + `LocalStore` seguro · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/storage/storage.go`,
     `local.go`, `storage_test.go`, `local_test.go` (NUEVOS).
