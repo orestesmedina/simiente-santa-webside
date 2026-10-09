@@ -363,7 +363,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     usuario (lo audita `seguridad`).
   - **Commit sugerido**: `feat(storage): almacén local de imágenes con nombres validados`
 
-- [ ] T310 · `platform/validate`: etiqueta `url` · `[backend]` `[P3]`
+- [X] T310 · `platform/validate`: etiqueta `url` · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/validate/validate.go` y `validate_test.go` (EDITADOS).
   - **Qué hace**: añade la etiqueta `url` al validador de F2 (R3-14): acepta solo esquema `https`

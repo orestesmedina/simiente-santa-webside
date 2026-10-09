@@ -15,10 +15,12 @@
 //	validate:"omitempty,email,max=254"
 //	validate:"required,phone,max=32"
 //	validate:"required,oneof=success failure"
+//	validate:"omitempty,url,max=500"
 package validate
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -35,6 +37,10 @@ const MessageInvalid = "Revisa los datos del formulario"
 
 // minPhoneDigits es el mínimo de dígitos que exige FR-009 para un teléfono.
 const minPhoneDigits = 7
+
+// maxURLLength acota un enlace válido (R3-14): 500 caracteres, el límite del
+// contrato para las URLs de WhatsApp, redes y (F4–F9) eventos.
+const maxURLLength = 500
 
 var (
 	// emailRe exige algo@algo.algo: sin espacios y con un punto en el dominio.
@@ -142,6 +148,18 @@ func validateField(value reflect.Value, rules []rule) string {
 				phone := strings.TrimSpace(value.String())
 				if phone != "" && !validPhone(phone) {
 					return "Escribe un número de teléfono válido (al menos 7 dígitos, con espacios, guiones o paréntesis)."
+				}
+			}
+		case "url":
+			if value.Kind() == reflect.String {
+				link := strings.TrimSpace(value.String())
+				if link != "" {
+					if len(link) > maxURLLength {
+						return fmt.Sprintf("No puede tener más de %d caracteres.", maxURLLength)
+					}
+					if !validURL(link) {
+						return "Escribe un enlace válido que empiece por https://."
+					}
 				}
 			}
 		}
@@ -253,6 +271,18 @@ func validPhone(phone string) bool {
 		}
 	}
 	return digits >= minPhoneDigits
+}
+
+// validURL comprueba R3-14: solo esquema `https` con host no vacío (vía
+// net/url). Rechaza `http://`, `javascript:`, `data:` y cadenas sin host. El
+// host concreto (WhatsApp, red social) lo comprueba el service del dominio, que
+// es quien conoce el negocio (R3-6/R3-7).
+func validURL(link string) bool {
+	u, err := url.Parse(link)
+	if err != nil {
+		return false
+	}
+	return u.Scheme == "https" && u.Host != ""
 }
 
 func isInt(kind reflect.Kind) bool {
