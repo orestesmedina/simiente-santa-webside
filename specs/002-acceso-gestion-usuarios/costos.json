@@ -1699,6 +1699,34 @@
         }
       ],
       "hasta_ms": 1791176228658
+    },
+    {
+      "id": "ses_ef5a17dbfffej2ekqkNNii8egE",
+      "padre": null,
+      "titulo": "Continuando con F2",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T00:14:41Z",
+      "desde": "2026-10-05T16:43:56Z",
+      "hasta": "2026-10-05T17:18:08Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 6,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 4740,
+            "output": 2434,
+            "reasoning": 1276,
+            "cache_read": 1393792,
+            "cache_write": 0
+          },
+          "costo": 0.007118,
+          "costo_opencode": 0.007118
+        }
+      ],
+      "hasta_ms": 1791220688322
     }
   ],
   "totales": {
@@ -1766,16 +1794,16 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 215,
+        "respuestas": 221,
         "tokens": {
-          "input": 562981,
-          "output": 97028,
-          "reasoning": 78585,
-          "cache_read": 24051584,
+          "input": 567721,
+          "output": 99462,
+          "reasoning": 79861,
+          "cache_read": 25445376,
           "cache_write": 0
         },
-        "costo": 0.3312,
-        "costo_opencode": 0.261969,
+        "costo": 0.338318,
+        "costo_opencode": 0.269087,
         "sin_precio": false
       },
       {
@@ -1869,8 +1897,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 265321966,
-    "costo": 5.989493,
-    "costo_opencode": 5.006726
+    "tokens": 266724208,
+    "costo": 5.996611,
+    "costo_opencode": 5.013844
   }
 }
