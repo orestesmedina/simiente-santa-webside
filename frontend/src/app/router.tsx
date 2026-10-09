@@ -3,6 +3,7 @@ import { Link, useRoutes, type RouteObject } from 'react-router-dom';
 import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { AuditPage } from '../features/auditoria/pages/AuditPage';
+import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
 import { PublicLayout } from '../features/publico/components/PublicLayout';
 import { HomePage } from '../features/publico/pages/HomePage';
@@ -58,19 +59,6 @@ function NotFoundPage() {
   );
 }
 
-/**
- * Marcador provisional del módulo del panel (T331). T333 lo sustituye por
- * `InformationPage` (pestañas de las 6 piezas). La ruta ya está protegida por
- * `RequirePermission code={PORTADA}`.
- */
-function InformationPlaceholder() {
-  return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-bold">Portada e información general</h1>
-    </section>
-  );
-}
-
 const appRoutes: RouteObject[] = [
   {
     path: '/',
@@ -106,7 +94,7 @@ const appRoutes: RouteObject[] = [
               },
               {
                 element: <RequirePermission code={PORTADA} />,
-                children: [{ path: 'informacion', element: <InformationPlaceholder /> }],
+                children: [{ path: 'informacion', element: <InformationPage /> }],
               },
             ],
           },

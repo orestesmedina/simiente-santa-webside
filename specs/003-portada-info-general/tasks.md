@@ -864,7 +864,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: `quickstart.md` §1, §7 y §10 navegables a mano (US1/US4/US5).
   - **Commit sugerido**: `feat(frontend): portada pública con secciones, marca e i18n`
 
-- [ ] T333 · `features/informacion`: `InformationPage` (pestañas del módulo) · `[frontend]`
+- [X] T333 · `features/informacion`: `InformationPage` (pestañas del módulo) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/informacion/pages/InformationPage.tsx`,
     `messages.ts`, `information.test.tsx` (NUEVOS).

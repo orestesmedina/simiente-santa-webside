@@ -10,6 +10,7 @@ import { AppRoutes } from './router';
 
 const sessionUrl = `${API_BASE_URL}/api/v1/auth/session`;
 const portadaUrl = `${API_BASE_URL}/api/v1/portada`;
+const portadaAdminUrl = `${API_BASE_URL}/api/v1/admin/portada`;
 
 const sessionAdmin = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -126,6 +127,16 @@ describe('AppRoutes', () => {
   it('con el permiso portada, /panel/informacion muestra el módulo', async () => {
     server.use(
       http.get(sessionUrl, () => HttpResponse.json({ ...sessionAdmin, permissions: [PORTADA] })),
+      http.get(portadaAdminUrl, () =>
+        HttpResponse.json({
+          identity: null,
+          about: null,
+          contact: null,
+          schedule: { items: [] },
+          whatsapp: { items: [] },
+          socials: { items: [] },
+        }),
+      ),
     );
 
     renderApp('/panel/informacion');
