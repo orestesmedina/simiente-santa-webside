@@ -58,6 +58,7 @@ export const REQUIRED_START_TIME = 'Escribe la hora de inicio.';
 export const REQUIRED_WHATSAPP_NAME = 'Escribe el nombre o propósito del canal.';
 export const REQUIRED_DESTINATION = 'Escribe el destino del canal.';
 export const REQUIRED_URL = 'Escribe el enlace.';
+export const REQUIRED_ALT = 'Escribe el texto alternativo de la imagen.';
 
 export const EMAIL_INVALID = 'Este correo no tiene el formato correcto.';
 export const PHONE_INVALID =

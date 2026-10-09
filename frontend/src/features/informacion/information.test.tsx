@@ -125,7 +125,8 @@ describe('InformationPage · pestañas (US3 esc. 7)', () => {
     responder(fullData);
 
     renderInformation();
-    expect(await screen.findByText('Iglesia Simiente Santa')).toBeInTheDocument();
+    const nombre = await screen.findByLabelText(/^Nombre oficial/);
+    expect(nombre).toHaveValue('Iglesia Simiente Santa');
     expect(screen.getByText('Publicado')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Quiénes somos' }));
@@ -152,11 +153,7 @@ describe('InformationPage · estados', () => {
 
     renderInformation();
 
-    expect(
-      await screen.findByText(
-        'Todavía no hay información de identidad. Complétala para que aparezca en la portada.',
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText(/^Nombre oficial/)).toHaveValue('');
 
     await userEvent.click(screen.getByRole('button', { name: 'Horario de servicios' }));
     expect(
@@ -204,7 +201,7 @@ describe('InformationPage · estados', () => {
     expect(await screen.findByText(INFO_LOAD_ERROR)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
 
-    expect(await screen.findByText('Iglesia Simiente Santa')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Iglesia Simiente Santa')).toBeInTheDocument();
   });
 
   it('un 403 del servidor se explica como sin permiso (FR-012)', async () => {

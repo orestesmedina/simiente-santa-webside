@@ -6,12 +6,12 @@ import { Notice } from '../../../components/Notice';
 import { StatusPill } from '../../../components/StatusPill';
 import { Tabs, type TabItem } from '../../../components/Tabs';
 import { SOCIAL_NETWORK_LABELS, SOCIAL_NETWORKS } from '../../publico/social';
+import { IdentityForm } from '../components/IdentityForm';
 import { isForbidden } from '../errors';
 import { usePortadaAdmin } from '../hooks/usePortadaAdmin';
 import {
   EMPTY_ABOUT,
   EMPTY_CONTACT,
-  EMPTY_IDENTITY,
   EMPTY_SERVICES,
   EMPTY_WHATSAPP,
   INFO_LOAD_ERROR,
@@ -77,11 +77,7 @@ function renderTabContent(data: PortadaAdmin, tab: InfoTab): ReactNode {
       const identity = data.identity;
       return (
         <SectionCard title={TAB_IDENTITY} state={identity?.publicationState}>
-          {identity ? (
-            <p className="text-slate-700">{identity.nameEs}</p>
-          ) : (
-            <EmptyState message={EMPTY_IDENTITY} />
-          )}
+          <IdentityForm />
         </SectionCard>
       );
     }

@@ -880,7 +880,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: el esqueleto del módulo listo para los formularios de T334–T336.
   - **Commit sugerido**: `feat(frontend): InformationPage con pestañas del módulo`
 
-- [ ] T334 · `features/informacion`: `IdentityForm` + `ImageUploader` + `PublishControls` · `[frontend]`
+- [X] T334 · `features/informacion`: `IdentityForm` + `ImageUploader` + `PublishControls` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/informacion/components/IdentityForm.tsx`,
     `ImageUploader.tsx`, `PublishControls.tsx` y sus pruebas (NUEVOS); hooks
