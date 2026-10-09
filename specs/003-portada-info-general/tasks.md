@@ -275,7 +275,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 > **nunca** se edita una migración aplicada. Numeración sin huecos desde `000001` (F2 terminó en
 > `000004`).
 
-- [ ] T306 · Migración `000005_create_home_content` · `[db]`
+- [X] T306 · Migración `000005_create_home_content` · `[db]`
 
   - **Archivos**: `backend/migrations/000005_create_home_content.up.sql` y
     `000005_create_home_content.down.sql` (NUEVOS).
