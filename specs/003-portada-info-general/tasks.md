@@ -412,7 +412,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 5 — Dominio `portada`: modelo y repository
 
-- [ ] T313 · `portada`: `model.go` + `repository.go` · `[backend]`
+- [X] T313 · `portada`: `model.go` + `repository.go` · `[backend]`
 
   - **Archivos**: `backend/internal/portada/model.go`, `repository.go`,
     `repository_test.go` (NUEVOS).
