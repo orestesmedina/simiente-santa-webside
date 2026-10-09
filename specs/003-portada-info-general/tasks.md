@@ -430,7 +430,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     las mutaciones de T314/T315.
   - **Commit sugerido**: `feat(portada): modelo y base del repository con auditoría transaccional`
 
-- [ ] T314 · `portada`: repository de singletons + integración · `[backend]` `[P4]`
+- [X] T314 · `portada`: repository de singletons + integración · `[backend]` `[P4]`
 
   - **Archivos**: `backend/internal/portada/repository_home.go` (singletons),
     `repository_home_integration_test.go` (NUEVOS; `//go:build integration`).
