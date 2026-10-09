@@ -584,7 +584,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     el service.
   - **Commit sugerido**: `feat(portada): gestión de horario, WhatsApp y redes con validación`
 
-- [ ] T321 · `portada`: `service_audit.go` — denegaciones y rechazos · `[backend]`
+- [X] T321 · `portada`: `service_audit.go` — denegaciones y rechazos · `[backend]`
 
   - **Archivos**: `backend/internal/portada/service_audit.go`, `service_audit_test.go` (NUEVOS).
   - **Qué hace**: implementa `audit.Recorder` para el dominio (R3-11.4): `RecordDenied` resuelve
