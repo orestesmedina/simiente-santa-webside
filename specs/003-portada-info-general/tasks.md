@@ -377,7 +377,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     dependencias nuevas (§II).
   - **Commit sugerido**: `feat(validate): etiqueta url (https + host)`
 
-- [ ] T311 · `platform/audit`: códigos `home.*` y objetivo `content` · `[backend]` `[P3]`
+- [X] T311 · `platform/audit`: códigos `home.*` y objetivo `content` · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/audit/audit.go` y `audit_test.go` (EDITADOS).
   - **Qué hace**: amplía el registro cerrado del plumbing de F2 (R3-11.1): los **15 códigos**

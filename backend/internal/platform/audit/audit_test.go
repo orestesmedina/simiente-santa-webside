@@ -12,6 +12,11 @@ func TestActionCodesRegistry(t *testing.T) {
 	want := []string{
 		"user.create", "user.update", "user.activate", "user.deactivate",
 		"user.password_reset", "role.create", "role.update", "role.delete",
+		"home.identity.update", "home.about.update", "home.contact.update",
+		"home.schedule.create", "home.schedule.update", "home.schedule.delete",
+		"home.whatsapp.create", "home.whatsapp.update", "home.whatsapp.delete",
+		"home.social.create", "home.social.update", "home.social.delete",
+		"home.image.upload", "home.publish", "home.unpublish",
 	}
 	if len(ActionCodes) != len(want) {
 		t.Fatalf("ActionCodes tiene %d códigos, se esperaban %d", len(ActionCodes), len(want))
@@ -24,10 +29,24 @@ func TestActionCodesRegistry(t *testing.T) {
 			t.Errorf("ValidActionCode(%q) = false, se esperaba true", code)
 		}
 	}
-	for _, code := range []string{"", "user.delete", "role.password_reset", "USER.CREATE"} {
+	for _, code := range []string{"", "user.delete", "role.password_reset", "USER.CREATE", "home.page.update"} {
 		if ValidActionCode(code) {
 			t.Errorf("ValidActionCode(%q) = true, se esperaba false", code)
 		}
+	}
+}
+
+// TestTargetKindsRegistry fija el registro cerrado de tipos de objetivo
+// (FR-023/R3-11): los de F2 más el `content` de F3.
+func TestTargetKindsRegistry(t *testing.T) {
+	want := []TargetKind{TargetUser, TargetRole, TargetContent}
+	for _, kind := range want {
+		if string(kind) == "" {
+			t.Errorf("tipo de objetivo vacío")
+		}
+	}
+	if TargetContent != "content" {
+		t.Errorf("TargetContent = %q, se esperaba content", TargetContent)
 	}
 }
 
@@ -78,6 +97,13 @@ func TestActionValidate(t *testing.T) {
 		TargetLabel:  "Administrador",
 		Result:       ResultSuccess,
 	}
+	validContent := Action{
+		ActorUserID: &actor,
+		Code:        ActionHomeIdentityUpdate,
+		TargetKind:  TargetContent,
+		TargetLabel: "Portada · Identidad",
+		Result:      ResultSuccess,
+	}
 
 	tests := []struct {
 		name    string
@@ -87,6 +113,7 @@ func TestActionValidate(t *testing.T) {
 		{name: "usuario válido", action: validUser, wantErr: nil},
 		{name: "rol válido", action: validRole, wantErr: nil},
 		{name: "inicialización sin actor", action: validInit, wantErr: nil},
+		{name: "objetivo de contenido válido", action: validContent, wantErr: nil},
 		{name: "resultado denegado", action: Action{ActorUserID: &actor, Code: ActionUserCreate, TargetKind: TargetUser, Result: ResultDenied}, wantErr: nil},
 		{
 			name:    "código desconocido",
@@ -112,6 +139,21 @@ func TestActionValidate(t *testing.T) {
 			name:    "rol con target_user_id",
 			action:  Action{ActorUserID: &actor, Code: ActionRoleUpdate, TargetKind: TargetRole, TargetUserID: &target, Result: ResultSuccess},
 			wantErr: ErrTargetMismatch,
+		},
+		{
+			name:    "contenido con target_user_id",
+			action:  Action{ActorUserID: &actor, Code: ActionHomeAboutUpdate, TargetKind: TargetContent, TargetUserID: &target, TargetLabel: "Portada · Quiénes somos", Result: ResultSuccess},
+			wantErr: ErrTargetMismatch,
+		},
+		{
+			name:    "contenido con target_role_id",
+			action:  Action{ActorUserID: &actor, Code: ActionHomeContactUpdate, TargetKind: TargetContent, TargetRoleID: &role, TargetLabel: "Portada · Contacto", Result: ResultSuccess},
+			wantErr: ErrTargetMismatch,
+		},
+		{
+			name:    "contenido sin etiqueta",
+			action:  Action{ActorUserID: &actor, Code: ActionHomeImageUpload, TargetKind: TargetContent, Result: ResultSuccess},
+			wantErr: ErrMissingTargetLabel,
 		},
 	}
 
