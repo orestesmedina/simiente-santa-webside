@@ -179,7 +179,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 1 — Contrato OpenAPI, dependencias y tipos
 
-- [ ] T301 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.4.0) · `[backend]` `[P1]`
+- [X] T301 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.4.0) · `[backend]` `[P1]`
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO). *No* se toca
     `specs/003-portada-info-general/contracts/openapi.yaml` (snapshot inmutable, P3-14).
