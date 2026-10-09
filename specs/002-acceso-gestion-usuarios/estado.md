@@ -13,11 +13,11 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 002-acceso-gestion-usuarios |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validado (QA/revisor/seguridad en verde; correcciones aplicadas) |
-| Ciclo de corrección | 3/3 (validación: 5 correcciones aplicadas + 2 documentales) |
-| Próximo paso | Revisión local del humano (sin push). Tras aprobar: push de `002-acceso-gestion-usuarios`, abrir el PR (roadmap → en revisión), aprobar el merge y `make costos CERRAR=1`. |
-| Bloqueado por | — |
-| Actualizado | 2026-10-05 |
+| Fase | 9/9 · Entrega — PR #4 abierto. Bug de CI (Go 1.27.2) corregido y validado; pendiente de push |
+| Ciclo de corrección | 3/3 (F2: 5 correcciones aplicadas + 2 documentales) · bug de CI: 1 ciclo, 0 bloqueantes |
+| Próximo paso | Push de los commits del arreglo (`b0cefda`, `a2ab81a`, `bf999e7`, `8336967`) → CI del PR #4 en verde → aprobación humana del merge → `make costos CERRAR=1`. Luego F3 (Portada e información general). |
+| Bloqueado por | — (a la espera del push y de la aprobación del merge del PR #4) |
+| Actualizado | 2026-10-08 |
 
 ## Aprobaciones
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-04 | "apruebo la spec actualizada" (con auditoría, US8 + FR-021…FR-026) |
 | Plan | aprobado | humano | 2026-10-04 | "apruebo el plan" |
-| PR / merge | pendiente | | | |
+| PR / merge | pendiente | | | (PR #4 abierto; CI en rojo por el bug de Go 1.27.1, corregido el 2026-10-08) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -35,6 +35,11 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
 - (ninguno) — el ciclo 1 del `analyze` (F-01…F-15) se cerró en verde en el re-análisis; N-1 y N-2 cerrados también. La spec está aprobada y el plan, aprobado.
+
+### Bug de CI del 2026-10-08 (Go 1.27.2)
+
+- Revisión del arreglo en [`revision-2026-10-08-ci-go1272.md`](revision-2026-10-08-ci-go1272.md): **APROBADO** por los tres roles, **0 bloqueantes** (el único «Importante» documental quedó cerrado en `a2ab81a`).
+- Deuda no bloqueante: GO-2026-5932 (`golang.org/x/crypto@v0.57.0`, `openpgp`, sin fix) y el `:latest` de la imagen distroless (preexistente de F1).
 
 ## Decisiones y aclaraciones
 
@@ -50,11 +55,14 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 - 2026-10-05 — **T227 (`authn`):** cualquier error del `Resolver` (incluido un fallo transitorio de BD) se traduce a `401 unauthenticated` (fail-closed). Se deja señalado para la revisión de seguridad/arquitectura.
 - 2026-10-05 — **Decisión (validación): contraseña actual en el cambio obligatorio.** La spec (US7 esc. 2) y el contrato (`currentPassword: required`) la exigen; `ux.md` §3.8 decía lo contrario y se **corrigió el documento** (no se reabre spec ni plan). Exigir la actual evita que quien robe la sesión fije su propia contraseña.
 - 2026-10-05 — **Hallazgos menores aceptados:** casilla nativa (`<input type="checkbox">`) en el formulario de roles (M7), inmutabilidad del registro solo por convención+prueba (S1), timeout de mutaciones de 5 s (S2), `normalizeConflict` por restricción pendiente (S3) y e2e con `--workers=1` por el rate-limit (M-4 de QA). Se registran como deuda para F3.
+- 2026-10-08 — **Bug de CI (Go 1.27.2).** El CI del PR #4 falló en `govulncheck` (exit 3) porque `backend/go.mod` fijaba `go 1.27` **sin parche** y `actions/setup-go` (que lee `go-version-file`) instalaba go1.27.1, con 9 vulnerabilidades de stdlib corregidas en go1.27.2. Se fija `go 1.27.2` en `backend/go.mod` y `golang:1.27.2` en `backend/Dockerfile`. **No se toca el CI** (archivo del kit); la versión la decide el proyecto vía `go.mod`, que es la palanca que el propio kit documenta. Sin cambio de alcance: cae dentro de FR-016 («versión en soporte de seguridad vigente»).
+- 2026-10-08 — **Precisión documental (I1 de la revisión).** La nota de D-A5 citaba el rango `GO-2026-6603…6617`, que incluye IDs inexistentes (6606, 6614) y de OpenTelemetry (6615, 6616); se sustituye por los 9 IDs exactos del escaneo (`a2ab81a`).
 
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-08 — **Bug de CI corregido (Go 1.27.2).** El humano hizo push y abrió el **PR #4**; el CI falló en el paso «Vulnerabilidades» (`govulncheck`, exit 3) por 9 vulnerabilidades de la stdlib de **go1.27.1** (corregidas en **go1.27.2**), causadas por `go 1.27` sin parche en `backend/go.mod`. Diagnóstico → arreglo mínimo (`go 1.27.2` + `golang:1.27.2`) → validación en paralelo (**QA APROBADO**, **seguridad APROBADO**, **revisor APROBADO**; 1 hallazgo documental «Importante» cerrado en `a2ab81a`). Commits locales sin push: `b0cefda` (fix), `a2ab81a` (nota D-A5), `bf999e7` y `8336967` (CHANGELOG). Reporte: [`revision-2026-10-08-ci-go1272.md`](revision-2026-10-08-ci-go1272.md).
 - 2026-10-08 — **Sesión retomada brevemente y pausada de nuevo por decisión del humano.** Sin cambios de código; F2 sigue validada y en local, pendiente de revisión local → push + PR.
 - 2026-10-05 — **Sesión pausada por decisión del humano: sin push todavía.** F2 completa y validada, documentación de entrega lista, todo en local. Próximo paso: revisión local → push + PR → `make costos CERRAR=1` al aprobar. Costo abierto: **$5.99**.
 - 2026-10-05 — **Validación (fase 7) y correcciones.** QA **APROBADO**; revisor **APROBADO CON OBSERVACIONES**; seguridad **APROBADO CON OBSERVACIONES** (0 bloqueantes). Reportes: `revision-2026-10-05-{qa,codigo,seguridad}.md`. Correcciones aplicadas: M1 (auditoría no pierde filas con objetivo inexistente, FR-023), M2 (SESSION_SECRET vacío/corto no arranca en producción), M3 (cambio de contraseña atómico), M4 (TTL atómico del contador de fallos), M5 (`retryAfterSeconds` consistente), M6 (`details.roleId` en la FK de rol) y M9 (log de causa en `authn`). Documental: `ux.md` §3.8 (la contraseña actual se pide también en el cambio obligatorio) y el e2e de acceso desactivado. Menor aceptada: casilla nativa en el formulario de roles (M7). `make ci`, `sqlc-verify` y `api-gen` sin deriva en verde; e2e 3/3 (vía imagen Docker de Playwright; en el host faltan librerías de Chromium).
