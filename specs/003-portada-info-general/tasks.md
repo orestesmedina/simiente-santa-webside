@@ -490,7 +490,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 6 — Dominio `portada`: servicios
 
-- [ ] T317 · `portada`: `service.go` — tipos comunes, invariantes y límites · `[backend]`
+- [X] T317 · `portada`: `service.go` — tipos comunes, invariantes y límites · `[backend]`
 
   - **Archivos**: `backend/internal/portada/service.go`, `service_test.go` (NUEVOS).
   - **Qué hace**: interfaz `Repository` (definida por quien la consume, R3), constantes de negocio
