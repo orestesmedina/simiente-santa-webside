@@ -684,7 +684,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: `quickstart.md` §4 y §5 ejecutables (US2/US3).
   - **Commit sugerido**: `feat(portada): endpoints de horario, WhatsApp y redes`
 
-- [ ] T340 · `portada`: agregado del panel `GET /api/v1/admin/portada` (service + handler + pruebas) · `[backend]` *(añadida por el `analyze` C1)*
+- [X] T340 · `portada`: agregado del panel `GET /api/v1/admin/portada` (service + handler + pruebas) · `[backend]` *(añadida por el `analyze` C1)*
 
   - **Archivos**: `backend/internal/portada/service_admin.go` (EDITADO: `GetPortadaAdmin`),
     `service_admin_test.go`, `handler_admin.go` (EDITADO), `handler_admin_test.go` (AMPLIADOS).

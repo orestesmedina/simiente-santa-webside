@@ -513,3 +513,58 @@ func TestUpdateSocialLinkStateOnly(t *testing.T) {
 		t.Fatalf("id inexistente debería ser not_found: %v", err)
 	}
 }
+
+// T340: agregado del panel GET /api/v1/admin/portada (service).
+func TestGetPortadaAdminEmpty(t *testing.T) {
+	repo := newFakeRepository()
+	service := NewService(ServiceDeps{Repository: repo})
+
+	got, err := service.GetPortadaAdmin(context.Background())
+	if err != nil {
+		t.Fatalf("GetPortadaAdmin = %v", err)
+	}
+	if got.Identity != nil || got.About != nil || got.Contact != nil {
+		t.Errorf("los singletons deben ser null sin datos: %+v", got)
+	}
+	if got.Schedule.Items == nil || got.Whatsapp.Items == nil || got.Socials.Items == nil {
+		t.Fatalf("las colecciones nunca deben ser null: %+v", got)
+	}
+	if len(got.Schedule.Items)+len(got.Whatsapp.Items)+len(got.Socials.Items) != 0 {
+		t.Errorf("colecciones inesperadas: %+v", got)
+	}
+}
+
+func TestGetPortadaAdminWithData(t *testing.T) {
+	repo := newFakeRepository()
+	repo.identity = &Identity{NameEs: "Iglesia", NameEn: strptr("Church"), PublicationState: StateDraft}
+	repo.about = &About{TextEs: "Texto", PublicationState: StatePublished}
+	repo.contact = &Contact{AddressEs: "Calle 1", Email: "a@b.com", Phone: "+584121234567", PublicationState: StateDraft}
+	repo.seedService(Service{DayOfWeek: 0, StartTime: "10:00", NameEs: "Culto", PlaceEs: "Sede", PublicationState: StateDraft})
+	repo.seedChannel(WhatsappChannel{Kind: KindDirect, Destination: "+584121234567", NameEs: "General", PublicationState: StateDraft})
+	repo.seedSocialLink(SocialLink{Network: "facebook", URL: "https://facebook.com/x", PublicationState: StateDraft})
+	service := NewService(ServiceDeps{Repository: repo})
+
+	got, err := service.GetPortadaAdmin(context.Background())
+	if err != nil {
+		t.Fatalf("GetPortadaAdmin = %v", err)
+	}
+	if got.Identity == nil || got.About == nil || got.Contact == nil {
+		t.Fatalf("faltan singletons: %+v", got)
+	}
+	// Los borradores se ven en el panel (analyze C1) y los pares Es/En crudos.
+	if got.Identity.PublicationState != string(StateDraft) {
+		t.Errorf("publicationState = %q, se esperaba draft", got.Identity.PublicationState)
+	}
+	if got.Identity.NameEn == nil || *got.Identity.NameEn != "Church" {
+		t.Errorf("nameEn = %v", got.Identity.NameEn)
+	}
+	if got.Contact.PublicationState != string(StateDraft) {
+		t.Errorf("contact publicationState = %q", got.Contact.PublicationState)
+	}
+	if len(got.Schedule.Items) != 1 || got.Schedule.Items[0].PublicationState != string(StateDraft) {
+		t.Errorf("schedule = %+v", got.Schedule.Items)
+	}
+	if len(got.Whatsapp.Items) != 1 || len(got.Socials.Items) != 1 {
+		t.Errorf("colecciones = %+v / %+v", got.Whatsapp.Items, got.Socials.Items)
+	}
+}

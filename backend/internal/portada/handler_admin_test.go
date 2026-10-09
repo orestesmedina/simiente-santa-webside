@@ -358,3 +358,60 @@ func TestUpdateWhatsappHandler(t *testing.T) {
 		t.Errorf("no se publicó el canal: %+v", repo.channels[0])
 	}
 }
+
+// --- Agregado del panel GET /api/v1/admin/portada (T340) ---
+
+func TestGetPortadaAdminHandler(t *testing.T) {
+	repo := newFakeRepository()
+	repo.identity = &Identity{NameEs: "Iglesia", PublicationState: StatePublished}
+	repo.seedService(Service{DayOfWeek: 0, StartTime: "10:00", NameEs: "Culto", PlaceEs: "Sede", PublicationState: StateDraft})
+	h := newAdminHandler(t, repo)
+
+	rec := httptest.NewRecorder()
+	h.GetPortadaAdmin(rec, adminRequest(http.MethodGet, "/api/v1/admin/portada", "", true))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"identity":{"nameEs":"Iglesia"`) {
+		t.Errorf("falta la identidad: %s", body)
+	}
+	if !strings.Contains(body, `"schedule":{"items":[`) {
+		t.Errorf("falta el sobre del horario: %s", body)
+	}
+	if !strings.Contains(body, `"publicationState":"draft"`) {
+		t.Errorf("el panel debe ver borradores: %s", body)
+	}
+}
+
+func TestGetPortadaAdminHandlerEmpty(t *testing.T) {
+	h := newAdminHandler(t, newFakeRepository())
+
+	rec := httptest.NewRecorder()
+	h.GetPortadaAdmin(rec, adminRequest(http.MethodGet, "/api/v1/admin/portada", "", true))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"identity":null`) {
+		t.Errorf("los singletons deben ser null: %s", body)
+	}
+	if !strings.Contains(body, `"schedule":{"items":[]}`) ||
+		!strings.Contains(body, `"whatsapp":{"items":[]}`) ||
+		!strings.Contains(body, `"socials":{"items":[]}`) {
+		t.Errorf("las colecciones deben ser sobres vacíos, no null: %s", body)
+	}
+}
+
+func TestGetPortadaAdminHandlerNoSession(t *testing.T) {
+	h := newAdminHandler(t, newFakeRepository())
+
+	rec := httptest.NewRecorder()
+	h.GetPortadaAdmin(rec, adminRequest(http.MethodGet, "/api/v1/admin/portada", "", false))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, se esperaba 401 (%s)", rec.Code, rec.Body)
+	}
+}

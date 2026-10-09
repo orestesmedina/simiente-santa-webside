@@ -115,6 +115,34 @@ type ImageUploadResult struct {
 	SizeBytes int64  `json:"sizeBytes"`
 }
 
+// PortadaAdmin es el estado completo del módulo para precargar el panel
+// (FR-011, analyze C1): los singletons son null hasta el primer guardado y cada
+// colección va en su sobre `{items}` (nunca null, §8.1.2). A diferencia de la
+// vista pública, aquí se devuelven los pares Es/En crudos y los borradores.
+type PortadaAdmin struct {
+	Identity *IdentityAdmin        `json:"identity"`
+	About    *AboutAdmin           `json:"about"`
+	Contact  *ContactAdmin         `json:"contact"`
+	Schedule ScheduleItemsAdmin    `json:"schedule"`
+	Whatsapp WhatsappChannelsAdmin `json:"whatsapp"`
+	Socials  SocialLinksAdmin      `json:"socials"`
+}
+
+// ScheduleItemsAdmin es el sobre de la colección del horario.
+type ScheduleItemsAdmin struct {
+	Items []ScheduleItemAdmin `json:"items"`
+}
+
+// WhatsappChannelsAdmin es el sobre de la colección de canales de WhatsApp.
+type WhatsappChannelsAdmin struct {
+	Items []WhatsappChannelAdmin `json:"items"`
+}
+
+// SocialLinksAdmin es el sobre de la colección de redes sociales.
+type SocialLinksAdmin struct {
+	Items []SocialLinkAdmin `json:"items"`
+}
+
 // --- DTOs de entrada de las ediciones parciales (PATCH) ---
 //
 // Los campos son punteros para distinguir "no enviado" de un valor (y de `null`,
@@ -1002,6 +1030,75 @@ func (s *service) deleteReplacedImage(ctx context.Context, previous, current *st
 	if *previous != *current {
 		s.deleteFile(ctx, *previous)
 	}
+}
+
+// --- Agregado del panel (T340, analyze C1) ---
+
+// GetPortadaAdmin devuelve el estado completo del módulo para precargar el panel
+// (FR-011, US3 esc. 7): identidad, «quiénes somos» y contacto (null hasta el
+// primer guardado), horario, WhatsApp y redes —en ambos idiomas y con su
+// `publicationState` por elemento, borradores incluidos—. Las colecciones van
+// acotadas a los límites de escritura y en su sobre `{items}` (nunca null). Es
+// la única vista que expone borradores y exige el permiso `portada`.
+func (s *service) GetPortadaAdmin(ctx context.Context) (PortadaAdmin, error) {
+	out := PortadaAdmin{
+		Schedule: ScheduleItemsAdmin{Items: []ScheduleItemAdmin{}},
+		Whatsapp: WhatsappChannelsAdmin{Items: []WhatsappChannelAdmin{}},
+		Socials:  SocialLinksAdmin{Items: []SocialLinkAdmin{}},
+	}
+
+	if identity, ok, err := s.repository.GetHomeIdentity(ctx); err != nil {
+		return PortadaAdmin{}, fmt.Errorf("leer la identidad: %w", err)
+	} else if ok {
+		admin := identityAdminFrom(identity)
+		out.Identity = &admin
+	}
+
+	if about, ok, err := s.repository.GetHomeAbout(ctx); err != nil {
+		return PortadaAdmin{}, fmt.Errorf("leer quiénes somos: %w", err)
+	} else if ok {
+		admin := aboutAdminFrom(about)
+		out.About = &admin
+	}
+
+	if contact, ok, err := s.repository.GetHomeContact(ctx); err != nil {
+		return PortadaAdmin{}, fmt.Errorf("leer el contacto: %w", err)
+	} else if ok {
+		admin := contactAdminFrom(contact)
+		out.Contact = &admin
+	}
+
+	services, err := s.repository.ListHomeServices(ctx)
+	if err != nil {
+		return PortadaAdmin{}, fmt.Errorf("leer el horario: %w", err)
+	}
+	for i, service := range services {
+		if i >= MaxScheduleItems {
+			break
+		}
+		out.Schedule.Items = append(out.Schedule.Items, scheduleItemAdminFrom(service))
+	}
+
+	channels, err := s.repository.ListHomeWhatsappChannels(ctx)
+	if err != nil {
+		return PortadaAdmin{}, fmt.Errorf("leer los canales de WhatsApp: %w", err)
+	}
+	for i, channel := range channels {
+		if i >= MaxWhatsappChannels {
+			break
+		}
+		out.Whatsapp.Items = append(out.Whatsapp.Items, whatsappChannelAdminFrom(channel))
+	}
+
+	links, err := s.repository.ListHomeSocialLinks(ctx)
+	if err != nil {
+		return PortadaAdmin{}, fmt.Errorf("leer las redes: %w", err)
+	}
+	for _, link := range links {
+		out.Socials.Items = append(out.Socials.Items, socialLinkAdminFrom(link))
+	}
+
+	return out, nil
 }
 
 // --- Conversiones entidad → DTO del panel ---

@@ -75,6 +75,9 @@ type PortadaService interface {
 	CreateSocialLink(ctx context.Context, actorID uuid.UUID, in SocialLinkInput) (SocialLinkAdmin, error)
 	UpdateSocialLink(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch SocialLinkPatch) (SocialLinkAdmin, error)
 	DeleteSocialLink(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error
+	// GetPortadaAdmin devuelve el estado completo del módulo para el panel
+	// (FR-011, analyze C1), borradores incluidos.
+	GetPortadaAdmin(ctx context.Context) (PortadaAdmin, error)
 	// RecordRejectedBestEffort registra un rechazo por JSON o DTO inválido sin
 	// cambiar la respuesta (R3-11); nunca transporta el cuerpo de la petición.
 	RecordRejectedBestEffort(ctx context.Context, rejection Rejection)

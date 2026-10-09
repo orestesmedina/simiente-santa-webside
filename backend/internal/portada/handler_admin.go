@@ -99,6 +99,29 @@ func (h *Handler) SaveContact(w http.ResponseWriter, r *http.Request) {
 	httpserver.WriteJSON(w, http.StatusOK, saved)
 }
 
+// GetPortadaAdmin responde GET /api/v1/admin/portada (FR-011, analyze C1): el
+// estado completo del módulo para precargar el panel —identidad, «quiénes
+// somos», contacto, horario, WhatsApp y redes— en ambos idiomas y con
+// `publicationState` por elemento (borradores incluidos). Es la única vista que
+// los expone; exige el permiso `portada`.
+// Códigos: 200 con PortadaAdmin; sin sesión → 401; sin permiso → 403 (cadena).
+func (h *Handler) GetPortadaAdmin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if _, ok := h.adminIdentity(ctx, w); !ok {
+		return
+	}
+	if !h.serviceConfigured(ctx, w) {
+		return
+	}
+
+	out, err := h.service.GetPortadaAdmin(ctx)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	httpserver.WriteJSON(w, http.StatusOK, out)
+}
+
 // --- Colecciones: horario, WhatsApp y redes (T325) ---
 
 // CreateSchedule responde POST /api/v1/admin/portada/horario (FR-004): alta de
