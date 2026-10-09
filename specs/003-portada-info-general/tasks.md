@@ -253,7 +253,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     archivo del kit modificado.
   - **Commit sugerido**: `build(compose): volumen uploads_data y variables de imágenes`
 
-^- [ ] T305 · `.env.example`: variables de imágenes · `[infra]` `[P2]`
+^- [X] T305 · `.env.example`: variables de imágenes · `[infra]` `[P2]`
 
   - **Archivos**: `.env.example` (EDITABLE).
   - **Qué hace**: documenta `UPLOAD_DIR` (por defecto `./uploads` fuera de Docker) y
