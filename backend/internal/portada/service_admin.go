@@ -273,6 +273,327 @@ func (s *service) SaveContact(ctx context.Context, actorID uuid.UUID, in Contact
 
 // --- Horario (T320) ---
 
+// CreateService da de alta un servicio del horario (FR-004): día 0–6, inicio
+// "HH:MM" y fin opcional posterior (analyze C2), textos en español obligatorios,
+// límite de colección (≤50) y `home.schedule.create` —aunque nazca publicada
+// (analyze M5)— en la misma transacción (FR-017).
+func (s *service) CreateService(ctx context.Context, actorID uuid.UUID, in ScheduleItemInput) (ScheduleItemAdmin, error) {
+	if err := validate.Struct(in); err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeScheduleCreate, contentLabel(sectionSchedule, ""))
+		return ScheduleItemAdmin{}, err
+	}
+	start, end, err := normalizeScheduleTimes(in.StartTime, in.EndTime)
+	if err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeScheduleCreate, contentLabel(sectionSchedule, ""))
+		return ScheduleItemAdmin{}, err
+	}
+
+	existing, err := s.repository.ListHomeServices(ctx)
+	if err != nil {
+		return ScheduleItemAdmin{}, fmt.Errorf("contar el horario: %w", err)
+	}
+	if len(existing) >= MaxScheduleItems {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeScheduleCreate, contentLabel(sectionSchedule, ""))
+		return ScheduleItemAdmin{}, apperr.Invalid(
+			fmt.Sprintf("No se pueden guardar más de %d servicios", MaxScheduleItems),
+			apperr.WithDetails(map[string]any{"schedule": "límite alcanzado"}),
+		)
+	}
+
+	service := Service{
+		DayOfWeek:        in.DayOfWeek,
+		StartTime:        start,
+		EndTime:          end,
+		NameEs:           normalizeText(in.NameEs),
+		NameEn:           normalizeOptional(in.NameEn),
+		DescriptionEs:    normalizeOptional(in.DescriptionEs),
+		DescriptionEn:    normalizeOptional(in.DescriptionEn),
+		PlaceEs:          normalizeText(in.PlaceEs),
+		PlaceEn:          normalizeOptional(in.PlaceEn),
+		PublicationState: publicationStateOr(in.PublicationState),
+		SortOrder:        in.SortOrder,
+	}
+
+	actions := []audit.Action{contentAction(actorID, audit.ActionHomeScheduleCreate, contentLabel(sectionSchedule, service.NameEs))}
+	saved, err := s.repository.InsertHomeService(ctx, service, actions...)
+	if err != nil {
+		return ScheduleItemAdmin{}, fmt.Errorf("crear el servicio: %w", err)
+	}
+	return scheduleItemAdminFrom(saved), nil
+}
+
+// UpdateService edita parcialmente un servicio (FR-004). Registra
+// `home.schedule.update` si cambian los datos y `home.publish`/`home.unpublish`
+// si cambia el estado —dos filas cuando ocurren ambas (analyze M5)— en la misma
+// transacción. Un id inexistente → 404.
+func (s *service) UpdateService(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch ScheduleItemPatch) (ScheduleItemAdmin, error) {
+	if !patch.hasChanges() {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeScheduleUpdate, contentLabel(sectionSchedule, id.String()))
+		return ScheduleItemAdmin{}, apperr.Invalid("No hay cambios que guardar")
+	}
+
+	current, found, err := s.repository.GetHomeServiceByID(ctx, id)
+	if err != nil {
+		return ScheduleItemAdmin{}, fmt.Errorf("leer el servicio: %w", err)
+	}
+	if !found {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeScheduleUpdate, contentLabel(sectionSchedule, id.String()))
+		return ScheduleItemAdmin{}, apperr.NotFound("El servicio no existe")
+	}
+
+	updated, dataChanged, stateChanged, err := mergeSchedule(current, patch)
+	if err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeScheduleUpdate, contentLabel(sectionSchedule, current.NameEs))
+		return ScheduleItemAdmin{}, err
+	}
+	if !dataChanged && !stateChanged {
+		return scheduleItemAdminFrom(current), nil
+	}
+
+	label := contentLabel(sectionSchedule, updated.NameEs)
+	actions := make([]audit.Action, 0, 2)
+	if dataChanged {
+		actions = append(actions, contentAction(actorID, audit.ActionHomeScheduleUpdate, label))
+	}
+	if stateChanged {
+		actions = append(actions, contentAction(actorID, stateActionCode(updated.PublicationState), label))
+	}
+
+	saved, err := s.repository.UpdateHomeService(ctx, updated, actions...)
+	if err != nil {
+		return ScheduleItemAdmin{}, fmt.Errorf("editar el servicio: %w", err)
+	}
+	return scheduleItemAdminFrom(saved), nil
+}
+
+// DeleteService elimina físicamente un servicio y registra `home.schedule.delete`
+// con su `targetLabel` conservado (R3-11) en la misma transacción. Un id
+// inexistente → 404.
+func (s *service) DeleteService(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error {
+	current, found, err := s.repository.GetHomeServiceByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("leer el servicio: %w", err)
+	}
+	if !found {
+		return apperr.NotFound("El servicio no existe")
+	}
+	actions := []audit.Action{contentAction(actorID, audit.ActionHomeScheduleDelete, contentLabel(sectionSchedule, current.NameEs))}
+	deleted, err := s.repository.DeleteHomeService(ctx, id, actions...)
+	if err != nil {
+		return fmt.Errorf("eliminar el servicio: %w", err)
+	}
+	if !deleted {
+		return apperr.NotFound("El servicio no existe")
+	}
+	return nil
+}
+
+// --- WhatsApp (T320) ---
+
+// CreateWhatsappChannel da de alta un canal (FR-005): `direct` valida teléfono
+// y normaliza a dígitos; `group` valida URL https de WhatsApp; límite de
+// colección (≤20); duplicado exacto → 409 (UNIQUE de la BD). El alta registra
+// `home.whatsapp.create` aunque nazca publicada (analyze M5).
+func (s *service) CreateWhatsappChannel(ctx context.Context, actorID uuid.UUID, in WhatsappChannelInput) (WhatsappChannelAdmin, error) {
+	if err := validate.Struct(in); err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeWhatsappCreate, contentLabel(sectionWhatsapp, ""))
+		return WhatsappChannelAdmin{}, err
+	}
+	destination, err := normalizeWhatsappDestination(in.Kind, in.Destination)
+	if err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeWhatsappCreate, contentLabel(sectionWhatsapp, ""))
+		return WhatsappChannelAdmin{}, err
+	}
+
+	existing, err := s.repository.ListHomeWhatsappChannels(ctx)
+	if err != nil {
+		return WhatsappChannelAdmin{}, fmt.Errorf("contar los canales: %w", err)
+	}
+	if len(existing) >= MaxWhatsappChannels {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeWhatsappCreate, contentLabel(sectionWhatsapp, ""))
+		return WhatsappChannelAdmin{}, apperr.Invalid(
+			fmt.Sprintf("No se pueden guardar más de %d canales", MaxWhatsappChannels),
+			apperr.WithDetails(map[string]any{"whatsapp": "límite alcanzado"}),
+		)
+	}
+
+	channel := WhatsappChannel{
+		Kind:             in.Kind,
+		Destination:      destination,
+		NameEs:           normalizeText(in.NameEs),
+		NameEn:           normalizeOptional(in.NameEn),
+		PublicationState: publicationStateOr(in.PublicationState),
+		SortOrder:        in.SortOrder,
+	}
+
+	actions := []audit.Action{contentAction(actorID, audit.ActionHomeWhatsappCreate, contentLabel(sectionWhatsapp, channel.NameEs))}
+	saved, err := s.repository.InsertHomeWhatsappChannel(ctx, channel, actions...)
+	if err != nil {
+		return WhatsappChannelAdmin{}, fmt.Errorf("crear el canal: %w", err)
+	}
+	return whatsappChannelAdminFrom(saved), nil
+}
+
+// UpdateWhatsappChannel edita parcialmente un canal (FR-005). Revalida el
+// destino si cambia el tipo; duplicado exacto → 409. Registra
+// `home.whatsapp.update` y/o `home.publish`/`home.unpublish` (analyze M5).
+func (s *service) UpdateWhatsappChannel(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch WhatsappChannelPatch) (WhatsappChannelAdmin, error) {
+	if !patch.hasChanges() {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeWhatsappUpdate, contentLabel(sectionWhatsapp, id.String()))
+		return WhatsappChannelAdmin{}, apperr.Invalid("No hay cambios que guardar")
+	}
+
+	current, found, err := s.repository.GetHomeWhatsappChannelByID(ctx, id)
+	if err != nil {
+		return WhatsappChannelAdmin{}, fmt.Errorf("leer el canal: %w", err)
+	}
+	if !found {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeWhatsappUpdate, contentLabel(sectionWhatsapp, id.String()))
+		return WhatsappChannelAdmin{}, apperr.NotFound("El canal no existe")
+	}
+
+	updated, dataChanged, stateChanged, err := mergeWhatsappChannel(current, patch)
+	if err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeWhatsappUpdate, contentLabel(sectionWhatsapp, current.NameEs))
+		return WhatsappChannelAdmin{}, err
+	}
+	if !dataChanged && !stateChanged {
+		return whatsappChannelAdminFrom(current), nil
+	}
+
+	label := contentLabel(sectionWhatsapp, updated.NameEs)
+	actions := make([]audit.Action, 0, 2)
+	if dataChanged {
+		actions = append(actions, contentAction(actorID, audit.ActionHomeWhatsappUpdate, label))
+	}
+	if stateChanged {
+		actions = append(actions, contentAction(actorID, stateActionCode(updated.PublicationState), label))
+	}
+
+	saved, err := s.repository.UpdateHomeWhatsappChannel(ctx, updated, actions...)
+	if err != nil {
+		return WhatsappChannelAdmin{}, fmt.Errorf("editar el canal: %w", err)
+	}
+	return whatsappChannelAdminFrom(saved), nil
+}
+
+// DeleteWhatsappChannel elimina un canal y registra `home.whatsapp.delete` con
+// su `targetLabel` conservado. Un id inexistente → 404.
+func (s *service) DeleteWhatsappChannel(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error {
+	current, found, err := s.repository.GetHomeWhatsappChannelByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("leer el canal: %w", err)
+	}
+	if !found {
+		return apperr.NotFound("El canal no existe")
+	}
+	actions := []audit.Action{contentAction(actorID, audit.ActionHomeWhatsappDelete, contentLabel(sectionWhatsapp, current.NameEs))}
+	deleted, err := s.repository.DeleteHomeWhatsappChannel(ctx, id, actions...)
+	if err != nil {
+		return fmt.Errorf("eliminar el canal: %w", err)
+	}
+	if !deleted {
+		return apperr.NotFound("El canal no existe")
+	}
+	return nil
+}
+
+// --- Redes (T320) ---
+
+// CreateSocialLink da de alta el enlace de una red (FR-006): red del catálogo y
+// URL https del dominio oficial; un segundo enlace para la misma red → 409
+// (UNIQUE de la BD). El alta registra `home.social.create` (analyze M5).
+func (s *service) CreateSocialLink(ctx context.Context, actorID uuid.UUID, in SocialLinkInput) (SocialLinkAdmin, error) {
+	if err := validate.Struct(in); err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeSocialCreate, contentLabel(sectionSocial, ""))
+		return SocialLinkAdmin{}, err
+	}
+	network, linkURL, err := normalizeSocial(in.Network, in.URL)
+	if err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeSocialCreate, contentLabel(sectionSocial, ""))
+		return SocialLinkAdmin{}, err
+	}
+
+	link := SocialLink{
+		Network:          network,
+		URL:              linkURL,
+		PublicationState: publicationStateOr(in.PublicationState),
+	}
+
+	actions := []audit.Action{contentAction(actorID, audit.ActionHomeSocialCreate, contentLabel(sectionSocial, network))}
+	saved, err := s.repository.InsertHomeSocialLink(ctx, link, actions...)
+	if err != nil {
+		return SocialLinkAdmin{}, fmt.Errorf("crear el enlace: %w", err)
+	}
+	return socialLinkAdminFrom(saved), nil
+}
+
+// UpdateSocialLink edita parcialmente el enlace de una red (FR-006). Revalida
+// red y URL; duplicado → 409. Registra `home.social.update` y/o
+// `home.publish`/`home.unpublish` (analyze M5).
+func (s *service) UpdateSocialLink(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch SocialLinkPatch) (SocialLinkAdmin, error) {
+	if !patch.hasChanges() {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeSocialUpdate, contentLabel(sectionSocial, id.String()))
+		return SocialLinkAdmin{}, apperr.Invalid("No hay cambios que guardar")
+	}
+
+	current, found, err := s.repository.GetHomeSocialLinkByID(ctx, id)
+	if err != nil {
+		return SocialLinkAdmin{}, fmt.Errorf("leer el enlace: %w", err)
+	}
+	if !found {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeSocialUpdate, contentLabel(sectionSocial, id.String()))
+		return SocialLinkAdmin{}, apperr.NotFound("El enlace no existe")
+	}
+
+	updated, dataChanged, stateChanged, err := mergeSocialLink(current, patch)
+	if err != nil {
+		s.recordContentFailure(ctx, actorID, audit.ActionHomeSocialUpdate, contentLabel(sectionSocial, current.Network))
+		return SocialLinkAdmin{}, err
+	}
+	if !dataChanged && !stateChanged {
+		return socialLinkAdminFrom(current), nil
+	}
+
+	label := contentLabel(sectionSocial, updated.Network)
+	actions := make([]audit.Action, 0, 2)
+	if dataChanged {
+		actions = append(actions, contentAction(actorID, audit.ActionHomeSocialUpdate, label))
+	}
+	if stateChanged {
+		actions = append(actions, contentAction(actorID, stateActionCode(updated.PublicationState), label))
+	}
+
+	saved, err := s.repository.UpdateHomeSocialLink(ctx, updated, actions...)
+	if err != nil {
+		return SocialLinkAdmin{}, fmt.Errorf("editar el enlace: %w", err)
+	}
+	return socialLinkAdminFrom(saved), nil
+}
+
+// DeleteSocialLink elimina un enlace y registra `home.social.delete` con su
+// `targetLabel` (la red) conservado. Un id inexistente → 404.
+func (s *service) DeleteSocialLink(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error {
+	current, found, err := s.repository.GetHomeSocialLinkByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("leer el enlace: %w", err)
+	}
+	if !found {
+		return apperr.NotFound("El enlace no existe")
+	}
+	actions := []audit.Action{contentAction(actorID, audit.ActionHomeSocialDelete, contentLabel(sectionSocial, current.Network))}
+	deleted, err := s.repository.DeleteHomeSocialLink(ctx, id, actions...)
+	if err != nil {
+		return fmt.Errorf("eliminar el enlace: %w", err)
+	}
+	if !deleted {
+		return apperr.NotFound("El enlace no existe")
+	}
+	return nil
+}
+
+// --- Validación y mezcla de las ediciones parciales ---
+
 // hasChanges indica si el PATCH trae al menos un campo (minProperties: 1).
 func (p ScheduleItemPatch) hasChanges() bool {
 	return p.DayOfWeek != nil || p.StartTime != nil || p.EndTime != nil ||

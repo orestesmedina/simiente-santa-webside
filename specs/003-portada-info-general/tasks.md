@@ -556,7 +556,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     el service.
   - **Commit sugerido**: `feat(portada): guardado de identidad, quiénes somos y contacto`
 
-- [ ] T320 · `portada`: `service_admin.go` — horario, WhatsApp y redes · `[backend]`
+- [X] T320 · `portada`: `service_admin.go` — horario, WhatsApp y redes · `[backend]`
 
   - **Archivos**: `backend/internal/portada/service_admin.go` (EDITADO) y `service_admin_test.go`.
   - **Qué hace**: alta/edición/borrado de servicios (día 0–6 válidos —**selector localizado, nunca
