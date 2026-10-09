@@ -163,9 +163,10 @@ registro**; las tres diferencias conocidas están en D-A3 (sqlc como capa de dat
   - Al actualizar Go en el futuro se tocan dos puntos (`go.mod` y el `FROM` del Dockerfile) y se
     re-ejecuta `make ci`; la política "versión siempre en soporte" queda como criterio.
   - > **2026-10-08** — Se fija el parche de la rama: `go 1.27.2` en `backend/go.mod` y
-    `golang:1.27.2` en `backend/Dockerfile`, para cerrar las 9 vulnerabilidades de la stdlib
-    (GO-2026-6603…GO-2026-6617, corregidas en go1.27.2). La rama sigue siendo 1.27; `govulncheck`
-    v1.8.0 sale en verde tras el cambio.
+    `golang:1.27.2` en `backend/Dockerfile`, para cerrar las **9** vulnerabilidades de la stdlib que
+    `govulncheck` v1.8.0 reportó con go1.27.1 y que go1.27.2 corrige: **GO-2026-6603, -6605, -6607,
+    -6608, -6610, -6611, -6612, -6613 y -6617** (net/http, HTTP/2, net/textproto y crypto/tls). La
+    rama sigue siendo 1.27; el escaneo sale en verde tras el cambio.
 
 ## D-A6 · Config por entorno (stdlib), logs `slog` JSON, errores stdlib + `apperr`, DI manual
 
