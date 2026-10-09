@@ -204,7 +204,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     del frontend (T303).
   - **Commit sugerido**: `docs(api): fusionar delta de F3 en el contrato vivo (0.4.0)`
 
-- [ ] T302 · Dependencias npm nuevas (tipografías del Manual) · `[frontend]` `[P1]`
+- [X] T302 · Dependencias npm nuevas (tipografías del Manual) · `[frontend]` `[P1]`
 
   - **Archivos**: `frontend/package.json`, `frontend/package-lock.json` (EDITADOS).
   - **Qué hace**: añade **solo** `@fontsource/bebas-neue`, `@fontsource/poppins` y
@@ -298,7 +298,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     contra la skill `postgres-db`).
   - **Commit sugerido**: `feat(db): tablas de contenido de la portada (000005)`
 
-- [ ] T307 · Migración `000006_extend_admin_actions_for_home_content` · `[db]`
+- [X] T307 · Migración `000006_extend_admin_actions_for_home_content` · `[db]`
 
   - **Archivos**: `backend/migrations/000006_extend_admin_actions_for_home_content.up.sql` y
     `.down.sql` (NUEVOS).
