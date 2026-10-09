@@ -755,7 +755,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     al Manual en `research.md` R3-12): ni `ux.md` ni el código usan nombres paralelos.
   - **Commit sugerido**: `feat(frontend): tokens de marca, tipografías y BrandLogo`
 
-- [ ] T328 · `features/publico/i18n`: provider, diccionarios tipados y `localStorage` · `[frontend]` `[P5]`
+- [X] T328 · `features/publico/i18n`: provider, diccionarios tipados y `localStorage` · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/features/publico/i18n/LanguageProvider.tsx`, `useLanguage.ts`,
     `messages.ts`, `es.ts`, `en.ts`, `i18n.test.tsx` (NUEVOS).

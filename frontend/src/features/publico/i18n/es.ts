@@ -1,0 +1,40 @@
+import type { PublicMessages } from './messages';
+
+/** Diccionario de la interfaz en español (idioma base, ux.md §7.2). */
+export const es: PublicMessages = {
+  'nav.sections.who': 'Quiénes somos',
+  'nav.sections.schedule': 'Horario de servicios',
+  'nav.sections.whatsapp': 'WhatsApp',
+  'nav.sections.contact': 'Contacto',
+  'nav.sections.social': 'Redes sociales',
+  'lang.label': 'Idioma',
+  'lang.es': 'Español',
+  'lang.en': 'Inglés',
+  'identity.mission': 'Nuestra misión',
+  'identity.vision': 'Nuestra visión',
+  'identity.lema': 'Nuestro lema',
+  'contact.phone': 'Teléfono',
+  'contact.email': 'Correo',
+  'contact.address': 'Dirección',
+  'whatsapp.action.dm': 'Escribir por WhatsApp',
+  'whatsapp.action.group': 'Entrar al grupo',
+  'social.action': 'Ver en {network}',
+  'brand.name': 'Simiente Santa',
+  'footer.welcome': 'Esta siempre será tu casa.',
+  'schedule.day.0': 'Domingo',
+  'schedule.day.1': 'Lunes',
+  'schedule.day.2': 'Martes',
+  'schedule.day.3': 'Miércoles',
+  'schedule.day.4': 'Jueves',
+  'schedule.day.5': 'Viernes',
+  'schedule.day.6': 'Sábado',
+  'error.load':
+    'No pudimos cargar la información de la iglesia. Revisa tu conexión y vuelve a intentarlo.',
+  'error.retry': 'Volver a intentar',
+  'error.partial':
+    'No pudimos actualizar la información; estás viendo la última versión disponible.',
+  'status.loading': 'Cargando…',
+  'a11y.skip': 'Saltar al contenido principal',
+  'a11y.logo': 'Logotipo de la iglesia Simiente Santa',
+  'a11y.hero': 'Imagen de la portada de la iglesia',
+};
