@@ -11,9 +11,11 @@ constitución y §8.1 de `docs/tecnico/arquitectura.md` (UUID, `created_at`/`upd
 ## Patrón transversal: contenido bilingüe (R3-1)
 
 Todo campo traducible vive en **dos columnas**: `*_es` (**obligatorio**, idioma base) y `*_en`
-(**opcional**). Los campos no traducibles (URLs, teléfonos, correo, destino de WhatsApp, día, hora,
+(**opcional**). Los campos no traducibles (URLs, teléfonos, correo, destino de WhatsApp, día, horas,
 archivo de imagen) no llevan sufijo. La regla "es obligatorio, inglés opcional" (Decisión 8) está en
-el esquema: `*_es NOT NULL` + `*_en NULL`. El fallback `en → es` lo resuelve el service público
+el esquema: `*_es NOT NULL` + `*_en NULL`. **Normalización** *(analyze I6)*: `""` o solo espacios en
+un `*_en` se guarda como **`NULL`** (trim en el service; los `CHECK` de longitud `BETWEEN 1 AND …`
+rechazan `''`, que nunca debe llegar a la BD). El fallback `en → es` lo resuelve el service público
 (R3-2); la BD guarda ambos valores crudos.
 
 **Estado de publicación** (R3-3): toda fila de contenido lleva
@@ -34,7 +36,7 @@ publicadas se omite por completo en la respuesta pública (FR-013/Q10).
 | `home_services` | 0..N (≤50) | Servicios del horario: día, hora, nombre/descripción, lugar (FR-004, R3-5) |
 | `home_whatsapp_channels` | 0..N (≤20) | Canales de WhatsApp: nombre/propósito, tipo y destino único (FR-005, R3-6) |
 | `home_social_links` | 0..1 por red del catálogo | Un enlace por red del catálogo fijo (FR-006, R3-7) |
-| `admin_actions` (**existente, F2**) | — | Se **amplía** el registro cerrado: 14 códigos `home.*` y `target_kind='content'` (FR-017, R3-11) |
+| `admin_actions` (**existente, F2**) | — | Se **amplía** el registro cerrado: 15 códigos `home.*` (incl. `home.image.upload`) y `target_kind='content'` (FR-017, R3-11) |
 
 Ninguna tabla de F3 tiene FK hacia `users`: el "quién" de la edición vive en `admin_actions.actor_user_id`
 (FR-017). Ningún contenido referencia a otro contenido.
@@ -114,13 +116,16 @@ CREATE TABLE home_contact (
     CHECK (phone = btrim(phone))
 );
 
--- Horario de servicios (FR-004, R3-5): día 0=domingo…6=sábado, hora "HH:MM" 24 h.
--- Día y hora NO son traducibles (el nombre del día lo localiza el frontend);
--- nombre/descripción y lugar sí (patrón es/en).
+-- Horario de servicios (FR-004, R3-5): día 0=domingo…6=sábado (selector localizado
+-- por i18n, NUNCA texto libre), inicio "HH:MM" 24 h y fin opcional ("HH:MM", para
+-- rangos tipo «10:00 a. m. − 12:00 m.»; CHECK: fin posterior al inicio).
+-- Día y horas NO son traducibles (el nombre del día lo localiza el frontend y el
+-- formato a.m./p.m. es presentación); nombre/descripción y lugar sí (patrón es/en).
 CREATE TABLE home_services (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     day_of_week       SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
     start_time        TEXT NOT NULL CHECK (start_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
+    end_time          TEXT NULL CHECK (end_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
     name_es           TEXT NOT NULL CHECK (char_length(name_es) BETWEEN 1 AND 160),
     name_en           TEXT NULL CHECK (char_length(name_en) BETWEEN 1 AND 160),
     description_es    TEXT NULL CHECK (char_length(description_es) BETWEEN 1 AND 400),
@@ -132,6 +137,7 @@ CREATE TABLE home_services (
     sort_order        INTEGER NOT NULL DEFAULT 0,
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (end_time IS NULL OR end_time > start_time),
     CHECK (name_es = btrim(name_es)),
     CHECK (place_es = btrim(place_es))
 );
@@ -196,7 +202,7 @@ nombres generados por PostgreSQL al declararlos sin nombre: los de columna son
 `admin_actions_action_check` y `admin_actions_target_kind_check`, y el segundo CHECK de tabla (el de
 coherencia de objetivo, línea tras el CHECK del actor) es `admin_actions_check1`. La migración los
 referencia explícitamente y la prueba de integración de migraciones (up → down → up) lo verifica
-(ver Riesgo RG3-6 del plan; alternativa considerada: bloque `DO` que localiza la restricción por su
+(ver Riesgo RG3-2 del plan; alternativa considerada: bloque `DO` que localiza la restricción por su
 definición, descartada por legibilidad).
 
 ```sql
@@ -205,7 +211,8 @@ definición, descartada por legibilidad).
 -- códigos de acción y de tipos de objetivo sigue siendo CERRADO y lo garantiza
 -- la BD (research R3-11).
 
--- 1) Códigos de acción: los 8 de F2 + los 14 de F3 (home.*).
+-- 1) Códigos de acción: los 8 de F2 + los 15 de F3 (home.*; incluye
+--    'home.image.upload' por la subida de imágenes — analyze I8).
 ALTER TABLE admin_actions DROP CONSTRAINT admin_actions_action_check;
 ALTER TABLE admin_actions ADD CONSTRAINT admin_actions_action_check CHECK (action IN (
     'user.create', 'user.update', 'user.activate', 'user.deactivate', 'user.password_reset',
@@ -214,6 +221,7 @@ ALTER TABLE admin_actions ADD CONSTRAINT admin_actions_action_check CHECK (actio
     'home.schedule.create', 'home.schedule.update', 'home.schedule.delete',
     'home.whatsapp.create', 'home.whatsapp.update', 'home.whatsapp.delete',
     'home.social.create', 'home.social.update', 'home.social.delete',
+    'home.image.upload',
     'home.publish', 'home.unpublish'
 ));
 
@@ -278,6 +286,7 @@ Se generan en `internal/db` (paquete compartido) y solo las usa el repository de
 | `ListHomeWhatsappChannels` / `ListHomeWhatsappChannelsPublished` | Ídem, `ORDER BY sort_order, id` |
 | `InsertHomeSocialLink`, `UpdateHomeSocialLink`, `DeleteHomeSocialLink`, `GetHomeSocialLinkByID` | Gestión de redes |
 | `ListHomeSocialLinks` / `ListHomeSocialLinksPublished` | Ídem, `ORDER BY network` |
+| `IsHomeFilePublished` | Descarga de imágenes (`GET /api/v1/media/{fileName}`, `analyze` C4): `TRUE` solo si el nombre está referenciado por un contenido **publicado** (en F3: `home_identity` con `publication_state='published'` y `logo_file`/`cover_image_file` = el nombre); F4–F9 amplían la consulta con sus tablas |
 
 La auditoría **reutiliza** `InsertAdminAction` (ya generada por F2 en `queries/audit.sql`): el
 repository de `portada` la llama con `gendb.New(tx)` **dentro de la transacción** de cada mutación
@@ -294,7 +303,9 @@ exige el permiso `portada` (FR-013/SC-002).
 - Objetivo: `target_kind='content'`, `target_user_id`/`target_role_id` = NULL,
   `target_label` = `Portada · <Sección> · <nombre del elemento>` (p. ej.
   `Portada · Horario · Culto dominical`; sin nombre, el `id`). Máx. 254 caracteres (CHECK de F2).
-- `action` ∈ los 14 códigos `home.*` (tabla en research R3-11.1); `result`:
+- `action` ∈ los 15 códigos `home.*` (tabla y **regla exacta** en research R3-11.1: `create` en el
+  alta aunque nazca publicada, `home.publish`/`home.unpublish` **solo** para cambios de estado,
+  `home.image.upload` en la subida de imágenes); `result`:
   `success` en la transacción de la mutación, `failure` en intentos rechazados y `denied` en
   denegaciones de permiso (best-effort, fuera de transacción).
 - `actor_user_id` siempre la cuenta del panel que ejecutó (nunca NULL en F3: el CHECK de F2
@@ -305,12 +316,14 @@ exige el permiso `portada` (FR-013/SC-002).
 | Invariante | Dónde |
 |---|---|
 | Español obligatorio, inglés opcional | Columnas `*_es NOT NULL` / `*_en NULL` + `required`/`omitempty` en los DTOs (`platform/validate`) |
+| `""`/espacios en un `*_en` → `NULL` (analyze I6) | Normalización de trim en el service (T317) antes de persistir; pruebas en T319/T320 (los `CHECK BETWEEN 1 AND …` rechazan `''`) |
 | «Quiénes somos» ≤ 1.000 caracteres por idioma | `CHECK` de `home_about` + `max=1000` en el DTO (mensaje por campo) |
+| Horario: inicio obligario "HH:MM" y fin opcional posterior | `CHECK` de patrón + `CHECK (end_time IS NULL OR end_time > start_time)`; día 0–6 (selector localizado, nunca texto libre) |
 | Un solo enlace por red y red dentro del catálogo | `UNIQUE (network)` + `CHECK (network IN …)` + validación de host en el service (R3-7) |
 | Canal de WhatsApp duplicado exacto rechazado | `UNIQUE (kind, destination, name_es)` sobre valores normalizados + `409 conflict` en el service (R3-6) |
 | Destino de WhatsApp coherente con su tipo | Service (teléfono con tag `phone` si `direct`; URL https de dominio WhatsApp si `group`) — la BD guarda el destino normalizado |
 | Toda imagen lleva texto alternativo en español | `CHECK (logo_file IS NULL OR logo_alt_es IS NOT NULL)` (+ idem cover) y `required` condicional en el DTO |
-| Solo lo publicado es visible al visitante | Consultas `…Published` (única vía pública) + pruebas de "0 borradores expuestos" |
+| Solo lo publicado es visible al visitante | Consultas `…Published` (única vía pública) + pruebas de "0 borradores expuestos"; **la descarga de imágenes también**: `IsHomeFilePublished` (analyze C4) → `404` si el archivo no está referenciado por contenido publicado |
 | Sección sin elementos publicados → se omite | Service público (no publica claves vacías) + prueba de contrato |
 | Máx. 1 fila en identidad/quiénes somos/contacto | `UNIQUE (singleton)` + upsert en transacción con advisory lock (R3-4) |
 | Colecciones acotadas (≤50 servicios, ≤20 canales) | Service (constantes revisables) — el agregado del panel es un documento, no un listado paginado |
@@ -320,14 +333,17 @@ exige el permiso `portada` (FR-013/SC-002).
 ## Validación del modelo (qué comprobará la implementación)
 
 1. `migrate up` limpio desde F2 (`000004`) y `down` completo de `000005`/`000006` sin errores
-   (incluida la restauración de los CHECK de `admin_actions`: up → down → up, evidencia de RG3-6).
+   (incluida la restauración de los CHECK de `admin_actions`: up → down → up, evidencia de RG3-2).
 2. Pruebas de integración del repository (PostgreSQL real, `//go:build integration`):
    - upsert de singletons: dos `UpsertHome*` concurrentes dejan **una** fila con la última escritura;
    - `UNIQUE (network)`: segundo enlace para la misma red → error de restricción traducido a
      `conflict`;
    - `UNIQUE (kind, destination, name_es)` de WhatsApp → `conflict` solo en el duplicado exacto;
-   - `CHECK` de `publication_state`, de `day_of_week`, de `start_time` y de longitudes;
+   - `CHECK` de `publication_state`, de `day_of_week`, de `start_time`/`end_time` (patrón y
+     `end_time > start_time`) y de longitudes;
    - lecturas `…Published` nunca devuelven filas en `draft` (tampoco con texto `en` presente);
+   - `IsHomeFilePublished`: `TRUE` solo con la identidad publicada que referencia el archivo;
+     al retirar la identidad pasa a `FALSE` (la descarga responde `404`, analyze C4);
    - cada mutación deja su fila en `admin_actions` **en la misma transacción** (y al forzar un fallo
      en el registro, la mutación no se aplica);
    - inserción de `admin_actions` con `target_kind='content'`, `target_label` obligatorio y ambas FK

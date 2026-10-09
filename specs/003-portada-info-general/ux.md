@@ -87,7 +87,7 @@ Escalas (móvil → escritorio):
 
 ### 2.1 Visitante: primera vez (camino feliz, US1)
 
-1. Abre `https://<sitio>` → carga la **portada** (`/`), siempre en español de inicio (Decisión 8). Ve la cabecera con logo + nombre y los enlaces de sección.
+1. Abre `https://<sitio>` → carga la **portada** (`/`). Es su primera entrada sin preferencia guardada, así que se muestra en español (Decisión 8); si ya había elegido idioma en este dispositivo, respeta esa preferencia. Ve la cabecera con logo + nombre y los enlaces de sección.
 2. Baja naturalmente o usa los enlaces de ancla: **Quiénes somos · Horario · WhatsApp · Contacto · Redes** (solo aparecen las secciones con contenido publicado).
 3. En **Hero** conoce el nombre, la misión y la visión de la iglesia con su imagen.
 4. En **Horario** encuentra día, hora, nombre y lugar de cada servicio — sin entrar a ningún lado: la lista es la información.
@@ -100,7 +100,7 @@ Escalas (móvil → escritorio):
 1. En la cabecera toca el selector «Español / English» → toca **English**.
 2. La página entera cambia de inmediato (FR-010): interfaz y contenidos traducidos.
 3. Todo contenido **sin versión en inglés** se muestra en español, con su texto completo; **nunca** un hueco ni una traducción automática (FR-009). Sin aviso por elemento: el fallback es el comportamiento normal del sitio, no una incidencia que el visitante deba conocer ⟲.
-4. La elección se mantiene al navegar (las F4+ heredan el mismo contexto React de idioma) y entre visitas en el dispositivo (`localStorage`, confirmado por el humano el 2026-10-09); una visita **nueva** siempre entra en español.
+4. La elección se mantiene al navegar (las F4+ heredan el mismo contexto React de idioma). El idioma se guarda en `localStorage` del dispositivo: una **visita posterior respeta la preferencia guardada** (C3); **solo la primera visita sin preferencia** entra en español. Nunca se auto-detecta el idioma del navegador.
 5. Volver a «Español» restaura todo al instante, sin pérdida de información (US4 esc. 4).
 
 Errores del idioma: si el guardado del idioma falla (p. ej. navegación privada), no pasa nada grave — solo no persiste entre visitas; no se avisa.
@@ -172,9 +172,9 @@ Panel (F2, sin cambios):
 6. **Canales de WhatsApp**: tarjetas con nombre/propósito como título y botón de acción — «Escribir por WhatsApp» (número) o «Entrar al grupo» (enlace de grupo). Icono de WhatsApp siempre con texto.
 7. **Contacto**: tres datos con etiqueta y valor: **Dirección**, **Correo**, **Teléfono**; correo y teléfono como enlaces (`mailto:`, `tel:`); la dirección como texto plano.
 8. **Redes sociales** (en el contenido, no solo en el pie): una tarjeta/fila por red del catálogo publicada, con icono **+ nombre** («Facebook de la iglesia» y no solo un icono).
-9. **Pie** (`navy`): logo, nombre, redes sociales en versión compacta, selector de idioma y una frase corta de voz de marca si el equipo la carga (campo opcional, ejemplo: «Esta siempre será tu casa.») ⟲.
+9. **Pie** (`navy`): logo, nombre, redes sociales en versión compacta, selector de idioma y la frase de voz de marca como **cadena de interfaz i18n** (`footer.welcome`): «Esta siempre será tu casa.» (I4: no es campo del panel; no es contenido gestionado).
 
-**Contenido, no decoración**: nada de poema en el hero: el texto del hero son campos reales del panel (nombre, lema, misión, visión). Las frases de voz de marca **no las inventa el diseño**: son contenido editable.
+**Contenido, no decoración**: nada de poema en el hero: el texto del hero son campos reales del panel (nombre, lema, misión, visión). Las frases de voz de marca **no las inventa el diseño**: la del pie es una cadena de interfaz i18n (`footer.welcome`, I4), no contenido editable.
 
 **Estados de la portada**:
 
@@ -211,7 +211,7 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 
 ### 4.4 Panel — Identidad (pestaña)
 
-**Contenido**: **Nombre oficial** (no traducible, obligatorio) · **Lema** (es obligatorio; en opcional) ⟲ · **Misión** (es/en, opcional el inglés) · **Visión** (es/en) · **Logotipo**: subir/ver imagen con previsualización y **texto alternativo** obligatorio (es/en; se usa en el logo de cabecera y pie) · **Imagen de portada**: subir/ver con previsualización y texto alternativo obligatorio. Decisiones clave:
+**Contenido** (alineado al contrato, I1): **Nombre oficial** con par es/en (el español obligatorio, el inglés opcional) · **Lema** (opcional, es/en) · **Misión** (opcional, es/en) · **Visión** (opcional, es/en) · **Logotipo**: subir/ver imagen con previsualización y **texto alternativo** obligatorio en español (el inglés opcional; el alternativo se usa en el logo de cabecera y pie) · **Imagen de portada**: subir/ver con previsualización y texto alternativo obligatorio en español (en opcional). Los únicos campos obligatorios del módulo son el nombre oficial, «quiénes somos», la dirección, el correo y el teléfono (español base, N4/FR-015); misión, visión y lema se rellenan si el equipo quiere. Decisiones clave:
 - Recordatorio visible bajo el campo del logo con las reglas del manual: «El logo no se deforma, no cambia de color, no se gira ni lleva efectos. Sube el archivo tal como lo entregó el diseñador.» El sistema **no** valida (ni puede) el cumplimiento de marca: es guía ⟲.
 - El logo SIEMPRE se muestra respetando su proporción original (`object-contain`) en portada y cabecera; **la imagen de portada** sí se recorta visualmente al centro (`object-cover`) por diseño responsivo, con aviso en la ayuda: «La imagen se recorta ligeramente según el tamaño de pantalla.» ⟲
 - Un solo campo `alt` es/en por imagen (FR-019) ⟲.
@@ -224,8 +224,7 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 ### 4.6 Panel — Horario de servicios (pestaña)
 
 - **Listado**: tarjetas (móvil) / tabla (tableta+): día, hora, nombre, lugar con píldora de estado y acciones **Editar / Publicar / Retirar / Agregar**.
-- **Agregar servicio** → `Dialog` con formulario (estilo F2): **Día** (texto libre con ayuda «Ej.: Domingos»), **Hora** (texto libre con ayuda «Ej.: 10:00 a. m. − 12:00 m.») ⟲ (sin selector de hora: las iglesias escriben horas con rangos y variantes locales), **Nombre/descripción** (texto), **Lugar** (texto con ayuda «Ej.: Templo central»), y pestaña «English (opcional)» con los mismos 4 campos (FR-004). Nada se traduce por sí: el **día** es el texto traducible; la **hora** es igual en ambos idiomas ⟲.
-- Duplicado exacto: igual día+hora+nombre+lugar → rechazado con mensaje («Ya existe un servicio exactamente igual; puedes publicarlo una sola vez.») ⟲ por default de spec.
+- **Agregar servicio** → `Dialog` con formulario (estilo F2), alineado al contrato del `arquitecto` (C2): **Día** es un `Select` con las 7 opciones localizadas por i18n (`dayOfWeek`: 0 = domingo … 6 = sábado; valor estructural, nunca texto libre); **Hora inicio** (`startTime`, «HH:MM» en 24 h) es obligatoria; **Hora fin** (`endTime`, «HH:MM») es opcional y debe ser **posterior** a la de inicio; **Nombre** (`nameEs`/`nameEn`), **Descripción** (`descriptionEs`/`descriptionEn`) y **Lugar** (`placeEs`/`placeEn`) con pestaña «English (opcional)» (FR-004). Solo nombre, descripción y lugar son traducibles: el día no se ingresa en inglés (se presenta localizado por idioma) y la hora es el mismo dato en ambos; el formato de presentación («10:00 a. m. − 12:00 m.») lo resuelve la interfaz a partir del dato de 24 h.
 
 ### 4.7 Panel — Canales de WhatsApp (pestaña)
 
@@ -313,11 +312,11 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 | `WhatsAppSection` | Tarjetas de canal con CTA correcto por tipo. |
 | `SocialSection` | Fila/tarjeta por red del catálogo con icono + nombre — enlaces `target="_blank" rel="noopener"`. |
 | `ContactSection` | Dirección/correo/teléfono con enlaces nativos. |
-| `PublicFooter` | Logo, frase opcional, redes, idioma. |
+| `PublicFooter` | Logo, frase de interfaz `footer.welcome`, redes, idioma. |
 | `SectionSkeleton` | Esqueletos por sección (estilo brand: líneas `navy-soft`). |
 | `SocialIcon` | SVG inline propio (facebook, instagram, youtube, tiktok, spotify) — sin dependencias nuevas ⟲. |
 | `usePublicHomeData` | TanStack Query: una consulta pública (contrato del `arquitecto`); respeta caché y estructura por secciones. |
-| `LanguageProvider` / `useLanguage` / módulo i18n (`features/publico/i18n`) | Contexto de idioma de interfaz es/en; diccionario de cadenas; actualiza el `html lang`; `textContentFor(content, lang)` — helper de fallback al español (nunca campo vacío). |
+| `LanguageProvider` / `useLanguage` / módulo i18n (`features/publico/i18n`) | Contexto de idioma de interfaz es/en; diccionario de cadenas; actualiza el `html lang`. El fallback de contenido lo resuelve el servidor (FR-009, I2): el sitio público no reimplementa ese helper. |
 | `features/publico/messages.ts` | Catálogo de cadenas de interfaz es/en (texto plano, sin frameworks de i18n pesados) ⟲. |
 
 ### 6.3 Nuevos del panel (`frontend/src/features/informacion/`)
@@ -325,9 +324,9 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 | Componente / hook | Responsabilidad |
 |---|---|
 | `InformationPage` | Pestañas de las 6 piezas, banda de permiso (RequirePermission), errores comunes. |
-| `IdentityForm` | Nombre + lema/misión/visión es/en + subida **logo/portada** con previsualización y `alt` es/en + estado de publicación. |
+| `IdentityForm` | Nombre (es/en, obligatorio) + lema, misión y visión (opcionales, es/en) + subida **logo/portada** con previsualización y `alt` (es obligatorio, en opcional) + estado de publicación. |
 | `WhoWeAreForm` | Texto plano + contador 1.000 + pestañas de idioma + publicar/retirar. |
-| `ServiceForm` (en `Dialog`) | Alta/edición de servicio con pestaña «English (opcional)». |
+| `ServiceForm` (en `Dialog`) | Alta/edición de servicio: `Select` de día (7 opciones localizadas), hora inicio y hora fin opcional (24 h), nombre/descripción/lugar con par es/en (pestaña «English (opcional)») (C2). |
 | `ServicesList` | Tarjetas/tabla con píldora y acciones publicar/retirar por servicio. |
 | `WhatsAppForm` (en `Dialog`) | Nombre + tipo + destino único (teléfono validado, o URL de grupo) con ayuda contextual. |
 | `WhatsAppList` | Tarjetas/tabla por canal. |
@@ -354,7 +353,7 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 | Retirar | «Retirado de la portada. Estará disponible como borrador para publicarlo cuando quieras.» |
 | Guardar (crear servicio/canal/red) | «Servicio creado.» / «Canal de WhatsApp creado.» / «Enlace de {red} guardado.» + aviso informativo la primera vez: «Quedó en borrador: no lo verá el público hasta que lo publiques.» ⟲ |
 | Retirar (confirmación) | «"{nombre}" dejará de ser visible al público hasta que lo publiques de nuevo. Sus datos se conservan.» |
-| Campo obligatorio vacío | «Escribe {el nombre / la dirección / la misión…}.» |
+| Campo obligatorio vacío | «Escribe {el nombre / el texto de quiénes somos / la dirección / el correo / el teléfono…}.» |
 | Correo inválido | «Este correo no tiene el formato correcto.» |
 | Teléfono inválido | «Escribe un número de teléfono válido con código del país si corresponde.» |
 | Enlace de WhatsApp (grupo) mal formado | «Ese enlace no parece de WhatsApp. Pega la invitación del grupo: empieza por https://chat.whatsapp.com.» |
@@ -363,7 +362,8 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 | Canal duplicado | «Ya existe un canal igual (mismo nombre y mismo destino). Edita el que ya tienes o cámbiale el nombre.» |
 | Límite de «quiénes somos» | «{n} de 1.000 caracteres. Recorta {m} para poder guardar.» |
 | Sin versión en español | «El contenido en español es obligatorio: es el idioma base de la portada.» |
-| Imagen inválida | «Ese archivo no es una imagen válida. Usa JPG o PNG de menos de {tamaño} y prueba de nuevo.» ⟲ |
+| Imagen inválida | «Ese archivo no es una imagen válida. Usa JPG, PNG o WebP de menos de {tamaño} y prueba de nuevo.» (M3) |
+| Hora fin no válida | «La hora de fin debe ser posterior a la hora de inicio.» (C2) |
 | Error del sistema al guardar | «No se pudo completar la operación. Tus escritos están a salvo; vuelve a intentarlo en unos minutos.» |
 | Sin permiso desde el servidor | «No tienes acceso a esta sección. Pide a quien administra el panel que revise tu rol.» (igual que F2) |
 | Ayuda del logo | «El logotipo no se deforma, no cambia de color, no se gira y no lleva efectos: sube el archivo original.» |
@@ -392,7 +392,9 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 | `whatsapp.action.dm` | Escribir por WhatsApp | Chat on WhatsApp |
 | `whatsapp.action.group` | Entrar al grupo | Join the group |
 | `social.action` | Ver en {red} | Visit us on {network} |
-| `footer.welcome` | «Esta siempre será tu casa.» | «This will always be your home.» ⟲ (frase editable en panel) |
+| `brand.name` | Simiente Santa | Simiente Santa |
+| `footer.welcome` | «Esta siempre será tu casa.» | «This will always be your home.» |
+| `schedule.day.0` … `schedule.day.6` | Domingo · Lunes · Martes · Miércoles · Jueves · Viernes · Sábado | Sunday · Monday · Tuesday · Wednesday · Thursday · Friday · Saturday |
 | `error.load` | No pudimos cargar la información de la iglesia. Revisa tu conexión y vuelve a intentarlo. | We couldn't load the church information. Check your connection and try again. |
 | `error.retry` | Volver a intentar | Try again |
 | `error.partial` | No pudimos actualizar la información; estás viendo la última versión disponible. | We couldn't refresh the information; you're seeing the latest available version. |
@@ -401,7 +403,7 @@ La tarjeta «Gestión» de `InicioPage` añade el acceso **«Portada e informaci
 | `a11y.logo` | Logotipo de la iglesia Simiente Santa | Simiente Santa church logo |
 | `a11y.hero` | Imagen de la portada de la iglesia | Church cover image |
 
-Texto alternativo del logo y de la imagen de portada: **lo carga el equipo en el panel** (FR-019); las cadenas de arriba son el default si el equipo no definió un `alt` especializado.
+Texto alternativo del logo y de la imagen de portada: **lo carga el equipo en el panel** (FR-019); las cadenas `a11y.*` de arriba actúan como respaldo de interfaz (`brand.name` cubre el nombre de marca del *chrome* cuando aún no hay identidad publicada).
 
 ---
 
@@ -413,7 +415,7 @@ Texto alternativo del logo y de la imagen de portada: **lo carga el equipo en el
 - **Foco visible** siempre (anillo de 2 px; color según fondo — §1.4). El foco inicial no salta al cargar la portada; el `h1` es el punto de referencia al usar el «skip link».
 - **Semántica**: skip link; `<header>` / `<nav aria-label="Secciones de la portada">` / `<main>` / `<footer>`; un `<h1>` (nombre oficial) y jerarquía propia de sección (título Bebas + sección); tablas con `th` de ámbito en el listado de horarios (tableta+); tarjetas equivalentes con listas semánticas en móvil.
 - **Más que color**: estados Borrador/Publicado con texto siempre; iconos de redes y WhatsApp con **texto** visible junto al icono (principio F2).
-- **Imágenes**: el `alt` lo gestiona el equipo (obligatorio en es y para el logo y la portada, con en opcional); si una imagen falla, la sección conserva su texto y el diseño no se rompe; el logo lleva dimensiones explícitas para no desplazar el maquetado al cargar.
+- **Imágenes**: el `alt` lo gestiona el equipo (obligatorio en español para el logo y la portada, con inglés opcional, I1); si una imagen falla, la sección conserva su texto y el diseño no se rompe; el logo lleva dimensiones explícitas para no desplazar el maquetado al cargar.
 - **Contraste y letra**: reglas del §1.1; cuerpo 18 px; contraste AA en botones `accent` (texto navy sobre teal 6.7:1) y en focos sobre navy (anillo crema 11:1 aprox).
 - **Zoom / texto ampliado**: soportar 200 % con reflow sin pérdida (SC-008/FR-018); nada fija ancho en `px` para texto.
 - **Objetivos táctiles**: ≥ 44 px en todos los controles, incluidos los botones de canal y de redes (los CTAs van a 48 px de alto en móvil).
@@ -423,8 +425,8 @@ Texto alternativo del logo y de la imagen de portada: **lo carga el equipo en el
 
 ### 8.2 Internacionalización (Decisión 6 y Decisión 8)
 
-- **Interfaz** (siempre bilingüe): diccionario propio `es`/`en` sin librería externa; el idioma vive en un `LanguageProvider` (contexto React) y `localStorage` recuerda la elección del dispositivo entre visitas (confirmado por el humano el 2026-10-09); visita nueva → español; **no** se auto-detecta el idioma del navegador.
-- **Contenido** (por elemento): español obligatorio, inglés opcional. La función `textContentFor({ es, en }, lang)` devuelve `en` si existe y no está vacío; si no, `es`; **nunca** muestra vacío. El mismo helper se usa en el sitio público y en las pruebas del fallback.
+- **Interfaz** (siempre bilingüe): diccionario propio `es`/`en` sin librería externa; el idioma vive en un `LanguageProvider` (contexto React) y `localStorage` recuerda la elección del dispositivo entre visitas (decisión del humano, C3): una visita posterior **respeta la preferencia guardada** y solo la **primera visita sin preferencia** entra en español; **no** se auto-detecta el idioma del navegador.
+- **Contenido** (por elemento): español obligatorio, inglés opcional. El **fallback es/es→es no lo reimplementa el sitio público**: lo resuelve el servidor en la entrega (FR-009, I2 del reporte de análisis); el contenido llega ya resuelto en el idioma activo y el frontend nunca muestra un campo vacío. Un helper para pares es/en (si se necesita) solo aplica a los **formularios del panel** que gestionan ambos idiomas, nunca al sitio público.
 - **El panel NO cambia de idioma** (siempre español, FR-016); solo el sitio público tiene el `LanguageSwitcher`.
 - Las cadenas de interfaz del sitio público salen SIEMPRE del diccionario; **nunca** texto literal dentro del `JSX` (habilita la traducción de interfaz al 100 %, SC-006).
 
@@ -436,12 +438,12 @@ Texto alternativo del logo y de la imagen de portada: **lo carga el equipo en el
 |---|---|---|
 | D-1 ⟲ | Selector de idioma como **radios nativos** con ambos textos completos en la cabecera, sin auto-detección del navegador. | Un `select` compacto, o detección del idioma. |
 | D-2 | Publicación y retiro **por sección, cada una por separado** (decidido por el humano el 2026-10-09): identidad, quiénes somos y contacto cada uno por su cuenta, igual que los servicios, canales y redes por elemento; ninguna acción agrupa varias secciones. | Un solo «Publicar la portada» que grupa varias o todas las secciones de una vez. |
-| D-3 | **Hora de servicio** como texto libre con ayuda (permite rangos «10:00 a. m. − 12:00 m.»). | Selector de hora estructurado. |
+| D-3 | **Día y hora estructurados** (decidido por el `arquitecto`, C2): `dayOfWeek` 0–6 con `Select` de 7 opciones localizadas; `startTime` «HH:MM» 24 h obligatoria y `endTime` opcional, mayor que la de inicio; el formato de presentación («10:00 a. m. − 12:00 m.») lo resuelve la interfaz. | Datos como texto libre («Domingos», «10:00 a. m. − 12:00 m.») — descartado. |
 | D-4 | La portada sustituye a la página de F1 en `/`; «Estado del sistema» (F1) se mueve a **`/health`**, fuera de la navegación pública (**decidido por el humano el 2026-10-09**). | Mantener el estado como tarjeta integrada dentro de la portada. |
 | D-5 | **Sin menú hamburguesa** en la portada: anclas visibles en una fila desplazable de cabecera. | Menú plegable de cabecera. |
 | D-6 | Sin CTA especial si no hay canal de WhatsApp publicado (el hero no inventa envíos de datos que no existen). | Reservar espacio de CTA igualmente. |
 | D-7 | Un solo valor de **dirección/correo/teléfono** (sin sucursales ni variantes), según spec (FR-007, tres datos); los tres viven dentro de la sección Contacto (D-2). | Varios correos/teléfonos por fila. |
-| D-8 | **Alt obligatorio** de las imágenes (logo/portada) con versión es/en. | Alt solo en español. |
+| D-8 | **Alt obligatorio en español** de las imágenes (logo/portada), con inglés opcional (I1). | Alt solo en español sin opción de inglés, o inglés obligatorio también. |
 | D-9 | La imagen de portada se recorta (`object-fit: cover`); el logo siempre se conserva con `object-contain` (nunca se deforma). | Mostrar la imagen de portada sin recorte con barras. |
 | D-10 | El panel **no se repinta** con la paleta de marca en F3 (consistencia con F2); la identidad visual se aplica al sitio público. | Re-tintar completo el panel con la marca. |
 | D-11 | i18n **sin dependencias externas** (diccionario propio minimalista). | react-i18next y amigos. |
@@ -451,12 +453,14 @@ Texto alternativo del logo y de la imagen de portada: **lo carga el equipo en el
 
 ## 10. Notas para el `dev-frontend` / `qa-tester`
 
-- **La lógica con pruebas** está en: el helper de fallback `textContentFor` (sin inglés → español, nulo-seguro), el mapeo de secciones con publicación (ocultas si no hay nada publicado), validaciones de formularios en Zod (formatos de correo/teléfono/enlaces, límite 1.000, español obligatorio), el selector de idiomas (persistencia y cambio), los CTAs (construcción de `wa.me` a partir del número), y las anclas que responden al estado de publicación de cada sección.
-- **SC-006/FR-009** es central en pruebas: en inglés, con contenido sin inglés, la portada muestra el texto en español **en el mismo diseño**, y jamás campos vacíos. Caso de prueba con las cinco secciones y distintas mezclas idioma/estado.
+- **La lógica con pruebas** está en: el mapeo de secciones con publicación (ocultas si no hay nada publicado; el contenido llega **ya resuelto en idioma por el servidor** — el frontend no reinventa el fallback, I2), validaciones de formularios en Zod (formatos de correo/teléfono/enlaces, límite de 1.000, español obligatorio y, en el servicio, `dayOfWeek` 0–6 con `endTime` posterior a `startTime`, C2), el selector de idiomas (persistencia en `localStorage` y cambio, C3), los CTAs (construcción de `wa.me` a partir del número), y las anclas que responden al estado de publicación de cada sección.
+- **SC-006/FR-009** es central en pruebas: en inglés, con contenido sin inglés, la portada muestra el texto en español **en el mismo diseño** (resuelto por el servidor) y jamás campos vacíos. Caso de prueba con las cinco secciones y distintas mezclas idioma/estado.
 - **SC-002**: el `qa-tester` verifica **por cualquier vía** que no se exponga un borrador: el HTML público no contiene su texto, ni su imagen, ni su `alt`.
 - El **panel no se toca visualmente**: reutiliza los componentes de F2 tal cual; F3 solo añade el acceso con `hasPermission` en `PanelLayout` y la tarjeta en `InicioPage`.
 - El contexto de idioma debe alcanzar el HTML: `document.documentElement.lang` cambia entre `es` y `en`.
 - Subida de imágenes: previsualización con `FileReader` + validación de tipo y tamaño **antes** de enviar; el tamaño máximo lo fija el `arquitecto` en el contrato ⟲.
+- **Medios (C4/M6)**: las imágenes públicas se sirven por `GET /api/v1/media/{fileName}` **solo si el contenido que las usa está publicado** — si no, el endpoint responde `404` y la portada muestra su reserva visual (§4.1) — y el navegador las recibe con `Cache-Control: no-store`. Coherente con SC-002: un borrador no se filtra ni siquiera por la vía de la URL de la imagen. La previsualización del panel es local (`FileReader`) y no pasa por ese endpoint.
+- **SC-008 (accesibilidad) se verifica con un checklist manual de QA** (I7): en este alcance **no** hay auditoría automatizada (p. ej. axe). El ancho mínimo probado por el e2e es **320 px**.
 - La granularidad de publicación (por sección/por elemento, decisión D-2 del 2026-10-09) debe coincidir con la del contrato del backend.
 - **Verificar contra el Manual de marca** en la revisión visual: fuentes correctas (Bebas/Poppins/Playfair), proporción de color (70/20/10), logo sin efectos ni deformaciones, y el `alt` definido por el equipo en el panel.
 - La portada no incluye mapa: si el equipo lo quiere en el futuro, es una mejora aparte (fuera del alcance actual).

@@ -19,15 +19,23 @@
 # `400 invalid` con `details.file`/`details.fileSize` (no se añade `payload_too_large`).
 #
 # CAMBIOS EN ESQUEMAS EXISTENTES (aplicar en la fusión; son aditivos):
-#   - AdminActionItem.action: el enum crece con los 14 códigos `home.*`
+#   - AdminActionItem.action: el enum crece con los 15 códigos `home.*`
 #     (research R3-11.1): home.identity.update, home.about.update,
 #     home.contact.update, home.schedule.create/.update/.delete,
 #     home.whatsapp.create/.update/.delete, home.social.create/.update/.delete,
-#     home.publish, home.unpublish.
+#     home.image.upload, home.publish, home.unpublish. Regla exacta (analyze M5):
+#     el alta usa `home.*.create` aunque nazca publicada; `home.publish`/
+#     `home.unpublish` SOLO registran cambios de estado; la subida de imagen se
+#     audita con `home.image.upload` (analyze I8).
 #   - AdminActionItem.targetKind: el enum crece con `content` (elemento de la
 #     portada). Para `content`, `targetId` es `null` (los elementos de la portada
 #     no tienen FK en admin_actions) y `targetLabel` identifica el elemento
 #     ("Portada · <Sección> · <nombre>").
+#
+# NORMALIZACIÓN DE CAMPOS `*En` (analyze I6): todo campo `*En` (traducción al
+# inglés, opcional) acepta `""` o solo espacios y el servidor lo guarda como
+# `null` (trim antes de persistir). `null`/`""` significan "sin traducción" y
+# disparan el fallback `en → es` del servidor (FR-009).
 #
 # Formato uniforme (FR-012/FR-013 de F1): 2xx → el DTO de la operación;
 # 4xx/5xx → ErrorEnvelope. Salvedad documentada: GET /api/v1/media/{fileName}
@@ -149,11 +157,20 @@ paths:
       summary: Descarga pública de una imagen subida desde el panel
       description: |
         Sirve el archivo de imagen (logo o imagen de portada) cuyo nombre generó
-        el servidor en la subida (`img_<uuid>.<ext>`, research R3-8). El nombre se
-        valida con regex antes de tocar el disco (sin *path traversal*); la
-        respuesta lleva `X-Content-Type-Options: nosniff`, `Content-Disposition:
-        inline` y `Cache-Control: public, max-age=31536000, immutable` (el nombre
-        cambia en cada subida). Sin autenticación: las imágenes son públicas.
+        el servidor en la subida (`img_<uuid>.<ext>`, research R3-8). **Política de
+        publicación (FR-013/SC-002, analyze C4)**: solo se sirven archivos
+        **referenciados por contenido publicado** — en F3, el logo o la imagen de
+        portada de una identidad `published` —. Un archivo que no esté referenciado
+        por contenido publicado (elemento retirado a borrador, identidad en
+        borrador, subida huérfana o inexistente) responde `404 not_found`, y el
+        nombre que no cumple el patrón responde `400 invalid` (analyze M6).
+
+        El nombre se valida con regex antes de tocar el disco (sin *path
+        traversal*); la respuesta lleva `X-Content-Type-Options: nosniff`,
+        `Content-Disposition: inline` y **`Cache-Control: no-store`** (trade-off
+        de RG3-8: al depender la descarga del estado de publicación, una caché
+        `immutable` volvería a mostrar imágenes de elementos ya retirados). Sin
+        autenticación: la descarga es pública, pero limitada a lo publicado.
       security: []
       parameters:
         - name: fileName
@@ -166,6 +183,12 @@ paths:
       responses:
         "200":
           description: Binario de imagen (JPEG, PNG o WebP según la firma detectada en la subida).
+          headers:
+            Cache-Control:
+              description: Siempre `no-store` (la descarga depende del estado de publicación, RG3-8).
+              schema:
+                type: string
+                enum: [no-store]
           content:
             image/jpeg:
               schema:
@@ -230,8 +253,10 @@ paths:
         `POST /api/v1/admin/portada/imagenes`; un `null` explícito quita la imagen.
         `publicationState` controla la visibilidad del elemento (FR-013); si el
         elemento ya estaba publicado, los cambios guardados son visibles de
-        inmediato (FR-014). Auditoría: `home.identity.update` o
-        `home.publish`/`home.unpublish` si cambia el estado (FR-017).
+        inmediato (FR-014). Auditoría *(analyze M5)*: un cambio de datos registra
+        `home.identity.update`; un cambio solo de estado registra
+        `home.publish`/`home.unpublish`; un cambio que modifica **datos y estado**
+        deja **ambas** filas (FR-017).
       security:
         - sessionCookie: []
       requestBody:
@@ -264,8 +289,10 @@ paths:
       description: |
         Texto **plano** con límite de 1.000 caracteres por idioma (FR-003):
         `textEs` obligatorio, `textEn` opcional (FR-008). Se guarda íntegro, sin
-        interpretar (constitución §IV). Auditoría: `home.about.update` o
-        `home.publish`/`home.unpublish` (FR-017).
+        interpretar (constitución §IV). Auditoría *(analyze M5)*: un cambio de datos
+        registra `home.about.update`; un cambio solo de estado registra
+        `home.publish`/`home.unpublish`; un cambio que modifica **datos y estado**
+        deja **ambas** filas (FR-017).
       security:
         - sessionCookie: []
       requestBody:
@@ -298,8 +325,10 @@ paths:
       description: |
         Dirección física (es obligatoria, en opcional), correo electrónico y
         teléfono (FR-007), todos obligatorios salvo la traducción (FR-015):
-        correo con formato de correo y teléfono con el criterio de F2. Auditoría:
-        `home.contact.update` o `home.publish`/`home.unpublish` (FR-017).
+        correo con formato de correo y teléfono con el criterio de F2. Auditoría
+        *(analyze M5)*: un cambio de datos registra `home.contact.update`; un cambio
+        solo de estado registra `home.publish`/`home.unpublish`; un cambio que
+        modifica **datos y estado** deja **ambas** filas (FR-017).
       security:
         - sessionCookie: []
       requestBody:
@@ -330,12 +359,15 @@ paths:
       operationId: createScheduleItem
       summary: Crea un servicio del horario
       description: |
-        Un servicio tiene día (0=domingo…6=sábado), hora ("HH:MM", 24 h),
-        nombre/descripción y lugar (FR-004/Q3); nombre y lugar en español son
-        obligatorios, todo lo demás traducible es opcional (FR-008). Nace en
-        `draft` salvo que se envíe `publicationState: published`. Máximo 50
-        servicios (constante del servidor). Auditoría: `home.schedule.create`
-        (FR-017).
+        Un servicio tiene día (0=domingo…6=sábado, **selector localizado por i18n,
+        nunca texto libre**), inicio "HH:MM" (24 h) y **fin opcional** `endTime`
+        ("HH:MM", posterior al inicio) para rangos tipo «10:00 a. m. − 12:00 m.»;
+        nombre/descripción y lugar son traducibles (FR-004/Q3): nombre y lugar en
+        español son obligatorios, todo lo demás traducible es opcional (FR-008).
+        Nace en `draft` salvo que se envíe `publicationState: published`. Máximo 50
+        servicios (constante del servidor). Auditoría *(analyze M5)*: el alta
+        registra **siempre** `home.schedule.create`, aunque nazca publicada
+        (`home.publish`/`home.unpublish` solo registran cambios de estado, FR-017).
       security:
         - sessionCookie: []
       requestBody:
@@ -369,8 +401,9 @@ paths:
         Actualiza los campos presentes (al menos uno). `publicationState` publica
         o retira **este** elemento por separado (FR-013). Sobre un elemento ya
         publicado, los cambios guardados son visibles de inmediato (FR-014).
-        Auditoría: `home.schedule.update`, o `home.publish`/`home.unpublish` si
-        cambia el estado (FR-017).
+        Auditoría *(analyze M5)*: un cambio de datos registra `home.schedule.update`;
+        un cambio solo de estado registra `home.publish`/`home.unpublish`; un cambio
+        que modifica **datos y estado** deja **ambas** filas (FR-017).
       security:
         - sessionCookie: []
       parameters:
@@ -468,7 +501,9 @@ paths:
       summary: Edita un canal de WhatsApp (y/o lo publica o retira)
       description: |
         Igual que `updateScheduleItem` para un canal de WhatsApp (FR-005/FR-013/FR-014).
-        Auditoría: `home.whatsapp.update`, o `home.publish`/`home.unpublish`.
+        Auditoría *(analyze M5)*: un cambio de datos registra `home.whatsapp.update`;
+        un cambio solo de estado registra `home.publish`/`home.unpublish`; un cambio
+        que modifica **datos y estado** deja **ambas** filas (FR-017).
       security:
         - sessionCookie: []
       parameters:
@@ -563,7 +598,9 @@ paths:
       summary: Edita el enlace de una red social (y/o lo publica o retira)
       description: |
         Igual que `updateScheduleItem` para un enlace de red (FR-006/FR-013/FR-014).
-        Auditoría: `home.social.update`, o `home.publish`/`home.unpublish`.
+        Auditoría *(analyze M5)*: un cambio de datos registra `home.social.update`;
+        un cambio solo de estado registra `home.publish`/`home.unpublish`; un cambio
+        que modifica **datos y estado** deja **ambas** filas (FR-017).
       security:
         - sessionCookie: []
       parameters:
@@ -626,10 +663,13 @@ paths:
         R3-8), con tope de 8 MB (`UPLOAD_MAX_BYTES`). El resultado se referencia
         desde `PUT /api/v1/admin/portada/identidad` (`logoFile`/`coverImageFile`).
         La subida **no** cambia contenido visible: no aparece en la portada hasta
-        que la identidad que la referencia se guarda publicada. Auditoría: la
-        referencia se registra al guardar la identidad (`home.identity.update`);
-        una subida sin referencia no deja huella visible (se gestiona como archivo
-        huérfano por el reemplazo/borrado best-effort del servicio).
+        que la identidad que la referencia se guarda publicada. Auditoría
+        *(analyze I8)*: cada subida deja su fila **`home.image.upload`**
+        (`targetLabel` = `Portada · Imagen · <fileName>`) en la misma operación
+        (fail-closed: si el registro falla, se aborta la subida y se elimina el
+        archivo); la referencia a la identidad se registra aparte con
+        `home.identity.update` al guardar. Los archivos huérfanos (subidas sin
+        referencia) se eliminan con el reemplazo/borrado best-effort del servicio.
       security:
         - sessionCookie: []
       requestBody:
@@ -775,6 +815,12 @@ components:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
           description: Hora de inicio ("HH:MM", 24 h).
+        endTime:
+          type: [string, "null"]
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: |
+            Hora de fin opcional ("HH:MM", 24 h; posterior a `startTime`) para
+            rangos tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
         name:
           type: string
           maxLength: 160
@@ -951,7 +997,8 @@ components:
       required: [nameEs, publicationState]
       description: |
         Reemplazo completo (PUT). `nameEs` obligatorio (FR-015); el resto, con
-        traducción en inglés opcional (FR-008). `logoFile`/`coverImageFile`
+        traducción en inglés opcional (FR-008). Todo campo `*En` acepta `""`/solo
+        espacios y se guarda como `null` (analyze I6). `logoFile`/`coverImageFile`
         referencian archivos ya subidos; si hay imagen, `logoAltEs`/
         `coverImageAltEs` son obligatorios (FR-019). `null` explícito quita la
         imagen correspondiente.
@@ -1027,7 +1074,7 @@ components:
     AboutInput:
       type: object
       required: [textEs, publicationState]
-      description: Texto plano (FR-003); `textEs` obligatorio y ≤1.000 caracteres (FR-015).
+      description: Texto plano (FR-003); `textEs` obligatorio y ≤1.000 caracteres (FR-015). `textEn` acepta `""`/espacios y se guarda como `null` (analyze I6).
       properties:
         textEs:
           type: string
@@ -1071,7 +1118,7 @@ components:
     ContactInput:
       type: object
       required: [addressEs, email, phone, publicationState]
-      description: Dirección, correo y teléfono son obligatorios (FR-015); `addressEn` opcional.
+      description: Dirección, correo y teléfono son obligatorios (FR-015); `addressEn` opcional (`""`/espacios → `null`, analyze I6).
       properties:
         addressEs:
           type: string
@@ -1105,6 +1152,12 @@ components:
         startTime:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        endTime:
+          type: [string, "null"]
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: |
+            Hora de fin opcional ("HH:MM", posterior a `startTime`) para rangos
+            tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
         nameEs:
           type: string
           minLength: 1
@@ -1142,9 +1195,11 @@ components:
       type: object
       required: [dayOfWeek, startTime, nameEs, placeEs]
       description: |
-        Alta de un servicio (FR-004/FR-015): día, hora, nombre y lugar en español
-        obligatorios; descripción y traducciones al inglés opcionales. Sin `id`
-        (lo genera el servidor) ni `createdAt`/`updatedAt`.
+        Alta de un servicio (FR-004/FR-015): día (0–6, selector localizado, nunca
+        texto libre), inicio y nombre/lugar en español obligatorios; **`endTime`
+        (fin "HH:MM") es opcional** para rangos (analyze C2), al igual que la
+        descripción y las traducciones al inglés (`""`/espacios → `null`, analyze
+        I6). Sin `id` (lo genera el servidor) ni `createdAt`/`updatedAt`.
       properties:
         dayOfWeek:
           type: integer
@@ -1153,6 +1208,12 @@ components:
         startTime:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        endTime:
+          type: [string, "null"]
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: |
+            Hora de fin opcional ("HH:MM", posterior a `startTime`) para rangos
+            tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
         nameEs:
           type: string
           minLength: 1
@@ -1184,7 +1245,8 @@ components:
       minProperties: 1
       description: |
         Edición parcial de un servicio: se actualizan los campos presentes (al
-        menos uno). Un campo con `null` explícito vacía su traducción al inglés.
+        menos uno). Un campo `*En` con `null` o `""`/espacios vacía su traducción
+        al inglés (analyze I6); `endTime: null` quita la hora de fin.
       properties:
         dayOfWeek:
           type: integer
@@ -1193,6 +1255,12 @@ components:
         startTime:
           type: string
           pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        endTime:
+          type: [string, "null"]
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: |
+            Hora de fin opcional ("HH:MM", posterior a `startTime`) para rangos
+            tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
         nameEs:
           type: string
           minLength: 1
@@ -1261,6 +1329,7 @@ components:
         Alta de un canal (FR-005/FR-015). `kind=direct` exige teléfono con
         formato válido; `kind=group` exige URL `https` de `chat.whatsapp.com` o
         `wa.me`. El duplicado exacto (kind + destino + nombre normalizados) → 409.
+        `nameEn` acepta `""`/espacios y se guarda como `null` (analyze I6).
       properties:
         nameEs:
           type: string
@@ -1285,7 +1354,7 @@ components:
     WhatsappChannelPatch:
       type: object
       minProperties: 1
-      description: Edición parcial de un canal (al menos un campo presente).
+      description: Edición parcial de un canal (al menos un campo presente). `nameEn` acepta `""`/espacios y se guarda como `null` (analyze I6).
       properties:
         nameEs:
           type: string

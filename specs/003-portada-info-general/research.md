@@ -22,9 +22,14 @@ contenido. ¿Cómo se guarda? F4–F9 reutilizarán el patrón.
 
 **Decisión.** Una columna por idioma y por campo traducible: `name_es TEXT NOT NULL`,
 `name_en TEXT NULL`, `text_es`, `text_en`… Los campos **no traducibles** (URLs, teléfono, correo,
-destino de WhatsApp, `day_of_week`, `start_time`, archivos de imagen) van **sin** sufijo. La regla
-"español obligatorio, inglés opcional" (FR-008, Decisión 8) es una propiedad de esquema:
-`*_es NOT NULL` + `*_en NULL`.
+destino de WhatsApp, `day_of_week`, `start_time`/`end_time`, archivos de imagen) van **sin** sufijo.
+La regla "español obligatorio, inglés opcional" (FR-008, Decisión 8) es una propiedad de esquema:
+`*_es NOT NULL` + `*_en NULL`. **Normalización de lo opcional** *(fijada por el `analyze` I6)*: todo
+campo `*_en` llega como `""` o solo espacios → se guarda como **`NULL`** (trim en el service; nunca
+`''`, que los `CHECK` de longitud —`BETWEEN 1 AND …`— rechazan). Es la única forma de representar
+"sin traducción" y la usan a la vez el panel (US2 esc. 5: dejar el campo en inglés vacío y poder
+guardar), el contrato (`""` aceptado y normalizado a `null`) y el público (un `NULL` dispara el
+fallback `en → es`, R3-2).
 
 **Alternativas descartadas.**
 
@@ -62,7 +67,12 @@ explícito y difícil de cachear; además la spec dice que **no** se analiza el 
 un endpoint por idioma (`/portada/en`, `/portada/es`) (más rutas para lo mismo).
 
 **Además.** `lang` solo admite `es|en` (cualquier otro valor → `400 invalid`); la respuesta lleva
-`lang` para que el cliente sepa qué resolvió y `Cache-Control: no-store` (R3-13).
+`lang` para que el cliente sepa qué resolvió y `Cache-Control: no-store` (R3-13). **Sin fallback en
+el cliente** *(fijado por el `analyze` I2)*: el sitio público consume strings ya resueltos y **no**
+vuelve a aplicar la regla `en → es` (una segunda fuente de fallback podría divergir y sus pruebas no
+probarían nada real). Si hace falta un helper para mostrar pares `{es, en}` —p. ej. la previsualización
+de los formularios del panel, que sí editan ambos idiomas— vive en `features/informacion/` y solo se
+usa ahí.
 
 ---
 
@@ -113,20 +123,28 @@ estado "a medio crear" en la BD); índice parcial `UNIQUE ((true))` (funciona, p
 
 ---
 
-## R3-5. Horario de servicios: campos estructurados (`day_of_week`, `start_time` HH:MM)
+## R3-5. Horario de servicios: campos estructurados (`day_of_week`, `start_time`, `end_time` opcional)
 
 **Pregunta.** Q3: cada servicio tiene día, hora, nombre/descripción y lugar, y sus textos son
 traducibles. ¿Día y hora como texto o como valores?
 
-**Decisión.** `day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6)` (0 = domingo) y
-`start_time TEXT NOT NULL CHECK (start_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$')` ("HH:MM", 24 h).
-Día y hora **no** son traducibles: el nombre del día lo localiza el frontend con su diccionario
-(R3-9) y la hora se muestra como valor. Los textos que sí son traducibles (nombre/descripción y
-lugar) van con el patrón `*_es`/`*_en` (R3-1). `sort_order INTEGER NOT NULL DEFAULT 0` fija el orden
-de la lista (por defecto: `sort_order, id`).
+**Decisión** *(fijada tras el `analyze` C2 del 2026-10-09; `ux.md` se alinea a ella — D-3 queda
+retirada)*. `day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6)` (0 = domingo …
+6 = sábado), `start_time TEXT NOT NULL CHECK (start_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$')`
+("HH:MM", 24 h) y **`end_time TEXT NULL`** con el mismo patrón y
+`CHECK (end_time IS NULL OR end_time > start_time)`: permite rangos tipo «10:00 a. m. − 12:00 m.»
+y el fin es **opcional** (un servicio puede no tener hora de cierre). Día y hora **no** son
+traducibles: el día se elige en un **selector con las 7 opciones localizadas por i18n** (el número es
+el dato; la traducción es de interfaz, nunca texto libre) y la hora se captura y se enseña como
+valor "HH:MM" (el formato a.m./p.m. es presentación del cliente). Los textos que sí son traducibles
+(nombre/descripción y lugar) van con el patrón `*_es`/`*_en` (R3-1). `sort_order INTEGER NOT NULL
+DEFAULT 0` fija el orden de la lista (por defecto: `sort_order, id`).
 
-**Alternativas descartadas.** `day_es`/`day_en` como texto libre (permite "lunes", "Lunes", "LUN"
-y "dom" como filas distintas, imposible de ordenar ni de traducir sin tocar datos); columna
+**Alternativas descartadas.** `day_es`/`day_en` como texto libre ("Domingos", "dom"; era la
+propuesta de `ux.md` D-3: permite el mismo día en filas distintas, imposible de ordenar ni de
+traducir sin tocar datos y sin validación FR-015); hora como texto libre "10:00 a. m. − 12:00 m."
+(el rango se modela mejor con `start_time` + `end_time` y el formato lo localiza la interfaz);
+`start_time` solo, sin `end_time` (no admite el rango que la UX quiere mostrar); columna
 `day_time TIMESTAMPTZ` (mezcla fecha y hora para un horario semanal recurrente); tipo `TIME` de
 PostgreSQL (correcto semánticamente, pero obliga a convertir `pgtype.Time` ↔ cadena "HH:MM" en el
 repository y en el contrato sin ganancia visible: el valor se muestra, no se calcula; el `CHECK` por
@@ -204,6 +222,21 @@ otro sitio es un error frecuente que conviene avisar al guardar, no al navegar).
   `t.TempDir()`.
 - Subida con `POST /api/v1/admin/portada/imagenes` (multipart, `net/http` estándar) y descarga
   pública con `GET /api/v1/media/{fileName}` (R3-13).
+- **Política de descarga (decisión del `analyze` C4, 2026-10-09)**: la descarga **solo** sirve
+  archivos **referenciados por contenido publicado** — en F3, el logo o la imagen de portada de una
+  **identidad `published`** —. Un archivo que no esté referenciado por contenido publicado
+  (elemento retirado a borrador, identidad en borrador, subida huérfana o inexistente) responde
+  **`404 not_found`**; un nombre que no cumple el patrón responde **`400 invalid`** (M6). Así
+  FR-013/SC-002 ("por ninguna vía") se cumple también en el camino de archivos: retirar un elemento
+  hace que su imagen deje de servirse sin borrarla (al republicar vuelve a verse, FR-014). La
+  comprobación es una consulta por nombre sobre las tablas de contenido (`IsHomeFilePublished`, variante
+  `…Published`); F4–F9 la amplían con sus tablas cuando tengan imágenes.
+- **Caché: `Cache-Control: no-store` también en imágenes** (trade-off consciente, RG3-8): al
+  depender la descarga del estado actual, una caché `immutable` de largo plazo volvería a mostrar la
+  imagen de un elemento ya retirado (quien conoció la URL la seguiría viendo). Se sacrifica el
+  rendimiento de la caché por cumplir FR-013; para un sitio con 1–2 imágenes el coste es nulo. Plan
+  B (solo con aprobación humana): URL **versionada** por publicación + `immutable`, que eximiría de
+  la comprobación por petición aceptando la excepción "URL opaca no descubrible".
 - **Seguridad del archivo** (constitución §IV; "evitar ejecución de contenido", FR-015):
   - nombre **generado** por el servidor (`img_<uuid>.<ext>`): el nombre del cliente nunca se usa en
     el disco ni en la ruta (elimina *path traversal* y colisiones);
@@ -281,7 +314,7 @@ ya siembra `('portada', 'Portada e información general')` en `permissions`: **e
   idéntica a la de F2 (`403 forbidden`, mensaje genérico que no revela el permiso) y **queda
   registrada** en `admin_actions` con `result='denied'` (R3-11);
 - frontend: `PORTADA = 'portada'` en `lib/permissions.ts`, guard `RequirePermission code={PORTADA}`
-  en `/panel/portada`, entrada nueva en el menú filtrado por permisos y **`isPermissionAvailable`**
+  en `/panel/informacion`, entrada nueva en el menú filtrado por permisos y **`isPermissionAvailable`**
   deja de marcar `portada` como "Disponible más adelante" (`features/roles/permissions.ts`).
 
 **Alternativas descartadas.** Crear un permiso nuevo (rompería Decisión 5 y el catálogo de F2: la
@@ -308,7 +341,7 @@ importe a otro.
    `audit.Action` → `InsertAdminActionParams` (~10 líneas) se repite en el repository de `portada`
    (ver Complexity Tracking del plan).
 2. **El registro cerrado de acciones crece** en `platform/audit` (plumbing compartido, ya define
-   `ActionCodes`): 14 códigos nuevos `home.*` (R3-11.1) y el `TargetKind` `content`. La migración
+   `ActionCodes`): 15 códigos nuevos `home.*` (R3-11.1) y el `TargetKind` `content`. La migración
    `000006` extiende los `CHECK` de `admin_actions` (`action`, `target_kind` y la coherencia de
    objetivo) para que la BD siga siendo el registro cerrado. Los objetivos de contenido **no tienen
    FK** (son 6 tablas distintas): van con `target_kind='content'`, `target_user_id`/`target_role_id`
@@ -330,18 +363,31 @@ importe a otro.
 
 | Código | Cuándo |
 |---|---|
-| `home.identity.update` | guardar la identidad (incluye subir/reemplazar logo o imagen de portada) |
+| `home.identity.update` | guardar la identidad (referencias a logo/imagen de portada incluidas) |
 | `home.about.update` | guardar «quiénes somos» |
 | `home.contact.update` | guardar los datos de contacto |
 | `home.schedule.create` / `.update` / `.delete` | alta, edición y borrado de un servicio del horario |
 | `home.whatsapp.create` / `.update` / `.delete` | alta, edición y borrado de un canal de WhatsApp |
 | `home.social.create` / `.update` / `.delete` | alta, edición y borrado de un enlace de red social |
-| `home.publish` / `home.unpublish` | publicar o retirar **cualquier** elemento (el `targetLabel` dice cuál) |
+| `home.image.upload` | subir una imagen (logo/portada) al panel (`analyze` I8: la subida escribe disco y se audita por sí misma) |
+| `home.publish` / `home.unpublish` | **solo** un cambio de estado: publicar o retirar un elemento existente (el `targetLabel` dice cuál) |
 
-Cuando un `PATCH` cambia a la vez datos y estado de publicación, se registra **una** acción con el
-código de publicación (`home.publish`/`home.unpublish`), igual que F2 prefiere `user.activate` sobre
-`user.update` cuando cambia el estado. El detalle valores antes/después **no** se registra: la spec
-lo deja como default deseable pero revisable (Assumptions de F3, igual que en F2).
+**Regla exacta de qué código corresponde** *(fijada por el `analyze` M5)*:
+
+- **Alta** (`create`, nazca en `draft` o `published`) → siempre `home.<sección>.create`
+  (un alta ya publicada **no** registra `home.publish`).
+- **Edición** de datos sin tocar el estado → `home.<sección>.update`.
+- **Cambio de estado** sobre un elemento existente → `home.publish` / `home.unpublish`.
+- Un `PATCH` que cambia **a la vez** datos y estado deja **dos filas** en la misma transacción
+  (`home.<sección>.update` + `home.publish`/`home.unpublish`), de modo que "qué editó" queda
+  completo y `home.publish`/`home.unpublish` **solo** significan cambio de estado.
+- **Subida de imagen** → `home.image.upload` con `target_label` = `Portada · Imagen · <fileName>`;
+  si el registro falla, la subida se aborta y el archivo se elimina (fail-closed, coherente con el
+  edge case). La referencia final de la imagen a la identidad se registra aparte con
+  `home.identity.update` al guardar.
+
+El detalle valores antes/después **no** se registra: la spec lo deja como default deseable pero
+revisable (Assumptions de F3, igual que en F2).
 
 **Alternativas descartadas.** Que `portada` escriba `admin_actions` con SQL propio duplicado (dos
 paquetes con SQL de la misma tabla, contra R2); que `usuarios` conozca las rutas de F3 en
@@ -358,13 +404,27 @@ logotipo). ¿Dónde viven los tokens y el logo?
 
 **Decisión.** Sí, se versionan en el repo:
 
-- **Tokens de tema** en frontend: variables CSS en `frontend/src/index.css`
-  (`--color-azul: #1a2b4a` (70 %), `--color-turquesa: #00c9a7`, `--color-blanco: #ffffff`,
-  `--color-crema: #F5F2EC`, `--color-naranja: #ff6b3d`, `--color-verde: #217638`) expuestas en el
-  tema de Tailwind (`tailwind.config`), y familias tipográficas
-  (`--font-titulos: 'Bebas Neue'`, `--font-texto: 'Poppins'`, `--font-enfasis: 'Playfair Display'`).
-  La aplicación concreta (composición, jerarquía) la define `disenador-ux` en `ux.md`; el plan fija
-  los nombres de los tokens para que el diseño no invente una paleta paralela.
+- **Tokens de tema** en frontend: variables CSS en `frontend/src/index.css` expuestas en el tema de
+  Tailwind (`tailwind.config`) y familias tipográficas. **Nomenclatura única de tokens (fijada por
+  el `analyze` I5: la de `ux.md` §1, la más rica; un solo nombre por token)**:
+
+  | Token | Valor | Equivalente del Manual |
+  |---|---|---|
+  | `navy` | `#1a2b4a` | azul (70 %) |
+  | `navy-soft` | derivado de `navy` | azul suave (soportes, esqueletos) |
+  | `teal` | `#00c9a7` | turquesa |
+  | `teal-strong` | derivado de `teal` | turquesa intenso (estados) |
+  | `white` | `#ffffff` | blanco |
+  | `cream` | `#F5F2EC` | crema |
+  | `coral` | `#ff6b3d` | naranja (complementario) |
+  | `leaf` | `#217638` | verde (complementario) |
+  | `--font-display` | `'Bebas Neue'` | títulos |
+  | `--font-sans` | `'Poppins'` | texto general |
+  | `--font-emotiva` | `'Playfair Display'` | énfasis emocional |
+
+  No existen alias (`--color-azul`, `--font-titulos`… quedan **retirados**): quien escriba CSS usa
+  solo estos nombres. La aplicación concreta (composición, jerarquía) la define `disenador-ux` en
+  `ux.md`; el plan **adopta** su nomenclatura para que el diseño no invente una paleta paralela.
 - **Tipografías autoalojadas** con `@fontsource/bebas-neue`, `@fontsource/poppins` y
   `@fontsource/playfair-display` (dependencias npm **solo de build**): el sitio carga sin depender de
   un CDN de terceros (mejor para conexiones lentas —el público objetivo— y sin llamadas a terceros).
@@ -393,7 +453,7 @@ el recurso del repo no es contenido editorial y por tanto no contradice FR-013 �
 | Superficie | Rutas | Protección |
 |---|---|---|
 | Pública (visitante) | `GET /api/v1/portada?lang=es\|en` | ninguna (solo lectura); **`Cache-Control: no-store`** |
-| Pública (archivos) | `GET /api/v1/media/{fileName}` | ninguna; `Cache-Control: public, max-age=31536000, immutable` (el nombre lleva UUID: cada subida es un nombre nuevo) |
+| Pública (archivos) | `GET /api/v1/media/{fileName}` | ninguna; **solo** archivos referenciados por contenido **publicado** (R3-8, `analyze` C4) — el resto, `404`; `Cache-Control: no-store` (trade-off de RG3-8: la descarga depende del estado actual, así que no puede ser `immutable`) |
 | Panel | `GET /api/v1/admin/portada` y las mutaciones `PUT/PATCH/POST/DELETE` de identidad, quiénes somos, contacto, horario, WhatsApp, redes e imágenes | `AdminChain('portada')` de F2 (sesión + CSRF + permiso `portada`) |
 
 `no-store` en la portada pública garantiza SC-003 ("los cambios guardados son visibles desde la
@@ -514,19 +574,19 @@ es un error de producto evidente para el público objetivo).
 
 | # | Decisión | Un vistazo |
 |---|---|---|
-| R3-1 | Patrón bilingüe | Columnas `*_es` (obligatorio) / `*_en` (opcional) por campo traducible; reutilizable en F4–F9 |
+| R3-1 | Patrón bilingüe | Columnas `*_es` (obligatorio) / `*_en` (opcional) por campo traducible; `""`/espacios en `*_en` → `NULL`; reutilizable en F4–F9 |
 | R3-2 | Localización | El servidor resuelve `?lang=es\|en` con fallback `en → es` por campo |
 | R3-3 | Publicación | `publication_state` por elemento (identidad, «quiénes somos» y contacto: cada singleton es un elemento publicable **por separado**); el público solo ve `published`; secciones vacías omitidas; se publica al guardar (FR-014) |
 | R3-4 | Singletons | `singleton BOOLEAN` + `UNIQUE` + upsert con advisory lock |
-| R3-5 | Horario | `day_of_week` 0–6 + `start_time` "HH:MM" + textos `es/en` + `sort_order` |
+| R3-5 | Horario | `day_of_week` 0–6 (selector localizado, no texto libre) + `start_time` "HH:MM" + `end_time` opcional (rango) + textos `es/en` + `sort_order` |
 | R3-6 | WhatsApp | `kind` direct/group, destino normalizado, duplicado literal (kind+destino+nombre) → 409 |
 | R3-7 | Redes | Catálogo fijo en `CHECK`, `UNIQUE(network)`, hosts oficiales validados |
-| R3-8 | Imágenes | Disco local (`UPLOAD_DIR`) + volumen Docker `uploads_data`; firma binaria; sin SVG; 8 MB; nombre generado; `/api/v1/media/{file}` |
+| R3-8 | Imágenes | Disco local (`UPLOAD_DIR`) + volumen Docker `uploads_data`; firma binaria; sin SVG; 8 MB; nombre generado; `/api/v1/media/{file}` **solo** sirve archivos de contenido publicado (404 en otro caso) con `no-store` |
 | R3-9 | i18n frontend | Provider propio con diccionarios tipados es/en; memoria en `localStorage` entre visitas (primera visita sin preferencia → español; sin auto-detección del navegador; FR-010 ajustado por el humano el 2026-10-09) |
 | R3-10 | Permisos | Se activa `portada` ya sembrado por F2; `AdminChain('portada')`; guard `RequirePermission` |
-| R3-11 | Auditoría | `InsertAdminAction` compartido en la transacción de la mutación; 14 códigos `home.*` + `target_kind='content'` (migración 000006); denegaciones resueltas por el dominio F3 |
-| R3-12 | Marca | Tokens en el tema (CSS vars + Tailwind), `@fontsource` ×3, logo versionado en el repo con sus reglas |
-| R3-13 | Rutas y caché | `GET /api/v1/portada` (`no-store`), `GET /api/v1/media/{file}` (immutable), panel en `/api/v1/admin/portada` |
+| R3-11 | Auditoría | `InsertAdminAction` compartido en la transacción de la mutación; 15 códigos `home.*` (incl. `home.image.upload`) + `target_kind='content'` (migración 000006); `home.publish/unpublish` solo para cambios de estado; denegaciones resueltas por el dominio F3 |
+| R3-12 | Marca | Tokens con la nomenclatura única de `ux.md` (`navy`, `teal`, `cream`, `coral`, `leaf`, `--font-display/sans/emotiva`), `@fontsource` ×3, logo versionado en el repo con sus reglas |
+| R3-13 | Rutas y caché | `GET /api/v1/portada` y `GET /api/v1/media/{file}` (`no-store`; la descarga exige contenido publicado), panel en `/api/v1/admin/portada` |
 | R3-14 | Validación | Tag `url` nuevo en `platform/validate`; límites de longitud y colecciones acotadas |
 | R3-15 | Rutas SPA | `/` = portada; `StatusPage` → `/health` (ruta de la SPA; `/healthz` de backend intacto) |
 | R3-16 | Dependencias | 0 nuevas en backend; 3 tipografías `@fontsource` en frontend |

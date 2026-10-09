@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
-| Fase | 3/9 · Tareas y coherencia |
+| Fase | 4/9 · Implementar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Generar `tasks.md` (`arquitecto`) y correr `analyze` (`revisor-codigo`); luego Fase 4 (implementar) |
+| Próximo paso | Implementar tareas de `tasks.md` por capa (empezando por `[db]`: T303–T308); un commit por tarea |
 | Bloqueado por | — (nada) |
 | Actualizado | 2026-10-09 |
 
@@ -53,3 +53,4 @@ Una línea por sesión o hito, la más reciente arriba.
 - 2026-10-09 — Fase 2 completada: `plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml`, `quickstart.md` y `ux.md`. Pendiente la puerta 2 (aprobación del plan).
 - 2026-10-09 — **Puerta 2 superada**: el humano aprobó el plan («si») y pidió versionar los recursos de marca (`resources/`) en el repo. Arranca Fase 3 (tareas + coherencia).
 - 2026-10-09 — **Recursos de marca versionados**: `resources/MANUAL DE MARCA.pdf` y `resources/simiente.jpeg` entran al repo; el logo se publicará además en `frontend/public/brand/` durante la implementación.
+- 2026-10-09 — Fase 3 completada: `tasks.md` (40 tareas T301–T340) y `analyze.md`. El primer `analyze` **rechazó** con 4 críticos (C1 agregado admin sin tarea; C2 horario; C3 memoria de idioma; C4 descarga de imágenes y borradores); se corrigieron con arquitecto y UX y el re-análisis dio **APROBADO** (0 críticos), cerrando además N1–N4.
