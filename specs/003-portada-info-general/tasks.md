@@ -468,7 +468,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     invariantes en la BD.
   - **Commit sugerido**: `feat(portada): persistencia de horario, WhatsApp y redes`
 
-- [ ] T316 · Integración: migración `000006` y auditoría `content` atómica · `[backend]`
+- [X] T316 · Integración: migración `000006` y auditoría `content` atómica · `[backend]`
 
   - **Archivos**: `backend/internal/portada/repository_audit_integration_test.go` (NUEVO) y/o
     `repository_migrations_integration_test.go` (NUEVO).
