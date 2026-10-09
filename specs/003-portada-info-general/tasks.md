@@ -670,7 +670,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: `quickstart.md` §3 ejecutable (US2, errores de FR-015 visibles).
   - **Commit sugerido**: `feat(portada): endpoints de identidad, quiénes somos y contacto`
 
-- [ ] T325 · `portada`: `handler_admin.go` — horario, WhatsApp y redes · `[backend]`
+- [X] T325 · `portada`: `handler_admin.go` — horario, WhatsApp y redes · `[backend]`
 
   - **Archivos**: `backend/internal/portada/handler_admin.go` (EDITADO), `handler_admin_test.go`.
   - **Qué hace**: `POST`/`PATCH`/`DELETE` de `/api/v1/admin/portada/horario[/{id}]`,

@@ -63,6 +63,18 @@ type PortadaService interface {
 	SaveIdentity(ctx context.Context, actorID uuid.UUID, in IdentityInput) (IdentityAdmin, error)
 	SaveAbout(ctx context.Context, actorID uuid.UUID, in AboutInput) (AboutAdmin, error)
 	SaveContact(ctx context.Context, actorID uuid.UUID, in ContactInput) (ContactAdmin, error)
+	// Horario (FR-004): alta, edición y borrado.
+	CreateService(ctx context.Context, actorID uuid.UUID, in ScheduleItemInput) (ScheduleItemAdmin, error)
+	UpdateService(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch ScheduleItemPatch) (ScheduleItemAdmin, error)
+	DeleteService(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error
+	// WhatsApp (FR-005).
+	CreateWhatsappChannel(ctx context.Context, actorID uuid.UUID, in WhatsappChannelInput) (WhatsappChannelAdmin, error)
+	UpdateWhatsappChannel(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch WhatsappChannelPatch) (WhatsappChannelAdmin, error)
+	DeleteWhatsappChannel(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error
+	// Redes sociales (FR-006).
+	CreateSocialLink(ctx context.Context, actorID uuid.UUID, in SocialLinkInput) (SocialLinkAdmin, error)
+	UpdateSocialLink(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch SocialLinkPatch) (SocialLinkAdmin, error)
+	DeleteSocialLink(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error
 	// RecordRejectedBestEffort registra un rechazo por JSON o DTO inválido sin
 	// cambiar la respuesta (R3-11); nunca transporta el cuerpo de la petición.
 	RecordRejectedBestEffort(ctx context.Context, rejection Rejection)
