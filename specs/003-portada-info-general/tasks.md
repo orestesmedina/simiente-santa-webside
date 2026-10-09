@@ -451,7 +451,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     sección verificada (FR-013).
   - **Commit sugerido**: `feat(portada): singletons con upsert serializado y lecturas publicadas`
 
-- [ ] T315 · `portada`: repository de listas + integración · `[backend]` `[P4]`
+- [X] T315 · `portada`: repository de listas + integración · `[backend]` `[P4]`
 
   - **Archivos**: `backend/internal/portada/repository_home.go` (listas; EDITADO),
     `repository_home_integration_test.go` (AMPLIADO).

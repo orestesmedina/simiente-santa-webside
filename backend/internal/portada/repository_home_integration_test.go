@@ -288,3 +288,199 @@ func isInvalid(err error) bool {
 	var domainErr *apperr.Error
 	return errors.As(err, &domainErr) && domainErr.Kind == apperr.KindInvalid
 }
+
+// isConflict indica si err es un apperr de kind Conflict (violación de UNIQUE
+// traducida por classify).
+func isConflict(err error) bool {
+	var domainErr *apperr.Error
+	return errors.As(err, &domainErr) && domainErr.Kind == apperr.KindConflict
+}
+
+// --- T315: colecciones ---
+
+func TestIntegrationServicesCRUDAndOrder(t *testing.T) {
+	repo, _ := newHomeRepo(t)
+	ctx := context.Background()
+
+	second, err := repo.InsertHomeService(ctx, Service{
+		DayOfWeek: 0, StartTime: "12:00", EndTime: ptr("13:00"),
+		NameEs: "Segundo", PlaceEs: "Templo", PublicationState: StatePublished, SortOrder: 2,
+	})
+	if err != nil {
+		t.Fatalf("InsertHomeService(2): %v", err)
+	}
+	if _, err := repo.InsertHomeService(ctx, Service{
+		DayOfWeek: 0, StartTime: "10:00",
+		NameEs: "Primero", PlaceEs: "Templo", PublicationState: StatePublished, SortOrder: 1,
+	}); err != nil {
+		t.Fatalf("InsertHomeService(1): %v", err)
+	}
+	if _, err := repo.InsertHomeService(ctx, Service{
+		DayOfWeek: 6, StartTime: "09:00",
+		NameEs: "Borrador", PlaceEs: "Anexo", PublicationState: StateDraft, SortOrder: 3,
+	}); err != nil {
+		t.Fatalf("InsertHomeService(draft): %v", err)
+	}
+
+	// Orden estable por `sort_order, id` en ambas vías.
+	all, err := repo.ListHomeServices(ctx)
+	if err != nil {
+		t.Fatalf("ListHomeServices: %v", err)
+	}
+	if len(all) != 3 || all[0].NameEs != "Primero" || all[1].NameEs != "Segundo" {
+		t.Fatalf("ListHomeServices = %+v", all)
+	}
+	published, err := repo.ListHomeServicesPublished(ctx)
+	if err != nil {
+		t.Fatalf("ListHomeServicesPublished: %v", err)
+	}
+	if len(published) != 2 || published[0].NameEs != "Primero" {
+		t.Fatalf("ListHomeServicesPublished = %+v (no debe incluir borradores)", published)
+	}
+
+	// Edición: cambia el estado publicando el borrador.
+	third := all[2]
+	third.PublicationState = StatePublished
+	if _, err := repo.UpdateHomeService(ctx, third); err != nil {
+		t.Fatalf("UpdateHomeService: %v", err)
+	}
+	if published, _ := repo.ListHomeServicesPublished(ctx); len(published) != 3 {
+		t.Fatalf("tras publicar hay %d publicados, se esperaban 3", len(published))
+	}
+
+	// Lectura por id y borrado físico.
+	got, ok, err := repo.GetHomeServiceByID(ctx, second.ID)
+	if err != nil || !ok || got.NameEs != "Segundo" {
+		t.Fatalf("GetHomeServiceByID = %+v ok=%v err=%v", got, ok, err)
+	}
+	deleted, err := repo.DeleteHomeService(ctx, second.ID)
+	if err != nil || !deleted {
+		t.Fatalf("DeleteHomeService = %v (%v)", deleted, err)
+	}
+	if _, ok, _ := repo.GetHomeServiceByID(ctx, second.ID); ok {
+		t.Fatal("el servicio seguía existiendo tras borrarlo")
+	}
+	if deleted, _ := repo.DeleteHomeService(ctx, second.ID); deleted {
+		t.Fatal("el segundo borrado debía devolver false")
+	}
+}
+
+func TestIntegrationServiceChecks(t *testing.T) {
+	repo, _ := newHomeRepo(t)
+	ctx := context.Background()
+
+	t.Run("day_of_week fuera de rango", func(t *testing.T) {
+		_, err := repo.InsertHomeService(ctx, Service{
+			DayOfWeek: 7, StartTime: "10:00", NameEs: "X", PlaceEs: "Y", PublicationState: StateDraft,
+		})
+		if !isInvalid(err) {
+			t.Fatalf("InsertHomeService(día 7) = %v, se esperaba invalid", err)
+		}
+	})
+
+	t.Run("start_time mal formado", func(t *testing.T) {
+		_, err := repo.InsertHomeService(ctx, Service{
+			DayOfWeek: 1, StartTime: "25:00", NameEs: "X", PlaceEs: "Y", PublicationState: StateDraft,
+		})
+		if !isInvalid(err) {
+			t.Fatalf("InsertHomeService(hora 25:00) = %v, se esperaba invalid", err)
+		}
+	})
+
+	t.Run("end_time no posterior", func(t *testing.T) {
+		_, err := repo.InsertHomeService(ctx, Service{
+			DayOfWeek: 1, StartTime: "10:00", EndTime: ptr("09:00"),
+			NameEs: "X", PlaceEs: "Y", PublicationState: StateDraft,
+		})
+		if !isInvalid(err) {
+			t.Fatalf("InsertHomeService(fin anterior) = %v, se esperaba invalid", err)
+		}
+	})
+}
+
+func TestIntegrationWhatsappDuplicateAndPublished(t *testing.T) {
+	repo, _ := newHomeRepo(t)
+	ctx := context.Background()
+
+	channel := WhatsappChannel{
+		Kind: KindDirect, Destination: "+34612345678", NameEs: "Culto",
+		PublicationState: StatePublished, SortOrder: 0,
+	}
+	if _, err := repo.InsertHomeWhatsappChannel(ctx, channel); err != nil {
+		t.Fatalf("InsertHomeWhatsappChannel: %v", err)
+	}
+	// Duplicado exacto (mismo kind, destino y nombre) → conflict.
+	if _, err := repo.InsertHomeWhatsappChannel(ctx, channel); !isConflict(err) {
+		t.Fatalf("InsertHomeWhatsappChannel(duplicado) = %v, se esperaba conflict", err)
+	}
+	// Mismo destino con otro nombre: permitido (la spec solo rechaza el exacto).
+	other := channel
+	other.NameEs = "Oración"
+	if _, err := repo.InsertHomeWhatsappChannel(ctx, other); err != nil {
+		t.Fatalf("InsertHomeWhatsappChannel(otro nombre): %v", err)
+	}
+	// Canal en borrador no aparece en la vía pública.
+	draft := WhatsappChannel{
+		Kind: KindGroup, Destination: "https://chat.whatsapp.com/abc", NameEs: "Grupo",
+		PublicationState: StateDraft,
+	}
+	if _, err := repo.InsertHomeWhatsappChannel(ctx, draft); err != nil {
+		t.Fatalf("InsertHomeWhatsappChannel(draft): %v", err)
+	}
+
+	published, err := repo.ListHomeWhatsappChannelsPublished(ctx)
+	if err != nil {
+		t.Fatalf("ListHomeWhatsappChannelsPublished: %v", err)
+	}
+	if len(published) != 2 {
+		t.Fatalf("canales publicados = %d, se esperaban 2", len(published))
+	}
+	all, err := repo.ListHomeWhatsappChannels(ctx)
+	if err != nil || len(all) != 3 {
+		t.Fatalf("ListHomeWhatsappChannels = %d (%v)", len(all), err)
+	}
+}
+
+func TestIntegrationSocialNetworkCatalogAndUnique(t *testing.T) {
+	repo, _ := newHomeRepo(t)
+	ctx := context.Background()
+
+	if _, err := repo.InsertHomeSocialLink(ctx, SocialLink{
+		Network: "facebook", URL: "https://facebook.com/simiente", PublicationState: StatePublished,
+	}); err != nil {
+		t.Fatalf("InsertHomeSocialLink(facebook): %v", err)
+	}
+	if _, err := repo.InsertHomeSocialLink(ctx, SocialLink{
+		Network: "instagram", URL: "https://instagram.com/simiente", PublicationState: StateDraft,
+	}); err != nil {
+		t.Fatalf("InsertHomeSocialLink(instagram): %v", err)
+	}
+	// Segundo enlace para la misma red → conflict (UNIQUE (network)).
+	if _, err := repo.InsertHomeSocialLink(ctx, SocialLink{
+		Network: "facebook", URL: "https://facebook.com/otro", PublicationState: StateDraft,
+	}); !isConflict(err) {
+		t.Fatalf("InsertHomeSocialLink(duplicado) = %v, se esperaba conflict", err)
+	}
+	// Red fuera del catálogo → invalid (CHECK).
+	if _, err := repo.InsertHomeSocialLink(ctx, SocialLink{
+		Network: "x", URL: "https://x.com/simiente", PublicationState: StateDraft,
+	}); !isInvalid(err) {
+		t.Fatalf("InsertHomeSocialLink(red fuera) = %v, se esperaba invalid", err)
+	}
+
+	published, err := repo.ListHomeSocialLinksPublished(ctx)
+	if err != nil {
+		t.Fatalf("ListHomeSocialLinksPublished: %v", err)
+	}
+	if len(published) != 1 || published[0].Network != "facebook" {
+		t.Fatalf("enlaces publicados = %+v", published)
+	}
+	all, err := repo.ListHomeSocialLinks(ctx)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("ListHomeSocialLinks = %d (%v)", len(all), err)
+	}
+	// Orden por red.
+	if all[0].Network != "facebook" || all[1].Network != "instagram" {
+		t.Fatalf("orden de redes = %+v", all)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -225,3 +226,390 @@ func (r *repository) IsHomeFilePublished(ctx context.Context, fileName string) (
 	}
 	return published, nil
 }
+
+// --- Horario (servicios) ---
+
+// insertActions ejecuta las filas de auditoría de una mutación de colección
+// dentro de su misma transacción (FR-017, fail-closed).
+func insertActions(ctx context.Context, tx *repository, actions []audit.Action) error {
+	for _, action := range actions {
+		if err := tx.insertAdminAction(ctx, action); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InsertHomeService da de alta un servicio del horario (FR-004) con su
+// auditoría en la misma transacción (FR-017).
+func (r *repository) InsertHomeService(ctx context.Context, service Service, actions ...audit.Action) (Service, error) {
+	var result Service
+	err := r.withTx(ctx, func(tx *repository) error {
+		row, err := tx.q.InsertHomeService(ctx, gendb.InsertHomeServiceParams{
+			DayOfWeek:        int16(service.DayOfWeek),
+			StartTime:        service.StartTime,
+			EndTime:          pgTextPtr(service.EndTime),
+			NameEs:           service.NameEs,
+			NameEn:           pgTextPtr(service.NameEn),
+			DescriptionEs:    pgTextPtr(service.DescriptionEs),
+			DescriptionEn:    pgTextPtr(service.DescriptionEn),
+			PlaceEs:          service.PlaceEs,
+			PlaceEn:          pgTextPtr(service.PlaceEn),
+			PublicationState: string(service.PublicationState),
+			SortOrder:        int32(service.SortOrder),
+		})
+		if err != nil {
+			return wrap(err, "insert home service", "", "")
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		result = mapHomeService(row)
+		return nil
+	})
+	if err != nil {
+		return Service{}, err
+	}
+	return result, nil
+}
+
+// UpdateHomeService reemplaza los campos mutables de un servicio (FR-004). Un
+// id inexistente → apperr.NotFound; la auditoría va en la misma transacción.
+func (r *repository) UpdateHomeService(ctx context.Context, service Service, actions ...audit.Action) (Service, error) {
+	var result Service
+	err := r.withTx(ctx, func(tx *repository) error {
+		row, err := tx.q.UpdateHomeService(ctx, gendb.UpdateHomeServiceParams{
+			DayOfWeek:        int16(service.DayOfWeek),
+			StartTime:        service.StartTime,
+			EndTime:          pgTextPtr(service.EndTime),
+			NameEs:           service.NameEs,
+			NameEn:           pgTextPtr(service.NameEn),
+			DescriptionEs:    pgTextPtr(service.DescriptionEs),
+			DescriptionEn:    pgTextPtr(service.DescriptionEn),
+			PlaceEs:          service.PlaceEs,
+			PlaceEn:          pgTextPtr(service.PlaceEn),
+			PublicationState: string(service.PublicationState),
+			SortOrder:        int32(service.SortOrder),
+			ID:               pgUUID(service.ID),
+		})
+		if err != nil {
+			return wrap(err, "update home service", "El servicio no existe", "")
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		result = mapHomeService(row)
+		return nil
+	})
+	if err != nil {
+		return Service{}, err
+	}
+	return result, nil
+}
+
+// DeleteHomeService elimina un servicio (borrado físico) y registra su
+// auditoría en la misma transacción. Devuelve false si el id no existía.
+func (r *repository) DeleteHomeService(ctx context.Context, id uuid.UUID, actions ...audit.Action) (bool, error) {
+	deleted := false
+	err := r.withTx(ctx, func(tx *repository) error {
+		rows, err := tx.q.DeleteHomeService(ctx, pgUUID(id))
+		if err != nil {
+			return wrap(err, "delete home service", "", "")
+		}
+		if rows == 0 {
+			return nil
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		deleted = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return deleted, nil
+}
+
+// GetHomeServiceByID devuelve un servicio por id; false si no existe.
+func (r *repository) GetHomeServiceByID(ctx context.Context, id uuid.UUID) (Service, bool, error) {
+	row, err := r.q.GetHomeServiceByID(ctx, pgUUID(id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Service{}, false, nil
+		}
+		return Service{}, false, wrap(err, "get home service", "", "")
+	}
+	return mapHomeService(row), true, nil
+}
+
+// ListHomeServices devuelve todos los servicios (panel, borradores incluidos)
+// en el orden del contrato (`sort_order, id`).
+func (r *repository) ListHomeServices(ctx context.Context) ([]Service, error) {
+	rows, err := r.q.ListHomeServices(ctx)
+	if err != nil {
+		return nil, wrap(err, "list home services", "", "")
+	}
+	services := make([]Service, 0, len(rows))
+	for _, row := range rows {
+		services = append(services, mapHomeService(row))
+	}
+	return services, nil
+}
+
+// ListHomeServicesPublished devuelve solo los servicios publicados (FR-013).
+func (r *repository) ListHomeServicesPublished(ctx context.Context) ([]Service, error) {
+	rows, err := r.q.ListHomeServicesPublished(ctx)
+	if err != nil {
+		return nil, wrap(err, "list home services published", "", "")
+	}
+	services := make([]Service, 0, len(rows))
+	for _, row := range rows {
+		services = append(services, mapHomeService(row))
+	}
+	return services, nil
+}
+
+// --- Canales de WhatsApp ---
+
+// InsertHomeWhatsappChannel da de alta un canal (FR-005). El duplicado exacto
+// (kind + destino + nombre) → apperr.Conflict (UNIQUE de la BD); la auditoría
+// va en la misma transacción.
+func (r *repository) InsertHomeWhatsappChannel(ctx context.Context, channel WhatsappChannel, actions ...audit.Action) (WhatsappChannel, error) {
+	var result WhatsappChannel
+	err := r.withTx(ctx, func(tx *repository) error {
+		row, err := tx.q.InsertHomeWhatsappChannel(ctx, gendb.InsertHomeWhatsappChannelParams{
+			NameEs:           channel.NameEs,
+			NameEn:           pgTextPtr(channel.NameEn),
+			Kind:             channel.Kind,
+			Destination:      channel.Destination,
+			PublicationState: string(channel.PublicationState),
+			SortOrder:        int32(channel.SortOrder),
+		})
+		if err != nil {
+			return wrap(err, "insert home whatsapp channel", "", conflictWhatsappDuplicate)
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		result = mapHomeWhatsappChannel(row)
+		return nil
+	})
+	if err != nil {
+		return WhatsappChannel{}, err
+	}
+	return result, nil
+}
+
+// UpdateHomeWhatsappChannel reemplaza los campos mutables de un canal (FR-005).
+// Duplicado exacto → apperr.Conflict; id inexistente → apperr.NotFound.
+func (r *repository) UpdateHomeWhatsappChannel(ctx context.Context, channel WhatsappChannel, actions ...audit.Action) (WhatsappChannel, error) {
+	var result WhatsappChannel
+	err := r.withTx(ctx, func(tx *repository) error {
+		row, err := tx.q.UpdateHomeWhatsappChannel(ctx, gendb.UpdateHomeWhatsappChannelParams{
+			NameEs:           channel.NameEs,
+			NameEn:           pgTextPtr(channel.NameEn),
+			Kind:             channel.Kind,
+			Destination:      channel.Destination,
+			PublicationState: string(channel.PublicationState),
+			SortOrder:        int32(channel.SortOrder),
+			ID:               pgUUID(channel.ID),
+		})
+		if err != nil {
+			return wrap(err, "update home whatsapp channel", "El canal no existe", conflictWhatsappDuplicate)
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		result = mapHomeWhatsappChannel(row)
+		return nil
+	})
+	if err != nil {
+		return WhatsappChannel{}, err
+	}
+	return result, nil
+}
+
+// DeleteHomeWhatsappChannel elimina un canal y registra su auditoría en la
+// misma transacción. Devuelve false si el id no existía.
+func (r *repository) DeleteHomeWhatsappChannel(ctx context.Context, id uuid.UUID, actions ...audit.Action) (bool, error) {
+	deleted := false
+	err := r.withTx(ctx, func(tx *repository) error {
+		rows, err := tx.q.DeleteHomeWhatsappChannel(ctx, pgUUID(id))
+		if err != nil {
+			return wrap(err, "delete home whatsapp channel", "", "")
+		}
+		if rows == 0 {
+			return nil
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		deleted = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return deleted, nil
+}
+
+// GetHomeWhatsappChannelByID devuelve un canal por id; false si no existe.
+func (r *repository) GetHomeWhatsappChannelByID(ctx context.Context, id uuid.UUID) (WhatsappChannel, bool, error) {
+	row, err := r.q.GetHomeWhatsappChannelByID(ctx, pgUUID(id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return WhatsappChannel{}, false, nil
+		}
+		return WhatsappChannel{}, false, wrap(err, "get home whatsapp channel", "", "")
+	}
+	return mapHomeWhatsappChannel(row), true, nil
+}
+
+// ListHomeWhatsappChannels devuelve todos los canales (panel).
+func (r *repository) ListHomeWhatsappChannels(ctx context.Context) ([]WhatsappChannel, error) {
+	rows, err := r.q.ListHomeWhatsappChannels(ctx)
+	if err != nil {
+		return nil, wrap(err, "list home whatsapp channels", "", "")
+	}
+	channels := make([]WhatsappChannel, 0, len(rows))
+	for _, row := range rows {
+		channels = append(channels, mapHomeWhatsappChannel(row))
+	}
+	return channels, nil
+}
+
+// ListHomeWhatsappChannelsPublished devuelve solo los canales publicados.
+func (r *repository) ListHomeWhatsappChannelsPublished(ctx context.Context) ([]WhatsappChannel, error) {
+	rows, err := r.q.ListHomeWhatsappChannelsPublished(ctx)
+	if err != nil {
+		return nil, wrap(err, "list home whatsapp channels published", "", "")
+	}
+	channels := make([]WhatsappChannel, 0, len(rows))
+	for _, row := range rows {
+		channels = append(channels, mapHomeWhatsappChannel(row))
+	}
+	return channels, nil
+}
+
+// --- Redes sociales ---
+
+// InsertHomeSocialLink da de alta el enlace de una red (FR-006). Un segundo
+// enlace para la misma red → apperr.Conflict (UNIQUE (network)); la auditoría va
+// en la misma transacción.
+func (r *repository) InsertHomeSocialLink(ctx context.Context, link SocialLink, actions ...audit.Action) (SocialLink, error) {
+	var result SocialLink
+	err := r.withTx(ctx, func(tx *repository) error {
+		row, err := tx.q.InsertHomeSocialLink(ctx, gendb.InsertHomeSocialLinkParams{
+			Network:          link.Network,
+			Url:              link.URL,
+			PublicationState: string(link.PublicationState),
+		})
+		if err != nil {
+			return wrap(err, "insert home social link", "", conflictSocialDuplicate)
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		result = mapHomeSocialLink(row)
+		return nil
+	})
+	if err != nil {
+		return SocialLink{}, err
+	}
+	return result, nil
+}
+
+// UpdateHomeSocialLink reemplaza los campos mutables de un enlace (FR-006).
+// Duplicado → apperr.Conflict; id inexistente → apperr.NotFound.
+func (r *repository) UpdateHomeSocialLink(ctx context.Context, link SocialLink, actions ...audit.Action) (SocialLink, error) {
+	var result SocialLink
+	err := r.withTx(ctx, func(tx *repository) error {
+		row, err := tx.q.UpdateHomeSocialLink(ctx, gendb.UpdateHomeSocialLinkParams{
+			Network:          link.Network,
+			Url:              link.URL,
+			PublicationState: string(link.PublicationState),
+			ID:               pgUUID(link.ID),
+		})
+		if err != nil {
+			return wrap(err, "update home social link", "El enlace no existe", conflictSocialDuplicate)
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		result = mapHomeSocialLink(row)
+		return nil
+	})
+	if err != nil {
+		return SocialLink{}, err
+	}
+	return result, nil
+}
+
+// DeleteHomeSocialLink elimina un enlace y registra su auditoría en la misma
+// transacción. Devuelve false si el id no existía.
+func (r *repository) DeleteHomeSocialLink(ctx context.Context, id uuid.UUID, actions ...audit.Action) (bool, error) {
+	deleted := false
+	err := r.withTx(ctx, func(tx *repository) error {
+		rows, err := tx.q.DeleteHomeSocialLink(ctx, pgUUID(id))
+		if err != nil {
+			return wrap(err, "delete home social link", "", "")
+		}
+		if rows == 0 {
+			return nil
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		deleted = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return deleted, nil
+}
+
+// GetHomeSocialLinkByID devuelve un enlace por id; false si no existe.
+func (r *repository) GetHomeSocialLinkByID(ctx context.Context, id uuid.UUID) (SocialLink, bool, error) {
+	row, err := r.q.GetHomeSocialLinkByID(ctx, pgUUID(id))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return SocialLink{}, false, nil
+		}
+		return SocialLink{}, false, wrap(err, "get home social link", "", "")
+	}
+	return mapHomeSocialLink(row), true, nil
+}
+
+// ListHomeSocialLinks devuelve todos los enlaces (panel) ordenados por red.
+func (r *repository) ListHomeSocialLinks(ctx context.Context) ([]SocialLink, error) {
+	rows, err := r.q.ListHomeSocialLinks(ctx)
+	if err != nil {
+		return nil, wrap(err, "list home social links", "", "")
+	}
+	links := make([]SocialLink, 0, len(rows))
+	for _, row := range rows {
+		links = append(links, mapHomeSocialLink(row))
+	}
+	return links, nil
+}
+
+// ListHomeSocialLinksPublished devuelve solo los enlaces publicados.
+func (r *repository) ListHomeSocialLinksPublished(ctx context.Context) ([]SocialLink, error) {
+	rows, err := r.q.ListHomeSocialLinksPublished(ctx)
+	if err != nil {
+		return nil, wrap(err, "list home social links published", "", "")
+	}
+	links := make([]SocialLink, 0, len(rows))
+	for _, row := range rows {
+		links = append(links, mapHomeSocialLink(row))
+	}
+	return links, nil
+}
+
+// Mensajes de conflicto por restricción UNIQUE (los usa el service para el 409).
+const (
+	conflictWhatsappDuplicate = "Ya existe un canal de WhatsApp con ese tipo, destino y nombre"
+	conflictSocialDuplicate   = "Ya existe un enlace para esa red social"
+)
