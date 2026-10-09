@@ -299,6 +299,230 @@
         }
       ],
       "hasta_ms": 1791564484300
+    },
+    {
+      "id": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "padre": null,
+      "titulo": "Preguntando con qué continuar",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T19:16:40Z",
+      "hasta": "2026-10-09T21:43:49Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 9,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 305969,
+            "output": 5305,
+            "reasoning": 3836,
+            "cache_read": 1031040,
+            "cache_write": 0
+          },
+          "costo": 0.054473,
+          "costo_opencode": 0.054473
+        }
+      ],
+      "hasta_ms": 1791582229474
+    },
+    {
+      "id": "ses_eddb45823ffei0HCtMylGLt8qs",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "F3 pantallas T332-T336",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T20:12:26Z",
+      "hasta": "2026-10-09T21:17:17Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 138,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 886193,
+            "output": 84735,
+            "reasoning": 56207,
+            "cache_read": 26118400,
+            "cache_write": 0
+          },
+          "costo": 0.295849,
+          "costo_opencode": 0.295849
+        }
+      ],
+      "hasta_ms": 1791580637690
+    },
+    {
+      "id": "ses_eddc82641ffef7NKqgIzK3EArz",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "F3 api client y rutas T330-T331",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T19:50:48Z",
+      "hasta": "2026-10-09T20:11:34Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 64,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 332593,
+            "output": 18648,
+            "reasoning": 10947,
+            "cache_read": 6790528,
+            "cache_write": 0
+          },
+          "costo": 0.088018,
+          "costo_opencode": 0.088018
+        }
+      ],
+      "hasta_ms": 1791576694413
+    },
+    {
+      "id": "ses_eddc82642ffet77TyES50Pj8Ew",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "F3 handlers T322-T326,T340",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T19:50:48Z",
+      "hasta": "2026-10-09T20:11:50Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 111,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 474684,
+            "output": 44650,
+            "reasoning": 25723,
+            "cache_read": 18750208,
+            "cache_write": 0
+          },
+          "costo": 0.169677,
+          "costo_opencode": 0.169677
+        }
+      ],
+      "hasta_ms": 1791576710672
+    },
+    {
+      "id": "ses_edde19476ffeizRsJRR46mIbjb",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "F3 frontend base T327-T329",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T19:23:01Z",
+      "hasta": "2026-10-09T19:39:10Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 40,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 175283,
+            "output": 15462,
+            "reasoning": 12632,
+            "cache_read": 3054208,
+            "cache_write": 0
+          },
+          "costo": 0.052311,
+          "costo_opencode": 0.052311
+        }
+      ],
+      "hasta_ms": 1791574750176
+    },
+    {
+      "id": "ses_edde19477ffeiSmIJPcKZlUgY3",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "F3 services T317-T321",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T19:23:01Z",
+      "hasta": "2026-10-09T19:50:08Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 81,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 350160,
+            "output": 51472,
+            "reasoning": 39132,
+            "cache_read": 13750528,
+            "cache_write": 0
+          },
+          "costo": 0.148138,
+          "costo_opencode": 0.148138
+        }
+      ],
+      "hasta_ms": 1791575408424
+    },
+    {
+      "id": "ses_ede1ef355ffexm4Gwlf7ssh2Bh",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "F3 backend base T301-T308",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T19:21:34Z",
+      "hasta": "2026-10-09T19:22:34Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 6,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 2271,
+            "output": 1743,
+            "reasoning": 1518,
+            "cache_read": 1354112,
+            "cache_write": 0
+          },
+          "costo": 0.00636,
+          "costo_opencode": 0.00636
+        }
+      ],
+      "hasta_ms": 1791573754997
+    },
+    {
+      "id": "ses_edde2e3aaffeR8ZJmOifIWFkS7",
+      "padre": null,
+      "titulo": "Investigando detención por problema con Docker",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-09T21:44:19Z",
+      "desde": "2026-10-09T19:21:35Z",
+      "hasta": "2026-10-09T21:43:57Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 21,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 30344,
+            "output": 4496,
+            "reasoning": 11241,
+            "cache_read": 811136,
+            "cache_write": 0
+          },
+          "costo": 0.016427,
+          "costo_opencode": 0.016427
+        }
+      ],
+      "hasta_ms": 1791582237488
     }
   ],
   "totales": {
@@ -316,6 +540,36 @@
         },
         "costo": 0.604768,
         "costo_opencode": 0.604768,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-frontend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 277,
+        "tokens": {
+          "input": 1461020,
+          "output": 124573,
+          "reasoning": 84022,
+          "cache_read": 37052800,
+          "cache_write": 0
+        },
+        "costo": 0.455469,
+        "costo_opencode": 0.455469,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-backend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 285,
+        "tokens": {
+          "input": 988076,
+          "output": 128629,
+          "reasoning": 106775,
+          "cache_read": 45531392,
+          "cache_write": 0
+        },
+        "costo": 0.426048,
+        "costo_opencode": 0.426048,
         "sin_precio": false
       },
       {
@@ -349,18 +603,18 @@
         "sin_precio": false
       },
       {
-        "agente": "dev-backend",
+        "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 87,
+        "respuestas": 103,
         "tokens": {
-          "input": 160961,
-          "output": 30764,
-          "reasoning": 40402,
-          "cache_read": 11676544,
+          "input": 426854,
+          "output": 40033,
+          "reasoning": 37916,
+          "cache_read": 7101696,
           "cache_write": 0
         },
-        "costo": 0.101873,
-        "costo_opencode": 0.101873,
+        "costo": 0.132102,
+        "costo_opencode": 0.132102,
         "sin_precio": false
       },
       {
@@ -379,36 +633,6 @@
         "sin_precio": false
       },
       {
-        "agente": "orquestador",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 73,
-        "tokens": {
-          "input": 90541,
-          "output": 30232,
-          "reasoning": 22839,
-          "cache_read": 5259520,
-          "cache_write": 0
-        },
-        "costo": 0.061202,
-        "costo_opencode": 0.061202,
-        "sin_precio": false
-      },
-      {
-        "agente": "dev-frontend",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 35,
-        "tokens": {
-          "input": 66951,
-          "output": 5728,
-          "reasoning": 4236,
-          "cache_read": 1089664,
-          "cache_write": 0
-        },
-        "costo": 0.019291,
-        "costo_opencode": 0.019291,
-        "sin_precio": false
-      },
-      {
         "agente": "devops",
         "modelo": "opencode-go/glm-5.3-flash",
         "respuestas": 17,
@@ -424,8 +648,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 91736775,
-    "costo": 1.440312,
-    "costo_opencode": 1.440312
+    "tokens": 166342179,
+    "costo": 2.271565,
+    "costo_opencode": 2.271565
   }
 }
