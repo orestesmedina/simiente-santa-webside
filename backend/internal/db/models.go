@@ -21,6 +21,88 @@ type AdminAction struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
+type HomeAbout struct {
+	ID               pgtype.UUID
+	Singleton        bool
+	TextEs           string
+	TextEn           pgtype.Text
+	PublicationState string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type HomeContact struct {
+	ID               pgtype.UUID
+	Singleton        bool
+	AddressEs        string
+	AddressEn        pgtype.Text
+	Email            string
+	Phone            string
+	PublicationState string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type HomeIdentity struct {
+	ID               pgtype.UUID
+	Singleton        bool
+	NameEs           string
+	NameEn           pgtype.Text
+	TaglineEs        pgtype.Text
+	TaglineEn        pgtype.Text
+	MissionEs        pgtype.Text
+	MissionEn        pgtype.Text
+	VisionEs         pgtype.Text
+	VisionEn         pgtype.Text
+	LogoFile         pgtype.Text
+	LogoAltEs        pgtype.Text
+	LogoAltEn        pgtype.Text
+	CoverImageFile   pgtype.Text
+	CoverImageAltEs  pgtype.Text
+	CoverImageAltEn  pgtype.Text
+	PublicationState string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type HomeService struct {
+	ID               pgtype.UUID
+	DayOfWeek        int16
+	StartTime        string
+	EndTime          pgtype.Text
+	NameEs           string
+	NameEn           pgtype.Text
+	DescriptionEs    pgtype.Text
+	DescriptionEn    pgtype.Text
+	PlaceEs          string
+	PlaceEn          pgtype.Text
+	PublicationState string
+	SortOrder        int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type HomeSocialLink struct {
+	ID               pgtype.UUID
+	Network          string
+	Url              string
+	PublicationState string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type HomeWhatsappChannel struct {
+	ID               pgtype.UUID
+	Kind             string
+	Destination      string
+	NameEs           string
+	NameEn           pgtype.Text
+	PublicationState string
+	SortOrder        int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type LoginEvent struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID

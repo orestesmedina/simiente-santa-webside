@@ -317,7 +317,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     ampliado a F3, sin tocar ninguna migración anterior (§VI).
   - **Commit sugerido**: `feat(db): ampliar admin_actions a la portada (000006)`
 
-- [ ] T308 · Consultas sqlc `home.sql` + generar · `[db]`
+- [X] T308 · Consultas sqlc `home.sql` + generar · `[db]`
 
   - **Archivos**: `backend/internal/db/queries/home.sql` (NUEVO) y `backend/internal/db/*.go`
     (GENERADOS y commiteados: `make sqlc`).
