@@ -23,6 +23,30 @@ export const DRAFT_NOTICE = 'Quedó en borrador: no lo verá el público hasta q
 
 export const SERVICE_CREATED = 'Servicio creado.';
 export const WHATSAPP_CREATED = 'Canal de WhatsApp creado.';
+export const DELETED = 'Eliminado.';
+
+/** Etiquetas de los siete días para el selector del panel (0 = domingo). */
+export const DAY_OF_WEEK_LABELS = [
+  'Domingo',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+] as const;
+
+export const WHATSAPP_DIRECT_LABEL = 'Mensaje directo';
+export const WHATSAPP_GROUP_LABEL = 'Grupo';
+
+export const ADD_SERVICE = 'Agregar servicio';
+export const ADD_CHANNEL = 'Agregar canal';
+export const ADD_SOCIAL = 'Agregar enlace';
+export const EDIT_ACTION = 'Editar';
+export const DELETE_ACTION = 'Eliminar';
+export const PUBLISH_ACTION = 'Publicar';
+export const RETIRE_ACTION = 'Retirar de la portada';
+export const SAVE_ACTION = 'Guardar';
 
 /** «Enlace de {red} guardado.» (ux.md §7.1). */
 export function socialSavedMessage(network: string): string {

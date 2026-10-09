@@ -918,7 +918,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: `quickstart.md` §3 (quiénes somos y contacto) navegables.
   - **Commit sugerido**: `feat(frontend): quiénes somos y contacto con publicación por sección`
 
-- [ ] T336 · `features/informacion`: horario, WhatsApp y redes · `[frontend]`
+- [X] T336 · `features/informacion`: horario, WhatsApp y redes · `[frontend]`
 
   - **Archivos**: `frontend/src/features/informacion/components/ServicesList.tsx`,
     `ServiceForm.tsx`, `WhatsAppList.tsx`, `WhatsAppForm.tsx`, `SocialsList.tsx` y pruebas

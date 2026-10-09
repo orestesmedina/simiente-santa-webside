@@ -5,20 +5,19 @@ import { EmptyState } from '../../../components/EmptyState';
 import { Notice } from '../../../components/Notice';
 import { StatusPill } from '../../../components/StatusPill';
 import { Tabs, type TabItem } from '../../../components/Tabs';
-import { SOCIAL_NETWORK_LABELS, SOCIAL_NETWORKS } from '../../publico/social';
 import { ContactForm } from '../components/ContactForm';
 import { IdentityForm } from '../components/IdentityForm';
+import { ServicesList } from '../components/ServicesList';
+import { SocialsList } from '../components/SocialsList';
+import { WhatsAppList } from '../components/WhatsAppList';
 import { WhoWeAreForm } from '../components/WhoWeAreForm';
 import { isForbidden } from '../errors';
 import { usePortadaAdmin } from '../hooks/usePortadaAdmin';
 import {
-  EMPTY_SERVICES,
-  EMPTY_WHATSAPP,
   INFO_LOAD_ERROR,
   MODULE_HELP,
   MODULE_TITLE,
   NO_PERMISSION_ERROR,
-  NO_SOCIAL_LINK,
   TAB_ABOUT,
   TAB_CONTACT,
   TAB_IDENTITY,
@@ -57,119 +56,52 @@ function SectionCard({ title, state, children }: SectionCardProps) {
   );
 }
 
-function ItemSummary({ label, state }: { label: string; state: PublicationState }) {
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 py-2 last:border-b-0">
-      <span className="text-slate-900">{label}</span>
-      <StatusPill value={state} />
-    </li>
-  );
-}
-
-/**
- * Contenido de cada pestaña. T333 muestra el **estado** de cada pieza (US3
- * esc. 7) con el agregado del panel; T334–T336 sustituyen cada resumen por el
- * formulario o listado real de la sección.
- */
+/** Contenido de cada pestaña: formulario (singletons) o listado (colecciones). */
 function renderTabContent(data: PortadaAdmin, tab: InfoTab): ReactNode {
   switch (tab) {
-    case 'identidad': {
-      const identity = data.identity;
+    case 'identidad':
       return (
-        <SectionCard title={TAB_IDENTITY} state={identity?.publicationState}>
+        <SectionCard title={TAB_IDENTITY} state={data.identity?.publicationState}>
           <IdentityForm />
         </SectionCard>
       );
-    }
-    case 'quienes-somos': {
-      const about = data.about;
+    case 'quienes-somos':
       return (
-        <SectionCard title={TAB_ABOUT} state={about?.publicationState}>
+        <SectionCard title={TAB_ABOUT} state={data.about?.publicationState}>
           <WhoWeAreForm />
         </SectionCard>
       );
-    }
-    case 'contacto': {
-      const contact = data.contact;
+    case 'horario':
       return (
-        <SectionCard title={TAB_CONTACT} state={contact?.publicationState}>
+        <SectionCard title={TAB_SCHEDULE}>
+          <ServicesList />
+        </SectionCard>
+      );
+    case 'whatsapp':
+      return (
+        <SectionCard title={TAB_WHATSAPP}>
+          <WhatsAppList />
+        </SectionCard>
+      );
+    case 'redes':
+      return (
+        <SectionCard title={TAB_SOCIALS}>
+          <SocialsList />
+        </SectionCard>
+      );
+    case 'contacto':
+      return (
+        <SectionCard title={TAB_CONTACT} state={data.contact?.publicationState}>
           <ContactForm />
         </SectionCard>
       );
-    }
-    case 'horario': {
-      const items = data.schedule.items;
-      return (
-        <SectionCard title={TAB_SCHEDULE}>
-          {items.length > 0 ? (
-            <ul>
-              {items.map((item) => (
-                <ItemSummary
-                  key={item.id}
-                  label={`${item.nameEs} · ${item.startTime}`}
-                  state={item.publicationState}
-                />
-              ))}
-            </ul>
-          ) : (
-            <EmptyState message={EMPTY_SERVICES} />
-          )}
-        </SectionCard>
-      );
-    }
-    case 'whatsapp': {
-      const items = data.whatsapp.items;
-      return (
-        <SectionCard title={TAB_WHATSAPP}>
-          {items.length > 0 ? (
-            <ul>
-              {items.map((item) => (
-                <ItemSummary
-                  key={item.id}
-                  label={`${item.nameEs} · ${item.kind === 'direct' ? 'Mensaje directo' : 'Grupo'}`}
-                  state={item.publicationState}
-                />
-              ))}
-            </ul>
-          ) : (
-            <EmptyState message={EMPTY_WHATSAPP} />
-          )}
-        </SectionCard>
-      );
-    }
-    case 'redes': {
-      const byNetwork = new Map(data.socials.items.map((item) => [item.network, item]));
-      return (
-        <SectionCard title={TAB_SOCIALS}>
-          <ul>
-            {SOCIAL_NETWORKS.map((network) => {
-              const link = byNetwork.get(network);
-              return (
-                <li
-                  key={network}
-                  className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 py-2 last:border-b-0"
-                >
-                  <span className="text-slate-900">{SOCIAL_NETWORK_LABELS[network]}</span>
-                  {link ? (
-                    <StatusPill value={link.publicationState} />
-                  ) : (
-                    <span className="text-slate-600">{NO_SOCIAL_LINK}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </SectionCard>
-      );
-    }
   }
 }
 
 /**
  * Vista general del módulo (ux.md §4.3, US2/US3): título, banda de ayuda y las
  * seis pestañas con el estado de cada pieza. Cubre los estados de carga, error
- * (con reintento) y sin permiso del servidor; los formularios y listados reales
- * llegan en T334–T336.
+ * (con reintento) y sin permiso del servidor.
  */
 export function InformationPage() {
   const [tab, setTab] = useState<InfoTab>('identidad');
