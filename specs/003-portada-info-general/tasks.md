@@ -532,7 +532,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     medida con `go test -cover` (≥ 80 % al cierre).
   - **Commit sugerido**: `feat(portada): portada pública localizada con fallback en→es`
 
-- [ ] T319 · `portada`: `service_admin.go` — identidad, quiénes somos y contacto · `[backend]`
+- [X] T319 · `portada`: `service_admin.go` — identidad, quiénes somos y contacto · `[backend]`
 
   - **Archivos**: `backend/internal/portada/service_admin.go`, `service_admin_test.go` (NUEVOS).
   - **Qué hace**: `SaveIdentity`/`SaveAbout`/`SaveContact` (FR-002/FR-003/FR-007/FR-011): reemplazo
