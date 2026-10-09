@@ -58,6 +58,11 @@ type PortadaService interface {
 	// UploadImage guarda una imagen subida desde el panel y la audita con
 	// `home.image.upload` (fail-closed, analyze I8).
 	UploadImage(ctx context.Context, actorID uuid.UUID, data []byte) (ImageUploadResult, error)
+	// SaveIdentity, SaveAbout y SaveContact reemplazan los singletons del
+	// módulo (FR-002/FR-003/FR-007) con auditoría transaccional (FR-017).
+	SaveIdentity(ctx context.Context, actorID uuid.UUID, in IdentityInput) (IdentityAdmin, error)
+	SaveAbout(ctx context.Context, actorID uuid.UUID, in AboutInput) (AboutAdmin, error)
+	SaveContact(ctx context.Context, actorID uuid.UUID, in ContactInput) (ContactAdmin, error)
 	// RecordRejectedBestEffort registra un rechazo por JSON o DTO inválido sin
 	// cambiar la respuesta (R3-11); nunca transporta el cuerpo de la petición.
 	RecordRejectedBestEffort(ctx context.Context, rejection Rejection)

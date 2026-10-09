@@ -654,7 +654,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     imagen (lo resuelve el frontend, T332) y `seguridad` aprueba las cabeceras.
   - **Commit sugerido**: `feat(portada): subida y descarga segura de imágenes`
 
-- [ ] T324 · `portada`: `handler_admin.go` — identidad, quiénes somos y contacto · `[backend]`
+- [X] T324 · `portada`: `handler_admin.go` — identidad, quiénes somos y contacto · `[backend]`
 
   - **Archivos**: `backend/internal/portada/handler_admin.go` (NUEVO),
     `handler_admin_test.go` (NUEVO).
