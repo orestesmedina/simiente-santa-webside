@@ -30,6 +30,7 @@ Segunda entrega: **F2 — Acceso y gestión de usuarios** (rama `002-acceso-gest
 
 - **Rutas con parámetros**: `platform/httpserver` no rellenaba `PathValue`, por lo que las operaciones sobre `/api/v1/admin/usuarios/{id}` y `/api/v1/admin/roles/{id}` no veían el id (bug heredado de F1).
 - **`Retry-After` en `429`**: `httpserver.WriteError` no emitía la cabecera que el contrato documenta para las respuestas limitadas (bug heredado de F1).
+- **CI en rojo por la stdlib de Go**: `backend/go.mod` declaraba `go 1.27` sin parche y el CI —que instala Go con `go-version-file: backend/go.mod`— resolvía go1.27.1, cuya stdlib tiene 9 vulnerabilidades corregidas en go1.27.2 (`GO-2026-6603, -6605, -6607, -6608, -6610, -6611, -6612, -6613 y -6617`: `net/http`, HTTP/2, `net/textproto`, `crypto/tls`). Se fijan `go 1.27.2` en `go.mod` y `golang:1.27.2` en el `Dockerfile`, de modo que tanto el CI como el binario de producción quedan con la stdlib parcheada; `govulncheck` v1.8.0 sale en verde.
 
 ### No entra en esta versión
 
