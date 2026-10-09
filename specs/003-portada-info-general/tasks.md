@@ -219,7 +219,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     ningún archivo del kit modificado.
   - **Commit sugerido**: `chore(frontend): agregar tipografías del Manual (@fontsource)`
 
-- [ ] T303 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
+- [X] T303 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/schema.d.ts` (GENERADO y commiteado).
   - **Qué hace**: ejecuta `make api-gen` (o `npm run api:gen`) contra **`backend/api/openapi.yaml`**
