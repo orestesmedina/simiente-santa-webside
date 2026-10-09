@@ -168,7 +168,7 @@ Solo hace falta instalarlas para trabajar **fuera** de Docker (tests, lint, gene
 
 | Herramienta | Versión fijada | Dónde se fija / cómo se obtiene |
 |---|---|---|
-| Go | **1.27** | `go 1.27` en `backend/go.mod`, `golang:1.27` en `backend/Dockerfile`; el CI lee `backend/go.mod` |
+| Go | **1.27.2** | `go 1.27.2` en `backend/go.mod`, `golang:1.27.2` en `backend/Dockerfile`; el CI lee `backend/go.mod` |
 | Node.js | **24** | `NODE_VERSION: '24'` en `.github/workflows/ci.yml` (kit 1.6.4); `node:24.21-alpine` en `frontend/Dockerfile` |
 | `golang-migrate` | **v4.20.1** | `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.20.1` (mismo pin que el CI del kit 1.6.4) |
 | `sqlc` | **v1.31.1** | instalado con `go install …@v1.31.1`; el binario queda en `$(go env GOPATH)/bin`, que debe estar en el `PATH` |
@@ -191,7 +191,7 @@ Comprobado a **2026-10-05** (Redis se añadió en F2; el resto de la tabla, a 20
 
 | Tecnología | Versión en uso | Estado de soporte |
 |---|---|---|
-| Go | 1.27 | Vigente (solo 1.26 y 1.27 reciben parches; 1.23 está en fin de vida desde 2025-08-12) |
+| Go | 1.27.2 (parche de la rama 1.27) | Vigente (solo 1.26 y 1.27 reciben parches; 1.23 está en fin de vida desde 2025-08-12) |
 | Node.js | 24 (LTS «Krypton») | **LTS activa** (mantenimiento desde 2026-10-20; fin de soporte 2028-04-30); el kit 1.6.4 fija esta línea mayor en el CI |
 | PostgreSQL | 16 (imagen `postgres:16-alpine` en desarrollo — **decisión del 2026-10-03**, T034/plan R10) | Rama 16 en soporte hasta noviembre de 2028 y recibe parches de seguridad; fijar un minor/digest exacto para reproducibilidad queda pendiente para builds/despliegue |
 | Redis | 7 (imagen `redis:7-alpine`, servicio `redis` en `docker-compose.yml`; añadida en F2, T205 — decisión P23 del plan) | Series 7.2 y 7.4 de Redis OSS en soporte extendido hasta **2029-12-01** (ciclo oficial de versiones de Redis, consultado el 2026-10-05); fijar un minor/digest exacto queda pendiente, igual que con `postgres:16-alpine` |

@@ -1,6 +1,6 @@
 # Imagen del backend (T019, plan D5).
 #
-# Build multi-stage: la única etapa de compilación parte de golang:1.27 (D5),
+# Build multi-stage: la única etapa de compilación parte de golang:1.27.2 (D5),
 # con go.mod/go.sum copiados primero para cachear la descarga de dependencias,
 # y produce un binario estático (CGO_ENABLED=0). La imagen de ejecución es
 # distroless/static-debian12 (no es un FROM de compilación): no lleva shell,
@@ -8,7 +8,7 @@
 # ca-certificates, tzdata y un usuario no-root (uid 65532, "nonroot").
 # La etiqueta va fijada (nada de :latest) para builds reproducibles (reglas
 # devops, constitución VII: configuración por variables de entorno).
-FROM golang:1.27 AS build
+FROM golang:1.27.2 AS build
 
 WORKDIR /src
 
