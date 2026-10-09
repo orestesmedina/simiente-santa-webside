@@ -732,7 +732,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 8 — Frontend (marca, i18n, portada pública y panel)
 
-- [ ] T327 · Marca: tokens, tipografías, logo y `BrandLogo` · `[frontend]` `[P5]`
+- [X] T327 · Marca: tokens, tipografías, logo y `BrandLogo` · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/index.css`, `frontend/tailwind.config.*` (EDITADOS),
     `frontend/public/brand/simiente-logo.jpeg` (NUEVO, copia de `resources/simiente.jpeg`),
