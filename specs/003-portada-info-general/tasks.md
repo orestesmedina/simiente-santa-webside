@@ -395,7 +395,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     migración `000006` (T307) — lo comprueba la integración de T316.
   - **Commit sugerido**: `feat(audit): códigos home.* y objetivo content para F3`
 
-- [ ] T312 · `platform/config`: variables de imágenes · `[backend]` `[P3]`
+- [X] T312 · `platform/config`: variables de imágenes · `[backend]` `[P3]`
 
   - **Archivos**: `backend/internal/platform/config/config.go` y `config_test.go` (EDITADOS).
   - **Qué hace**: lee `UPLOAD_DIR` (por defecto `./uploads`) y `UPLOAD_MAX_BYTES` (por defecto
