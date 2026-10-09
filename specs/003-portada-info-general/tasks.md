@@ -830,7 +830,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     a `/` como pantalla de estado (los ajusta T337/T338 si hiciera falta, RG3-11).
   - **Commit sugerido**: `feat(frontend): rutas de la portada, /health y /panel/informacion con permiso`
 
-- [ ] T332 · `features/publico`: `PublicLayout`, `HomePage` y secciones · `[frontend]`
+- [X] T332 · `features/publico`: `PublicLayout`, `HomePage` y secciones · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/` (`pages/HomePage.tsx`,
     `components/PublicLayout.tsx`, `LanguageSwitcher.tsx`, `IdentityHero.tsx`,

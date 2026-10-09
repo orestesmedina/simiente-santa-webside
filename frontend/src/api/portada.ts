@@ -8,6 +8,13 @@ export type PortadaPublica = components['schemas']['PortadaPublica'];
 export type PortadaAdmin = components['schemas']['PortadaAdmin'];
 export type PublicationState = components['schemas']['PublicationState'];
 
+export type IdentityPublic = components['schemas']['IdentityPublic'];
+export type AboutPublic = components['schemas']['AboutPublic'];
+export type ContactPublic = components['schemas']['ContactPublic'];
+export type ScheduleItemPublic = components['schemas']['ScheduleItemPublic'];
+export type WhatsappChannelPublic = components['schemas']['WhatsappChannelPublic'];
+export type SocialLinkPublic = components['schemas']['SocialLinkPublic'];
+
 export type IdentityAdmin = components['schemas']['IdentityAdmin'];
 export type IdentityInput = components['schemas']['IdentityInput'];
 export type AboutAdmin = components['schemas']['AboutAdmin'];

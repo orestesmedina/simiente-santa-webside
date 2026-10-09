@@ -2,6 +2,7 @@ import type { PublicMessages } from './messages';
 
 /** Diccionario de la interfaz en español (idioma base, ux.md §7.2). */
 export const es: PublicMessages = {
+  'nav.label': 'Secciones de la portada',
   'nav.sections.who': 'Quiénes somos',
   'nav.sections.schedule': 'Horario de servicios',
   'nav.sections.whatsapp': 'WhatsApp',
@@ -28,6 +29,10 @@ export const es: PublicMessages = {
   'schedule.day.4': 'Jueves',
   'schedule.day.5': 'Viernes',
   'schedule.day.6': 'Sábado',
+  'schedule.col.day': 'Día',
+  'schedule.col.time': 'Hora',
+  'schedule.col.service': 'Servicio',
+  'schedule.col.place': 'Lugar',
   'error.load':
     'No pudimos cargar la información de la iglesia. Revisa tu conexión y vuelve a intentarlo.',
   'error.retry': 'Volver a intentar',

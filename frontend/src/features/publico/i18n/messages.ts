@@ -8,6 +8,7 @@
  * ya resuelto del servidor (R3-2/analyze I2).
  */
 export const publicMessageKeys = [
+  'nav.label',
   'nav.sections.who',
   'nav.sections.schedule',
   'nav.sections.whatsapp',
@@ -34,6 +35,10 @@ export const publicMessageKeys = [
   'schedule.day.4',
   'schedule.day.5',
   'schedule.day.6',
+  'schedule.col.day',
+  'schedule.col.time',
+  'schedule.col.service',
+  'schedule.col.place',
   'error.load',
   'error.retry',
   'error.partial',

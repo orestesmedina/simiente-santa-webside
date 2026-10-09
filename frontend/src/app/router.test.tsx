@@ -9,6 +9,7 @@ import { AppProviders } from './providers';
 import { AppRoutes } from './router';
 
 const sessionUrl = `${API_BASE_URL}/api/v1/auth/session`;
+const portadaUrl = `${API_BASE_URL}/api/v1/portada`;
 
 const sessionAdmin = {
   id: '11111111-1111-1111-1111-111111111111',
@@ -33,10 +34,18 @@ function renderApp(entry: string) {
 }
 
 describe('AppRoutes', () => {
-  it('la portada pública vive en / (sin sesión)', () => {
+  it('la portada pública vive en / (sin sesión)', async () => {
+    server.use(
+      http.get(portadaUrl, () =>
+        HttpResponse.json({ lang: 'es', identity: { name: 'Iglesia Simiente Santa' } }),
+      ),
+    );
+
     renderApp('/');
 
-    expect(screen.getByRole('heading', { name: 'Portada' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Iglesia Simiente Santa' }),
+    ).toBeInTheDocument();
   });
 
   it('/health muestra «Estado del sistema» dentro del layout', () => {
