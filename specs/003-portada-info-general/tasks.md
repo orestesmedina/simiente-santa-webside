@@ -810,7 +810,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: los hooks de T332–T336 solo consumen este módulo.
   - **Commit sugerido**: `feat(frontend): cliente de API de la portada`
 
-- [ ] T331 · Permisos y rutas: `PORTADA`, `/`, `/health` y `/panel/informacion` · `[frontend]`
+- [X] T331 · Permisos y rutas: `PORTADA`, `/`, `/health` y `/panel/informacion` · `[frontend]`
 
   - **Archivos**: `frontend/src/lib/permissions.ts`, `frontend/src/features/roles/permissions.ts`,
     `frontend/src/app/router.tsx`, `frontend/src/app/layout.tsx` y sus pruebas (EDITADOS).

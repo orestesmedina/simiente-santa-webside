@@ -7,7 +7,7 @@ import { InicioPage } from '../features/panel/pages/InicioPage';
 import { RolesPage } from '../features/roles/pages/RolesPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
 import { UsersPage } from '../features/usuarios/pages/UsersPage';
-import { ADMIN_USERS_ROLES } from '../lib/permissions';
+import { ADMIN_USERS_ROLES, PORTADA } from '../lib/permissions';
 import { RequireAuth, RequirePasswordChange, RequirePermission } from './guards';
 import { AppLayout, PanelLayout } from './layout';
 
@@ -56,9 +56,36 @@ function NotFoundPage() {
   );
 }
 
+/**
+ * Marcador provisional de la portada pública (T331). T332 sustituye esta ruta
+ * por `PublicLayout` + `HomePage` con el contenido publicado. Hasta entonces la
+ * ruta `/` queda montada y separada de la pantalla de estado.
+ */
+function PublicHomePlaceholder() {
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 py-8">
+      <h1 className="text-2xl font-bold">Portada</h1>
+    </main>
+  );
+}
+
+/**
+ * Marcador provisional del módulo del panel (T331). T333 lo sustituye por
+ * `InformationPage` (pestañas de las 6 piezas). La ruta ya está protegida por
+ * `RequirePermission code={PORTADA}`.
+ */
+function InformationPlaceholder() {
+  return (
+    <section className="space-y-4">
+      <h1 className="text-2xl font-bold">Portada e información general</h1>
+    </section>
+  );
+}
+
 const appRoutes: RouteObject[] = [
+  { path: '/', element: <PublicHomePlaceholder /> },
   {
-    path: '/',
+    path: '/health',
     element: <AppLayout />,
     children: [{ index: true, element: <StatusPage /> }],
   },
@@ -83,6 +110,10 @@ const appRoutes: RouteObject[] = [
                   { path: 'roles', element: <RolesPage /> },
                   { path: 'auditoria', element: <AuditPage /> },
                 ],
+              },
+              {
+                element: <RequirePermission code={PORTADA} />,
+                children: [{ path: 'informacion', element: <InformationPlaceholder /> }],
               },
             ],
           },

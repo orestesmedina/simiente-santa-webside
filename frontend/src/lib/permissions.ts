@@ -4,6 +4,12 @@
  */
 export const ADMIN_USERS_ROLES = 'admin_usuarios_roles';
 
+/**
+ * Código del permiso del módulo «Portada e información general» (F3, FR-012).
+ * Ya existía en el catálogo de F2; F3 lo activa en la interfaz.
+ */
+export const PORTADA = 'portada';
+
 /** Forma mínima de sesión que necesita la comprobación de permisos. */
 export interface SessionLike {
   permissions: readonly string[];

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { App } from './App';
 
 describe('App', () => {
-  it('renderiza la aplicación en su estado inicial', () => {
+  it('renderiza la aplicación en su estado inicial (portada pública en /)', () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Estado del sistema' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Portada' })).toBeInTheDocument();
   });
 });

@@ -2,7 +2,7 @@ import { Button } from '../../../components/Button';
 import { EmptyState } from '../../../components/EmptyState';
 import { Notice } from '../../../components/Notice';
 import { useSessionQuery } from '../../auth/hooks/useSession';
-import { ADMIN_USERS_ROLES, hasPermission } from '../../../lib/permissions';
+import { ADMIN_USERS_ROLES, PORTADA, hasAnyPermission } from '../../../lib/permissions';
 import { AccesosRapidos } from '../components/AccesosRapidos';
 import { MiCuentaCard } from '../components/MiCuentaCard';
 
@@ -46,7 +46,7 @@ export function InicioPage() {
   }
 
   const { data: session } = sessionQuery;
-  const canManage = hasPermission(session, ADMIN_USERS_ROLES);
+  const canManage = hasAnyPermission(session, [ADMIN_USERS_ROLES, PORTADA]);
 
   return (
     <section className="space-y-4">
