@@ -236,7 +236,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 2 — Infraestructura local (`[infra]`, la aplica `devops`)
 
-- [ ] T304 · `docker-compose.yml`: volumen de imágenes y variables del backend · `[infra]` `[P2]`
+^- [X] T304 · `docker-compose.yml`: volumen de imágenes y variables del backend · `[infra]` `[P2]`
 
   - **Archivos**: `docker-compose.yml` (EDITABLE: no está en `.kit-manifest.json`). *No se toca*
     `.github/workflows/ci.yml` (archivo del kit).
@@ -253,7 +253,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     archivo del kit modificado.
   - **Commit sugerido**: `build(compose): volumen uploads_data y variables de imágenes`
 
-- [ ] T305 · `.env.example`: variables de imágenes · `[infra]` `[P2]`
+^- [ ] T305 · `.env.example`: variables de imágenes · `[infra]` `[P2]`
 
   - **Archivos**: `.env.example` (EDITABLE).
   - **Qué hace**: documenta `UPLOAD_DIR` (por defecto `./uploads` fuera de Docker) y

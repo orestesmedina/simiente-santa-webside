@@ -74,8 +74,24 @@ services:
       SESSION_IDLE_TTL_MINUTES: ${SESSION_IDLE_TTL_MINUTES:-30}
       SESSION_ABSOLUTE_TTL_MINUTES: ${SESSION_ABSOLUTE_TTL_MINUTES:-60}
       BOOTSTRAP_TOKEN: ${BOOTSTRAP_TOKEN:-}
+      # Imágenes de portada (P3-9/R3-8, T304): UPLOAD_DIR va FIJO a la ruta del
+      # volumen montado abajo — no se parametriza con ${...:-} para que nunca
+      # pueda divergir del mount point. Fuera de Docker (tests/scripts) la lee
+      # platform/config (T312) con su propio valor por defecto `./uploads`,
+      # documentado en .env.example.
+      UPLOAD_DIR: /var/lib/simiente/uploads
+      # Límite de tamaño de subida: 8388608 = 8 MB (P3-9). Fijo en el contenedor
+      # con el mismo valor por defecto que platform/config (T312); .env.example
+      # lo documenta para los entornos fuera de Docker.
+      UPLOAD_MAX_BYTES: 8388608
     ports:
       - "${HTTP_PORT:-8080}:8080"
+    volumes:
+      # uploads_data (R3-8/RG3-1): las imágenes de portada viven en disco local
+      # del contenedor y sobreviven a `docker compose down` y a rebuilds de la
+      # imagen, igual que pgdata. Plan B (S3/CDN) cerrado detrás de la interfaz
+      # storage.Store; ver quickstart para copiar los archivos fuera del host.
+      - uploads_data:/var/lib/simiente/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -98,3 +114,6 @@ services:
 
 volumes:
   pgdata:
+  # Imágenes de portada (T304/R3-8): volumen con nombre para que los subidos
+  # (logo/portada, FR-002/FR-011) no se pierdan con `down` ni rebuilds.
+  uploads_data:
