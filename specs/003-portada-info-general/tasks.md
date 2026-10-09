@@ -779,7 +779,7 @@ decisión **para que `disenador-ux` alinee su documento**:
     `useLanguage`) y `ux.md` §7.2 queda implementado tal cual (con `brand.name`).
   - **Commit sugerido**: `feat(frontend): i18n tipado es/en con memoria en localStorage`
 
-- [ ] T329 · Componentes compartidos: `Button` (`accent`) y `StatusPill` (`draft`/`published`) · `[frontend]` `[P5]`
+- [X] T329 · Componentes compartidos: `Button` (`accent`) y `StatusPill` (`draft`/`published`) · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/components/Button.tsx`, `StatusPill.tsx` y sus pruebas (EDITADOS).
   - **Qué hace**: las dos extensiones menores autorizadas (`ux.md` §6.1 / alineación 5): `Button`

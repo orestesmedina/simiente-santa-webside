@@ -26,4 +26,18 @@ describe('StatusPill', () => {
     render(<StatusPill value="success" label="Completada" />);
     expect(screen.getByText('Completada')).toBeInTheDocument();
   });
+
+  it('muestra el estado de publicación con texto explícito (Borrador/Publicado)', () => {
+    const { rerender } = render(<StatusPill value="draft" />);
+    expect(screen.getByText('Borrador')).toBeInTheDocument();
+    rerender(<StatusPill value="published" />);
+    expect(screen.getByText('Publicado')).toBeInTheDocument();
+  });
+
+  it('distingue borrador (gris) de publicado (verde) y no solo por color', () => {
+    const { rerender } = render(<StatusPill value="draft" />);
+    expect(screen.getByText('Borrador').className).toContain('bg-slate-100');
+    rerender(<StatusPill value="published" />);
+    expect(screen.getByText('Publicado').className).toContain('bg-green-100');
+  });
 });
