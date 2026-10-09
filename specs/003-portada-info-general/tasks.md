@@ -900,7 +900,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: `quickstart.md` §3 (identidad) y §6 (imágenes) navegables.
   - **Commit sugerido**: `feat(frontend): identidad con ImageUploader y PublishControls`
 
-- [ ] T335 · `features/informacion`: `WhoWeAreForm` + `ContactForm` · `[frontend]`
+- [X] T335 · `features/informacion`: `WhoWeAreForm` + `ContactForm` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/informacion/components/WhoWeAreForm.tsx`,
     `ContactForm.tsx` y pruebas (NUEVOS); hooks `useWhoWeAre.ts`, `useUpdateWhoWeAre.ts`,

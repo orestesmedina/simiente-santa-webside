@@ -6,12 +6,12 @@ import { Notice } from '../../../components/Notice';
 import { StatusPill } from '../../../components/StatusPill';
 import { Tabs, type TabItem } from '../../../components/Tabs';
 import { SOCIAL_NETWORK_LABELS, SOCIAL_NETWORKS } from '../../publico/social';
+import { ContactForm } from '../components/ContactForm';
 import { IdentityForm } from '../components/IdentityForm';
+import { WhoWeAreForm } from '../components/WhoWeAreForm';
 import { isForbidden } from '../errors';
 import { usePortadaAdmin } from '../hooks/usePortadaAdmin';
 import {
-  EMPTY_ABOUT,
-  EMPTY_CONTACT,
   EMPTY_SERVICES,
   EMPTY_WHATSAPP,
   INFO_LOAD_ERROR,
@@ -85,11 +85,7 @@ function renderTabContent(data: PortadaAdmin, tab: InfoTab): ReactNode {
       const about = data.about;
       return (
         <SectionCard title={TAB_ABOUT} state={about?.publicationState}>
-          {about ? (
-            <p className="whitespace-pre-line text-slate-700">{about.textEs}</p>
-          ) : (
-            <EmptyState message={EMPTY_ABOUT} />
-          )}
+          <WhoWeAreForm />
         </SectionCard>
       );
     }
@@ -97,24 +93,7 @@ function renderTabContent(data: PortadaAdmin, tab: InfoTab): ReactNode {
       const contact = data.contact;
       return (
         <SectionCard title={TAB_CONTACT} state={contact?.publicationState}>
-          {contact ? (
-            <dl className="grid gap-2 text-slate-700 sm:grid-cols-3">
-              <div>
-                <dt className="font-medium text-slate-900">Dirección</dt>
-                <dd>{contact.addressEs}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-900">Correo</dt>
-                <dd>{contact.email}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-slate-900">Teléfono</dt>
-                <dd>{contact.phone}</dd>
-              </div>
-            </dl>
-          ) : (
-            <EmptyState message={EMPTY_CONTACT} />
-          )}
+          <ContactForm />
         </SectionCard>
       );
     }

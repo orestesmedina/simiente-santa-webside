@@ -130,7 +130,7 @@ describe('InformationPage · pestañas (US3 esc. 7)', () => {
     expect(screen.getByText('Publicado')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Quiénes somos' }));
-    expect(screen.getByText('Somos una familia')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('Somos una familia')).toBeInTheDocument();
     expect(screen.getByText('Borrador')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Horario de servicios' }));
@@ -143,7 +143,7 @@ describe('InformationPage · pestañas (US3 esc. 7)', () => {
     expect(screen.getByText('Facebook')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Contacto' }));
-    expect(screen.getByText('San José')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('San José')).toBeInTheDocument();
   });
 });
 
