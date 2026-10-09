@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar (plan redactado, pendiente de aprobación humana) |
+| Fase | 3/9 · Tareas y coherencia |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Aprobación humana del plan (puerta 2). Luego Fase 3 (`tasks` + `analyze`) |
+| Próximo paso | Generar `tasks.md` (`arquitecto`) y correr `analyze` (`revisor-codigo`); luego Fase 4 (implementar) |
 | Bloqueado por | — (nada) |
 | Actualizado | 2026-10-09 |
 
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-09 | "apruebo la spec" |
-| Plan | pendiente | | | |
+| Plan | aprobado | humano | 2026-10-09 | "si" (respuesta a «¿Apruebas el plan de F3?») |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
@@ -51,3 +51,5 @@ Una línea por sesión o hito, la más reciente arriba.
 - 2026-10-09 — Inicio de F3: rama `003-portada-info-general` y spec redactada (19 FR, 13 SC), tras resolver 10 aclaraciones con el humano y leer su Manual de Identidad.
 - 2026-10-09 — **Puerta 1 superada**: el humano aprobó la spec («apruebo la spec»). Arranca Fase 2 (plan + UX).
 - 2026-10-09 — Fase 2 completada: `plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml`, `quickstart.md` y `ux.md`. Pendiente la puerta 2 (aprobación del plan).
+- 2026-10-09 — **Puerta 2 superada**: el humano aprobó el plan («si») y pidió versionar los recursos de marca (`resources/`) en el repo. Arranca Fase 3 (tareas + coherencia).
+- 2026-10-09 — **Recursos de marca versionados**: `resources/MANUAL DE MARCA.pdf` y `resources/simiente.jpeg` entran al repo; el logo se publicará además en `frontend/public/brand/` durante la implementación.
