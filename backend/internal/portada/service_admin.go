@@ -2,6 +2,7 @@ package portada
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 	"simiente-santa/backend/internal/platform/apperr"
 	"simiente-santa/backend/internal/platform/audit"
+	"simiente-santa/backend/internal/platform/storage"
 	"simiente-santa/backend/internal/platform/validate"
 )
 
@@ -102,6 +104,15 @@ type SocialLinkAdmin struct {
 	PublicationState string    `json:"publicationState"`
 	CreatedAt        time.Time `json:"createdAt"`
 	UpdatedAt        time.Time `json:"updatedAt"`
+}
+
+// ImageUploadResult es el resultado de una subida (contrato `ImageUploadResult`,
+// research R3-8): el nombre generado por el servidor y su URL pública relativa.
+type ImageUploadResult struct {
+	FileName  string `json:"fileName"`
+	URL       string `json:"url"`
+	MimeType  string `json:"mimeType"`
+	SizeBytes int64  `json:"sizeBytes"`
 }
 
 // --- DTOs de entrada de las ediciones parciales (PATCH) ---
@@ -269,6 +280,59 @@ func (s *service) SaveContact(ctx context.Context, actorID uuid.UUID, in Contact
 		return ContactAdmin{}, fmt.Errorf("guardar el contacto: %w", err)
 	}
 	return contactAdminFrom(saved), nil
+}
+
+// --- Imágenes (T323) ---
+
+// UploadImage guarda una imagen subida desde el panel (FR-002/FR-011, R3-8):
+// el Store valida la firma binaria (JPEG/PNG/WebP) y el tamaño, y genera el
+// nombre `img_<uuid>.<ext>`. La subida se audita con `home.image.upload` en la
+// misma operación (analyze I8); es **fail-closed**: si el registro falla, se
+// elimina el archivo y se devuelve error, de modo que nunca queda una subida sin
+// traza. La subida NO cambia contenido visible: la referencia se registra al
+// guardar la identidad (`home.identity.update`).
+func (s *service) UploadImage(ctx context.Context, actorID uuid.UUID, data []byte) (ImageUploadResult, error) {
+	if s.store == nil {
+		return ImageUploadResult{}, apperr.Internal(errors.New("portada: almacén de imágenes no configurado"))
+	}
+	if len(data) == 0 {
+		return ImageUploadResult{}, apperr.Invalid(
+			"No se recibió ninguna imagen",
+			apperr.WithDetails(map[string]any{"file": "adjunta un archivo de imagen"}),
+		)
+	}
+
+	file, err := s.store.Save(ctx, data)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrTooLarge):
+			return ImageUploadResult{}, apperr.Invalid(
+				"La imagen es demasiado grande",
+				apperr.WithDetails(map[string]any{"fileSize": "la imagen supera el tamaño máximo permitido"}),
+			)
+		case errors.Is(err, storage.ErrInvalidFormat):
+			return ImageUploadResult{}, apperr.Invalid(
+				"El formato de la imagen no es válido",
+				apperr.WithDetails(map[string]any{"file": "solo se admiten imágenes JPEG, PNG o WebP"}),
+			)
+		default:
+			return ImageUploadResult{}, fmt.Errorf("guardar la imagen: %w", err)
+		}
+	}
+
+	action := contentAction(actorID, audit.ActionHomeImageUpload, contentLabel(sectionImage, file.Name))
+	if err := s.repository.RecordAction(ctx, action); err != nil {
+		// Fail-closed: sin registro no hay subida (analyze I8).
+		s.deleteFile(ctx, file.Name)
+		return ImageUploadResult{}, fmt.Errorf("registrar la subida de la imagen: %w", err)
+	}
+
+	return ImageUploadResult{
+		FileName:  file.Name,
+		URL:       MediaPathPrefix + file.Name,
+		MimeType:  file.ContentType,
+		SizeBytes: file.SizeBytes,
+	}, nil
 }
 
 // --- Horario (T320) ---

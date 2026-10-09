@@ -622,7 +622,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: `quickstart.md` §1 es ejecutable tal cual (US1).
   - **Commit sugerido**: `feat(portada): endpoint público de la portada`
 
-- [ ] T323 · `portada`: `handler_images.go` + `handler_media.go` — imágenes · `[backend]`
+- [X] T323 · `portada`: `handler_images.go` + `handler_media.go` — imágenes · `[backend]`
 
   - **Archivos**: `backend/internal/portada/handler_images.go`, `handler_media.go`,
     `handler_images_test.go`, `handler_media_test.go` (NUEVOS).

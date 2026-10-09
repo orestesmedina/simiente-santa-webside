@@ -34,6 +34,15 @@ const messageUnauthenticated = "Necesitas iniciar sesión para continuar"
 // entradas ilimitadas antes de decodificarlas (CWE-400).
 const maxRequestBytes = 1 << 20
 
+// defaultMaxUploadBytes es el tope por subida si el cableado no lo indica
+// (UPLOAD_MAX_BYTES, T312): 8 MB, el valor por defecto de la configuración.
+const defaultMaxUploadBytes = 8388608
+
+// multipartOverhead es el margen que se suma al tope de la imagen para el
+// envoltorio multipart antes de aplicar http.MaxBytesReader: el tamaño real del
+// archivo se comprueba después con el límite exacto.
+const multipartOverhead = 1 << 20
+
 // Service es el puerto que los handlers de la portada necesitan del servicio.
 // La define quien la consume (arq. R3) y la implementa *service (service.go,
 // service_public.go, service_admin.go y service_audit.go). Crece con cada
@@ -46,6 +55,9 @@ type PortadaService interface {
 	// OpenMedia aplica la política de descarga pública de imágenes (analyze
 	// C4/M6) y abre el archivo del almacén.
 	OpenMedia(ctx context.Context, fileName string) (io.ReadCloser, error)
+	// UploadImage guarda una imagen subida desde el panel y la audita con
+	// `home.image.upload` (fail-closed, analyze I8).
+	UploadImage(ctx context.Context, actorID uuid.UUID, data []byte) (ImageUploadResult, error)
 	// RecordRejectedBestEffort registra un rechazo por JSON o DTO inválido sin
 	// cambiar la respuesta (R3-11); nunca transporta el cuerpo de la petición.
 	RecordRejectedBestEffort(ctx context.Context, rejection Rejection)
@@ -55,8 +67,9 @@ type PortadaService interface {
 // decodifica y valida, delega en el Service y responde con el sobre uniforme de
 // éxito o deriva cualquier error a httpserver.WriteError.
 type Handler struct {
-	service PortadaService
-	logger  *slog.Logger
+	service        PortadaService
+	maxUploadBytes int64
+	logger         *slog.Logger
 }
 
 // HandlerDeps reúne las dependencias del Handler. Es un struct para que el
@@ -64,6 +77,9 @@ type Handler struct {
 type HandlerDeps struct {
 	// Service es el servicio del dominio. Obligatorio.
 	Service PortadaService
+	// MaxUploadBytes es el tope por subida (UPLOAD_MAX_BYTES, T312). Si es ≤ 0
+	// se usa el valor por defecto de la configuración (8 MB).
+	MaxUploadBytes int64
 	// Logger registra errores; nil usa el logger por defecto.
 	Logger *slog.Logger
 }
@@ -75,7 +91,11 @@ func NewHandler(deps HandlerDeps) *Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Handler{service: deps.Service, logger: logger}
+	maxUploadBytes := deps.MaxUploadBytes
+	if maxUploadBytes <= 0 {
+		maxUploadBytes = defaultMaxUploadBytes
+	}
+	return &Handler{service: deps.Service, maxUploadBytes: maxUploadBytes, logger: logger}
 }
 
 // decodeAndValidate decodifica el cuerpo JSON de la petición en dto y lo valida
