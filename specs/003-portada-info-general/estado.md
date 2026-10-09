@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
-| Fase | 4/9 · Implementar |
+| Fase | 6/9 · Implementar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Implementar tareas de `tasks.md` por capa (empezando por `[db]`: T303–T308); un commit por tarea |
+| Próximo paso | T337 · E2E Playwright `portada-publica.spec.ts` → `dev-frontend` (37/40 tareas hechas; faltan T337, T338 y el cierre T339) |
 | Bloqueado por | — (nada) |
 | Actualizado | 2026-10-09 |
 
@@ -54,3 +54,6 @@ Una línea por sesión o hito, la más reciente arriba.
 - 2026-10-09 — **Puerta 2 superada**: el humano aprobó el plan («si») y pidió versionar los recursos de marca (`resources/`) en el repo. Arranca Fase 3 (tareas + coherencia).
 - 2026-10-09 — **Recursos de marca versionados**: `resources/MANUAL DE MARCA.pdf` y `resources/simiente.jpeg` entran al repo; el logo se publicará además en `frontend/public/brand/` durante la implementación.
 - 2026-10-09 — Fase 3 completada: `tasks.md` (40 tareas T301–T340) y `analyze.md`. El primer `analyze` **rechazó** con 4 críticos (C1 agregado admin sin tarea; C2 horario; C3 memoria de idioma; C4 descarga de imágenes y borradores); se corrigieron con arquitecto y UX y el re-análisis dio **APROBADO** (0 críticos), cerrando además N1–N4.
+- 2026-10-09 — **Fase 4 (Implementar) en curso**: T301–T316 hechas y comprometidas; HEAD `f6ca31d`. La verificación de integración de T316 (`go test -tags=integration ./internal/portada/`) quedó **sin confirmar** (el entorno Docker local se cayó). Fase corregida de `4/9` a `6/9` (numeración canónica de las 9 fases) al retomar.
+- 2026-10-09 — **Retomar**: el stack Docker local (backend, frontend, `db`, redis) había quedado detenido; `make estado` marcaba `tasks.md` más nuevo que `estado.md`. Estado actualizado y roadmap corregido (F3 sin comillas en la columna Rama).
+- 2026-10-09 — **Fase 4 avanzada**: T301–T336 implementadas y comprometidas (contrato 0.4.0, migraciones `000005`/`000006`, sqlc, `platform/*`, repositorio y servicios de `portada` con 84.7 % de cobertura, handlers y rutas con el permiso `portada` cableado, y todo el frontend: marca/i18n/portada pública/panel de información). Backend y frontend en verde. Faltan T337–T338 (e2e) y T339 (cierre).
