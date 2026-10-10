@@ -14,7 +14,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
 | Fase | 7/9 · Validar (implementación cerrada, 40/40 tareas) |
-| Ciclo de corrección | 1/3 (defectos corregidos: volumen de subidas, selector de idioma, nav 320 px, lint de pruebas) |
+| Ciclo de corrección | 2/3 (ciclo 1: 4 defectos de F4; ciclo 2: B1 bloqueante de validación + I1/A1) |
 | Próximo paso | Validación en paralelo con `qa-tester`, `revisor-codigo` y `seguridad` → `revision-2026-10-09-*.md` |
 | Bloqueado por | — (Docker operativo; e2e ejecutables con `LD_LIBRARY_PATH=/tmp/opencode/pwlibs/usr/lib/x86_64-linux-gnu`) |
 | Actualizado | 2026-10-09 |
@@ -32,9 +32,19 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 ## Hallazgos abiertos
 
-Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
+Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-10-*.md`).
 
-- (ninguno)
+- **B1 (BLOQUEANTE, código + QA)** — Los `PATCH` del panel no vacían campos opcionales con `null`: en Go `null` y campo ausente son indistinguibles, y el frontend envía `null` para quitar `endTime`/una traducción. Se pierde en silencio (la UI dice «Guardado» y el valor reaparece); `{"endTime":null}` responde `400`. Reproducido en vivo por QA. **→ `dev-backend` (ciclo 2).**
+- **I1 (IMPORTANTE, código)** — `formatTimeRange` muestra el horario en 24 h, pero `ux.md` §4.6/D-3 promete presentación a.m./p.m. localizada. **→ `dev-frontend` (ciclo 2).**
+- **A1 (MENOR, QA)** — Objetivo de toque del selector de idioma 20 px (< 24 px recomendado). **→ `dev-frontend` (ciclo 2).**
+- **M-a11y (MENOR, QA)** — Reflow fino a zoom 200 % (56 px de desborde, sin pérdida de contenido). Aceptado como deuda.
+- Seguridad: **APROBADO**, 0 bloqueantes (5 menores S1–S5, incluida la semántica `null` vista desde seguridad ≡ B1).
+
+**Correcciones del ciclo 2 (aplicadas, pendientes de re-validación):**
+- **B1** ✅ `fix(portada): distinguir null de ausente en los PATCH` (`d5d4610`; tipo `Optional[T]`; las 3 pruebas de regresión de QA en verde).
+- **I1** ✅ `fix(frontend): horario en a.m./p.m. localizado` (`fc96185`).
+- **A1** ✅ `fix(frontend): objetivo táctil del selector de idioma ≥44 px` (`2b72138`).
+- Verificado tras el fix: backend unit+integración ✅, frontend **271** pruebas ✅, e2e **6/6** ✅ (incluye `portada-accesibilidad.spec.ts`).
 
 ## Decisiones y aclaraciones
 
