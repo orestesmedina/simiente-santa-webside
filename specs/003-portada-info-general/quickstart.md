@@ -55,10 +55,13 @@ El permiso `portada` ("Portada e información general") **ya existe** en el cat�
 (migración `000002`): no se crea nada nuevo. Con una cuenta de administración de usuarios y roles:
 
 ```bash
-# Login y cookies (reutiliza el flujo de F2, quickstart §2)
+# Login y cookies (reutiliza el flujo de F2, quickstart §2).
+# Credenciales del ejemplo: la cuenta del administrador sembrada por las pruebas e2e
+# de este repo (frontend/e2e/helpers.ts). En otro entorno, usa el correo y la
+# contraseña de tu propio administrador (creado con la inicialización de F2).
 curl -s -c /tmp/ss.jar -X POST "$API/api/v1/auth/login" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"admin@ejemplo.com","password":"Contraseña1!"}' | jq
+  -d '{"email":"ana@ejemplo.com","password":"Semilla.2026"}' | jq
 export CSRF=$(grep csrf_token /tmp/ss.jar | awk '{print $7}')
 ```
 
@@ -69,7 +72,7 @@ curl -s -b /tmp/ss.jar -X POST "$API/api/v1/admin/roles" \
   -d '{"name":"contenido","permissions":["portada"]}' | jq
 curl -s -b /tmp/ss.jar -X POST "$API/api/v1/admin/usuarios" \
   -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
-  -d '{"firstName":"Ana","lastName":"Editora","email":"ana@ejemplo.com",
+  -d '{"firstName":"Ana","lastName":"Editora","email":"editora@ejemplo.com",
        "phone":"8888-8888","roleId":"<id-del-rol>","password":"OtraClave1!"}' | jq
 ```
 
@@ -251,7 +254,10 @@ curl -s -b /tmp/sin-permiso.jar -X PUT "$API/api/v1/admin/portada/contacto" \
 ```
 
 - La denegación **queda registrada** en la auditoría (`result='denied'`, FR-017).
-- Sin sesión → `401 unauthenticated`; con `mustChangePassword` → `403` con la razón del guard (F2).
+- **Orden real de guards** (el de F2, verificado en el cierre): en la **primera sesión** de una
+  cuenta con `mustChangePassword`, el guard de contraseña responde `403 password_change_required`
+  **antes** de evaluarse el permiso del módulo; **sin sesión**, `401 unauthenticated`. Solo una
+  cuenta sin esas condiciones llega al `403 forbidden` de permisos del enunciado.
 
 ## 9. Auditoría de las ediciones (FR-017, SC-013)
 

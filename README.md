@@ -1,13 +1,13 @@
 # Simiente Santa
 
-Sitio web de la Iglesia Simiente Santa: sitio público (eventos, grupos, ministerios, donaciones) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
+Sitio web de la Iglesia Simiente Santa: sitio público (desde F3 la portada con la información general de la iglesia; eventos, grupos, ministerios y donaciones por llegar) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
 
 ## Qué es la F1 (Estructura base)
 
 La funcionalidad **F1** es el esqueleto técnico sobre el que se construyen F2–F9:
 
 - **Backend en Go** con `GET /healthz`, que informa en cada consulta el estado **real** de la conexión a PostgreSQL.
-- **Frontend en React + TypeScript** con una página inicial que muestra ese estado de forma comprensible.
+- **Frontend en React + TypeScript** con una página inicial que muestra ese estado de forma comprensible — desde F3 vive en `/health`, porque en `/` ahora está la portada pública.
 - **PostgreSQL** con migraciones versionadas (`golang-migrate`) — en F1 sin tablas de negocio: solo la baseline `000001` (no-op).
 - **Docker Compose** para levantar todo con un solo comando y **CI** (GitHub Actions) que valida cada cambio.
 - Contrato vivo en [`backend/api/openapi.yaml`](backend/api/openapi.yaml), del que se generan los tipos TypeScript del frontend.
@@ -26,6 +26,18 @@ La funcionalidad **F2** abre el **panel de administración** que usarán F3–F9
 - **Redis** (servicio nuevo en compose) guarda la sesión y los contadores de intentos. Corre **sin persistencia a propósito**: un reinicio obliga a volver a entrar y pone a cero los contadores, pero no toca la auditoría, que vive en PostgreSQL.
 
 Rama: `002-acceso-gestion-usuarios`. Spec, plan y quickstart en [`specs/002-acceso-gestion-usuarios/`](specs/002-acceso-gestion-usuarios/).
+
+## Qué es F3 (Portada e información general)
+
+La funcionalidad **F3** es la primera cara pública del sitio: la portada que cualquier persona ve sin cuenta, y el módulo del panel con el que el equipo la mantiene al día.
+
+- **Portada pública en <http://localhost:5173/>**: identidad de la iglesia (nombre oficial, lema/misión/visión, logotipo e imagen de portada), «quiénes somos», horario de servicios, canales de WhatsApp, redes sociales y contacto (dirección, correo y teléfono). Sin sesión ni registro; solo se ve lo que está **publicado**, y una sección sin ningún elemento publicado **se oculta por completo**.
+- **Bilingüe (español/inglés)** con selector visible: el inglés es opcional contenido por contenido (lo sin traducir se muestra en español, nunca vacío) y el sitio recuerda la elección en el dispositivo (`localStorage`; la primera visita entra en español).
+- **Panel `/panel/informacion`** con las pestañas Identidad, Quiénes somos, Horario de servicios, Canales de WhatsApp, Redes sociales y Contacto; cada elemento tiene estado **Borrador/Publicado** y se publica o retira por separado (lo que ya está publicado es visible al guardarlo). Requiere el permiso **«Portada e información general»** de F2, y toda edición queda registrada en la auditoría de `/panel/auditoria`.
+- **Subida de imágenes** (logotipo e imagen de portada): JPEG/PNG/WebP hasta **8 MB**, con texto alternativo obligatorio; se guardan en el volumen `uploads_data` (`UPLOAD_DIR`/`UPLOAD_MAX_BYTES`) y solo se sirven cuando el contenido que las referencia está publicado.
+- La página «Estado del sistema» de F1 se traslada a **`/health`** (ruta de la SPA; el endpoint `GET /healthz` no cambia): en `/` empieza la portada.
+
+Rama: `003-portada-info-general`. Spec, plan, UX y quickstart en [`specs/003-portada-info-general/`](specs/003-portada-info-general/).
 
 ## Prerrequisito
 
@@ -53,7 +65,7 @@ docker compose ps                      # db y redis (healthy), backend y fronten
 curl -i http://localhost:8080/healthz  # 200 → {"status":"ok","database":"connected"}
 ```
 
-Abrir <http://localhost:5173>: la página muestra el estado del sistema sin ninguna acción adicional. El **panel de administración** está en <http://localhost:5173/login> y todavía no tiene cuentas: hay que inicializarlo (siguiente sección).
+Abrir <http://localhost:5173>: desde F3 esa es la **portada pública** de la iglesia; con la base recién migrada se muestra sin secciones, porque no hay contenido publicado todavía (el equipo lo carga desde el panel). La pantalla «Estado del sistema» de F1, que antes ocupaba el inicio, está ahora en <http://localhost:5173/health>. El **panel de administración** está en <http://localhost:5173/login> y todavía no tiene cuentas: hay que inicializarlo (siguiente sección).
 
 Detener: `make down` (los datos se conservan en el volumen `pgdata`; `make down && make up` es repetible).
 
@@ -134,6 +146,8 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 | `SESSION_COOKIE_SECURE` | backend (`Secure` en la cookie de sesión) | `false` (con HTTPS → `true`; en producción el arranque falla con `false`) |
 | `SESSION_IDLE_TTL_MINUTES` / `SESSION_ABSOLUTE_TTL_MINUTES` | backend (TTL de la sesión en Redis) | `30` (inactividad) / `60` (vida absoluta desde el login) |
 | `BOOTSTRAP_TOKEN` | backend: cabecera `X-Setup-Token` de `POST /api/v1/setup/initialize` (inicialización única) | vacío → la inicialización queda desactivada (la ruta siempre responde `401`/`403` y el backend avisa al arrancar) |
+| `UPLOAD_DIR` | backend (carpeta donde guarda y lee las imágenes de la portada: logotipo e imagen); compose la fija a `/var/lib/simiente/uploads` con el volumen `uploads_data` | `./uploads` (fuera de Docker) |
+| `UPLOAD_MAX_BYTES` | backend (tope de tamaño de cada imagen subida, comprobado en stream) | `8388608` (**8 MB**) |
 
 ## Comandos
 
@@ -145,7 +159,7 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 | `make lint` | `gofmt` + `go vet` + `golangci-lint` (backend) y ESLint + `tsc` (frontend) |
 | `make security` | `govulncheck ./...` (Go) y `npm audit --audit-level=high` (frontend) |
 | `make ci` | `lint` + `test` + `security`: lo mismo que corre el CI |
-| `make db-migrate` | Aplica las migraciones de `backend/migrations` con `golang-migrate` (F2 añade `000002`–`000004`) |
+| `make db-migrate` | Aplica las migraciones de `backend/migrations` con `golang-migrate` (F2 añadió `000002`–`000004`; F3, `000005`–`000006`) |
 | `make doctor` | Verifica que el entorno tenga todo lo necesario (Docker, Go, Node, hooks, kit…) |
 | `make e2e` | Pruebas end-to-end con Playwright (requiere `make up` levantado) |
 | `make api-gen` | Regenera `frontend/src/api/schema.d.ts` desde `backend/api/openapi.yaml` |
@@ -160,7 +174,7 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 Notas:
 
 - **`make db-migrate` usa `$DATABASE_URL` del shell** (no lee `.env` por sí mismo). Con `.env`: `set -a; source .env; set +a` antes de llamarlo; sin `.env`: `DATABASE_URL='postgres://app:app_dev_password@localhost:5432/app?sslmode=disable' make db-migrate`.
-- **`make sqlc-verify` comprueba que no hay deriva** entre `backend/internal/db/queries/` y el código generado: F2 añadió las consultas `users`, `roles`, `permissions` y `audit` (en F1 estaba vacío y el comando terminaba en verde sin comprobar nada).
+- **`make sqlc-verify` comprueba que no hay deriva** entre `backend/internal/db/queries/` y el código generado: F2 añadió las consultas `users`, `roles`, `permissions` y `audit`, y F3 las del dominio `portada` (`home.sql`) (en F1 estaba vacío y el comando terminaba en verde sin comprobar nada).
 
 ## Herramientas de desarrollo (opcionales)
 
@@ -209,15 +223,17 @@ Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda
 
 - **`VITE_API_URL` se hornea en el build** (plan R6): la URL de la API queda dentro del bundle del frontend. Por defecto `http://localhost:8080` y compose la deriva de `HTTP_PORT`. Por eso **cambiar puertos exige `docker compose up -d --build`** (o borrar la imagen del frontend), y al cambiar `WEB_PORT` hay que ajustar también `CORS_ALLOWED_ORIGINS`.
 - **Artefactos generados (se commitean)**: `frontend/src/api/schema.d.ts` se regenera con `make api-gen` cuando cambia `backend/api/openapi.yaml`; el código de sqlc con `make sqlc-gen` cuando cambian `backend/migrations/` o `backend/internal/db/queries/`. Regla de revisión (plan R4): un PR que toca migraciones o consultas debe regenerar `internal/db/`, y uno que toca el contrato debe regenerar `schema.d.ts`. `make sqlc-verify` comprueba que no hay deriva.
-- **E2E**: `make e2e` necesita el stack levantado (`make up`) y el navegador de Playwright instalado (arriba). El CI del kit **no** corre e2e. Dos notas de F2: si en tu entorno faltan las librerías de sistema de Chromium (`libnspr4`, `libnss3`, `libasound2`) y no puedes instalarlas, las suites se pueden correr con la imagen oficial de Playwright (`mcr.microsoft.com/playwright:v1.63.0-jammy`) contra el stack levantado — así se validó F2 (3/3); y conviene ejecutarlas **en serie** (`--workers=1`), porque en paralelo saturan el rate-limit de 20 peticiones/min por IP a `/api/v1/auth/login` y producen `429` espurios.
+- **E2E**: `make e2e` necesita el stack levantado (`make up`) y el navegador de Playwright instalado (arriba). El CI del kit **no** corre e2e. Notas de F2/F3: si en tu entorno faltan las librerías de sistema de Chromium (`libnspr4`, `libnss3`, `libasound2`) y no puedes instalarlas, las suites se pueden correr con la imagen oficial de Playwright (`mcr.microsoft.com/playwright:v1.63.0-jammy`) contra el stack levantado; y conviene ejecutarlas **en serie** (`--workers=1`), porque en paralelo saturan el rate-limit de 20 peticiones/min por IP a `/api/v1/auth/login` y producen `429` espurios. Así se validaron F2 (**3/3**) y F3 (**7/7**: `acceso`, `auditoria`, `portada-accesibilidad`, `portada-panel`, `portada-patch-null`, `portada-publica` y `status`).
 
 ## Documentación relacionada
 
-- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1 y la 0.2.0 a F2.
+- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1, la 0.2.0 a F2 y la 0.3.0 a F3.
 - [`docs/entrega/F1-estructura-base.md`](docs/entrega/F1-estructura-base.md) — notas de entrega de F1 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F2-acceso-y-gestion-de-usuarios.md`](docs/entrega/F2-acceso-y-gestion-de-usuarios.md) — notas de entrega de F2 para el cliente (lenguaje no técnico).
+- [`docs/entrega/F3-portada-e-informacion-general.md`](docs/entrega/F3-portada-e-informacion-general.md) — notas de entrega de F3 para el cliente (lenguaje no técnico).
 - [`specs/001-estructura-base/quickstart.md`](specs/001-estructura-base/quickstart.md) — validación ejecutable de F1 de punta a punta (qué se espera en cada escenario).
 - [`specs/002-acceso-gestion-usuarios/quickstart.md`](specs/002-acceso-gestion-usuarios/quickstart.md) — validación ejecutable de F2 (inicialización, sesión, usuarios, roles y auditoría).
+- [`specs/003-portada-info-general/quickstart.md`](specs/003-portada-info-general/quickstart.md) — validación ejecutable de F3 (portada pública, edición desde el panel, publicación por elemento, imágenes, idioma y auditoría).
 - [`docs/tecnico/arquitectura.md`](docs/tecnico/arquitectura.md) — arquitectura del sistema; **§8 es la receta** de 10 pasos para agregar un área de negocio nueva.
 - [`docs/tecnico/decisiones.md`](docs/tecnico/decisiones.md) — decisiones de arquitectura y su justificación.
 - [`docs/GUIA-INICIO.md`](docs/GUIA-INICIO.md) — guía del kit: agentes de IA, entorno WSL y problemas comunes.
