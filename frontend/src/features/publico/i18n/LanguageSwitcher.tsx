@@ -21,7 +21,10 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
     <fieldset className={['flex items-center gap-3', className].filter(Boolean).join(' ')}>
       <legend className="sr-only">{t('lang.label')}</legend>
       {OPTIONS.map((code) => (
-        <label key={code} className="inline-flex items-center gap-1.5 text-sm">
+        <label
+          key={code}
+          className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 px-1 text-sm"
+        >
           <input
             type="radio"
             name={groupName}
