@@ -129,7 +129,7 @@ func TestGetPortadaMixedState(t *testing.T) {
 func TestGetPortadaInvalidLang(t *testing.T) {
 	service := NewService(ServiceDeps{Repository: newFakeRepository()})
 	_, err := service.GetPortada(context.Background(), "fr")
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 	requireDetail(t, err, "lang")
 }
 

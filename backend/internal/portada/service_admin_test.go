@@ -87,7 +87,7 @@ func TestSaveIdentityRequiresImageAlt(t *testing.T) {
 	in := validIdentityInput()
 	in.LogoAltEs = "   "
 	_, err := service.SaveIdentity(context.Background(), uuid.New(), in)
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 	requireDetail(t, err, "logoAltEs")
 	if repo.identity != nil {
 		t.Fatal("no debía guardarse nada")
@@ -158,7 +158,7 @@ func TestSaveContact(t *testing.T) {
 	_, err := service.SaveContact(context.Background(), uuid.New(), ContactInput{
 		AddressEs: "Calle 1", Email: "no-es-correo", Phone: "0412-1234567", PublicationState: string(StateDraft),
 	})
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 	requireDetail(t, err, "email")
 
 	saved, err := service.SaveContact(context.Background(), uuid.New(), ContactInput{
@@ -202,7 +202,7 @@ func TestCreateServiceEndBeforeStart(t *testing.T) {
 	_, err := service.CreateService(context.Background(), uuid.New(), ScheduleItemInput{
 		StartTime: "12:00", EndTime: "10:00", NameEs: "Culto", PlaceEs: "Templo",
 	})
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 	requireDetail(t, err, "endTime")
 }
 
@@ -216,7 +216,7 @@ func TestCreateServiceLimit(t *testing.T) {
 	_, err := service.CreateService(context.Background(), uuid.New(), ScheduleItemInput{
 		StartTime: "10:00", NameEs: "Nuevo", PlaceEs: "Templo",
 	})
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 }
 
 // T320: PATCH que cambia datos y estado deja dos filas (analyze M5).
@@ -257,7 +257,7 @@ func TestUpdateServiceNotFound(t *testing.T) {
 	service := NewService(ServiceDeps{Repository: newFakeRepository()})
 	name := "X"
 	_, err := service.UpdateService(context.Background(), uuid.New(), uuid.New(), ScheduleItemPatch{NameEs: &name})
-	requireKind(t, err, apperr.KindNotFound)
+	_ = requireKind(t, err, apperr.KindNotFound)
 }
 
 // T320: borrado conserva el nombre del elemento en la auditoría.
@@ -296,7 +296,7 @@ func TestCreateWhatsappDirectAndDuplicate(t *testing.T) {
 	}
 
 	_, err = service.CreateWhatsappChannel(context.Background(), uuid.New(), in)
-	requireKind(t, err, apperr.KindConflict)
+	_ = requireKind(t, err, apperr.KindConflict)
 }
 
 // T320: grupo con host ajeno → 400 details.destination.
@@ -305,7 +305,7 @@ func TestCreateWhatsappGroupHost(t *testing.T) {
 	_, err := service.CreateWhatsappChannel(context.Background(), uuid.New(), WhatsappChannelInput{
 		NameEs: "Grupo", Kind: KindGroup, Destination: "https://example.com/grupo",
 	})
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 	requireDetail(t, err, "destination")
 }
 
@@ -319,7 +319,7 @@ func TestCreateWhatsappLimit(t *testing.T) {
 	_, err := service.CreateWhatsappChannel(context.Background(), uuid.New(), WhatsappChannelInput{
 		NameEs: "Nuevo", Kind: KindDirect, Destination: "04121111111",
 	})
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 }
 
 // T320: redes: red fuera de catálogo, host incorrecto y duplicado.
@@ -328,18 +328,18 @@ func TestCreateSocialLinkValidation(t *testing.T) {
 	service := NewService(ServiceDeps{Repository: repo})
 
 	_, err := service.CreateSocialLink(context.Background(), uuid.New(), SocialLinkInput{Network: "x", URL: "https://x.com/simiente"})
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 	requireDetail(t, err, "network")
 
 	_, err = service.CreateSocialLink(context.Background(), uuid.New(), SocialLinkInput{Network: "facebook", URL: "https://instagram.com/simiente"})
-	requireKind(t, err, apperr.KindInvalid)
+	_ = requireKind(t, err, apperr.KindInvalid)
 	requireDetail(t, err, "url")
 
 	if _, err := service.CreateSocialLink(context.Background(), uuid.New(), SocialLinkInput{Network: "facebook", URL: "https://facebook.com/simiente", PublicationState: string(StatePublished)}); err != nil {
 		t.Fatalf("CreateSocialLink = %v", err)
 	}
 	_, err = service.CreateSocialLink(context.Background(), uuid.New(), SocialLinkInput{Network: "facebook", URL: "https://facebook.com/otro"})
-	requireKind(t, err, apperr.KindConflict)
+	_ = requireKind(t, err, apperr.KindConflict)
 }
 
 // T320: editar el enlace revalida red y URL.
@@ -357,8 +357,6 @@ func TestUpdateSocialLink(t *testing.T) {
 		t.Fatalf("falta home.social.update: %v", actionCodes(repo.recorded()))
 	}
 }
-
-func intptr(i int) *int { return &i }
 
 // T320: PATCH de canal: datos + estado (dos filas) y revalidación del destino.
 func TestUpdateWhatsappChannel(t *testing.T) {
@@ -384,7 +382,7 @@ func TestUpdateWhatsappChannel(t *testing.T) {
 	_, err := service.UpdateWhatsappChannel(context.Background(), uuid.New(), other.ID, WhatsappChannelPatch{
 		NameEs: &otherName, Destination: &otherDestination, Kind: &kind,
 	})
-	requireKind(t, err, apperr.KindConflict)
+	_ = requireKind(t, err, apperr.KindConflict)
 
 	// Sin cambios → 400.
 	if _, err := service.UpdateWhatsappChannel(context.Background(), uuid.New(), current.ID, WhatsappChannelPatch{}); errorKind(err) != apperr.KindInvalid {

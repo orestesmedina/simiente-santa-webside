@@ -90,7 +90,11 @@ func TestLocalStoreOpenRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open(%q): %v", saved.Name, err)
 	}
-	defer reader.Close()
+	defer func() {
+		if err := reader.Close(); err != nil {
+			t.Errorf("cerrar reader: %v", err)
+		}
+	}()
 
 	got, err := io.ReadAll(reader)
 	if err != nil {
