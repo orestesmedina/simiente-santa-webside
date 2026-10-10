@@ -54,6 +54,9 @@ test.describe('Portada pública (visitante, idioma, accesibilidad)', () => {
     const directChannel = `Escríbenos ${suffix}`;
     const draftService = `Borrador interno ${suffix}`;
     const directPhone = '+506 7000 1234';
+    // El backend normaliza el teléfono a dígitos (contract `Contact`, FR-015);
+    // el enlace `tel:` y su texto usan ese valor normalizado.
+    const directPhoneNormalized = directPhone.replace(/[^\d+]/g, '');
     const contactEmail = `hola-${suffix}@ejemplo.com`;
     const instagramUrl = `https://www.instagram.com/simiente-${suffix}`;
 
@@ -182,8 +185,14 @@ test.describe('Portada pública (visitante, idioma, accesibilidad)', () => {
         await expect(sectionsNav.getByRole('link', { name: 'Redes sociales' })).toBeVisible();
 
         await expect(page.locator('#quienes-somos').getByText(aboutText)).toBeVisible();
-        await expect(page.locator('#horario').getByText(serviceName).first()).toBeVisible();
-        await expect(page.locator('#horario').getByText('10:00 – 12:00')).toBeVisible();
+        // El horario se siembra con un sufijo único, pero la base conserva los
+        // servicios de corridas previas (la identidad es un singleton
+        // compartido): se apunta a la fila del servicio creado para que el
+        // locator no resuelva a varias filas con la misma hora.
+        const scheduleTable = page.getByRole('table', { name: 'Horario de servicios' });
+        const serviceRow = scheduleTable.getByRole('row').filter({ hasText: serviceName });
+        await expect(serviceRow.getByText(serviceName)).toBeVisible();
+        await expect(serviceRow.getByText('10:00 – 12:00')).toBeVisible();
 
         // SC-009: los enlaces de WhatsApp y redes llevan al destino correcto.
         const whatsappLink = page
@@ -205,8 +214,8 @@ test.describe('Portada pública (visitante, idioma, accesibilidad)', () => {
           page.locator('#contacto').getByRole('link', { name: contactEmail }),
         ).toHaveAttribute('href', `mailto:${contactEmail}`);
         await expect(
-          page.locator('#contacto').getByRole('link', { name: directPhone }),
-        ).toHaveAttribute('href', /^tel:/);
+          page.locator('#contacto').getByRole('link', { name: directPhoneNormalized }),
+        ).toHaveAttribute('href', `tel:${directPhoneNormalized}`);
 
         // SC-002: el borrador no aparece por ninguna vía.
         await expect(page.getByText(draftService)).toHaveCount(0);

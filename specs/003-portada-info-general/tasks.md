@@ -950,7 +950,7 @@ decisión **para que `disenador-ux` alinee su documento**:
 
 ## Fase 9 — E2E y cierre
 
-- [ ] T337 · E2E Playwright `portada-publica.spec.ts` · `[frontend]` `[P7]`
+- [X] T337 · E2E Playwright `portada-publica.spec.ts` · `[frontend]` `[P7]`
 
   - **Archivos**: `frontend/e2e/portada-publica.spec.ts` (NUEVO).
   - **Qué hace**: el recorrido del visitante (US1, US3 público, US4, US5) sobre
