@@ -523,10 +523,600 @@
         }
       ],
       "hasta_ms": 1791582237488
+    },
+    {
+      "id": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "padre": null,
+      "titulo": "Preguntando con qué continuar",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-09T21:44:11Z",
+      "hasta": "2026-10-10T19:48:36Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 89,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 1128319,
+            "output": 35065,
+            "reasoning": 22569,
+            "cache_read": 17187328,
+            "cache_write": 0
+          },
+          "costo": 0.25539,
+          "costo_opencode": 0.25539
+        }
+      ],
+      "hasta_ms": 1791661716250
+    },
+    {
+      "id": "ses_ed8b204e6ffeuLsuecQ0Fs0vSN",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Verificación de entrega F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T19:33:04Z",
+      "hasta": "2026-10-10T19:39:23Z",
+      "consumo": [
+        {
+          "agente": "devops",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 23,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 56637,
+            "output": 7344,
+            "reasoning": 1728,
+            "cache_read": 714816,
+            "cache_write": 0
+          },
+          "costo": 0.034476,
+          "costo_opencode": 0.034476
+        }
+      ],
+      "hasta_ms": 1791661163225
+    },
+    {
+      "id": "ses_ed8b204e8ffebfqxTfeNpjnHxC",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Documentación F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T19:33:04Z",
+      "hasta": "2026-10-10T19:46:34Z",
+      "consumo": [
+        {
+          "agente": "documentador",
+          "modelo": "opencode-go/mimo-v2.6-flash",
+          "respuestas": 34,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 150457,
+            "output": 12279,
+            "reasoning": 10173,
+            "cache_read": 2057792,
+            "cache_write": 0
+          },
+          "costo": 0.033112,
+          "costo_opencode": 0.033112
+        }
+      ],
+      "hasta_ms": 1791661594138
+    },
+    {
+      "id": "ses_ed8bbc9b9fferrnyjjxbUfC3Tk",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Fix N1 mediodía",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T19:22:24Z",
+      "hasta": "2026-10-10T19:27:28Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 15,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 30294,
+            "output": 3604,
+            "reasoning": 1240,
+            "cache_read": 242432,
+            "cache_write": 0
+          },
+          "costo": 0.008178,
+          "costo_opencode": 0.008178
+        }
+      ],
+      "hasta_ms": 1791660448629
+    },
+    {
+      "id": "ses_ed8bbc9d2ffe0jmwqeK0leX00n",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Re-seguridad F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T19:22:24Z",
+      "hasta": "2026-10-10T19:30:33Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 28,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 57332,
+            "output": 22346,
+            "reasoning": 0,
+            "cache_read": 1015742,
+            "cache_write": 0
+          },
+          "costo": 0.44268,
+          "costo_opencode": 0.44268
+        }
+      ],
+      "hasta_ms": 1791660633293
+    },
+    {
+      "id": "ses_ed8c45572ffevvrmxXHfoIO3Tj",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Re-QA F3 (retry)",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T19:13:04Z",
+      "hasta": "2026-10-10T19:21:45Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 35,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 63467,
+            "output": 8644,
+            "reasoning": 3740,
+            "cache_read": 992256,
+            "cache_write": 0
+          },
+          "costo": 0.04548,
+          "costo_opencode": 0.04548
+        }
+      ],
+      "hasta_ms": 1791660105128
+    },
+    {
+      "id": "ses_ed8cb7468ffec1Q6Lb245RaC7i",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Re-QA F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T19:05:17Z",
+      "hasta": "2026-10-10T19:12:15Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 37,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 54767,
+            "output": 5188,
+            "reasoning": 2759,
+            "cache_read": 879104,
+            "cache_write": 0
+          },
+          "costo": 0.038562,
+          "costo_opencode": 0.038562
+        }
+      ],
+      "hasta_ms": 1791659535698
+    },
+    {
+      "id": "ses_ed8d97366ffeKur5Dvs9MyQbW0",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Re-revisión código F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T18:50:00Z",
+      "hasta": "2026-10-10T19:04:44Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 47,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 66680,
+            "output": 8776,
+            "reasoning": 13151,
+            "cache_read": 1859456,
+            "cache_write": 0
+          },
+          "costo": 0.054823,
+          "costo_opencode": 0.054823
+        }
+      ],
+      "hasta_ms": 1791659084045
+    },
+    {
+      "id": "ses_ed8ee8608ffeDTLWj0bWbv32yh",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Fix I1/A1 frontend",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T18:26:59Z",
+      "hasta": "2026-10-10T18:48:57Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 58,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 280311,
+            "output": 10736,
+            "reasoning": 17937,
+            "cache_read": 3464192,
+            "cache_write": 0
+          },
+          "costo": 0.069643,
+          "costo_opencode": 0.069643
+        }
+      ],
+      "hasta_ms": 1791658137350
+    },
+    {
+      "id": "ses_ed8ee8609ffeLTei0fMndrqD21",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Fix B1 PATCH null",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T18:26:59Z",
+      "hasta": "2026-10-10T18:41:16Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 54,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 133363,
+            "output": 9504,
+            "reasoning": 16516,
+            "cache_read": 3402240,
+            "cache_write": 0
+          },
+          "costo": 0.045823,
+          "costo_opencode": 0.045823
+        }
+      ],
+      "hasta_ms": 1791657676034
+    },
+    {
+      "id": "ses_ed90a401cffemhpYlLAcpvcZYm",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "QA F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T17:56:42Z",
+      "hasta": "2026-10-10T18:25:41Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 115,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 197663,
+            "output": 33604,
+            "reasoning": 20742,
+            "cache_read": 10303360,
+            "cache_write": 0
+          },
+          "costo": 0.365923,
+          "costo_opencode": 0.365923
+        }
+      ],
+      "hasta_ms": 1791656741755
+    },
+    {
+      "id": "ses_ed917d52effeIdgeDa5RqGZMJ0",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Seguridad F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T17:41:52Z",
+      "hasta": "2026-10-10T17:56:13Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 57,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 192195,
+            "output": 37057,
+            "reasoning": 0,
+            "cache_read": 6979715,
+            "cache_write": 0
+          },
+          "costo": 2.24685,
+          "costo_opencode": 2.24685
+        }
+      ],
+      "hasta_ms": 1791654973055
+    },
+    {
+      "id": "ses_ed92bea2dffeHw5OP1w1Qq1GWJ",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Seguridad F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T17:19:55Z",
+      "hasta": "2026-10-10T17:32:16Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 58,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 131112,
+            "output": 28352,
+            "reasoning": 0,
+            "cache_read": 5095971,
+            "cache_write": 0
+          },
+          "costo": 1.633258,
+          "costo_opencode": 1.633258
+        }
+      ],
+      "hasta_ms": 1791653536282
+    },
+    {
+      "id": "ses_ed93a582afferldXSP6928bNyD",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Revisión de código F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T17:04:10Z",
+      "hasta": "2026-10-10T17:19:20Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 38,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 137346,
+            "output": 8683,
+            "reasoning": 16390,
+            "cache_read": 3327360,
+            "cache_write": 0
+          },
+          "costo": 0.093621,
+          "costo_opencode": 0.093621
+        }
+      ],
+      "hasta_ms": 1791652760129
+    },
+    {
+      "id": "ses_edcd33581ffeC8Cc6KnR8kbKse",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Fix lint backend F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T00:18:20Z",
+      "hasta": "2026-10-10T00:22:21Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 15,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 19279,
+            "output": 2966,
+            "reasoning": 3544,
+            "cache_read": 253824,
+            "cache_write": 0
+          },
+          "costo": 0.007559,
+          "costo_opencode": 0.007559
+        }
+      ],
+      "hasta_ms": 1791591741733
+    },
+    {
+      "id": "ses_edcdfe4adffeZUwHYiSvEMxGFF",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Cierre T339",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-10T00:04:29Z",
+      "hasta": "2026-10-10T00:33:31Z",
+      "consumo": [
+        {
+          "agente": "devops",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 74,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 113206,
+            "output": 24229,
+            "reasoning": 5168,
+            "cache_read": 4056064,
+            "cache_write": 0
+          },
+          "costo": 0.153361,
+          "costo_opencode": 0.153361
+        }
+      ],
+      "hasta_ms": 1791592411303
+    },
+    {
+      "id": "ses_edcf06d81ffe5ihBcENng1F45f",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Terminar e2e F3",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-09T23:46:25Z",
+      "hasta": "2026-10-10T00:02:24Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 41,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 91079,
+            "output": 9050,
+            "reasoning": 7998,
+            "cache_read": 1772800,
+            "cache_write": 0
+          },
+          "costo": 0.029209,
+          "costo_opencode": 0.029209
+        }
+      ],
+      "hasta_ms": 1791590544304
+    },
+    {
+      "id": "ses_edd34e321ffe8hpIbXFo2V3Rtu",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Fix permisos volumen uploads",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-09T22:31:39Z",
+      "hasta": "2026-10-09T22:41:10Z",
+      "consumo": [
+        {
+          "agente": "devops",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 25,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 37007,
+            "output": 3626,
+            "reasoning": 2494,
+            "cache_read": 364480,
+            "cache_write": 0
+          },
+          "costo": 0.019545,
+          "costo_opencode": 0.019545
+        }
+      ],
+      "hasta_ms": 1791585670011
+    },
+    {
+      "id": "ses_edd5ce0cfffedqsinrS0fvH3gv",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "F3 e2e specs T337-T338",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-09T21:47:58Z",
+      "hasta": "2026-10-09T22:08:28Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 77,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 560149,
+            "output": 24132,
+            "reasoning": 38494,
+            "cache_read": 11094912,
+            "cache_write": 0
+          },
+          "costo": 0.154883,
+          "costo_opencode": 0.154883
+        }
+      ],
+      "hasta_ms": 1791583708671
+    },
+    {
+      "id": "ses_edde2e3aaffeR8ZJmOifIWFkS7",
+      "padre": null,
+      "titulo": "Investigando detención por problema con Docker",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T19:48:58Z",
+      "desde": "2026-10-09T21:44:07Z",
+      "hasta": "2026-10-09T22:09:30Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 21,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 90585,
+            "output": 5135,
+            "reasoning": 10071,
+            "cache_read": 1423744,
+            "cache_write": 0
+          },
+          "costo": 0.026983,
+          "costo_opencode": 0.026983
+        }
+      ],
+      "hasta_ms": 1791583770535
     }
   ],
   "totales": {
     "por_agente_modelo": [
+      {
+        "agente": "seguridad",
+        "modelo": "opencode-go/glm-5.3",
+        "respuestas": 143,
+        "tokens": {
+          "input": 380639,
+          "output": 87755,
+          "reasoning": 0,
+          "cache_read": 13091428,
+          "cache_write": 0
+        },
+        "costo": 4.322788,
+        "costo_opencode": 4.322788,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-frontend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 468,
+        "tokens": {
+          "input": 2422853,
+          "output": 172095,
+          "reasoning": 149691,
+          "cache_read": 53627136,
+          "cache_write": 0
+        },
+        "costo": 0.717382,
+        "costo_opencode": 0.717382,
+        "sin_precio": false
+      },
       {
         "agente": "arquitecto",
         "modelo": "opencode-go/mimo-v2.6-pro",
@@ -543,33 +1133,48 @@
         "sin_precio": false
       },
       {
-        "agente": "dev-frontend",
+        "agente": "dev-backend",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 277,
+        "respuestas": 354,
         "tokens": {
-          "input": 1461020,
-          "output": 124573,
-          "reasoning": 84022,
-          "cache_read": 37052800,
+          "input": 1140718,
+          "output": 141099,
+          "reasoning": 126835,
+          "cache_read": 49187456,
           "cache_write": 0
         },
-        "costo": 0.455469,
-        "costo_opencode": 0.455469,
+        "costo": 0.47943,
+        "costo_opencode": 0.47943,
         "sin_precio": false
       },
       {
-        "agente": "dev-backend",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 285,
+        "agente": "qa-tester",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 187,
         "tokens": {
-          "input": 988076,
-          "output": 128629,
-          "reasoning": 106775,
-          "cache_read": 45531392,
+          "input": 315897,
+          "output": 47436,
+          "reasoning": 27241,
+          "cache_read": 12174720,
           "cache_write": 0
         },
-        "costo": 0.426048,
-        "costo_opencode": 0.426048,
+        "costo": 0.449965,
+        "costo_opencode": 0.449965,
+        "sin_precio": false
+      },
+      {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 213,
+        "tokens": {
+          "input": 1645758,
+          "output": 80233,
+          "reasoning": 70556,
+          "cache_read": 25712768,
+          "cache_write": 0
+        },
+        "costo": 0.414475,
+        "costo_opencode": 0.414475,
         "sin_precio": false
       },
       {
@@ -590,31 +1195,31 @@
       {
         "agente": "revisor-codigo",
         "modelo": "opencode-go/mimo-v2.6-pro",
-        "respuestas": 30,
+        "respuestas": 115,
         "tokens": {
-          "input": 237664,
-          "output": 15564,
-          "reasoning": 34803,
-          "cache_read": 4166656,
+          "input": 441690,
+          "output": 33023,
+          "reasoning": 64344,
+          "cache_read": 9353472,
           "cache_write": 0
         },
-        "costo": 0.162307,
-        "costo_opencode": 0.162307,
+        "costo": 0.310751,
+        "costo_opencode": 0.310751,
         "sin_precio": false
       },
       {
-        "agente": "orquestador",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 103,
+        "agente": "devops",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 139,
         "tokens": {
-          "input": 426854,
-          "output": 40033,
-          "reasoning": 37916,
-          "cache_read": 7101696,
+          "input": 232541,
+          "output": 37998,
+          "reasoning": 10751,
+          "cache_read": 5356224,
           "cache_write": 0
         },
-        "costo": 0.132102,
-        "costo_opencode": 0.132102,
+        "costo": 0.219942,
+        "costo_opencode": 0.219942,
         "sin_precio": false
       },
       {
@@ -633,23 +1238,23 @@
         "sin_precio": false
       },
       {
-        "agente": "devops",
-        "modelo": "opencode-go/glm-5.3-flash",
-        "respuestas": 17,
+        "agente": "documentador",
+        "modelo": "opencode-go/mimo-v2.6-flash",
+        "respuestas": 34,
         "tokens": {
-          "input": 25691,
-          "output": 2799,
-          "reasoning": 1361,
-          "cache_read": 220864,
+          "input": 150457,
+          "output": 12279,
+          "reasoning": 10173,
+          "cache_read": 2057792,
           "cache_write": 0
         },
-        "costo": 0.01256,
-        "costo_opencode": 0.01256,
+        "costo": 0.033112,
+        "costo_opencode": 0.033112,
         "sin_precio": false
       }
     ],
-    "tokens": 166342179,
-    "costo": 2.271565,
-    "costo_opencode": 2.271565
+    "tokens": 246916049,
+    "costo": 8.030924,
+    "costo_opencode": 8.030924
   }
 }
