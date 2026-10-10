@@ -192,7 +192,7 @@ test.describe('Portada pública (visitante, idioma, accesibilidad)', () => {
         const scheduleTable = page.getByRole('table', { name: 'Horario de servicios' });
         const serviceRow = scheduleTable.getByRole('row').filter({ hasText: serviceName });
         await expect(serviceRow.getByText(serviceName)).toBeVisible();
-        await expect(serviceRow.getByText('10:00 – 12:00')).toBeVisible();
+        await expect(serviceRow.getByText('10:00 a. m. − 12:00 m.')).toBeVisible();
 
         // SC-009: los enlaces de WhatsApp y redes llevan al destino correcto.
         const whatsappLink = page

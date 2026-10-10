@@ -50,7 +50,7 @@ export function ScheduleSection({ items }: ScheduleSectionProps) {
               <tr key={item.id} className="border-b border-navy-soft align-top">
                 <td className="px-3 py-3 text-navy">{dayLabel(item.dayOfWeek)}</td>
                 <td className="px-3 py-3 text-navy">
-                  {formatTimeRange(item.startTime, item.endTime)}
+                  {formatTimeRange(item.startTime, item.endTime, t)}
                 </td>
                 <td className="px-3 py-3 font-medium text-navy">{item.name}</td>
                 <td className="px-3 py-3 text-navy">{item.place}</td>
@@ -70,7 +70,7 @@ export function ScheduleSection({ items }: ScheduleSectionProps) {
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="font-medium">{t('schedule.col.time')}</dt>
-                  <dd>{formatTimeRange(item.startTime, item.endTime)}</dd>
+                  <dd>{formatTimeRange(item.startTime, item.endTime, t)}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="font-medium">{t('schedule.col.place')}</dt>

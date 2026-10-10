@@ -33,6 +33,9 @@ export const en: PublicMessages = {
   'schedule.col.time': 'Time',
   'schedule.col.service': 'Service',
   'schedule.col.place': 'Place',
+  'schedule.time.am': 'AM',
+  'schedule.time.pm': 'PM',
+  'schedule.time.noon': 'PM',
   'error.load': "We couldn't load the church information. Check your connection and try again.",
   'error.retry': 'Try again',
   'error.partial':

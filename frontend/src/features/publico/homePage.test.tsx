@@ -147,8 +147,9 @@ describe('HomePage · contenido y enlaces (US1, SC-009)', () => {
     await screen.findByRole('table');
 
     const tabla = screen.getByRole('table');
-    expect(within(tabla).getByText('10:00 – 12:00')).toBeInTheDocument();
-    expect(within(tabla).getByText('18:00')).toBeInTheDocument();
+    // Presentación localizada a.m./p.m. a partir del dato de 24 h (ux.md §4.6/D-3).
+    expect(within(tabla).getByText('10:00 a. m. − 12:00 m.')).toBeInTheDocument();
+    expect(within(tabla).getByText('6:00 p. m.')).toBeInTheDocument();
     // El día se localiza desde dayOfWeek (domingo = 0, miércoles = 3).
     expect(within(tabla).getByText('Domingo')).toBeInTheDocument();
     expect(within(tabla).getByText('Miércoles')).toBeInTheDocument();
