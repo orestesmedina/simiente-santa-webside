@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
-| Fase | 8/9 · Converger (validación aprobada) |
-| Ciclo de corrección | 2/3 (ciclo 2 **aprobado** por `revisor-codigo`, `qa-tester` y `seguridad`) |
-| Próximo paso | Converger (`/speckit.converge`) y Fase 9: entrega (`devops` + `documentador`) y PR |
+| Fase | 9/9 · Entregar |
+| Ciclo de corrección | 2/3 (cerrado) |
+| Próximo paso | `documentador` (CHANGELOG/README/notas) y `devops` (verificación de entrega); luego abrir el PR y **detenerse para aprobación humana del merge** |
 | Bloqueado por | — (Docker operativo; e2e ejecutables con `LD_LIBRARY_PATH=/tmp/opencode/pwlibs/usr/lib/x86_64-linux-gnu`) |
 | Actualizado | 2026-10-09 |
 
@@ -70,3 +70,4 @@ Una línea por sesión o hito, la más reciente arriba.
 - 2026-10-09 — **T337/T338 (e2e) escritas pero sin ejecutar**: `frontend/e2e/portada-publica.spec.ts` y `portada-panel.spec.ts` (commits `844f570`, `04be06c`), sin marcar `[X]`. **Bloqueo de entorno**: Docker Desktop no tiene la integración WSL activa (`docker` no encuentra el daemon), y el Chromium de Playwright carece de librerías de sistema. Verificado lo posible sin Docker: `gofmt`/`go vet`/`go test ./...` (unit) ✅, frontend lint/typecheck/268 pruebas ✅, `make security` ✅ (0 vulnerabilidades).
 - 2026-10-09 — **Docker activado por el humano y validación de F3 ejecutada**: `make up` + migraciones (`000001`–`000006`) sobre base limpia; **integración backend ✅** (`go test -tags=integration ./...`), **5 e2e ✅** (acceso, auditoría, portada-pública, portada-panel, estado). Al ejecutar por primera vez los e2e se encontraron y **corrigieron 3 defectos** (bucle de corrección 1): (a) permiso de escritura del volumen `uploads_data` para el usuario no-root → `500` en la subida (fix `a93a233`); (b) el selector de idioma compartía `name` entre cabecera y pie (radios sin marcar) → `useId()`; (c) la `nav` generaba scroll horizontal a 320 px → `min-w-0`. Además se actualizó el e2e de estado de F1 a la ruta `/health`. T337/T338 marcadas `[X]`.
 - 2026-10-09 — **Fase 4 cerrada (40/40 tareas)**: T339 (cierre) en verde — `make ci` EXIT=0 (lint + unit + integración + 269 pruebas frontend + security), 5 e2e, sin deriva (`sqlc`/`api:gen`), cobertura `service*.go` 84.7 %. El cierre destapó 5 hallazgos de lint en pruebas del backend (corregidos en `dda8120`, bucle de corrección 1). Pendientes manuales: SC-010 (usabilidad, humano+QA) y checklist WCAG de SC-008 (QA). Informe: `cierre.md`.
+- 2026-10-10 — **Validación (Fase 7) y corrección (ciclo 2) cerradas**: ciclo 1 → B1 (bloqueante: `PATCH` `null`), I1 (importante) y A1 (menor) corregidos y **re-validados con APROBADO de los tres roles**; N1 (menor) también corregido. Fase 8 (convergencia): 40/40 tareas, 0 pendientes → **Converged**. Arranca la Fase 9 (entrega).
