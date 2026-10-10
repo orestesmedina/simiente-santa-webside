@@ -31,8 +31,11 @@ La columna **Fase** indica el orden de construcción: `1` = MVP núcleo, `2` = d
 | F7 | Donaciones | El visitante ve cómo apoyar a la iglesia: cuentas IBAN y SINPE Móvil, y en qué se usan las donaciones; el equipo administra esa información desde el panel. | 1 · MVP núcleo | F2, F3 | pendiente | |
 | F8 | Noticias y galería | El visitante ve qué ha pasado últimamente: noticias de eventos recientes con imágenes y videos, administradas por el equipo. | 2 · Después del MVP | F2, F3 | pendiente | |
 | F9 | Medios: prédicas y podcasts | El visitante escucha o ve las grabaciones publicadas en YouTube y Spotify desde el propio sitio, sin instalar esas aplicaciones; el equipo administra los episodios. | 2 · Después del MVP | F2, F3 | pendiente | |
+| F10 | Sistema de diseño y movimiento | El sitio público deja de verse «de 2010»: sistema visual moderno (tendencias 2026) construido sobre el Manual de Identidad, con **animaciones y microinteracciones** agradables (respetando `prefers-reduced-motion`), y el **rediseño de la navegación** (menú sin scroll incómodo) y del **selector de idioma** (sin ocupar espacio innecesario). Es transversal: se aplica a la portada (F3) y a las secciones F4–F9. | 1 · MVP núcleo | F3 | pendiente | |
 
 F4, F5, F6 y F7 son independientes entre sí y pueden trabajarse en paralelo. F8 y F9 también son paralelas entre sí.
+
+**F10 (sistema de diseño y movimiento)** es transversal y depende de F3. Por dependencia, conviene construirlo **antes de F4** para que las secciones posteriores nazcan ya con el sistema visual y de movimiento aplicado (y no haya que rediseñarlas después). El orden lo decide el cliente.
 
 Aplica a todo el sitio público (fases 1 y 2): es bilingüe, español e inglés, con selección de idioma desde la portada, y cada contenido puede ingresarse en ambos idiomas o solo en español (decisiones 6 y 8); usuarios y contenido tienen estados (decisión 4): usuarios activo/inactivo en F2, contenido borrador/publicado en las funcionalidades de contenido.
 
@@ -64,6 +67,7 @@ Vienen de las preguntas abiertas de `idea.md` §8 y de la sección de fuera de a
 8. **Bilingüismo del contenido (2026-09-28).** Todo el contenido puede ingresarse en ambos idiomas o solo en español: el español es el idioma base y el inglés es opcional por contenido (la interfaz, en cambio, siempre es bilingüe — decisión 6).
 9. **Gestión de usuarios y roles de F2 (2026-10-04).** Se refinan las decisiones 4 y 5 con lo aprobado en la spec de F2: las cuentas **no se eliminan**, solo se activan o desactivan (los datos se conservan); cada cuenta tiene **un solo rol**; los roles se editan y se eliminan **solo si no están en uso**; el administrador inicial se crea con una **acción de inicialización única** (no repetible); y la recuperación de contraseña por auto-servicio con correo queda para el backlog (en el MVP la contraseña la restablece un administrador).
 10. **Auditoría en F2 (2026-10-04).** A petición del cliente por motivos de auditoría, F2 incluye un registro de **último acceso**, **historial de inicios de sesión** (fecha, resultado e IP) y **acciones administrativas** (quién hizo qué, sobre qué y cuándo), consultable en el panel por quien administra usuarios y roles.
+11. **Sistema de diseño y movimiento (F10) (2026-10-10).** El cliente revisó la portada de F3 y pidió un sitio más moderno (tendencias 2026) con animaciones agradables, sin el scroll del menú y con el selector de idioma más compacto. Se decidió construir el rediseño como **funcionalidad propia (F10), transversal**, en vez de reabrir F3: F3 se mantiene como base funcional y F10 aplica el sistema visual y de movimiento a la portada y a F4–F9. Los defectos de F3 detectados en la revisión (imágenes que no cargaban) se corrigen por el flujo de bugs.
 
 ## 7. Preguntas abiertas
 

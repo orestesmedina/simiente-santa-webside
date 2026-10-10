@@ -36,6 +36,9 @@ Bloqueantes de la última validación que aún no se corrigen (ver `revision-202
 
 - **(ninguno)** — los 4 hallazgos del ciclo 2 están corregidos y re-validados; solo queda deuda menor aceptada (abajo).
 
+**Bug detectado por el cliente tras la entrega (flujo `equipo-bug`, 2026-10-10):**
+- **Imágenes de la portada no cargan.** Causa raíz: la API devuelve URLs de media **relativas** (`/api/v1/media/…`) y el frontend las pinta como `src` en su propio origen; `frontend/nginx.conf` **no proxya `/api/`**, así que `http://localhost:5173/api/v1/media/…` responde `index.html` (200 `text/html`) en vez de la imagen. Verificado: directo al backend da `200 image/jpeg`. Fix: resolver las URLs de media contra `API_BASE_URL` al renderizar (`IdentityHero`, `PublicLayout`, `PublicFooter`) + e2e que compruebe que el `<img>` carga de verdad. El «scroll del menú» y el selector es/en **no son defectos**: son decisiones de UX (D-5 y D-1) que abordará F10.
+
 **Historial del ciclo 2 (corregidos y re-validados):**
 - **B1 (BLOQUEANTE, código + QA)** — `PATCH` no vaciaba campos opcionales con `null` → `fix(portada): distinguir null de ausente` (`d5d4610`, tipo `Optional[T]`).
 - **I1 (IMPORTANTE, código)** — horario en 24 h → a.m./p.m. localizado (`fc96185`).
@@ -52,6 +55,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 - 2026-10-09 — **Aclaraciones de F3 resueltas por el humano** (registradas en `spec.md`, sección «Aclaraciones resueltas»): identidad con nombre + lema/misión/visión + logo e imagen de portada; «quiénes somos» en texto plano con límite (1.000 caracteres, revisable); horario como lista de servicios (día, hora, nombre, lugar); WhatsApp con números y enlaces de grupo; redes con catálogo fijo y un enlace por red; contacto con ubicación + correo + teléfono; publicación por secciones/elementos; editar lo publicado se ve al guardar; edición auditada en F2; sección sin contenido publicado se oculta.
 - 2026-10-09 — **Manual de Identidad del cliente** (`resources/MANUAL DE MARCA.pdf`, logo `resources/simiente.jpeg`): el cliente pidió que el diseño del sitio siga su manual de marca. Datos de marca (misión, visión, valores, personalidad, voz, paleta `#1a2b4a`/#00c9a7/#ffffff/#F5F2EC/#ff6b3d/#217638, tipografías Bebas Neue/Poppins/Playfair Display y reglas del logotipo) recogidos en `spec.md` como referencia para plan y UX.
+- 2026-10-10 — **Rediseño como F10 (decisión del humano).** Tras revisar la portada, el cliente pidió un sitio más moderno (2026) con animaciones, sin el scroll del menú y con el selector de idioma compacto. Se decide NO reabrir F3: el rediseño va como **F10 «Sistema de diseño y movimiento»** (transversal, antes de F4), y los defectos de F3 (imágenes) se corrigen por `equipo-bug`. Registrado en `roadmap.md` (F10 + decisión 11).
 - 2026-10-09 — **Ajustes del plan (decisiones del humano, puerta 2):** (a) **idioma con `localStorage`** — se recuerda la elección entre visitas y una primera visita sin preferencia se muestra en español; se actualiza **FR-010** de la spec (y US4/Assumptions/Q11) y se unifica con el plan y `ux.md`; (b) la portada pública pasa a `/` y la página «Estado del sistema» de F1 se mueve a **`/health`** (no `/estado`); (c) publicación/retiro **por sección, cada una por separado** (identidad, quiénes somos y contacto son cada uno un elemento publicable propio), coherente con FR-013.
 
 ## Bitácora
