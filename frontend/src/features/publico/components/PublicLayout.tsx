@@ -1,4 +1,5 @@
 import { Link, Outlet } from 'react-router-dom';
+import { mediaUrl } from '../../../api/client';
 import { usePublicHomeData } from '../hooks/usePublicHomeData';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
@@ -47,7 +48,7 @@ function PublicChrome() {
             className="flex min-h-11 items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             <BrandLogo
-              src={data?.identity?.logoUrl}
+              src={mediaUrl(data?.identity?.logoUrl)}
               alt={data?.identity?.logoAlt ?? t('a11y.logo')}
               size={40}
             />

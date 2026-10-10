@@ -136,8 +136,13 @@ describe('HomePage · contenido y enlaces (US1, SC-009)', () => {
     expect(within(hero).getByText('Nuestra misión real')).toBeInTheDocument();
     expect(within(hero).getByText('Nuestra visión real')).toBeInTheDocument();
     expect(within(hero).getByText('Un espacio para encontrarse con Dios')).toBeInTheDocument();
-    expect(within(hero).getByRole('img', { name: 'Logotipo de la iglesia' })).toBeInTheDocument();
-    expect(within(hero).getByRole('img', { name: 'Imagen de la portada' })).toBeInTheDocument();
+    const logo = within(hero).getByRole('img', { name: 'Logotipo de la iglesia' });
+    expect(logo).toBeInTheDocument();
+    // Las URLs relativas de la API se resuelven contra la base de la API (bug F3).
+    expect(logo).toHaveAttribute('src', `${API_BASE_URL}/api/v1/media/img_logo.png`);
+    const cover = within(hero).getByRole('img', { name: 'Imagen de la portada' });
+    expect(cover).toBeInTheDocument();
+    expect(cover).toHaveAttribute('src', `${API_BASE_URL}/api/v1/media/img_cover.png`);
   });
 
   it('el horario muestra el rango con endTime y solo la hora de inicio sin él (C2)', async () => {

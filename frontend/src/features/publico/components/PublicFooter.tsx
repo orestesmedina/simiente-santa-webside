@@ -1,3 +1,4 @@
+import { mediaUrl } from '../../../api/client';
 import type { IdentityPublic, SocialLinkPublic } from '../../../api/portada';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import { useLanguage } from '../i18n/useLanguage';
@@ -25,7 +26,11 @@ export function PublicFooter({ identity, socials }: PublicFooterProps) {
     <footer className="bg-navy text-white">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6">
         <div className="flex items-center gap-3">
-          <BrandLogo src={identity?.logoUrl} alt={identity?.logoAlt ?? t('a11y.logo')} size={40} />
+          <BrandLogo
+            src={mediaUrl(identity?.logoUrl)}
+            alt={identity?.logoAlt ?? t('a11y.logo')}
+            size={40}
+          />
           <span className="font-display text-2xl">{brandName}</span>
         </div>
 

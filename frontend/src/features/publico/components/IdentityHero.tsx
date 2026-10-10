@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { mediaUrl } from '../../../api/client';
 import type { IdentityPublic } from '../../../api/portada';
 import { useLanguage } from '../i18n/useLanguage';
 import { BrandLogo } from './BrandLogo';
@@ -16,13 +17,16 @@ export interface IdentityHeroProps {
 export function IdentityHero({ identity }: IdentityHeroProps) {
   const { t } = useLanguage();
   const [coverFailed, setCoverFailed] = useState(false);
-  const showCover = Boolean(identity.coverImageUrl) && !coverFailed;
+  // La API devuelve URLs relativas (`/api/v1/media/…`): se resuelven contra la
+  // base de la API para que el navegador no las pida al origen de la SPA (bug F3).
+  const coverSrc = mediaUrl(identity.coverImageUrl);
+  const showCover = Boolean(coverSrc) && !coverFailed;
 
   return (
     <section aria-labelledby="portada-nombre" className="relative bg-navy text-white">
       {showCover && (
         <img
-          src={identity.coverImageUrl}
+          src={coverSrc}
           alt={identity.coverImageAlt ?? t('a11y.hero')}
           className="absolute inset-0 h-full w-full object-cover"
           onError={() => setCoverFailed(true)}
@@ -30,7 +34,11 @@ export function IdentityHero({ identity }: IdentityHeroProps) {
       )}
       <div aria-hidden="true" className="absolute inset-0 bg-navy/80" />
       <div className="relative mx-auto flex w-full max-w-6xl flex-col items-start gap-6 px-4 py-16 sm:px-6 sm:py-24">
-        <BrandLogo src={identity.logoUrl} alt={identity.logoAlt ?? t('a11y.logo')} size={72} />
+        <BrandLogo
+          src={mediaUrl(identity.logoUrl)}
+          alt={identity.logoAlt ?? t('a11y.logo')}
+          size={72}
+        />
         <h1
           id="portada-nombre"
           className="font-display text-[clamp(2.5rem,7vw,4.75rem)] leading-none"

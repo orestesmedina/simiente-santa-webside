@@ -7,6 +7,29 @@ export type ErrorBody = components['schemas']['ErrorBody'];
 /** URL base de la API. Se hornea en build time (plan R6). */
 export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 
+/** Un `path` ya absoluto: con esquema (`http:`, `https:`, `data:`…) o `//host`. */
+const ABSOLUTE_URL_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
+
+/**
+ * Resuelve una URL de media devuelta por la API contra la base de la API.
+ *
+ * La API expone las imágenes de portada como rutas **relativas**
+ * (`/api/v1/media/img_….jpg`). Pintarlas tal cual como `src` las resolvería
+ * contra el origen de la SPA (p. ej. `http://localhost:5173`), donde el nginx
+ * del frontend no proxya `/api/` y devuelve `index.html` (`200 text/html`) en
+ * vez de la imagen: el bug de F3. Aquí se prefijan con `API_BASE_URL` para que
+ * el navegador las pida directamente al backend.
+ *
+ * Las URLs ya absolutas (`http://`, `https://`, `data:`…) se dejan intactas;
+ * `undefined`/`''` se propagan tal cual (el componente decide el respaldo).
+ */
+export function mediaUrl(path: string | undefined): string | undefined {
+  if (!path || ABSOLUTE_URL_PATTERN.test(path)) {
+    return path;
+  }
+  return `${API_BASE_URL}${path}`;
+}
+
 /** Timeout de la consulta: 5 s con `AbortController` (D20). */
 export const REQUEST_TIMEOUT_MS = 5000;
 

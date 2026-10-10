@@ -7,15 +7,18 @@ import { API_URL, ADMIN, apiSend, ensureInitialized, loginViaUi, uniqueSuffix } 
  * E2E de regresión por el bug «las imágenes de la portada no cargan».
  *
  * Causa raíz diagnosticada: la API devuelve URLs de media relativas
- * (`/api/v1/media/img_….jpg`) y la SPA las usa como `src` en su propio origen
- * (`http://localhost:5173`), pero el nginx del frontend no proxya `/api/`:
- * `GET http://localhost:5173/api/v1/media/…` responde el fallback de SPA
- * (`200 text/html`, `index.html`) en vez de la imagen. Directo al backend
+ * (`/api/v1/media/img_….jpg`) y la SPA las usaba como `src` **sin resolverlas**
+ * contra la base de la API, de modo que el navegador las pedía a su propio
+ * origen (`http://localhost:5173`), donde el nginx del frontend no proxya
+ * `/api/`: `GET http://localhost:5173/api/v1/media/…` devolvía el fallback de
+ * SPA (`200 text/html`, `index.html`) en vez de la imagen. Directo al backend
  * (`:8080`) sí responde `200 image/jpeg`.
  *
- * La prueba lo reproduce a través del navegador real: siembra una identidad
- * publicada con logo e imagen de portada, abre la portada pública en el origen
- * de la SPA y comprueba (a) que la respuesta de red de esas URLs es `image/*`
+ * El arreglo (`mediaUrl` en `src/api/client.ts`) prefija las URLs relativas con
+ * `API_BASE_URL`, así que el navegador las pide **al origen de la API**
+ * (`http://localhost:8080`). La prueba lo verifica a través del navegador real:
+ * siembra una identidad publicada con logo e imagen de portada, abre la portada
+ * pública y comprueba (a) que la respuesta de red de esas URLs es `image/*`
  * (no `text/html` de `index.html`) y (b) que las imágenes realmente descodifican
  * (`naturalWidth > 0`).
  */
@@ -59,7 +62,7 @@ async function subirImagen(page: Page, name: string): Promise<string> {
   return ((await upload.json()) as { fileName: string }).fileName;
 }
 
-test.describe('Portada: imágenes del hero cargan desde el origen de la SPA', () => {
+test.describe('Portada: las imágenes del hero cargan (URLs de media resueltas contra la API)', () => {
   test.setTimeout(180_000);
 
   test('el logo y la imagen de portada publicados responden image/* y descodifican', async ({
@@ -113,7 +116,7 @@ test.describe('Portada: imágenes del hero cargan desde el origen de la SPA', ()
       expect(fromBackend.status(), 'la media se sirve directo del backend').toBe(200);
       expect(fromBackend.headers()['content-type']).toMatch(/^image\//);
 
-      // ── El navegador (origen de la SPA) pide las imágenes del hero ────────
+      // ── El navegador (origen de la API, vía mediaUrl) pide las imágenes ───
       const requestsPorUrl = new Map<string, MediaResponse>();
       const registrar = (response: Response): void => {
         const url = response.url();
@@ -135,7 +138,7 @@ test.describe('Portada: imágenes del hero cargan desde el origen de la SPA', ()
         // El `h1` del nombre siembrado confirma que la portada renderizó.
         await expect(page.getByRole('heading', { level: 1, name: identityName })).toBeVisible();
 
-        // (a) La red del origen de la SPA devolvió la imagen, no `index.html`.
+        // (a) La red devolvió la imagen (desde la API), no `index.html`.
         await expect
           .poll(() => requestsPorUrl.get(browserBase(logoUrl)), {
             message: `el navegador pidió ${browserBase(logoUrl)}`,
@@ -147,29 +150,32 @@ test.describe('Portada: imágenes del hero cargan desde el origen de la SPA', ()
           })
           .toBeDefined();
         const logoRespuesta = requestsPorUrl.get(browserBase(logoUrl))!;
-        expect(logoRespuesta.status, 'el logo carga por HTTP desde la SPA').toBe(200);
+        expect(logoRespuesta.status, 'el logo carga por HTTP desde la API').toBe(200);
         expect(logoRespuesta.contentType, 'el logo es una imagen (no index.html)').toMatch(
           /^image\//,
         );
         const coverRespuesta = requestsPorUrl.get(browserBase(coverUrl))!;
-        expect(coverRespuesta.status, 'la portada carga por HTTP desde la SPA').toBe(200);
+        expect(coverRespuesta.status, 'la portada carga por HTTP desde la API').toBe(200);
         expect(coverRespuesta.contentType, 'la portada es una imagen (no index.html)').toMatch(
           /^image\//,
         );
 
         // (b) Realmente descodifican como imagen dentro del `<img>` del hero.
-        await expect(page.getByRole('img', { name: logoAlt })).toBeAttached();
+        // El `alt` del logo se repite en cabecera, hero y pie (mismo contenido
+        // publicado), así que se acota a la región del hero (nombre sembrado).
+        const hero = page.getByRole('region', { name: identityName });
+        await expect(hero.getByRole('img', { name: logoAlt })).toBeAttached();
         await expect
           .poll(async () =>
-            page
+            hero
               .getByRole('img', { name: logoAlt })
               .evaluate((el) => (el as HTMLImageElement).naturalWidth),
           )
           .toBeGreaterThan(0);
-        await expect(page.getByRole('img', { name: coverAlt })).toBeAttached();
+        await expect(hero.getByRole('img', { name: coverAlt })).toBeAttached();
         await expect
           .poll(async () =>
-            page
+            hero
               .getByRole('img', { name: coverAlt })
               .evaluate((el) => (el as HTMLImageElement).naturalWidth),
           )
@@ -184,10 +190,11 @@ test.describe('Portada: imágenes del hero cargan desde el origen de la SPA', ()
 });
 
 /**
- * Resuelve la URL absoluta que pedirá el navegador para un `src` relativo
- * (`/api/…`) contra el origen de la SPA (`baseURL` del config: `:5173`).
- * Es justo el punto del bug: el mismo recurso servido en el origen de la SPA.
+ * URL absoluta que pedirá el navegador para una URL de media relativa
+ * (`/api/…`): la resuelve contra el **origen de la API** (`API_URL`), que es
+ * donde el arreglo (`mediaUrl`) apunta el `src`. Antes del arreglo la SPA la
+ * resolvía contra su propio origen (`:5173`), el punto exacto del bug.
  */
 function browserBase(path: string): string {
-  return new URL(path, 'http://localhost:5173').toString();
+  return new URL(path, API_URL).toString();
 }
