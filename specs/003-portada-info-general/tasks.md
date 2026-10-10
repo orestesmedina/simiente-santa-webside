@@ -988,7 +988,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: US2 y US3 cubiertas de extremo a extremo.
   - **Commit sugerido**: `test(e2e): gestión de la portada desde el panel (publicar/retirar)`
 
-- [ ] T339 · Verificación de cierre · `[infra]`
+- [X] T339 · Verificación de cierre · `[infra]`
 
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit.

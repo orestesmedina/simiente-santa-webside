@@ -1,38 +1,32 @@
 # Verificación de cierre (T339) — F3 Portada e información general
 
 **Fecha**: 2026-10-10 · **Rama**: `003-portada-info-general` · **HEAD al iniciar**: `caf6fcb`
-**Responsable**: `devops` · **Veredicto**: **ROJO** (`make ci` falla en *lint*; e2e, deriva, cobertura, smoke y quickstart §0–§12 en verde)
+**Responsable**: `devops` · **Veredicto**: **VERDE** ✅ — `make ci` completo EXIT=0 (tras el fix de
+lint `dda8120`), e2e 5/5, sin deriva, cobertura ≥ 80 %, smoke ok, quickstart §0–§12 recorrido.
+Pendientes pendientes de la fase de validación/entrega: SC-010 (usabilidad con personas) y la parte
+manual de SC-008 (checklist WCAG, `qa-tester`); discrepancias del quickstart para `documentador`.
 
 ## 1. Resultado por comando (salida real)
 
-### 1.1 `make ci` (lint + test + security) — ❌ ROJO
+### 1.1 `make ci` (lint + test + security) — ✅ EXIT=0 (definitivo)
 
 ```
-$ make ci          # salida completa en /tmp/opencode/t339-make-ci.log
-cd backend && gofmt -l . && go vet ./... && golangci-lint run
-internal/platform/storage/local_test.go:93:20: Error return value of `reader.Close` is not checked (errcheck)
-	defer reader.Close()
-internal/portada/service_admin_test.go:90:13:  Error return value is not checked (errcheck)
-internal/portada/service_admin_test.go:161:13: Error return value is not checked (errcheck)
-internal/portada/service_admin_test.go:205:13: Error return value is not checked (errcheck)
-internal/portada/service_admin_test.go:361:6:  func intptr is unused (unused)
-5 issues:
-* errcheck: 4
-* unused: 1
-make: *** [Makefile:80: lint] Error 1      → EXIT=2
+$ make ci
+cd backend && gofmt -l . && go vet ./... && golangci-lint run   →  0 issues
+cd backend && go test ./... && go test -tags=integration ./...  →  35 paquetes ok (unit + integración, PostgreSQL real)
+cd frontend && npm test -- --run                                →  Test Files 45 passed (45) · Tests 269 passed (269)
+cd backend && govulncheck ./...                                 →  sin vulnerabilidades llamadas por el código
+cd frontend && npm audit --audit-level=high                     →  found 0 vulnerabilities
+CI_EXIT=0        (salida completa: /tmp/opencode/t339-make-ci2.log; primera pasada roja: t339-make-ci.log)
 ```
 
-- `gofmt -l` y `go vet` pasaron; `golangci-lint run` (v2.14.0 idéntica a la de CI:
-  `GOLANGCI_LINT_VERSION` por defecto del kit) falla con **5 problemas**, todos en **archivos de
-  prueba**. Falla-rápido: `make test` y `make security` no llegaron a ejecutarse dentro de `make ci`.
-- Bloques restantes verificados por separado (falla-rápido los saltó dentro de `make ci`):
-  - `make test` (backend unitarias + **integración con PostgreSQL real**, y frontend): ✅
-    `EXIT=0` — 35 paquetes Go `ok` (dos pasadas: `go test ./...` y `go test -tags=integration ./...`,
-    sin FAIL) y Vitest **45 archivos / 269 pruebas passed**.
-    *(salida: /tmp/opencode/t339-make-test.log)*
-  - `make security` (govulncheck + `npm audit --audit-level=high`): ✅
-    `EXIT=0` — govulncheck: «code doesn't appear to call these vulnerabilities» ·
-    `npm audit`: **found 0 vulnerabilities**. *(salida: /tmp/opencode/t339-make-sec.log)*
+- **Primera pasada** (2026-10-10 temprano): `golangci-lint run` (v2.14.0, idéntica a la de CI) falló
+  con 5 problemas `errcheck`/`unused` en archivos de prueba → corregidas por `dev-backend` en
+  commit **`dda8120`** (`test(backend): F3 corregir hallazgos de golangci-lint en pruebas`:
+  `local_test.go`, `service_admin_test.go`, `service_public_test.go`).
+- **Pasada definitiva**: `make ci` completo → **EXIT=0**: lint 0 issues · 35 paquetes Go ok en
+  doble pasada (unit + `-tags=integration` con PostgreSQL real) · Vitest 45/45 archivos y 269/269
+  pruebas · govulncheck y `npm audit` sin vulnerabilidades.
 
 ### 1.2 e2e Playwright (T337+T338 + specs de F1/F2) — ✅ 5 passed
 
@@ -47,16 +41,17 @@ $ cd frontend && LD_LIBRARY_PATH=/tmp/opencode/pwlibs/usr/lib/x86_64-linux-gnu \
   5 passed (26.7s)      → EXIT=0
 ```
 
-### 1.3 Deriva de generados — ✅ sin deriva
+### 1.3 Deriva de generados — ✅ sin deriva (reverificada tras `dda8120`)
 
 - Los targets `make sqlc-verify` y `make api-gen` **sí existen** (en `proyecto.mk`, incluido por el
   `Makefile` del kit con `-include proyecto.mk`; la orden previa de que «no existen en el Makefile»
-  es una discrepancia de la fuente de la tarea, no del repo). Se verificó con los comandos reales:
+  es una discrepancia de la fuente de la tarea, no del repo). Se verificó con los comandos reales,
+  **dos veces** (antes y después del fix de lint, que solo tocó archivos de prueba):
   - `cd backend && sqlc generate` → EXIT=0 · `git diff --exit-code -- backend/internal/db backend/sqlc.yaml` → **sin diff** ✅
-  - `cd frontend && npm run api:gen` → EXIT=0 (openapi-typescript 7.13.0, 133 ms) ·
+  - `cd frontend && npm run api:gen` → EXIT=0 (openapi-typescript 7.13.0) ·
     `git diff --exit-code -- frontend/src/api/schema.d.ts` → **sin diff** ✅
 
-### 1.4 Cobertura de `internal/portada/service*.go` — ✅ ≥ 80 %
+### 1.4 Cobertura de `internal/portada/service*.go` — ✅ ≥ 80 % (reverificada tras `dda8120`)
 
 ```
 $ cd backend && go test -coverprofile=cover.out ./internal/portada/
@@ -94,8 +89,8 @@ service*.go y se cumple.
 | §8 | Cuenta sin permiso (rol solo `eventos`): PUT contacto → `403 forbidden` «No tienes permiso para acceder a este módulo» · sin sesión → `401 unauthenticated` · denegación **registrada** `result='denied'` | ✅ (nota B, abajo) |
 | §9 | Auditoría: `home.identity.update/about.update/…` con `targetLabel` «Portada · <sección> · <elemento>» · **regla M5**: `schedule.create` aunque nazca publicado; `home.publish`/`home.unpublish` solo en cambios de estado · `failure` de rechazos · **`home.image.upload`** con «Portada · Imagen · <file>» (I8) · solo lectura | ✅ |
 | §10 | Responsividad 320/768/1280 cubierta por e2e `portada-publica` («sin borradores y responsiva»); checklist WCAG (teclado, lector de pantalla, contraste, 44 px) | ✅ automatizado · ⏳ checklist manual → `qa-tester` |
-| §11 | Pruebas automatizadas completas | ✅ e2e 5/5 · `make test` ✅ · `make security` ✅ · ❌ lint (§1.1) |
-| §12 | Mapa SC-001…SC-013 confirmado contra lo ejecutado (tabla §3 de abajo) | ✅ (SC-010+y SC-008-manual pendientes) |
+| §11 | Pruebas automatizadas completas | ✅ `make ci` EXIT=0 · e2e 5/5 · cobertura 84,7 % |
+| §12 | Mapa SC-001…SC-013 confirmado contra lo ejecutado (tabla §3 de abajo) | ✅ (SC-010 y parte manual de SC-008 en validación/entrega) |
 
 ### Mapa de criterios SC
 
@@ -116,20 +111,26 @@ service*.go y se cumple.
 
 ## 3. Pendientes y hallazgos
 
-### Pendientes de cierre de F3
-1. **SC-010**: prueba de usabilidad con ≥6 personas (2 por franja 18–35 / 36–59 / 60+, protocolo
-   `analyze` M7), observada por `qa-tester` con el humano; el informe
-   `pruebas-usabilidad-SC-010.md` queda **pendiente** (fuera del alcance de devops, no automatizable).
-2. **SC-008** (checklist manual de accesibilidad WCAG de quickstart §10.1–10.6): la recorre
-   `qa-tester` en la validación; el e2e solo cubre la parte automatizable (3 anchos).
-3. **Lint en rojo** (única causa del fallo de `make ci`): 5 problemas en archivos de prueba, todos
-   triviales, para `dev-backend` la primera vuelta del bucle de corrección:
-   - `backend/internal/platform/storage/local_test.go:93` → `defer reader.Close()` sin error; usar
-     `defer func() { _ = reader.Close() }()`.
-   - `backend/internal/portada/service_admin_test.go:90/161/205` → `requireKind` (definido en
-     `service_test.go:568`) devuelve `*apperr.Error` y las llamadas descartan; escribir `_ =` o
-     volverla void.
-   - `backend/internal/portada/service_admin_test.go:361` → helper `intptr` sin usar; eliminarlo.
+### Pendientes de la fase de validación/entrega (NO bloquean T339)
+1. **SC-010 — prueba de usabilidad con personas** (≥6 personas, 2 por franja 18–35 / 36–59 / 60+,
+   protocolo mínimo del `analyze` M7): la coordina el **humano** con `qa-tester` sobre la portada
+   real; el informe `pruebas-usabilidad-SC-010.md` se adjunta en la fase de validación/entrega
+   (umbral: ≥ 90 % de tareas completadas). No automatizable; fuera de `make ci`/`make e2e`.
+2. **SC-008 — parte manual de accesibilidad** (checklist WCAG 2.1 AA de quickstart §10.1–10.6:
+   teclado, lector de pantalla, contraste, áreas de 44 px, 200 % de ampliación): la recorre
+   `qa-tester` en la validación; el e2e ya cubre la parte automatizable (320/768/1280).
+3. **Para `documentador`** (discrepancias del quickstart, sin defecto de código):
+   - §2 usa `admin@ejemplo.com` / `Contraseña1!` como ejemplo, pero el administrador real del
+     entorno es el sembrado por setup/e2e: **`ana@ejemplo.com` / `Semilla.2026`**
+     (`frontend/e2e/helpers.ts`). Alinear texto o aclarar que la cuenta depende del entorno.
+   - §8: el orden real de guards en la primera sesión es el de F2: `403
+     password_change_required` (mustChangePassword) **antes** que la respuesta de permisos; sin
+     sesión → `401 unauthenticated`. Documentar la prioridad para evitar confusión.
+
+### Resueltos durante esta verificación
+- **Lint en rojo** (única causa del primer `make ci` rojo): 5 problemas `errcheck`/`unused` en
+  archivos de prueba, corregidos por `dev-backend` en **`dda8120`**; `make ci` pasó íntegro
+  (EXIT=0) en la pasada definitiva.
 
 ### Discrepancias de la fuente de la tarea (sin cambios en el repo)
 - **A.** La instrucción «los targets make sqlc-verify / api-gen no existen en el Makefile» es
@@ -147,10 +148,14 @@ service*.go y se cumple.
 
 ## 4. Conclusión
 
-- ✅ e2e (5)**·** deriva de generados**·** cobertura service*.go 84,7% ≥ 80%**·** smoke
-  `/healthz` + 404 ErrorEnvelope + portada pública**·** quickstart §0–§9 y §12**.
-- ❌ `make ci`: **lint** con 5 hallazgos en archivos de prueba (los bloques `test` y `security`,
-  verificados aparte, están en verde).
-- T339 queda **NO marcada**: se cumplirá la condición «`make ci` y e2e en verde» cuando
-  `dev-backend` corrija los 5 hallazgos de lint y `make ci` pase íntegro. Los pendientes manuales
-  (SC-010, SC-008) se señalan para `qa-tester` y el humano.
+- ✅ `make ci` **EXIT=0** (lint 0 issues tras `dda8120` · 35 paquetes Go unit+integración · 269
+  pruebas frontend · govulncheck/npm audit limpios) · e2e **5/5** · deriva de generados **null**
+  · cobertura `service*.go` **84,7 % ≥ 80 %** · smoke `/healthz` + 404 ErrorEnvelope + portada
+  pública · quickstart **§0–§12** recorrido con las tablas de errores, la cadena de imágenes C4 y
+  el mapa SC-001…SC-013 confirmados.
+- **T339 marcada `[X]`** en `tasks.md`: las 40 tareas de F3 quedan completas.
+- **Quedan para la fase de validación/entrega** (no forman parte de T339): SC-010 (usabilidad con
+  personas, humano + `qa-tester`) y la parte manual de SC-008 (checklist WCAG, `qa-tester`);
+  para `documentador`, las dos discrepancias del quickstart señaladas en §3.
+- Próximo paso del orquestador: fase de entrega (revisión final `qa-tester`/`revisor-codigo`/
+  `seguridad` en paralelo, PR, CHANGELOG/README, cierre de costos con `make costos CERRAR=1`).
