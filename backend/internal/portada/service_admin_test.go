@@ -440,7 +440,7 @@ func TestUpdateServiceMergeVariants(t *testing.T) {
 	descriptionEs := "  descripción  "
 	sortOrder := 5
 	saved, err := service.UpdateService(context.Background(), uuid.New(), current.ID, ScheduleItemPatch{
-		EndTime: &empty, PlaceEn: &placeEn, DescriptionEs: &descriptionEs, SortOrder: &sortOrder,
+		EndTime: OptionalOf(empty), PlaceEn: OptionalOf(placeEn), DescriptionEs: OptionalOf(descriptionEs), SortOrder: &sortOrder,
 	})
 	if err != nil {
 		t.Fatalf("UpdateService = %v", err)
@@ -469,6 +469,31 @@ func TestUpdateServiceMergeVariants(t *testing.T) {
 	emptyname := "   "
 	if _, err := service.UpdateService(context.Background(), uuid.New(), current.ID, ScheduleItemPatch{NameEs: &emptyname}); errorKind(err) != apperr.KindInvalid {
 		t.Fatalf("nombre vacío debería ser invalid: %v", err)
+	}
+}
+
+// B1 (corrección): limpiar un campo opcional con `null` es un cambio de datos y
+// deja su fila `home.schedule.update` (analyze M5: solo datos). Decodifica el
+// cuerpo JSON real del panel para ejercitar la presencia del campo.
+func TestPatchScheduleNullClearsAndAudits(t *testing.T) {
+	repo := newFakeRepository()
+	current := repo.seedService(Service{
+		NameEs: "Culto", PlaceEs: "Templo", StartTime: "10:00",
+		EndTime: strptr("12:00"), PublicationState: StatePublished,
+	})
+	service := NewService(ServiceDeps{Repository: repo})
+
+	patch := decodePatch[ScheduleItemPatch](t, `{"endTime": null}`)
+	saved, err := service.UpdateService(context.Background(), uuid.New(), current.ID, patch)
+	if err != nil {
+		t.Fatalf("UpdateService = %v", err)
+	}
+	if saved.EndTime != nil {
+		t.Fatalf("endTime: null debe quitar la hora de fin; quedó %v", *saved.EndTime)
+	}
+	actions := repo.recorded()
+	if len(actions) != 1 || actions[0].Code != audit.ActionHomeScheduleUpdate {
+		t.Fatalf("limpiar la hora de fin debe dejar solo home.schedule.update: %v", actionCodes(actions))
 	}
 }
 

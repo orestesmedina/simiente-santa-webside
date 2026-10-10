@@ -145,33 +145,36 @@ type SocialLinksAdmin struct {
 
 // --- DTOs de entrada de las ediciones parciales (PATCH) ---
 //
-// Los campos son punteros para distinguir "no enviado" de un valor (y de `null`,
-// que vacía un campo opcional). La validación manual del service cubre lo que el
+// Un campo ausente no se toca. Los campos anulables del contrato (`endTime`,
+// `nameEn`, `descriptionEs`, `descriptionEn`, `placeEn`) usan Optional[T] para
+// distinguir además el `null` explícito, que vacía el campo (analyze I6/B1). Los
+// campos no anulables son punteros: `null` no es un valor válido para ellos, así
+// que se comporta como ausente. La validación manual del service cubre lo que el
 // validador de structs no ve a través de punteros.
 
 // ScheduleItemPatch es el cuerpo de PATCH /api/v1/admin/portada/horario/{id}.
 type ScheduleItemPatch struct {
-	DayOfWeek        *int    `json:"dayOfWeek,omitempty"`
-	StartTime        *string `json:"startTime,omitempty"`
-	EndTime          *string `json:"endTime,omitempty"`
-	NameEs           *string `json:"nameEs,omitempty"`
-	NameEn           *string `json:"nameEn,omitempty"`
-	DescriptionEs    *string `json:"descriptionEs,omitempty"`
-	DescriptionEn    *string `json:"descriptionEn,omitempty"`
-	PlaceEs          *string `json:"placeEs,omitempty"`
-	PlaceEn          *string `json:"placeEn,omitempty"`
-	PublicationState *string `json:"publicationState,omitempty"`
-	SortOrder        *int    `json:"sortOrder,omitempty"`
+	DayOfWeek        *int             `json:"dayOfWeek,omitempty"`
+	StartTime        *string          `json:"startTime,omitempty"`
+	EndTime          Optional[string] `json:"endTime"`
+	NameEs           *string          `json:"nameEs,omitempty"`
+	NameEn           Optional[string] `json:"nameEn"`
+	DescriptionEs    Optional[string] `json:"descriptionEs"`
+	DescriptionEn    Optional[string] `json:"descriptionEn"`
+	PlaceEs          *string          `json:"placeEs,omitempty"`
+	PlaceEn          Optional[string] `json:"placeEn"`
+	PublicationState *string          `json:"publicationState,omitempty"`
+	SortOrder        *int             `json:"sortOrder,omitempty"`
 }
 
 // WhatsappChannelPatch es el cuerpo de PATCH /api/v1/admin/portada/whatsapp/{id}.
 type WhatsappChannelPatch struct {
-	NameEs           *string `json:"nameEs,omitempty"`
-	NameEn           *string `json:"nameEn,omitempty"`
-	Kind             *string `json:"kind,omitempty"`
-	Destination      *string `json:"destination,omitempty"`
-	PublicationState *string `json:"publicationState,omitempty"`
-	SortOrder        *int    `json:"sortOrder,omitempty"`
+	NameEs           *string          `json:"nameEs,omitempty"`
+	NameEn           Optional[string] `json:"nameEn"`
+	Kind             *string          `json:"kind,omitempty"`
+	Destination      *string          `json:"destination,omitempty"`
+	PublicationState *string          `json:"publicationState,omitempty"`
+	SortOrder        *int             `json:"sortOrder,omitempty"`
 }
 
 // SocialLinkPatch es el cuerpo de PATCH /api/v1/admin/portada/redes/{id}.
@@ -686,16 +689,17 @@ func (s *service) DeleteSocialLink(ctx context.Context, actorID uuid.UUID, id uu
 
 // --- Validación y mezcla de las ediciones parciales ---
 
-// hasChanges indica si el PATCH trae al menos un campo (minProperties: 1).
+// hasChanges indica si el PATCH trae al menos un campo (minProperties: 1). Un
+// `null` explícito cuenta como cambio: limpiar un campo opcional lo es.
 func (p ScheduleItemPatch) hasChanges() bool {
-	return p.DayOfWeek != nil || p.StartTime != nil || p.EndTime != nil ||
-		p.NameEs != nil || p.NameEn != nil || p.DescriptionEs != nil || p.DescriptionEn != nil ||
-		p.PlaceEs != nil || p.PlaceEn != nil || p.PublicationState != nil || p.SortOrder != nil
+	return p.DayOfWeek != nil || p.StartTime != nil || p.EndTime.Set() ||
+		p.NameEs != nil || p.NameEn.Set() || p.DescriptionEs.Set() || p.DescriptionEn.Set() ||
+		p.PlaceEs != nil || p.PlaceEn.Set() || p.PublicationState != nil || p.SortOrder != nil
 }
 
 // hasChanges indica si el PATCH trae al menos un campo.
 func (p WhatsappChannelPatch) hasChanges() bool {
-	return p.NameEs != nil || p.NameEn != nil || p.Kind != nil ||
+	return p.NameEs != nil || p.NameEn.Set() || p.Kind != nil ||
 		p.Destination != nil || p.PublicationState != nil || p.SortOrder != nil
 }
 
@@ -729,8 +733,9 @@ func mergeSchedule(current Service, patch ScheduleItemPatch) (Service, bool, boo
 		updated.StartTime = start
 		dataChanged = true
 	}
-	if patch.EndTime != nil {
-		end, err := normalizeEndTime(*patch.EndTime)
+	if patch.EndTime.Set() {
+		// `endTime: null` (o "") quita la hora de fin: Value() es "".
+		end, err := normalizeEndTime(patch.EndTime.Value())
 		if err != nil {
 			return Service{}, false, false, err
 		}
@@ -748,16 +753,16 @@ func mergeSchedule(current Service, patch ScheduleItemPatch) (Service, bool, boo
 		updated.NameEs = name
 		dataChanged = true
 	}
-	if patch.NameEn != nil {
-		updated.NameEn = normalizeOptional(*patch.NameEn)
+	if patch.NameEn.Set() {
+		updated.NameEn = normalizeOptional(patch.NameEn.Value())
 		dataChanged = true
 	}
-	if patch.DescriptionEs != nil {
-		updated.DescriptionEs = normalizeOptional(*patch.DescriptionEs)
+	if patch.DescriptionEs.Set() {
+		updated.DescriptionEs = normalizeOptional(patch.DescriptionEs.Value())
 		dataChanged = true
 	}
-	if patch.DescriptionEn != nil {
-		updated.DescriptionEn = normalizeOptional(*patch.DescriptionEn)
+	if patch.DescriptionEn.Set() {
+		updated.DescriptionEn = normalizeOptional(patch.DescriptionEn.Value())
 		dataChanged = true
 	}
 	if patch.PlaceEs != nil {
@@ -771,8 +776,8 @@ func mergeSchedule(current Service, patch ScheduleItemPatch) (Service, bool, boo
 		updated.PlaceEs = place
 		dataChanged = true
 	}
-	if patch.PlaceEn != nil {
-		updated.PlaceEn = normalizeOptional(*patch.PlaceEn)
+	if patch.PlaceEn.Set() {
+		updated.PlaceEn = normalizeOptional(patch.PlaceEn.Value())
 		dataChanged = true
 	}
 	if patch.SortOrder != nil {
@@ -819,8 +824,8 @@ func mergeWhatsappChannel(current WhatsappChannel, patch WhatsappChannelPatch) (
 		updated.NameEs = name
 		dataChanged = true
 	}
-	if patch.NameEn != nil {
-		updated.NameEn = normalizeOptional(*patch.NameEn)
+	if patch.NameEn.Set() {
+		updated.NameEn = normalizeOptional(patch.NameEn.Value())
 		dataChanged = true
 	}
 	if patch.Kind != nil {
