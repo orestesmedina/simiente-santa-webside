@@ -1083,6 +1083,230 @@
         }
       ],
       "hasta_ms": 1791583770535
+    },
+    {
+      "id": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "padre": null,
+      "titulo": "Preguntando con qué continuar",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T19:48:45Z",
+      "hasta": "2026-10-10T21:28:57Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 26,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 19410,
+            "output": 12459,
+            "reasoning": 13449,
+            "cache_read": 7381248,
+            "cache_write": 0
+          },
+          "costo": 0.0406,
+          "costo_opencode": 0.0406
+        }
+      ],
+      "hasta_ms": 1791667737304
+    },
+    {
+      "id": "ses_ed8505510ffex2Kep1F0r89EUU",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "CHANGELOG fix imágenes",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T21:19:46Z",
+      "hasta": "2026-10-10T21:22:13Z",
+      "consumo": [
+        {
+          "agente": "documentador",
+          "modelo": "opencode-go/mimo-v2.6-flash",
+          "respuestas": 15,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 14643,
+            "output": 1849,
+            "reasoning": 2747,
+            "cache_read": 219456,
+            "cache_write": 0
+          },
+          "costo": 0.003951,
+          "costo_opencode": 0.003951
+        }
+      ],
+      "hasta_ms": 1791667333142
+    },
+    {
+      "id": "ses_ed8505512ffef4SNfwlPomhAPI",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Cerrar I-1 del fix",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T21:19:46Z",
+      "hasta": "2026-10-10T21:28:13Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 30,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 43520,
+            "output": 4285,
+            "reasoning": 4490,
+            "cache_read": 574464,
+            "cache_write": 0
+          },
+          "costo": 0.028149,
+          "costo_opencode": 0.028149
+        }
+      ],
+      "hasta_ms": 1791667693216
+    },
+    {
+      "id": "ses_ed8701213ffeECsGxGOSlIq4e2",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Seguridad fix imágenes",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T20:45:06Z",
+      "hasta": "2026-10-10T20:52:36Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 22,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 57627,
+            "output": 22355,
+            "reasoning": 0,
+            "cache_read": 678152,
+            "cache_write": 0
+          },
+          "costo": 0.355359,
+          "costo_opencode": 0.355359
+        }
+      ],
+      "hasta_ms": 1791665556586
+    },
+    {
+      "id": "ses_ed8701215ffeisfezg3nnU8xp0",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Revisar fix imágenes",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T20:45:06Z",
+      "hasta": "2026-10-10T21:19:06Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 11,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 33139,
+            "output": 5209,
+            "reasoning": 11047,
+            "cache_read": 221952,
+            "cache_write": 0
+          },
+          "costo": 0.029363,
+          "costo_opencode": 0.029363
+        }
+      ],
+      "hasta_ms": 1791667146444
+    },
+    {
+      "id": "ses_ed8701216ffeoLJpE5RulagOq3",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Validar fix imágenes",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T20:45:06Z",
+      "hasta": "2026-10-10T21:04:17Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 45,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 90270,
+            "output": 8537,
+            "reasoning": 18974,
+            "cache_read": 1373056,
+            "cache_write": 0
+          },
+          "costo": 0.068488,
+          "costo_opencode": 0.068488
+        }
+      ],
+      "hasta_ms": 1791666257081
+    },
+    {
+      "id": "ses_ed87fda05ffe27iFqJ2KzrLJz7",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Fix imágenes no cargan",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T20:27:52Z",
+      "hasta": "2026-10-10T20:44:16Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 49,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 48183,
+            "output": 10916,
+            "reasoning": 16346,
+            "cache_read": 2308608,
+            "cache_write": 0
+          },
+          "costo": 0.03051,
+          "costo_opencode": 0.03051
+        }
+      ],
+      "hasta_ms": 1791665056965
+    },
+    {
+      "id": "ses_ed885a0a8ffeDPCoptW53Aji5K",
+      "padre": "ses_edec2a874ffeuIk1Qw6QKXje9T",
+      "titulo": "Test que reproduce bug imágenes",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-10T21:29:24Z",
+      "desde": "2026-10-10T20:21:33Z",
+      "hasta": "2026-10-10T20:27:17Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 25,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 44233,
+            "output": 5713,
+            "reasoning": 4576,
+            "cache_read": 532032,
+            "cache_write": 0
+          },
+          "costo": 0.02774,
+          "costo_opencode": 0.02774
+        }
+      ],
+      "hasta_ms": 1791664037846
     }
   ],
   "totales": {
@@ -1090,31 +1314,31 @@
       {
         "agente": "seguridad",
         "modelo": "opencode-go/glm-5.3",
-        "respuestas": 143,
+        "respuestas": 165,
         "tokens": {
-          "input": 380639,
-          "output": 87755,
+          "input": 438266,
+          "output": 110110,
           "reasoning": 0,
-          "cache_read": 13091428,
+          "cache_read": 13769580,
           "cache_write": 0
         },
-        "costo": 4.322788,
-        "costo_opencode": 4.322788,
+        "costo": 4.678147,
+        "costo_opencode": 4.678147,
         "sin_precio": false
       },
       {
         "agente": "dev-frontend",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 468,
+        "respuestas": 517,
         "tokens": {
-          "input": 2422853,
-          "output": 172095,
-          "reasoning": 149691,
-          "cache_read": 53627136,
+          "input": 2471036,
+          "output": 183011,
+          "reasoning": 166037,
+          "cache_read": 55935744,
           "cache_write": 0
         },
-        "costo": 0.717382,
-        "costo_opencode": 0.717382,
+        "costo": 0.747892,
+        "costo_opencode": 0.747892,
         "sin_precio": false
       },
       {
@@ -1133,6 +1357,21 @@
         "sin_precio": false
       },
       {
+        "agente": "qa-tester",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 287,
+        "tokens": {
+          "input": 493920,
+          "output": 65971,
+          "reasoning": 55281,
+          "cache_read": 14654272,
+          "cache_write": 0
+        },
+        "costo": 0.574342,
+        "costo_opencode": 0.574342,
+        "sin_precio": false
+      },
+      {
         "agente": "dev-backend",
         "modelo": "opencode-go/deepseek-v4.1-flash",
         "respuestas": 354,
@@ -1148,33 +1387,18 @@
         "sin_precio": false
       },
       {
-        "agente": "qa-tester",
-        "modelo": "opencode-go/glm-5.3-flash",
-        "respuestas": 187,
-        "tokens": {
-          "input": 315897,
-          "output": 47436,
-          "reasoning": 27241,
-          "cache_read": 12174720,
-          "cache_write": 0
-        },
-        "costo": 0.449965,
-        "costo_opencode": 0.449965,
-        "sin_precio": false
-      },
-      {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 213,
+        "respuestas": 239,
         "tokens": {
-          "input": 1645758,
-          "output": 80233,
-          "reasoning": 70556,
-          "cache_read": 25712768,
+          "input": 1665168,
+          "output": 92692,
+          "reasoning": 84005,
+          "cache_read": 33094016,
           "cache_write": 0
         },
-        "costo": 0.414475,
-        "costo_opencode": 0.414475,
+        "costo": 0.455075,
+        "costo_opencode": 0.455075,
         "sin_precio": false
       },
       {
@@ -1195,16 +1419,16 @@
       {
         "agente": "revisor-codigo",
         "modelo": "opencode-go/mimo-v2.6-pro",
-        "respuestas": 115,
+        "respuestas": 126,
         "tokens": {
-          "input": 441690,
-          "output": 33023,
-          "reasoning": 64344,
-          "cache_read": 9353472,
+          "input": 474829,
+          "output": 38232,
+          "reasoning": 75391,
+          "cache_read": 9575424,
           "cache_write": 0
         },
-        "costo": 0.310751,
-        "costo_opencode": 0.310751,
+        "costo": 0.340114,
+        "costo_opencode": 0.340114,
         "sin_precio": false
       },
       {
@@ -1240,21 +1464,21 @@
       {
         "agente": "documentador",
         "modelo": "opencode-go/mimo-v2.6-flash",
-        "respuestas": 34,
+        "respuestas": 49,
         "tokens": {
-          "input": 150457,
-          "output": 12279,
-          "reasoning": 10173,
-          "cache_read": 2057792,
+          "input": 165100,
+          "output": 14128,
+          "reasoning": 12920,
+          "cache_read": 2277248,
           "cache_write": 0
         },
-        "costo": 0.033112,
-        "costo_opencode": 0.033112,
+        "costo": 0.037063,
+        "costo_opencode": 0.037063,
         "sin_precio": false
       }
     ],
-    "tokens": 246916049,
-    "costo": 8.030924,
-    "costo_opencode": 8.030924
+    "tokens": 260698994,
+    "costo": 8.615084,
+    "costo_opencode": 8.615084
   }
 }
