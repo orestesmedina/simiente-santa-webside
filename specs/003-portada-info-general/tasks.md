@@ -969,7 +969,7 @@ decisión **para que `disenador-ux` alinee su documento**:
   - **Criterio de terminado**: US1, US3 (lado público), US4 y US5 cubiertas de extremo a extremo.
   - **Commit sugerido**: `test(e2e): portada pública (visitante, idioma, accesibilidad)`
 
-- [ ] T338 · E2E Playwright `portada-panel.spec.ts` · `[frontend]` `[P7]`
+- [X] T338 · E2E Playwright `portada-panel.spec.ts` · `[frontend]` `[P7]`
 
   - **Archivos**: `frontend/e2e/portada-panel.spec.ts` (NUEVO).
   - **Qué hace**: el recorrido del equipo (US2, US3 en el panel) sobre `quickstart.md` §2–§6,

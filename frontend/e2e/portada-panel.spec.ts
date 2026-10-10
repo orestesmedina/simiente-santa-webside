@@ -50,6 +50,95 @@ interface Account {
   newPassword: string;
 }
 
+/** Singletons del panel presentes en `GET /api/v1/admin/portada`. */
+interface AdminState {
+  identity: {
+    nameEs: string;
+    nameEn: string | null;
+    taglineEs: string | null;
+    taglineEn: string | null;
+    missionEs: string | null;
+    missionEn: string | null;
+    visionEs: string | null;
+    visionEn: string | null;
+    logoFile: string | null;
+    logoAltEs: string | null;
+    logoAltEn: string | null;
+    coverImageFile: string | null;
+    coverImageAltEs: string | null;
+    coverImageAltEn: string | null;
+  } | null;
+  about: { textEs: string; textEn: string | null } | null;
+  contact: {
+    addressEs: string;
+    addressEn: string | null;
+    email: string;
+    phone: string;
+  } | null;
+}
+
+/**
+ * Deja identidad, «quiénes somos» y contacto en **borrador** (la identidad es
+ * un singleton compartido con `portada-publica.spec.ts`). La prueba asume que
+ * sus secciones parten sin publicar —el flujo guarda y luego publica—, así que
+ * se restablece esa precondición sin importar el orden ni las corridas previas.
+ * Si un singleton no existe todavía, no hay nada que restablecer.
+ */
+async function resetSingletonsToDraft(page: Page): Promise<void> {
+  const state = (await (await apiSend(page, 'GET', '/api/v1/admin/portada')).json()) as AdminState;
+
+  if (state.identity) {
+    const { identity } = state;
+    expect(
+      (
+        await apiSend(page, 'PUT', '/api/v1/admin/portada/identidad', {
+          nameEs: identity.nameEs,
+          nameEn: identity.nameEn,
+          taglineEs: identity.taglineEs,
+          taglineEn: identity.taglineEn,
+          missionEs: identity.missionEs,
+          missionEn: identity.missionEn,
+          visionEs: identity.visionEs,
+          visionEn: identity.visionEn,
+          logoFile: identity.logoFile,
+          logoAltEs: identity.logoAltEs,
+          logoAltEn: identity.logoAltEn,
+          coverImageFile: identity.coverImageFile,
+          coverImageAltEs: identity.coverImageAltEs,
+          coverImageAltEn: identity.coverImageAltEn,
+          publicationState: 'draft',
+        })
+      ).ok(),
+    ).toBe(true);
+  }
+
+  if (state.about) {
+    expect(
+      (
+        await apiSend(page, 'PUT', '/api/v1/admin/portada/quienes-somos', {
+          textEs: state.about.textEs,
+          textEn: state.about.textEn,
+          publicationState: 'draft',
+        })
+      ).ok(),
+    ).toBe(true);
+  }
+
+  if (state.contact) {
+    expect(
+      (
+        await apiSend(page, 'PUT', '/api/v1/admin/portada/contacto', {
+          addressEs: state.contact.addressEs,
+          addressEn: state.contact.addressEn,
+          email: state.contact.email,
+          phone: state.contact.phone,
+          publicationState: 'draft',
+        })
+      ).ok(),
+    ).toBe(true);
+  }
+}
+
 /** Inicia sesión con una cuenta nueva y resuelve el cambio obligatorio (F2). */
 async function loginAndChangePassword(page: Page, account: Account): Promise<void> {
   await loginViaUi(page, account.email, account.initialPassword);
@@ -116,6 +205,10 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
       // ── Cuentas de prueba (FR-012): una con permiso y otra sin él ─────────
       await loginViaUi(adminPage, ADMIN.email, ADMIN.password);
       await expect(adminPage).toHaveURL(/\/panel$/);
+
+      // Precondición determinista: las secciones que esta prueba guarda y luego
+      // publica parten en borrador (la base es compartida y no se limpia).
+      await resetSingletonsToDraft(adminPage);
 
       const editorRoleResponse = await apiSend(adminPage, 'POST', '/api/v1/admin/roles', {
         name: editorRoleName,
@@ -189,11 +282,11 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
 
         // ── Identidad (FR-002/FR-015/FR-019): error junto al campo, en y logo ─
         await expect(editorPage.getByRole('heading', { name: 'Identidad' })).toBeVisible();
-        await editorPage.getByLabel(/^Nombre oficial$/).fill('');
+        await editorPage.getByLabel(/^Nombre oficial\s*\*?$/).fill('');
         await editorPage.getByRole('button', { name: 'Guardar' }).click();
         await expect(editorPage.getByText('Escribe el nombre.')).toBeVisible();
 
-        await editorPage.getByLabel(/^Nombre oficial$/).fill(identityName);
+        await editorPage.getByLabel(/^Nombre oficial\s*\*?$/).fill(identityName);
         await editorPage.getByRole('button', { name: 'English (opcional)' }).click();
         await editorPage.getByLabel(/^Nombre oficial \(English\)$/).fill(identityNameEn);
         await editorPage.getByRole('button', { name: 'Español', exact: true }).click();
@@ -222,7 +315,7 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
 
         // ── Quiénes somos (FR-003): publicar por sección ──────────────────────
         await editorPage.getByRole('button', { name: 'Quiénes somos' }).click();
-        await editorPage.getByLabel(/^Texto \(Español\)$/).fill(aboutText);
+        await editorPage.getByLabel(/^Texto \(Español\)\s*\*?$/).fill(aboutText);
         await editorPage.getByRole('button', { name: 'Guardar' }).click();
         await expect(editorPage.getByText('Cambios guardados.')).toBeVisible();
         await editorPage.getByRole('button', { name: 'Publicar' }).click();
@@ -230,9 +323,9 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
 
         // ── Contacto (FR-007): publicar por sección ───────────────────────────
         await editorPage.getByRole('button', { name: 'Contacto' }).click();
-        await editorPage.getByLabel(/^Dirección \(Español\)$/).fill(address);
-        await editorPage.getByLabel(/^Correo$/).fill(email);
-        await editorPage.getByLabel(/^Teléfono$/).fill(phone);
+        await editorPage.getByLabel(/^Dirección \(Español\)\s*\*?$/).fill(address);
+        await editorPage.getByLabel(/^Correo\s*\*?$/).fill(email);
+        await editorPage.getByLabel(/^Teléfono\s*\*?$/).fill(phone);
         await editorPage.getByRole('button', { name: 'Guardar' }).click();
         await expect(editorPage.getByText('Cambios guardados.')).toBeVisible();
         await editorPage.getByRole('button', { name: 'Publicar' }).click();
@@ -245,8 +338,8 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
         await serviceDialog.getByLabel('Día').selectOption('0');
         await serviceDialog.getByLabel('Hora de inicio').fill('10:00');
         await serviceDialog.getByLabel('Hora de fin (opcional)').fill('12:00');
-        await serviceDialog.getByLabel(/^Nombre \(Español\)$/).fill(serviceName);
-        await serviceDialog.getByLabel(/^Lugar \(Español\)$/).fill('Templo principal');
+        await serviceDialog.getByLabel(/^Nombre \(Español\)\s*\*?$/).fill(serviceName);
+        await serviceDialog.getByLabel(/^Lugar \(Español\)\s*\*?$/).fill('Templo principal');
         await serviceDialog.getByRole('button', { name: 'Agregar servicio' }).click();
         await expect(editorPage.getByText('Servicio creado.')).toBeVisible();
 
@@ -261,8 +354,8 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
         await editorPage.getByRole('button', { name: 'WhatsApp' }).click();
         await editorPage.getByRole('button', { name: 'Agregar canal' }).click();
         const channelDialog = editorPage.getByRole('dialog');
-        await channelDialog.getByLabel(/^Nombre o propósito \(Español\)$/).fill(channelName);
-        await channelDialog.getByLabel(/^Número$/).fill(channelPhone);
+        await channelDialog.getByLabel(/^Nombre o propósito \(Español\)\s*\*?$/).fill(channelName);
+        await channelDialog.getByLabel(/^Número\s*\*?$/).fill(channelPhone);
         await channelDialog.getByRole('button', { name: 'Agregar canal' }).click();
         await expect(editorPage.getByText('Canal de WhatsApp creado.')).toBeVisible();
 
@@ -274,8 +367,10 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
         // Duplicado exacto → el servidor responde 409 y el mensaje queda junto al campo.
         await editorPage.getByRole('button', { name: 'Agregar canal' }).click();
         const duplicateDialog = editorPage.getByRole('dialog');
-        await duplicateDialog.getByLabel(/^Nombre o propósito \(Español\)$/).fill(channelName);
-        await duplicateDialog.getByLabel(/^Número$/).fill(channelPhone);
+        await duplicateDialog
+          .getByLabel(/^Nombre o propósito \(Español\)\s*\*?$/)
+          .fill(channelName);
+        await duplicateDialog.getByLabel(/^Número\s*\*?$/).fill(channelPhone);
         await duplicateDialog.getByRole('button', { name: 'Agregar canal' }).click();
         await expect(
           duplicateDialog.getByText(
@@ -410,13 +505,28 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
         'home.contact.update',
         'home.schedule.create',
         'home.whatsapp.create',
-        'home.social.create',
         'home.publish',
         'home.unpublish',
       ]) {
         expect(actions, `la auditoría del editor registra ${expected}`).toContain(expected);
       }
-      expect(audit.items.every((item) => item.actorName === editorDisplayName)).toBe(true);
+      // La red social se **crea** si no existía o se **actualiza** si ya había un
+      // enlace de esa red (FR-006: una por red); en ambos casos queda auditada.
+      expect(
+        actions.some(
+          (action) => action === 'home.social.create' || action === 'home.social.update',
+        ),
+        'la auditoría del editor registra la gestión de la red social',
+      ).toBe(true);
+      // El filtro `userId` es por cuenta **involucrada** (F2/plan P22): incluye
+      // la creación de la cuenta por la administradora (ella es el actor, la
+      // editora el objetivo). Se comprueba el nombre en las acciones **hechas**
+      // por la editora.
+      expect(
+        audit.items
+          .filter((item) => item.actorEmail === editor.email)
+          .every((item) => item.actorName === editorDisplayName),
+      ).toBe(true);
       expect(audit.items.some((item) => (item.targetLabel ?? '').startsWith('Portada · '))).toBe(
         true,
       );
@@ -441,6 +551,19 @@ test.describe('Panel de la portada (editar, publicar, permisos y auditoría)', (
       await adminPage.getByLabel('Cuenta').selectOption({ label: editorDisplayName });
       await adminPage.getByRole('button', { name: 'Filtrar' }).click();
       await expect(actionsTable.getByText('home.identity.update').first()).toBeVisible();
+      // La subida del logotipo es la **primera** acción del editor; el historial
+      // muestra 20 por página, así que puede quedar en la página siguiente.
+      if ((await actionsTable.getByText('home.image.upload').count()) === 0) {
+        const [pageResponse] = await Promise.all([
+          adminPage.waitForResponse(
+            (res) =>
+              res.url().includes('/api/v1/admin/auditoria/acciones') &&
+              res.request().method() === 'GET',
+          ),
+          adminPage.getByRole('button', { name: 'Siguiente' }).click(),
+        ]);
+        expect(pageResponse.ok()).toBe(true);
+      }
       await expect(actionsTable.getByText('home.image.upload').first()).toBeVisible();
       await expect(actionsTable.getByText('Completada').first()).toBeVisible();
       await expect(actionsTable.getByText(/Portada · /).first()).toBeVisible();
