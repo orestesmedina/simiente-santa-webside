@@ -20,7 +20,12 @@ import { API_URL, ADMIN, apiSend, ensureInitialized, loginViaUi, uniqueSuffix } 
  * siembra una identidad publicada con logo e imagen de portada, abre la portada
  * pública y comprueba (a) que la respuesta de red de esas URLs es `image/*`
  * (no `text/html` de `index.html`) y (b) que las imágenes realmente descodifican
- * (`naturalWidth > 0`).
+ * (`naturalWidth > 0`), acotando los *locators* por zona (el logo aparece en
+ * cabecera, hero y pie con el mismo `alt`), y (c) que los `src` quedan
+ * **resueltos contra el origen de la API** (`API_BASE_URL`, I-1): cabecera y
+ * pie llaman a `mediaUrl` de forma independiente (`PublicLayout` y
+ * `PublicFooter`), así que una regresión parcial en cualquiera de las tres
+ * llamadas (hero, cabecera, pie) hace fallar esta prueba.
  */
 
 /** Imagen real del repositorio, usada para las subidas (patrón portada-publica). */
@@ -62,10 +67,10 @@ async function subirImagen(page: Page, name: string): Promise<string> {
   return ((await upload.json()) as { fileName: string }).fileName;
 }
 
-test.describe('Portada: las imágenes del hero cargan (URLs de media resueltas contra la API)', () => {
+test.describe('Portada: las imágenes de hero, cabecera y pie cargan (URLs de media resueltas contra la API)', () => {
   test.setTimeout(180_000);
 
-  test('el logo y la imagen de portada publicados responden image/* y descodifican', async ({
+  test('el logo y la imagen de portada publicados responden image/* y descodifican en todas las zonas', async ({
     browser,
     request,
   }) => {
@@ -180,6 +185,41 @@ test.describe('Portada: las imágenes del hero cargan (URLs de media resueltas c
               .evaluate((el) => (el as HTMLImageElement).naturalWidth),
           )
           .toBeGreaterThan(0);
+
+        // (c) Cabecera y pie también pintan el logo con llamadas independientes
+        // a `mediaUrl` (PublicLayout y PublicFooter): una regresión parcial que
+        // solo quite `mediaUrl` en una de ellas dejaría el hero intacto. Se
+        // verifica cada zona por separado y acotada (banner/contentinfo), pues
+        // el mismo `alt` del logo aparece tres veces en la página.
+        const logoSrcResuelto = browserBase(logoUrl);
+        for (const [zona, zonaNombre] of [
+          [page.getByRole('banner'), 'la cabecera'],
+          [page.getByRole('contentinfo'), 'el pie'],
+        ] as const) {
+          const logoZona = zona.getByRole('img', { name: logoAlt });
+          await expect(logoZona, `el logo de ${zonaNombre}`).toBeAttached();
+          // (c1) El `src` quedó resuelto contra el origen de la API por
+          // `mediaUrl`, no relativo a la SPA: el punto exacto de la regresión.
+          await expect(logoZona, `src del logo de ${zonaNombre}`).toHaveAttribute(
+            'src',
+            logoSrcResuelto,
+          );
+          // (c2) Y descodifica: el src relativo pediría `index.html` al nginx
+          // de la SPA y `naturalWidth` sería 0 (el bug original).
+          await expect
+            .poll(async () => logoZona.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+            .toBeGreaterThan(0);
+        }
+
+        // (d) Ancla también los `src` resueltos del hero (logo y portada).
+        await expect(hero.getByRole('img', { name: logoAlt })).toHaveAttribute(
+          'src',
+          logoSrcResuelto,
+        );
+        await expect(hero.getByRole('img', { name: coverAlt })).toHaveAttribute(
+          'src',
+          browserBase(coverUrl),
+        );
       } finally {
         await visitorContext.close();
       }
