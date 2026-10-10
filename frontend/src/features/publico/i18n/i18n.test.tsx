@@ -91,6 +91,23 @@ describe('i18n del sitio público', () => {
     expect(screen.getByTestId('social')).toHaveTextContent('Ver en Facebook');
   });
 
+  it('dos selectores en la misma página no comparten grupo nativo (cabecera y pie)', () => {
+    // La portada monta el selector dos veces; con el mismo `name` el navegador
+    // los uniría en un solo grupo y dejaría sin marcar uno de los dos.
+    render(
+      <LanguageProvider>
+        <LanguageSwitcher />
+        <LanguageSwitcher />
+      </LanguageProvider>,
+    );
+
+    const spanish = screen.getAllByRole('radio', { name: 'Español' });
+    expect(spanish).toHaveLength(2);
+    expect(spanish[0].getAttribute('name')).not.toBe(spanish[1].getAttribute('name'));
+    expect(spanish[0]).toBeChecked();
+    expect(spanish[1]).toBeChecked();
+  });
+
   it('expone el idioma base sin auto-detectar el navegador', () => {
     // Aunque el navegador (jsdom) esté en otro idioma, sin preferencia guardada
     // el sitio entra en español (FR-010: sin `navigator.language`).

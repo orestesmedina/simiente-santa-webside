@@ -54,7 +54,7 @@ function PublicChrome() {
             <span className="font-display text-2xl">{brandName}</span>
           </Link>
 
-          <nav aria-label={t('nav.label')} className="flex-1">
+          <nav aria-label={t('nav.label')} className="min-w-0 flex-1">
             <ul className="flex items-center gap-4 overflow-x-auto">
               {sections.map((section) => (
                 <li key={section.id}>
