@@ -33,6 +33,7 @@ Tercera entrega: **F3 — Portada e información general** (rama `003-portada-in
 - **Navegación a 320 px**: la `nav` de la portada provocaba desplazamiento horizontal en pantallas estrechas (`min-w-0`), incumpliendo la promesa de responsividad.
 - **`PATCH` con `null` no vaciaba los campos opcionales** (BLOQUEANTE del primer ciclo de validación): los `PATCH` del panel ignoraban `null`; ahora se distingue «vaciar el campo» de «no enviado» con el tipo `Optional[T]` (fix `d5d4610`, con e2e de regresión `portada-patch-null`).
 - **Formato de la hora del horario y área de toque del selector**: el horario se mostraba en formato 24 h (se muestra en a.m./p.m. localizado, con «m.» solo en el mediodía exacto: `fc96185`, `db83a61`) y el área táctil del selector de idioma pasó de 20 px a 44 px (`2b72138`).
+- **Las imágenes de la portada no cargaban**: la API devuelve las URLs de media relativas y la SPA las pedía a su propio origen, donde nginx no proxya `/api/`; ahora el logotipo y la imagen de portada se resuelven contra la URL de la API con `mediaUrl` (fix `ec2ae76`, con e2e de regresión `portada-imagenes`: `b257e0b`).
 
 ### No entra en esta versión
 
