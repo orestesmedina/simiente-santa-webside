@@ -29,6 +29,15 @@ describe('formatTimeRange (analyze C2, ux.md §4.6/D-3)', () => {
     expect(formatTimeRange('10:00', '12:00', t)).toBe('10:00 a. m. − 12:00 m.');
     expect(formatTimeRange('18:00', null, t)).toBe('6:00 p. m.');
     expect(formatTimeRange('00:00', '13:30', t)).toBe('12:00 a. m. − 1:30 p. m.');
+    expect(formatTimeRange('11:30', '12:45', t)).toBe('11:30 a. m. − 12:45 p. m.');
+  });
+
+  it('reserva «m.» para el mediodía exacto y usa «p. m.» en toda la franja de las 12', () => {
+    const t = translate('es');
+    expect(formatClockTime('12:00', t)).toBe('12:00 m.');
+    expect(formatClockTime('12:45', t)).toBe('12:45 p. m.');
+    expect(formatClockTime('13:00', t)).toBe('1:00 p. m.');
+    expect(formatClockTime('00:00', t)).toBe('12:00 a. m.');
   });
 
   it('localiza el rango a AM/PM en inglés', () => {
@@ -36,6 +45,14 @@ describe('formatTimeRange (analyze C2, ux.md §4.6/D-3)', () => {
     expect(formatTimeRange('10:00', '12:00', t)).toBe('10:00 AM − 12:00 PM');
     expect(formatTimeRange('18:00', null, t)).toBe('6:00 PM');
     expect(formatTimeRange('00:00', '13:30', t)).toBe('12:00 AM − 1:30 PM');
+  });
+
+  it('en inglés toda la franja de las 12 es PM, con medianoche AM', () => {
+    const t = translate('en');
+    expect(formatClockTime('12:00', t)).toBe('12:00 PM');
+    expect(formatClockTime('12:45', t)).toBe('12:45 PM');
+    expect(formatClockTime('13:00', t)).toBe('1:00 PM');
+    expect(formatClockTime('00:00', t)).toBe('12:00 AM');
   });
 
   it('sin hora de fin (null o ausente) muestra solo la hora de inicio', () => {
