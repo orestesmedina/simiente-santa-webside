@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar (implementación cerrada, 40/40 tareas) |
-| Ciclo de corrección | 2/3 (ciclo 1: 4 defectos de F4; ciclo 2: B1 bloqueante de validación + I1/A1) |
-| Próximo paso | Validación en paralelo con `qa-tester`, `revisor-codigo` y `seguridad` → `revision-2026-10-09-*.md` |
+| Fase | 8/9 · Converger (validación aprobada) |
+| Ciclo de corrección | 2/3 (ciclo 2 **aprobado** por `revisor-codigo`, `qa-tester` y `seguridad`) |
+| Próximo paso | Converger (`/speckit.converge`) y Fase 9: entrega (`devops` + `documentador`) y PR |
 | Bloqueado por | — (Docker operativo; e2e ejecutables con `LD_LIBRARY_PATH=/tmp/opencode/pwlibs/usr/lib/x86_64-linux-gnu`) |
 | Actualizado | 2026-10-09 |
 
@@ -34,17 +34,17 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-10-*.md`).
 
-- **B1 (BLOQUEANTE, código + QA)** — Los `PATCH` del panel no vacían campos opcionales con `null`: en Go `null` y campo ausente son indistinguibles, y el frontend envía `null` para quitar `endTime`/una traducción. Se pierde en silencio (la UI dice «Guardado» y el valor reaparece); `{"endTime":null}` responde `400`. Reproducido en vivo por QA. **→ `dev-backend` (ciclo 2).**
-- **I1 (IMPORTANTE, código)** — `formatTimeRange` muestra el horario en 24 h, pero `ux.md` §4.6/D-3 promete presentación a.m./p.m. localizada. **→ `dev-frontend` (ciclo 2).**
-- **A1 (MENOR, QA)** — Objetivo de toque del selector de idioma 20 px (< 24 px recomendado). **→ `dev-frontend` (ciclo 2).**
-- **M-a11y (MENOR, QA)** — Reflow fino a zoom 200 % (56 px de desborde, sin pérdida de contenido). Aceptado como deuda.
-- Seguridad: **APROBADO**, 0 bloqueantes (5 menores S1–S5, incluida la semántica `null` vista desde seguridad ≡ B1).
+- **(ninguno)** — los 4 hallazgos del ciclo 2 están corregidos y re-validados; solo queda deuda menor aceptada (abajo).
 
-**Correcciones del ciclo 2 (aplicadas, pendientes de re-validación):**
-- **B1** ✅ `fix(portada): distinguir null de ausente en los PATCH` (`d5d4610`; tipo `Optional[T]`; las 3 pruebas de regresión de QA en verde).
-- **I1** ✅ `fix(frontend): horario en a.m./p.m. localizado` (`fc96185`).
-- **A1** ✅ `fix(frontend): objetivo táctil del selector de idioma ≥44 px` (`2b72138`).
-- Verificado tras el fix: backend unit+integración ✅, frontend **271** pruebas ✅, e2e **6/6** ✅ (incluye `portada-accesibilidad.spec.ts`).
+**Historial del ciclo 2 (corregidos y re-validados):**
+- **B1 (BLOQUEANTE, código + QA)** — `PATCH` no vaciaba campos opcionales con `null` → `fix(portada): distinguir null de ausente` (`d5d4610`, tipo `Optional[T]`).
+- **I1 (IMPORTANTE, código)** — horario en 24 h → a.m./p.m. localizado (`fc96185`).
+- **A1 (MENOR, QA)** — objetivo táctil del selector 20 px → 44 px (`2b72138`).
+- **N1 (MENOR, revisor)** — «m.» a las 12 → solo mediodía exacto (`db83a61`).
+
+**Re-validación (ciclo 2): APROBADO por los tres roles** (`revision-2026-10-10-{codigo,qa,seguridad}-ciclo2.md`), 0 bloqueantes. Suites tras los fixes: backend unit+integración ✅, frontend **273** pruebas ✅, e2e **7/7** ✅.
+
+**Deuda aceptada (no bloquea):** M-a11y (reflow a zoom 200 %, QA), S1/S2/S4/S5/S6 (seguridad: nombre de archivo de imagen, auditoría de subidas rechazadas, `nosniff` solo en media, huérfanos, fila de auditoría de `null` sin cambio) y M1/M2/M3 del revisor. Registradas para una futura funcionalidad.
 
 ## Decisiones y aclaraciones
 
