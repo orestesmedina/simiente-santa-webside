@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
-| Fase | 5/9 · Validar |
-| Ciclo de corrección | 3/3 |
-| Próximo paso | Corregir la regresión N1 (contraste de la opción activa del selector en tema claro) y re-validar (ciclo 3); si aprueba, convergencia y entrega |
+| Fase | 7/9 · Entregar |
+| Ciclo de corrección | 3/3 (cerrado: los tres roles aprobaron en el ciclo 3) |
+| Próximo paso | Entrega: `devops` (CI, Docker, `.env.example`, PR) + `documentador` (CHANGELOG, README, notas); luego **puerta 3** (aprobar merge y despliegue) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -34,8 +34,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- **N1 (BLOQUEANTE, revisor, ciclo 2)** — la corrección de IMP-1 (`dd4c5ce`) puso `bg-surface-raised` en el `<fieldset>` y la opción **activa** del selector (`bg-accent/15 text-accent`) queda a **4,05:1** en tema claro (< AA). Ver `revision-2026-10-11-codigo-ciclo2.md`. Corregir con un par sólido.
-- **Cerrados en el ciclo 2**: C1, C2, I1, IMP-1 (confirmados por `revisor-codigo` y `qa-tester`). `seguridad` sigue APROBADO.
+- **(ninguno)** — los hallazgos de los 3 ciclos están corregidos y re-validados; los **tres roles APROBARON** en el ciclo 3 (ver `revision-2026-10-11-final.md`).
 
 ## Decisiones y aclaraciones
 
@@ -50,6 +49,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-11 — **Convergencia (Fase 6): Converged** — 36/36 tareas `[X]`, 0 pendientes; los tres roles aprobaron. Arranca la Fase 7 (entrega).
+- 2026-10-11 — **Fase 5 (Validar) cerrada — APROBADO por los tres roles** (ciclo 3): `qa-tester`, `revisor-codigo` y `seguridad` aprobaron tras 3 ciclos de corrección (C1, C2, IMP-1, I1 → N1 → limpio). Unit **409**, e2e **25/25** F10 + **8/8** congeladas, 0 pruebas congeladas editadas. Consolidado en `revision-2026-10-11-final.md`. Arranca la convergencia.
 - 2026-10-11 — **Ciclo 2 (re-validación)**: `qa-tester` **APROBADO** (IMP-1 cerrado: selector 152×44 px < F3), `seguridad` **APROBADO** (M1 cerrado), `revisor-codigo` **RECHAZADO** por **N1**: la corrección de IMP-1 introdujo una regresión de contraste (opción activa del selector a 4,05:1 en tema claro, < AA). Arranca el ciclo 3.
 - 2026-10-11 — **Ciclo de corrección 1 aplicado**: `dev-frontend` corrigió **C1** (el salvavidas del revelado solo cubre un observador que no reporta; el bloque fuera de pantalla permanece pendiente), **C2** (hover del botón primario con par AA por tema: 5,3:1 claro / 6,7:1 oscuro), **IMP-1** (selector compacto 152×44 px, menor que F3) e **I1** (CTA «Ver horario» condicional); además M1-seguridad y M2-revisor. Suites: **407** unit + e2e **8/8** congeladas + **25/25** F10. Re-validación en curso.
 - 2026-10-11 — **Fase 4 (Implementar) cerrada — 36/36 tareas**: T1001–T1036 en verde. Unit **402** pruebas; e2e **8/8** congeladas + **22/22** nuevas; lint/typecheck/build en verde; **0 pruebas congeladas editadas** (SC-008); **0 cambios** en backend/migraciones/API/infra/`.env.example`; cierre en `cierre.md`. Bugs reales corregidos por los e2e (overflow lateral 28 px a 1024 px, scroll de fondo del menú móvil, contraste del selector). Notas de entorno: rate-limit de login (M-4, e2e en dos tandas) y Playwright vía imagen Docker. Arranca la Fase 5 (validar).
