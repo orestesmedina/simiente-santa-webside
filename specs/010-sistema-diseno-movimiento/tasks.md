@@ -499,7 +499,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: los cimientos están entregados y documentados (SC-011) y `quickstart.md` refleja la calibración real.
   - **Commit sugerido**: `docs(frontend): cimientos del sistema de diseño para F4-F9`
 
-- [ ] T1036 · Verificación de cierre (`make ci`, `make e2e`, checklist `quickstart.md`, mapa SC) · `[infra]`
+- [X] T1036 · Verificación de cierre (`make ci`, `make e2e`, checklist `quickstart.md`, mapa SC) · `[infra]`
 
   - **Archivos**: **ninguno** (verificación); acta de resultados en `specs/010-sistema-diseno-movimiento/quickstart.md` (EDITADO con los resultados).
   - **Qué hace**: ejecuta `make ci` y `make e2e` completos (unitarias + typecheck + lint + e2e, incluida la no-regresión) y recorre la checklist manual de `quickstart.md`: «moderno» y fidelidad al Manual (SC-002), **movimiento marcado/elegante aprobado como perceptible y sin marear** (SC-014), contraste AA por tema y estado incluidos hover/foco/activo (SC-012/SC-009), selector con «menos espacio» y reconocible (SC-007), logotipo sin recolorear en ambos temas y en estados interactivos (FR-002/FR-024), panel **sin cambios** (revisión visual + suites), zoom 200 % y 320 px, rendimiento en el dispositivo de referencia (SC-006/RG10-9) y 0 textos sin traducir (SC-010). Cruza el **mapa de cobertura** de abajo (FR-001…FR-027, SC-001…SC-015) y deja listo el acta para la **aprobación humana** (SC-002/SC-013/SC-014 la requieren: no se auto-aprueba).
