@@ -484,14 +484,14 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 ## Fase 9 — Cierre
 
-- [ ] T1034 · No-regresión F2/F3: suites **sin cambios** en verde + contrato congelado · `[frontend]`
+- [X] T1034 · No-regresión F2/F3: suites **sin cambios** en verde + contrato congelado · `[frontend]`
 
   - **Archivos**: **ninguno de producción**; solo lectura/ejecución. (Si algo falla, se corrige el **código** de F10 o se **escala al humano**: D12/RG10-6.)
   - **Qué hace**: ejecuta `npm test -- --run` y `make e2e` completos y verifica que **todas** las suites de F2/F3 pasan **sin haberlas editado**: unitarias (`BrandLogo.test.tsx`, `homePage.test.tsx`, `i18n.test.tsx`, `layout.test.tsx`, `sections.test.ts`, `router.test.tsx`, `guards.test.tsx`, `providers.test.tsx`, las de panel/usuarios/roles/auditoría/auth/información) y e2e (`portada-publica`, `portada-accesibilidad` —incluido `tabCycle` < 30 pasos a 320 px, RG10-21—, `portada-panel`, `portada-imagenes`, `portada-patch-null`, `acceso`, `auditoria`, `status`). Verifica además el **contrato congelado** (R10-9): rutas, ids/anclas, `aria-label`/roles/nombres accesibles existentes, `ss.lang`, comportamiento bilingüe y de borrador/publicado. *Cubre FR-020/FR-021/SC-008*.
   - **Pruebas incluidas (§III)**: la ejecución completa de ambas suites **es** la prueba (§III + SC-008); **criterio de terminado**: 100 % en verde con `git diff` de las suites de F2/F3 **vacío**.
   - **Commit sugerido**: `test(frontend): verificacion de no-regresion de F2/F3 (SC-008)`
 
-- [ ] T1035 · Docs de cimientos para F4–F9 (`components/publico/README.md` + `quickstart.md`) · `[frontend]` `[P7]`
+- [X] T1035 · Docs de cimientos para F4–F9 (`components/publico/README.md` + `quickstart.md`) · `[frontend]` `[P7]`
 
   - **Archivos**: `frontend/src/components/publico/README.md` (NUEVO), `specs/010-sistema-diseno-movimiento/quickstart.md` (EDITADO: resultados de la checklist), `specs/010-sistema-diseno-movimiento/ux.md` (solo si QA calibra valores de tokens: D9/RG10-22).
   - **Qué hace**: documenta los cimientos heredables para que F4–F9 nazcan con el sistema **sin rediseño** (FR-018/SC-011): catálogo de tokens (tema claro/oscuro con su tabla de contraste, espaciado de sección, movimiento con suelo/techo), primitivas (`PublicButton`/`SectionHeading`/`Card`), patrones (`Reveal`/`RevealGroup`, `MobileMenu`/`SiteHeader`, `FooterSiteMap`/`useSiteLinks`, `ThemeToggle`), reglas de composición (toda sección usa `--space-section*`; un solo estilo por función; el logotipo nunca se anima ni se recolorea) y cómo añadir una sección nueva (nueva entrada en `sections.ts` + ruta → la navegación y el mapa del sitio se actualizan solos, sin enlaces rotos). Deja escrito el **criterio de ubicación de componentes** (N3): `frontend/src/components/publico/` es la capa de **primitivas del sistema** (reutilizables por cualquier feature) y `frontend/src/features/publico/components/` la capa de **secciones/composición** de la portada; un componente nuevo se coloca según si es primitiva de sistema o pieza de una sección concreta (no por «no alterar el inventario compartido», que aplica a los dos). Registra la calibración final de espaciado/movimiento decidida en QA. *Cubre FR-018/US6/SC-011*.
