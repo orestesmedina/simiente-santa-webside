@@ -3,6 +3,11 @@ import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { IdentityPublic } from '../../../api/portada';
+import {
+  installIntersectionObserver,
+  IntersectionObserverStub,
+  uninstallIntersectionObserver,
+} from '../../../test/intersectionObserver';
 import type { SiteLink } from '../hooks/useSiteLinks';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { SiteHeader } from './SiteHeader';
@@ -135,6 +140,25 @@ describe('SiteHeader · cabecera fija del sitio público (T1011)', () => {
       rectSpy.mockRestore();
       delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
       document.documentElement.style.removeProperty('--header-offset');
+    }
+  });
+
+  it('al bajar gana data-scrolled sin cambiar su geometría (T1020)', () => {
+    installIntersectionObserver();
+    try {
+      const { container } = renderHeader();
+      const header = container.querySelector('header') as HTMLElement;
+      expect(header).toHaveAttribute('data-scrolled', 'false');
+      const before = header.className;
+
+      act(() => IntersectionObserverStub.instances[0].trigger(false));
+
+      expect(header).toHaveAttribute('data-scrolled', 'true');
+      // Solo cambia la superficie: las clases de layout son idénticas.
+      expect(header.className).toBe(before);
+      expect(before).toContain('public-header');
+    } finally {
+      uninstallIntersectionObserver();
     }
   });
 });

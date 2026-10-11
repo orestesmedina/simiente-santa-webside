@@ -6,6 +6,7 @@ import type { IdentityPublic } from '../../../api/portada';
 import type { SiteLink } from '../hooks/useSiteLinks';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import { useLanguage } from '../i18n/useLanguage';
+import { useScrolled } from '../motion/useScrolled';
 import { BrandLogo } from './BrandLogo';
 import { PublicNav } from './PublicNav';
 
@@ -66,31 +67,43 @@ export function SiteHeader({ identity, links, actions }: SiteHeaderProps) {
   const { t } = useLanguage();
   const brandName = identity?.name ?? t('brand.name');
   const headerRef = useRef<HTMLElement | null>(null);
+  const { sentinelRef, scrolled } = useScrolled();
   useHeaderOffset(headerRef);
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-50 border-b border-line bg-surface text-ink">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-        <Link
-          to="/"
-          className="flex min-h-11 items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        >
-          <BrandLogo
-            src={mediaUrl(identity?.logoUrl)}
-            alt={identity?.logoAlt ?? t('a11y.logo')}
-            size={40}
-            className="rounded-full bg-logo-surface p-0.5"
-          />
-          <span className="font-display text-2xl max-[480px]:sr-only">{brandName}</span>
-        </Link>
+    <>
+      {/* Sentinela al principio de la página: al salir del viewport, la
+          cabecera pasa a `data-scrolled` (superficie de vidrio, sin cambio de
+          geometría). Observada con IntersectionObserver, sin listener de scroll. */}
+      <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />
 
-        <PublicNav links={links} />
+      <header
+        ref={headerRef}
+        data-scrolled={scrolled ? 'true' : 'false'}
+        className="public-header sticky top-0 z-50 border-b border-line bg-surface text-ink"
+      >
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <Link
+            to="/"
+            className="flex min-h-11 items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            <BrandLogo
+              src={mediaUrl(identity?.logoUrl)}
+              alt={identity?.logoAlt ?? t('a11y.logo')}
+              size={40}
+              className="rounded-full bg-logo-surface p-0.5"
+            />
+            <span className="font-display text-2xl max-[480px]:sr-only">{brandName}</span>
+          </Link>
 
-        <div className="ml-auto flex items-center gap-2">
-          <LanguageSwitcher className="text-ink" />
-          {actions}
+          <PublicNav links={links} />
+
+          <div className="ml-auto flex items-center gap-2">
+            <LanguageSwitcher className="text-ink" />
+            {actions}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }

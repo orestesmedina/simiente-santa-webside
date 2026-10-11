@@ -11,6 +11,7 @@ import { installMatchMedia } from '../../../test/matchMedia';
 import { Reveal } from './Reveal';
 import { RevealGroup } from './RevealGroup';
 import { REVEAL_FALLBACK_MS, resetRevealObserver } from './useReveal';
+import { useScrolled } from './useScrolled';
 import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from './usePrefersReducedMotion';
 
 /** Hoja de estilos del sistema: se comprueban los tokens de movimiento. */
@@ -205,5 +206,47 @@ describe('RevealGroup · entrada escalonada acotada (FR-005/SC-014)', () => {
   it('con movimiento reducido el CSS global anula los retardos', () => {
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
     expect(css).toContain('transition-delay: 0s !important');
+  });
+});
+
+describe('useScrolled · cabecera al bajar (FR-014/FR-005)', () => {
+  function Harness() {
+    const { sentinelRef, scrolled } = useScrolled();
+    return (
+      <>
+        <div ref={sentinelRef} data-testid="sentinel" />
+        <header data-scrolled={scrolled ? 'true' : 'false'} />
+      </>
+    );
+  }
+
+  beforeEach(() => {
+    installMatchMedia();
+    installIntersectionObserver();
+  });
+
+  afterEach(() => {
+    uninstallIntersectionObserver();
+  });
+
+  it('activa data-scrolled al bajar y lo quita al volver, sin listeners de scroll', () => {
+    const windowSpy = vi.spyOn(window, 'addEventListener');
+    const documentSpy = vi.spyOn(document, 'addEventListener');
+
+    render(<Harness />);
+    expect(screen.getByRole('banner')).toHaveAttribute('data-scrolled', 'false');
+
+    act(() => IntersectionObserverStub.instances[0].trigger(false));
+    expect(screen.getByRole('banner')).toHaveAttribute('data-scrolled', 'true');
+
+    act(() => IntersectionObserverStub.instances[0].trigger(true));
+    expect(screen.getByRole('banner')).toHaveAttribute('data-scrolled', 'false');
+
+    const scrollListeners = [...windowSpy.mock.calls, ...documentSpy.mock.calls].filter(
+      ([type]) => type === 'scroll',
+    );
+    expect(scrollListeners).toHaveLength(0);
+    windowSpy.mockRestore();
+    documentSpy.mockRestore();
   });
 });

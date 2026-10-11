@@ -278,6 +278,35 @@ html.js .reveal-block[data-reveal='right'] {
 }
 
 /*
+ * Cabecera desplazada (F10 · T1020/FR-014): al bajar, la cabecera transiciona
+ * **solo su superficie** —vidrio + borde turquesa + sombra— con el token de
+ * cabecera, **sin cambiar su geometría** (misma altura → anclas y
+ * `scroll-padding-top` estables, D8). Con movimiento reducido, cambio
+ * instantáneo (bloque global de T1004).
+ */
+:root {
+  --header-scrolled: rgb(13 22 38 / 0.72);
+}
+
+html[data-theme='dark'] {
+  --header-scrolled: rgb(10 17 32 / 0.8);
+}
+
+.public-header {
+  transition:
+    background-color var(--motion-duration-header) var(--motion-ease-standard),
+    border-color var(--motion-duration-header) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-header) var(--motion-ease-standard);
+}
+
+.public-header[data-scrolled='true'] {
+  background-color: var(--header-scrolled);
+  backdrop-filter: blur(12px);
+  border-bottom-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+/*
  * Lista de navegación del sitio público (F10 · T1012/T1013/D15/D16).
  * · Escritorio (≥ 861 px): filas `flex-wrap` compactas, sin scroll lateral.
  * · Móvil (≤ 860 px): colapsada con `display:none` (fuera del orden de
