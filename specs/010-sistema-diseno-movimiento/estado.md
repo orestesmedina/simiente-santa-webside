@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
-| Fase | 1/9 · Especificar |
+| Fase | 2/9 · Planificar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Presentar la spec actualizada (8 aclaraciones incorporadas) y pedir la aprobación de la spec (puerta 1) |
+| Próximo paso | Plan técnico (`arquitecto`) + `ux.md` con las 3 propuestas de diseño (`disenador-ux`); luego puerta 2 (aprobar plan y elegir una propuesta) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -25,7 +25,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | pendiente | | | |
+| Spec | aprobado | humano | 2026-10-10 | "Apruebo la spec" (con ajuste de alcance: F10 = sitio público + modo oscuro con interruptor manual; panel → F10B) |
 | Plan | pendiente | | | |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
@@ -47,5 +47,6 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-10 — **Puerta 1 superada:** el humano aprobó la spec (**«Apruebo la spec»**) con dos ajustes de alcance: **F10 = sitio público + modo oscuro** (con **interruptor manual claro/oscuro**) y el **panel se separa a F10B**. Aprobación registrada en «Aprobaciones». Roadmap: F10 ajustada y **F10B** añadida (decisión 13). Arranca la Fase 2 (plan + 3 propuestas de diseño).
 - 2026-10-10 — **8 aclaraciones resueltas con el cliente** (Q1–Q8): F10 se amplía a **panel de administración + modo oscuro**, navegación en **barra fija siempre visible**, animación **moderada**, selector de idioma **solo compactado**, **iconografía/ilustraciones nuevas permitidas**, referencias de inspiración y **3 propuestas de diseño a presentar antes de implementar**. Spec actualizada por `analista-producto`. Pendiente: aprobación de la spec (puerta 1).
 - 2026-10-10 — Inicio de F10: rama `010-sistema-diseno-movimiento` y spec redactada por `analista-producto` (5 historias US1–US5, 25 escenarios, 22 FR, 11 SC, 13 Edge Cases). Quedan **8 preguntas abiertas (Q1–Q8)** que cambian alcance o experiencia; se aclaran con el humano antes de aprobar la spec.
