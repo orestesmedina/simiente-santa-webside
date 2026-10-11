@@ -272,7 +272,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 > PR y la validan `revisor-codigo` y `seguridad`. El resto de F2 (servicios, handlers, UI) lee el
 > catálogo **dinámicamente** y **no** se toca.
 
-- [ ] T405 · Pruebas de F2: catálogo de permisos 9 → 10 · `[backend]` *(excepción aprobada RG4-10)*
+- [X] T405 · Pruebas de F2: catálogo de permisos 9 → 10 · `[backend]` *(excepción aprobada RG4-10)*
 
   - **Archivos**: `backend/internal/usuarios/repository_roles_integration_test.go` (línea 52),
     `service_init_integration_test.go` (línea 57), `service_init_test.go` (línea 199 y fixture

@@ -13,7 +13,7 @@ import (
 )
 
 // Pruebas de integración de la inicialización única (FR-007/SC-003) contra
-// PostgreSQL real: creación del administrador con los 9 permisos y su registro
+// PostgreSQL real: creación del administrador con los 10 permisos y su registro
 // sin actor, y la carrera de dos `Initialize` simultáneos.
 
 func integrationInitService(t *testing.T, repo *repository) *initService {
@@ -45,7 +45,8 @@ func TestIntegrationInitializeCreatesAdminOnce(t *testing.T) {
 		t.Fatalf("administrador inicial inesperado: %+v", item)
 	}
 
-	// El rol nace con TODO el catálogo (9 permisos) e incluye administración.
+	// El rol nace con TODO el catálogo (10 permisos, F4: incluye `categorias`)
+	// e incluye administración.
 	role, err := repo.GetRoleByNameLower(ctx, adminRoleName)
 	if err != nil {
 		t.Fatalf("GetRoleByNameLower: %v", err)
@@ -54,8 +55,8 @@ func TestIntegrationInitializeCreatesAdminOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRoleByID: %v", err)
 	}
-	if len(detail.Permissions) != 9 {
-		t.Fatalf("permisos del rol inicial = %v, se esperaban 9", detail.Permissions)
+	if len(detail.Permissions) != 10 {
+		t.Fatalf("permisos del rol inicial = %v, se esperaban 10", detail.Permissions)
 	}
 	hasAdmin := false
 	for _, code := range detail.Permissions {

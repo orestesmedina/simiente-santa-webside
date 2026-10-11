@@ -141,11 +141,12 @@ func (f *fakeInitRepo) DeleteRolePermissions(context.Context, uuid.UUID) error {
 
 func (f *fakeInitRepo) DeleteRole(context.Context, uuid.UUID) (int64, error) { return 0, nil }
 
-// sampleCatalog devuelve los nueve permisos del catálogo fijo (FR-015).
+// sampleCatalog devuelve los diez permisos del catálogo fijo (FR-015).
+// F4 (excepción aprobada RG4-10): el catálogo de F2 creció con `categorias`.
 func sampleCatalog() []Permission {
 	codes := []string{
 		"portada", "eventos", "actividades", "grupos", "ministerios",
-		"donaciones", "noticias", "medios", "admin_usuarios_roles",
+		"donaciones", "noticias", "medios", "admin_usuarios_roles", "categorias",
 	}
 	permissions := make([]Permission, 0, len(codes))
 	for _, code := range codes {
@@ -192,12 +193,12 @@ func TestInitializeCreatesInitialAdmin(t *testing.T) {
 		t.Errorf("el administrador inicial no es el esperado: %+v", item)
 	}
 
-	// Rol "Administrador" con TODO el catálogo (9 permisos).
+	// Rol "Administrador" con TODO el catálogo (10 permisos).
 	if len(repo.insertRoleCalls) != 1 || repo.insertRoleCalls[0] != adminRoleName {
 		t.Fatalf("roles creados = %v, se esperaba solo %q", repo.insertRoleCalls, adminRoleName)
 	}
-	if len(repo.rolePermissions) != 9 {
-		t.Fatalf("permisos asociados = %d, se esperaban 9", len(repo.rolePermissions))
+	if len(repo.rolePermissions) != 10 {
+		t.Fatalf("permisos asociados = %d, se esperaban 10", len(repo.rolePermissions))
 	}
 
 	// Cuenta activa, sin cambio obligatorio y con la contraseña hasheada.

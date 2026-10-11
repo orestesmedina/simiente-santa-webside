@@ -61,13 +61,13 @@ func TestIntegrationCreateRoleAndCatalog(t *testing.T) {
 		t.Fatal("no quedó el registro role.create de éxito")
 	}
 
-	// Catálogo de FR-015: 9 permisos con etiqueta.
+	// Catálogo de FR-015: 10 permisos con etiqueta (F4: incluye `categorias`).
 	catalog, err := svc.ListPermissions(ctx)
 	if err != nil {
 		t.Fatalf("ListPermissions: %v", err)
 	}
-	if len(catalog.Items) != 9 {
-		t.Fatalf("catálogo = %d, se esperaban 9", len(catalog.Items))
+	if len(catalog.Items) != 10 {
+		t.Fatalf("catálogo = %d, se esperaban 10", len(catalog.Items))
 	}
 
 	// Duplicado con otras mayúsculas/espacios → 409 y fallo registrado (Q5).
