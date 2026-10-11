@@ -419,7 +419,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 ## Fase 6 — Selector de idioma compacto (US4, Priority: P2)
 
-- [ ] T1027 · `LanguageSwitcher` compacto (comportamiento F3 intacto) · `[frontend]` `[P5]`
+- [X] T1027 · `LanguageSwitcher` compacto (comportamiento F3 intacto) · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/features/publico/i18n/LanguageSwitcher.tsx` (EDITADO), `frontend/src/features/publico/i18n/i18n.test.tsx` (EDITADO **solo añadiendo** aserciones de formato, D12).
   - **Qué hace**: **solo formato y huella visual** (Q5/FR-015): textos completos actuales (`lang.es`/`lang.en`) en 0.82–0.85 rem con espaciado/disposición más ajustados (pastilla fina con borde translúcido, activo con fondo turquesa suave y peso 700), acomodo en el clúster de controles de la cabecera y en la franja del pie. **Sin** píldoras «ES/EN», **sin** menú desplegable, **sin** banderas ni siglas como identificación principal. El cuerpo de texto no baja del umbral de legibilidad (FR-004) y cada opción compensa con padding hasta ≥ 44 px de objetivo. **Comportamiento idéntico a F3** (FR-016): radios nativos, `useId`, `ss.lang`, cambio inmediato, memoria entre visitas, primera visita en español, sin auto-detección. **D2: no se añade al panel del menú móvil**. *Cubre FR-015/FR-016/FR-017/SC-007*.
@@ -431,7 +431,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 ## Fase 7 — Modo oscuro aplicado (US5, Priority: P2)
 
-- [ ] T1028 · `ThemeToggle` + integración en el clúster de la cabecera · `[frontend]` `[P5]`
+- [X] T1028 · `ThemeToggle` + integración en el clúster de la cabecera · `[frontend]` `[P5]`
 
   - **Archivos**: `frontend/src/features/publico/theme/ThemeToggle.tsx` (NUEVO), `frontend/src/features/publico/components/SiteHeader.tsx` (EDITADO: monta el toggle), `theme.test.tsx` (EDITADO **aditivamente**).
   - **Qué hace**: interruptor claro/oscuro **compacto** (objetivo 44 px, iconos decorativos 🌙/☀️) en el clúster de controles de la cabecera (junto al selector de idioma): `aria-pressed` con el estado y `aria-label` dinámico localizado (`theme.toDark`/`theme.toLight`, FR-023), cambio **inmediato sin recargar** vía `setTheme` (T1005), foco visible y sin perder el foco al cambiar de tema, sin ocupar espacio innecesario (misma queja que motivó compactar el idioma). En móvil ≤ 860 px convive con la hamburguesa a 320 px sin taparse (FR-025). **D7**: con elección guardada manda la manual; sin ella, sigue al sistema. *Cubre FR-023/FR-025/SC-012*.
@@ -445,35 +445,35 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 **Purpose**: flujos críticos de punta a punta y verificación de los requisitos medibles. Son tareas `[P6]` (un archivo cada una). Las suites existentes de F2/F3 **no se editan** (D12/SC-008): estas specs son **nuevas**.
 
-- [ ] T1029 · E2E `diseno-movimiento.spec.ts` (barra fija, anchos, teclado, selector) · `[frontend]` `[P6]`
+- [X] T1029 · E2E `diseno-movimiento.spec.ts` (barra fija, anchos, teclado, selector) · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/e2e/diseno-movimiento.spec.ts` (NUEVO).
   - **Qué hace**: escritorio (≥ 861 px): barra fija visible en el 100 % del recorrido con **todas las anclas visibles** (sin menús ocultos); clic en ancla → título de la sección destino visible (no tapado: `scroll-padding-top`); 320/360/768/1024/1280 px: `document.documentElement.scrollWidth <= clientWidth` (0 desplazamiento horizontal, SC-004) y 0 enlaces que requieran scroll lateral (el menú móvil lo cubre T1030); recorrido con teclado y foco visible; **selector de idioma**: cambia al instante, persiste al navegar y entre visitas (contexto persistente), primera visita en español, textos completos accesibles; **cabecera a 320 px**: marca + idioma + tema + hamburguesa alcanzables y sin taparse (FR-025) y el enlace de marca conservando un texto con «Simiente» (nombre completo accesible, D20/C3).
   - **Pruebas incluidas (§III)**: la propia spec es la prueba (Playwright); **criterio de terminado**: `make e2e` la ejecuta en verde y cubre US1/US2/US4 (SC-004/SC-007).
   - **Commit sugerido**: `test(frontend): e2e de diseno, navegacion fija y selector compacto`
 
-- [ ] T1030 · E2E `navegacion-movil.spec.ts` (menú hamburguesa + mapa del sitio) · `[frontend]` `[P6]`
+- [X] T1030 · E2E `navegacion-movil.spec.ts` (menú hamburguesa + mapa del sitio) · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/e2e/navegacion-movil.spec.ts` (NUEVO).
   - **Qué hace**: a 320 px: botón hamburguesa ≥ 44 px con nombre accesible y `aria-expanded`/`aria-controls`; abrir/cerrar con ratón **y** con teclado (Enter/Espacio); al abrir, el foco entra a la lista (primer enlace); **Escape**, control visible y toque fuera (scrim) cierran y **devuelven el foco al botón**; **sin trampa de foco** (D17/I1): `Tab` puede salir del panel con normalidad y **no** hay `role="dialog"`/`aria-modal`; **una sola lista de enlaces en el DOM** (D15/C4: cada sección resuelve a **una** única coincidencia dentro del `navigation` nombrado, también con el menú abierto); con el menú **cerrado**, los enlaces de la lista **no** están en el orden de tabulación (D16/I2: ocultos con `display:none`, no solo invisibles) y al abrir vuelven a ser enfocables; al activar una sección, el panel se cierra y el título del destino queda visible; **sin scroll de fondo** con el panel abierto (rueda y teclado); sin scroll horizontal; al ensanchar a ≥ 861 px el panel se cierra y reaparecen las anclas; cabecera con `data-scrolled` al bajar en ambos modos; y **mapa del sitio del pie**: lista las secciones publicadas (apilado a 320 px, columnas en escritorio), sus enlaces son alcanzables por teclado y llevan a la sección, con una sección en borrador no queda enlace (ni pie ni cabecera), el landmark del pie tiene nombre accesible propio (diferente del de la cabecera), **los grupos sin ítems no se renderizan y el mapa no se dibuja si no hay nada que listar** (D18/C1), los rótulos de grupo **no** tienen rol `heading` (D18) y **los nombres accesibles del pie son únicos** (prefijos «Correo:…/Teléfono:…/WhatsApp:…», planos en Síguenos; D19/C2). El **recuento del ciclo de tabulación** (< 30 pasos, el inventario está en T1015) se verifica aquí sin editar la prueba congelada.
   - **Pruebas incluidas (§III)**: la propia spec es la prueba; **criterio de terminado**: cubre US2 completo y los edge cases del menú (SC-003/SC-004/SC-009/SC-015).
   - **Commit sugerido**: `test(frontend): e2e del menu hamburguesa movil y el mapa del sitio`
 
-- [ ] T1031 · E2E `tema-oscuro.spec.ts` (3 caminos de US5, logo intacto) · `[frontend]` `[P6]`
+- [X] T1031 · E2E `tema-oscuro.spec.ts` (3 caminos de US5, logo intacto) · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/e2e/tema-oscuro.spec.ts` (NUEVO).
   - **Qué hace**: (1) sistema en oscuro sin elección guardada → sitio en oscuro desde el **primer pintado** (sin flash: el `data-theme` inicial es correcto, anti-FOUC de T1002); (2) elección manual → cambio inmediato sin recarga y **persistente** tras recarga (y en visita posterior); (3) primera visita sin elección → sigue la preferencia del sistema; cambio en caliente del sistema **solo** sin elección manual; logotipo con sus colores originales en oscuro (sin `filter`/inversión); mismo contenido y mismas funciones en ambos temas (incluidos navegación, menú y mapa); control de tema operable por teclado con nombre accesible y estado.
   - **Pruebas incluidas (§III)**: la propia spec es la prueba; **criterio de terminado**: cubre US5 y los caminos de error (SC-012).
   - **Commit sugerido**: `test(frontend): e2e de tema claro/oscuro con persistencia`
 
-- [ ] T1032 · E2E `movimiento.spec.ts` (perceptibilidad, stagger, cabecera, sin bloqueo) · `[frontend]` `[P6]`
+- [X] T1032 · E2E `movimiento.spec.ts` (perceptibilidad, stagger, cabecera, sin bloqueo) · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/e2e/movimiento.spec.ts` (NUEVO).
   - **Qué hace**: en modo normal (sin `reducedMotion`): una sección fuera de pantalla nace con opacidad < 1 y desplazamiento y, al entrar en pantalla, termina en opacidad 1 / `transform: none` con `transition-duration` en rango (**≥ 400 ms y ≤ 800 ms** — el mismo techo de D5/D21, sin tolerancia de 900 ms —) y distancia **≥ 16 px** (suelo anti «casi imperceptible», SC-014/RG10-14) y ≤ 800 ms por elemento (techo); componentes hermanos con `transition-delay` escalonado (tope 240 ms); cabecera gana `data-scrolled` al bajar (superficie con transición, **sin cambio de altura**); clic en ancla → desplazamiento suave y título del destino visible; **la animación no bloquea**: un clic durante la animación funciona al instante y el contenido pendiente es clicable (FR-007/SC-006); al cambiar de idioma o de tema no se re-anima lo ya visto (0 rebotes, SC-014).
   - **Pruebas incluidas (§III)**: la propia spec es la prueba (aserciones de estilos computados, no capturas de píxeles, P10-10); **criterio de terminado**: el movimiento es claramente perceptible y acotado (SC-014).
   - **Commit sugerido**: `test(frontend): e2e de movimiento perceptible y sin bloqueos`
 
-- [ ] T1033 · E2E `movimiento-reducido.spec.ts` (0 revelados, contenido completo) · `[frontend]` `[P6]`
+- [X] T1033 · E2E `movimiento-reducido.spec.ts` (0 revelados, contenido completo) · `[frontend]` `[P6]`
 
   - **Archivos**: `frontend/e2e/movimiento-reducido.spec.ts` (NUEVO).
   - **Qué hace**: `emulateMedia({ reducedMotion: 'reduce' })`: **0** revelados ni transiciones de entrada perceptibles —todos los bloques con opacidad 1 y `transform: none` desde el primer instante, sin `transition-delay`, `scroll-behavior: auto`, cabecera sin transición, blobs sin animar, menú móvil con apertura/cierre instantáneos— y **100 % del contenido y las funciones disponibles**, idénticos al modo con movimiento (SC-005); se compara con el modo normal de T1032 (ahí sí hay revelado, aquí ninguno).
