@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ADMIN, apiSend, ensureInitialized, loginViaUi } from './helpers';
-import { seedPublicPortada, type PublicSeed } from './publicSeed';
+import { apiSend } from './helpers';
+import { createAdminContext, seedPublicPortada, type PublicSeed } from './publicSeed';
+import { waitForScrollEnd } from './publicUi';
 
 /**
  * E2E de la navegación móvil (menú hamburguesa accesible) y del mapa del sitio
@@ -25,12 +26,9 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
   let seed: PublicSeed;
 
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await createAdminContext(browser);
     try {
-      await ensureInitialized(context.request);
       const page = await context.newPage();
-      await loginViaUi(page, ADMIN.email, ADMIN.password);
-      await expect(page).toHaveURL(/\/panel$/);
       seed = await seedPublicPortada(page);
     } finally {
       await context.close();
@@ -70,6 +68,12 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
     await expect(firstLink).toBeFocused();
     await expect(page.locator('[role="dialog"]')).toHaveCount(0);
     await expect(page.locator('[aria-modal]')).toHaveCount(0);
+
+    // Una sola lista en el DOM: cada sección resuelve a una única coincidencia
+    // dentro del landmark nombrado (D15/C4), también con el menú abierto.
+    for (const name of ['Quiénes somos', 'Horario de servicios', 'Contacto']) {
+      await expect(nav.getByRole('link', { name, exact: true })).toHaveCount(1);
+    }
 
     // Sin trampa de foco: Tab puede salir del panel hacia la barra.
     await page.keyboard.press('Shift+Tab');
@@ -113,14 +117,11 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
     await expect(reopen).toHaveAttribute('aria-expanded', 'false');
     const heading = page.getByRole('heading', { level: 2, name: 'Horario de servicios' });
     await expect(heading).toBeVisible();
+    await waitForScrollEnd(page);
     const headerHeight = (await page.locator('header').boundingBox())?.height ?? 0;
     expect((await heading.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(headerHeight - 4);
 
     // Una sola lista en el DOM: cada sección resuelve a una única coincidencia.
-    for (const name of ['Quiénes somos', 'Horario de servicios', 'Contacto']) {
-      await expect(nav.getByRole('link', { name })).toHaveCount(1);
-    }
-
     // Sin desplazamiento horizontal a 320 px.
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -139,10 +140,8 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
 
     await page.setViewportSize({ width: 1000, height: 900 });
 
-    await expect(page.getByRole('button', { name: 'Abrir menú de secciones' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
+    // A ≥ 861 px el botón hamburguesa desaparece y reaparecen las anclas.
+    await expect(page.getByRole('button', { name: 'Abrir menú de secciones' })).toBeHidden();
     const nav = page.getByRole('navigation', { name: SECTIONS_NAV });
     await expect(nav.getByRole('link', { name: 'Contacto' })).toBeVisible();
     await expect(page.locator('html')).not.toHaveAttribute('data-nav-open', 'true');
@@ -173,7 +172,7 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
 
     const sitemap = page.getByRole('navigation', { name: SITEMAP });
     await expect(sitemap).toBeVisible();
-    await expect(sitemap.getByRole('link', { name: 'Inicio' })).toBeVisible();
+    await expect(sitemap.getByRole('link', { name: 'Inicio', exact: true })).toBeVisible();
     for (const name of [
       'Quiénes somos',
       'Horario de servicios',
@@ -181,7 +180,7 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
       'Contacto',
       'Redes sociales',
     ]) {
-      await expect(sitemap.getByRole('link', { name })).toBeVisible();
+      await expect(sitemap.getByRole('link', { name, exact: true })).toBeVisible();
     }
     // Landmark con nombre propio, distinto del de la cabecera.
     await expect(page.getByRole('navigation', { name: SECTIONS_NAV })).toBeVisible();
@@ -193,7 +192,7 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
 
     // Rótulos de grupo sin rol heading.
     for (const label of ['Explorar', 'Contacto', 'Síguenos']) {
-      await expect(sitemap.getByText(label, { exact: true })).toBeVisible();
+      await expect(sitemap.getByRole('paragraph').filter({ hasText: label })).toHaveCount(1);
       await expect(sitemap.getByRole('heading', { name: label })).toHaveCount(0);
     }
 
@@ -213,9 +212,10 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
     expect(names).not.toContain(seed.contactPhoneNormalized);
 
     // Un enlace del pie lleva a su sección (título visible, barra no lo tapa).
-    await sitemap.getByRole('link', { name: 'Contacto' }).click();
+    await sitemap.getByRole('link', { name: 'Contacto', exact: true }).click();
     const heading = page.getByRole('heading', { level: 2, name: 'Contacto' });
     await expect(heading).toBeVisible();
+    await waitForScrollEnd(page);
     const headerHeight = (await page.locator('header').boundingBox())?.height ?? 0;
     expect((await heading.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(headerHeight - 4);
 
@@ -228,10 +228,9 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
     expect(stackedColumns, 'apilado en móvil').toBe(1);
 
     // Sin secciones en borrador: quitar WhatsApp deja el enlace fuera (nav y pie).
-    const admin = await browser.newContext();
+    const admin = await createAdminContext(browser);
     try {
       const adminPage = await admin.newPage();
-      await loginViaUi(adminPage, ADMIN.email, ADMIN.password);
       const state = (await (await apiSend(adminPage, 'GET', '/api/v1/admin/portada')).json()) as {
         whatsapp: { items: { id: string }[] };
       };
@@ -245,10 +244,12 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
       await expect(
         page
           .getByRole('navigation', { name: SECTIONS_NAV })
-          .getByRole('link', { name: 'WhatsApp' }),
+          .getByRole('link', { name: 'WhatsApp', exact: true }),
       ).toHaveCount(0);
       await expect(
-        page.getByRole('navigation', { name: SITEMAP }).getByRole('link', { name: 'WhatsApp' }),
+        page
+          .getByRole('navigation', { name: SITEMAP })
+          .getByRole('link', { name: 'WhatsApp', exact: true }),
       ).toHaveCount(0);
 
       await apiSend(adminPage, 'PATCH', `/api/v1/admin/portada/whatsapp/${channel.id}`, {

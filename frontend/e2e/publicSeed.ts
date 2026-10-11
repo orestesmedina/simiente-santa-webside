@@ -1,7 +1,9 @@
+import { existsSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, type Page } from '@playwright/test';
-import { API_URL, apiSend, uniqueSuffix } from './helpers';
+import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { ADMIN, API_URL, apiSend, ensureInitialized, uniqueSuffix } from './helpers';
 
 /**
  * Siembra de la portada pública para los e2e de F10 (T1029–T1033).
@@ -43,6 +45,34 @@ async function csrfToken(page: Page): Promise<string> {
 }
 
 /**
+ * Contexto con sesión de administrador, **compartido por todas las specs de
+ * F10**: la primera llamada inicia sesión (por API, sin preflight CORS) y guarda
+ * el `storageState`; las siguientes lo reutilizan. Evita agotar el rate-limit de
+ * `POST /api/v1/auth/login` (20/min por IP) que ya roza la suite de F2/F3 al
+ * añadirse estas cinco specs.
+ */
+export async function createAdminContext(browser: Browser): Promise<BrowserContext> {
+  const stateFile = join(tmpdir(), 'simiente-e2e-f10-admin.json');
+  if (!existsSync(stateFile)) {
+    const context = await browser.newContext();
+    try {
+      const credentials = { email: ADMIN.email, password: ADMIN.password };
+      let login = await context.request.post(`${API_URL}/api/v1/auth/login`, { data: credentials });
+      if (!login.ok()) {
+        // Sistema sin inicializar: se crea el administrador y se reintenta.
+        await ensureInitialized(context.request);
+        login = await context.request.post(`${API_URL}/api/v1/auth/login`, { data: credentials });
+      }
+      expect(login.ok(), `login de administrador → ${login.status()}`).toBe(true);
+      await context.storageState({ path: stateFile });
+    } finally {
+      await context.close();
+    }
+  }
+  return browser.newContext({ storageState: stateFile });
+}
+
+/**
  * Publica la portada completa (todas las secciones) con la sesión del panel ya
  * abierta en `page`. Devuelve los textos sembrados para las aserciones.
  */
@@ -67,11 +97,15 @@ export async function seedPublicPortada(page: Page): Promise<PublicSeed> {
   expect(upload.status(), 'la subida del logo').toBe(201);
   const logoFileName = ((await upload.json()) as { fileName: string }).fileName;
 
-  // Los canales de WhatsApp son un singleton limitado (20): se retira lo viejo
-  // para que esta prueba sea repetible con la base compartida.
+  // Las colecciones del backend tienen tope (horario ≤ 50, WhatsApp ≤ 20) y la
+  // base es compartida: se retira lo viejo para que esta prueba sea repetible.
   const state = (await (await apiSend(page, 'GET', '/api/v1/admin/portada')).json()) as {
+    schedule: { items: { id: string }[] };
     whatsapp: { items: { id: string }[] };
   };
+  for (const item of state.schedule.items) {
+    await apiSend(page, 'DELETE', `/api/v1/admin/portada/horario/${item.id}`);
+  }
   for (const channel of state.whatsapp.items) {
     await apiSend(page, 'DELETE', `/api/v1/admin/portada/whatsapp/${channel.id}`);
   }

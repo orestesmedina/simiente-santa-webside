@@ -1,6 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { ADMIN, ensureInitialized, loginViaUi } from './helpers';
-import { seedPublicPortada, type PublicSeed } from './publicSeed';
+import { createAdminContext, seedPublicPortada, type PublicSeed } from './publicSeed';
 
 /**
  * E2E del movimiento reducido (F10 · T1033 · US3; SC-005). Con
@@ -34,12 +33,9 @@ test.describe('Movimiento reducido (F10 · T1033)', () => {
   let seed: PublicSeed;
 
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await createAdminContext(browser);
     try {
-      await ensureInitialized(context.request);
       const page = await context.newPage();
-      await loginViaUi(page, ADMIN.email, ADMIN.password);
-      await expect(page).toHaveURL(/\/panel$/);
       seed = await seedPublicPortada(page);
     } finally {
       await context.close();
@@ -137,9 +133,12 @@ test.describe('Movimiento reducido (F10 · T1033)', () => {
     await expect(page.getByRole('heading', { level: 1, name: seed.identityName })).toBeVisible();
 
     // En modo normal hay contenido pendiente (contraste con T1032).
-    const pending = pendingBlocks(page).last();
-    await expect(pending).toBeVisible();
-    const before = await pending.evaluate((el) => getComputedStyle(el).opacity);
+    const block = page.locator('#redes').locator('..');
+    await expect(block, 'la sección de abajo arranca pendiente').toHaveAttribute(
+      'data-reveal',
+      /left|right|up/,
+    );
+    const before = await block.evaluate((el) => getComputedStyle(el).opacity);
     expect(parseFloat(before)).toBeLessThan(1);
 
     // Sin recargar: el contenido aparece completo de inmediato.
@@ -148,9 +147,10 @@ test.describe('Movimiento reducido (F10 · T1033)', () => {
     });
     await page.emulateMedia({ reducedMotion: 'reduce' });
 
-    await expect.poll(() => pending.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+    await expect(block).toHaveAttribute('data-reveal', 'in');
+    await expect.poll(() => block.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
     expect(
-      await pending.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload),
+      await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload),
       'el cambio no recarga la página',
     ).toBe(true);
     await expect(pendingBlocks(page)).toHaveCount(0);

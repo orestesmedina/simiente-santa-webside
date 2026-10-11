@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { ADMIN, ensureInitialized, loginViaUi } from './helpers';
-import { seedPublicPortada, type PublicSeed } from './publicSeed';
+import { createAdminContext, seedPublicPortada, type PublicSeed } from './publicSeed';
+import { waitForScrollEnd } from './publicUi';
 
 /**
  * E2E de diseño, navegación fija y selector compacto (F10 · T1029 · US1/US2/US4;
@@ -35,12 +35,9 @@ test.describe('Diseño, navegación fija y selector (F10 · T1029)', () => {
   let seed: PublicSeed;
 
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await createAdminContext(browser);
     try {
-      await ensureInitialized(context.request);
       const page = await context.newPage();
-      await loginViaUi(page, ADMIN.email, ADMIN.password);
-      await expect(page).toHaveURL(/\/panel$/);
       seed = await seedPublicPortada(page);
     } finally {
       await context.close();
@@ -76,6 +73,7 @@ test.describe('Diseño, navegación fija y selector (F10 · T1029)', () => {
     await nav.getByRole('link', { name: 'Horario de servicios' }).click();
     const heading = page.getByRole('heading', { level: 2, name: 'Horario de servicios' });
     await expect(heading).toBeVisible();
+    await waitForScrollEnd(page);
     const headerHeight = (await box(page.locator('header'))).height;
     const headingBox = await box(heading);
     expect(

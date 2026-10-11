@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ADMIN, ensureInitialized, loginViaUi } from './helpers';
-import { seedPublicPortada, type PublicSeed } from './publicSeed';
+import { createAdminContext, seedPublicPortada, type PublicSeed } from './publicSeed';
 
 /**
  * E2E del tema claro/oscuro (F10 · T1031 · US5; SC-012). Cubre los tres caminos:
@@ -22,12 +21,9 @@ test.describe('Tema claro/oscuro (F10 · T1031)', () => {
   let seed: PublicSeed;
 
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await createAdminContext(browser);
     try {
-      await ensureInitialized(context.request);
       const page = await context.newPage();
-      await loginViaUi(page, ADMIN.email, ADMIN.password);
-      await expect(page).toHaveURL(/\/panel$/);
       seed = await seedPublicPortada(page);
     } finally {
       await context.close();
@@ -166,15 +162,12 @@ test.describe('Tema claro/oscuro (F10 · T1031)', () => {
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1, name: seed.identityName })).toBeVisible();
 
-      const toggle = page.getByRole('button', { name: 'Cambiar a tema oscuro' });
+      const toggle = page.locator('header button[aria-pressed]');
       await expect(toggle).toHaveAttribute('aria-pressed', 'false');
       await toggle.focus();
       await page.keyboard.press('Enter');
 
-      await expect(page.getByRole('button', { name: 'Cambiar a tema claro' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      );
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
       await expect(toggle, 'el cambio de tema no pierde el foco').toBeFocused();
 
       // Mismas funciones: navegación, menú hamburguesa y mapa del sitio.

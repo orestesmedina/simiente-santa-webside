@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { ADMIN, ensureInitialized, loginViaUi } from './helpers';
-import { seedPublicPortada, type PublicSeed } from './publicSeed';
+import { createAdminContext, seedPublicPortada, type PublicSeed } from './publicSeed';
+import { waitForScrollEnd } from './publicUi';
 
 /**
  * E2E del sistema de movimiento en modo normal (F10 · T1032 · US3; SC-014).
@@ -15,10 +15,9 @@ import { seedPublicPortada, type PublicSeed } from './publicSeed';
 
 const SECTIONS_NAV = 'Secciones de la portada';
 
-function pendingBlocks(page: Page): Locator {
-  return page.locator(
-    '.reveal-block[data-reveal="left"], .reveal-block[data-reveal="right"], .reveal-block[data-reveal="up"]',
-  );
+/** Bloque de revelado que envuelve una sección (referencia estable por ancla). */
+function blockFor(page: Page, anchor: string): Locator {
+  return page.locator(`#${anchor}`).locator('..');
 }
 
 test.describe('Movimiento perceptible y acotado (F10 · T1032)', () => {
@@ -27,12 +26,9 @@ test.describe('Movimiento perceptible y acotado (F10 · T1032)', () => {
   let seed: PublicSeed;
 
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext();
+    const context = await createAdminContext(browser);
     try {
-      await ensureInitialized(context.request);
       const page = await context.newPage();
-      await loginViaUi(page, ADMIN.email, ADMIN.password);
-      await expect(page).toHaveURL(/\/panel$/);
       seed = await seedPublicPortada(page);
     } finally {
       await context.close();
@@ -44,8 +40,11 @@ test.describe('Movimiento perceptible y acotado (F10 · T1032)', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: seed.identityName })).toBeVisible();
 
-    const block = pendingBlocks(page).last();
-    await expect(block, 'hay una sección fuera de pantalla pendiente').toBeVisible();
+    const block = blockFor(page, 'redes');
+    await expect(block, 'la sección de abajo arranca pendiente').toHaveAttribute(
+      'data-reveal',
+      /left|right|up/,
+    );
 
     const pending = await block.evaluate((el) => {
       const style = getComputedStyle(el);
@@ -73,7 +72,8 @@ test.describe('Movimiento perceptible y acotado (F10 · T1032)', () => {
     expect(durationMs, 'duración ≤ 800 ms').toBeLessThanOrEqual(800);
 
     // Al entrar en pantalla termina en opacidad 1 y sin transformación.
-    await block.scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await waitForScrollEnd(page);
     await expect(block).toHaveAttribute('data-reveal', 'in');
     await expect.poll(() => block.evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
     await expect.poll(() => block.evaluate((el) => getComputedStyle(el).transform)).toBe('none');
@@ -128,13 +128,16 @@ test.describe('Movimiento perceptible y acotado (F10 · T1032)', () => {
     await nav.getByRole('link', { name: 'Redes sociales' }).click();
     const heading = page.getByRole('heading', { level: 2, name: 'Redes sociales' });
     await expect(heading).toBeVisible();
+    await waitForScrollEnd(page);
     const headerHeight = (await page.locator('header').boundingBox())?.height ?? 0;
     expect((await heading.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(headerHeight - 4);
 
     // El foco sobre un bloque pendiente lo revela al instante (nunca oculta el foco).
-    await page.evaluate(() => window.scrollTo(0, 0));
-    const pending = pendingBlocks(page).last();
-    await expect(pending).toBeVisible();
+    // Recarga para partir de nuevo con las secciones de abajo pendientes.
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1, name: seed.identityName })).toBeVisible();
+    const pending = blockFor(page, 'redes');
+    await expect(pending).toHaveAttribute('data-reveal', 'left');
     const chip = pending.getByRole('link', { name: /Ver en Instagram/ });
     await expect(chip).toBeEnabled();
     await chip.focus();
@@ -164,7 +167,7 @@ test.describe('Movimiento perceptible y acotado (F10 · T1032)', () => {
       'el idioma no re-anima las secciones ya reveladas',
     ).toEqual(revealed);
 
-    await page.getByRole('button', { name: 'Cambiar a tema oscuro' }).click();
+    await page.locator('header button[aria-pressed]').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     expect(
       await page
