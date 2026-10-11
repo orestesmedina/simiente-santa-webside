@@ -198,7 +198,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     contra la skill `postgres-db`).
   - **Commit sugerido**: `feat(db): tablas de eventos, actividades y categorías (000007)`
 
-- [ ] T402 · Migración `000008_extend_admin_actions_for_agenda` · `[db]`
+- [X] T402 · Migración `000008_extend_admin_actions_for_agenda` · `[db]`
 
   - **Archivos**: `backend/migrations/000008_extend_admin_actions_for_agenda.up.sql` y
     `.down.sql` (NUEVOS).
