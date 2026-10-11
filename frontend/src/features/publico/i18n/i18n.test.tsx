@@ -116,3 +116,62 @@ describe('i18n del sitio público', () => {
     expect(screen.getByTestId('lang')).toHaveTextContent('es');
   });
 });
+
+describe('claves i18n nuevas de F10 (FR-019/SC-010)', () => {
+  const CLAVES_NUEVAS = [
+    'nav.menu.open',
+    'nav.menu.close',
+    'nav.menu.label',
+    'footer.sitemap.label',
+    'footer.sitemap.explore',
+    'footer.sitemap.contact',
+    'footer.sitemap.social',
+    'footer.sitemap.home',
+    'theme.label',
+    'theme.toDark',
+    'theme.toLight',
+  ] as const;
+
+  it('existen en es y en, y ninguna queda vacía', () => {
+    for (const key of CLAVES_NUEVAS) {
+      expect(es[key], `es.${key}`).toBeTruthy();
+      expect(en[key], `en.${key}`).toBeTruthy();
+      expect(es[key].trim().length, `es.${key} no vacía`).toBeGreaterThan(0);
+      expect(en[key].trim().length, `en.${key} no vacía`).toBeGreaterThan(0);
+    }
+  });
+
+  it('las claves congeladas de F3 conservan su texto (contrato R10-9)', () => {
+    expect(es['nav.label']).toBe('Secciones de la portada');
+    expect(en['nav.label']).toBe('Page sections');
+    expect(es['a11y.skip']).toBe('Saltar al contenido principal');
+    expect(en['a11y.skip']).toBe('Skip to main content');
+    expect(es['lang.label']).toBe('Idioma');
+    expect(en['lang.label']).toBe('Language');
+  });
+
+  it('los textos nuevos son los del catálogo de ux.md §7', () => {
+    expect(es['nav.menu.open']).toBe('Abrir menú de secciones');
+    expect(en['nav.menu.open']).toBe('Open sections menu');
+    expect(es['nav.menu.close']).toBe('Cerrar menú de secciones');
+    expect(en['nav.menu.close']).toBe('Close sections menu');
+    expect(es['nav.menu.label']).toBe('Menú de secciones');
+    expect(en['nav.menu.label']).toBe('Sections menu');
+    expect(es['footer.sitemap.label']).toBe('Mapa del sitio');
+    expect(en['footer.sitemap.label']).toBe('Site map');
+    expect(es['footer.sitemap.explore']).toBe('Explorar');
+    expect(en['footer.sitemap.explore']).toBe('Explore');
+    expect(es['footer.sitemap.contact']).toBe('Contacto');
+    expect(en['footer.sitemap.contact']).toBe('Contact');
+    expect(es['footer.sitemap.social']).toBe('Síguenos');
+    expect(en['footer.sitemap.social']).toBe('Follow us');
+    expect(es['footer.sitemap.home']).toBe('Inicio');
+    expect(en['footer.sitemap.home']).toBe('Home');
+    expect(es['theme.label']).toBe('Tema');
+    expect(en['theme.label']).toBe('Theme');
+    expect(es['theme.toDark']).toBe('Cambiar a tema oscuro');
+    expect(en['theme.toDark']).toBe('Switch to dark theme');
+    expect(es['theme.toLight']).toBe('Cambiar a tema claro');
+    expect(en['theme.toLight']).toBe('Switch to light theme');
+  });
+});
