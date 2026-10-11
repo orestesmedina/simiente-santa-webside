@@ -46,6 +46,14 @@ test.describe('Movimiento perceptible y acotado (F10 · T1032)', () => {
       /left|right|up/,
     );
 
+    // El salvavidas (1 s) solo cubre un observador que nunca reporta: pasado ese
+    // tiempo, un bloque fuera del viewport debe SEGUIR pendiente (C1).
+    await page.waitForTimeout(1500);
+    await expect(
+      block,
+      'sigue pendiente más allá del salvavidas (no se auto-revela fuera de pantalla)',
+    ).toHaveAttribute('data-reveal', /left|right|up/);
+
     const pending = await block.evaluate((el) => {
       const style = getComputedStyle(el);
       return {

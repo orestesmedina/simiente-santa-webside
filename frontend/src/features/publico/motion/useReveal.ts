@@ -5,20 +5,32 @@
  * elemento entra en pantalla se avisa **una sola vez** y se deja de observar.
  * Reglas progresivas: si el entorno no expone `IntersectionObserver`, el
  * elemento se revela de inmediato; un `focusin` sobre el elemento pendiente lo
- * revela al instante (el foco nunca queda sobre algo oculto) y un salvavidas de
- * 1 s revela todo lo pendiente si el observador no dispara.
+ * revela al instante (el foco nunca queda sobre algo oculto).
+ *
+ * El **salvavidas** de 1 s cubre solo el caso de un observador que *nunca*
+ * reporta: se cancela en cuanto el observer entrega una entrada para el elemento
+ * —**intersecte o no**—, de modo que un bloque fuera del viewport **permanece
+ * pendiente** hasta entrar en pantalla (el revelado al scroll es el núcleo de
+ * FR-005/SC-014).
  */
 
 const REVEAL_THRESHOLD = 0.15;
 const REVEAL_MARGIN = '0px 0px -10% 0px';
 
-/** Salvavidas: si el observer no dispara, el contenido se revela igualmente. */
+/** Salvavidas: si el observer nunca reporta, el contenido se revela igualmente. */
 export const REVEAL_FALLBACK_MS = 1000;
 
 type RevealCallback = () => void;
 
+interface RevealHandlers {
+  /** El observer ha reportado el elemento (intersecte o no): el salvavidas sobra. */
+  seen: () => void;
+  /** El elemento ha entrado en pantalla: revelar. */
+  reveal: RevealCallback;
+}
+
 let observer: IntersectionObserver | null = null;
-const callbacks = new Map<Element, RevealCallback>();
+const handlers = new Map<Element, RevealHandlers>();
 
 function getObserver(): IntersectionObserver | null {
   if (typeof IntersectionObserver === 'undefined') {
@@ -28,12 +40,15 @@ function getObserver(): IntersectionObserver | null {
     observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (!entry.isIntersecting) {
+          const handler = handlers.get(entry.target);
+          if (!handler) {
             continue;
           }
-          const callback = callbacks.get(entry.target);
-          if (callback) {
-            callback();
+          // Cualquier entrada (aunque el elemento esté fuera de pantalla)
+          // demuestra que el observador funciona: se cancela el salvavidas.
+          handler.seen();
+          if (entry.isIntersecting) {
+            handler.reveal();
           }
         }
       },
@@ -44,8 +59,9 @@ function getObserver(): IntersectionObserver | null {
 }
 
 /**
- * Observa `element` y llama a `onReveal` una sola vez (al entrar en pantalla,
- * al recibir foco o tras el salvavidas). Devuelve la función de limpieza.
+ * Observa `element` y llama a `onReveal` una sola vez (al entrar en pantalla, al
+ * recibir foco o, si el observador nunca reporta, tras el salvavidas). Devuelve
+ * la función de limpieza.
  */
 export function observeReveal(element: Element, onReveal: RevealCallback): () => void {
   const io = getObserver();
@@ -64,7 +80,7 @@ export function observeReveal(element: Element, onReveal: RevealCallback): () =>
   };
 
   const reveal = () => {
-    callbacks.delete(element);
+    handlers.delete(element);
     io.unobserve(element);
     element.removeEventListener('focusin', reveal);
     window.clearTimeout(timer);
@@ -72,13 +88,17 @@ export function observeReveal(element: Element, onReveal: RevealCallback): () =>
     element.addEventListener('transitionend', clearWillChange, { once: true });
   };
 
-  callbacks.set(element, reveal);
+  const seen = () => {
+    window.clearTimeout(timer);
+  };
+
+  handlers.set(element, { seen, reveal });
   io.observe(element);
   element.addEventListener('focusin', reveal);
   const timer = window.setTimeout(reveal, REVEAL_FALLBACK_MS);
 
   return () => {
-    callbacks.delete(element);
+    handlers.delete(element);
     io.unobserve(element);
     element.removeEventListener('focusin', reveal);
     element.removeEventListener('transitionend', clearWillChange);
@@ -91,5 +111,5 @@ export function observeReveal(element: Element, onReveal: RevealCallback): () =>
 export function resetRevealObserver(): void {
   observer?.disconnect();
   observer = null;
-  callbacks.clear();
+  handlers.clear();
 }

@@ -153,6 +153,34 @@ describe('Reveal · revelado progresivo al scroll (FR-005/FR-009/SC-014)', () =>
     }
   });
 
+  it('un bloque fuera del viewport sigue pendiente tras el salvavidas y se revela al entrar (C1)', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Reveal from="up">contenido</Reveal>);
+      const block = document.querySelector('.reveal-block') as HTMLElement;
+      const observer = IntersectionObserverStub.instances[0];
+
+      // El observer reporta el elemento, pero FUERA de pantalla: el salvavidas
+      // debe cancelarse y el bloque quedarse pendiente (FR-005/SC-014).
+      act(() => observer.trigger(false));
+      expect(block).toHaveAttribute('data-reveal', 'up');
+
+      act(() => {
+        vi.advanceTimersByTime(REVEAL_FALLBACK_MS * 3);
+      });
+      expect(block, 'sigue pendiente aunque pase el salvavidas').toHaveAttribute(
+        'data-reveal',
+        'up',
+      );
+
+      // Al entrar en pantalla, se revela.
+      act(() => observer.trigger(true));
+      expect(block).toHaveAttribute('data-reveal', 'in');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('sin IntersectionObserver el contenido nace visible (JS degradado)', () => {
     uninstallIntersectionObserver();
 
