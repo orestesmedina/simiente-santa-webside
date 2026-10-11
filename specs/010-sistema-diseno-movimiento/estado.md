@@ -14,8 +14,8 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
 | Fase | 5/9 · Validar |
-| Ciclo de corrección | 1/3 |
-| Próximo paso | Corregir los bloqueantes C1/C2 y los importantes IMP-1/I1 (`dev-frontend`) y re-validar |
+| Ciclo de corrección | 3/3 |
+| Próximo paso | Corregir la regresión N1 (contraste de la opción activa del selector en tema claro) y re-validar (ciclo 3); si aprueba, convergencia y entrega |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -34,10 +34,8 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- **C1 (BLOQUEANTE, revisor)** — `useReveal.ts`: el salvavidas de 1 s se arma incondicionalmente → el revelado al scroll solo se percibe el primer segundo. Ver `revision-2026-10-11-codigo.md`.
-- **C2 (BLOQUEANTE, revisor)** — `PublicButton.tsx`: hover del botón primario en tema oscuro ≈2,1:1 (< AA). Ver `revision-2026-10-11-codigo.md`.
-- **IMP-1 (IMPORTANTE, qa)** — el selector de idioma compacto ocupa más que en F3 (188×50 vs 159×44) → incumple FR-015/SC-007.
-- **I1 (IMPORTANTE, revisor)** — CTA «Ver horario» del hero roto si el horario está en borrador.
+- **N1 (BLOQUEANTE, revisor, ciclo 2)** — la corrección de IMP-1 (`dd4c5ce`) puso `bg-surface-raised` en el `<fieldset>` y la opción **activa** del selector (`bg-accent/15 text-accent`) queda a **4,05:1** en tema claro (< AA). Ver `revision-2026-10-11-codigo-ciclo2.md`. Corregir con un par sólido.
+- **Cerrados en el ciclo 2**: C1, C2, I1, IMP-1 (confirmados por `revisor-codigo` y `qa-tester`). `seguridad` sigue APROBADO.
 
 ## Decisiones y aclaraciones
 
@@ -52,6 +50,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-11 — **Ciclo 2 (re-validación)**: `qa-tester` **APROBADO** (IMP-1 cerrado: selector 152×44 px < F3), `seguridad` **APROBADO** (M1 cerrado), `revisor-codigo` **RECHAZADO** por **N1**: la corrección de IMP-1 introdujo una regresión de contraste (opción activa del selector a 4,05:1 en tema claro, < AA). Arranca el ciclo 3.
+- 2026-10-11 — **Ciclo de corrección 1 aplicado**: `dev-frontend` corrigió **C1** (el salvavidas del revelado solo cubre un observador que no reporta; el bloque fuera de pantalla permanece pendiente), **C2** (hover del botón primario con par AA por tema: 5,3:1 claro / 6,7:1 oscuro), **IMP-1** (selector compacto 152×44 px, menor que F3) e **I1** (CTA «Ver horario» condicional); además M1-seguridad y M2-revisor. Suites: **407** unit + e2e **8/8** congeladas + **25/25** F10. Re-validación en curso.
 - 2026-10-11 — **Fase 4 (Implementar) cerrada — 36/36 tareas**: T1001–T1036 en verde. Unit **402** pruebas; e2e **8/8** congeladas + **22/22** nuevas; lint/typecheck/build en verde; **0 pruebas congeladas editadas** (SC-008); **0 cambios** en backend/migraciones/API/infra/`.env.example`; cierre en `cierre.md`. Bugs reales corregidos por los e2e (overflow lateral 28 px a 1024 px, scroll de fondo del menú móvil, contraste del selector). Notas de entorno: rate-limit de login (M-4, e2e en dos tandas) y Playwright vía imagen Docker. Arranca la Fase 5 (validar).
 - 2026-10-10 — **Fase 3 cerrada**: `tasks.md` (36 tareas T1001–T1036, 20 `[P]`) y `analyze.md`. El primer `analyze` **rechazó** (4 CRÍTICOS + 3 IMPORTANTES: colisiones con pruebas congeladas de F2/F3); corregidos por `arquitecto` y `disenador-ux` (una sola lista en el nav, patrón *disclosure* sin trampa de foco, colapso fuera del tab order, mapa sin grupos vacíos, nombres accesibles únicos, marca «Simiente» con `sr-only`, recuento de tabulación < 30). Re-análisis: **APROBADO** (0 críticos). Queda **M4** (umbral de tamaño del selector) como MENOR para QA. Arranca la Fase 4 (implementar).
 - 2026-10-10 — **Diseño final B aplicado**: `ux.md` reescrito como diseño final de **B «Marea Turquesa»** (más aire entre secciones con tokens de espaciado, **mapa del sitio** en el pie con grupos accesibles, **menú hamburguesa accesible** en móvil ≤ 860 px) y `propuesta-b.html` reescrita; `plan.md`/`research.md`/`quickstart.md` alineados (navegación por dispositivo, componente de mapa del sitio, tokens de espaciado, e2e del menú). Spec actualizada: FR-010 a FR-014 por dispositivo, **FR-027** (mapa del sitio) y **SC-015** nuevos. Pendiente: confirmar el ajuste de spec.
