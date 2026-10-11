@@ -1,5 +1,4 @@
-import { existsSync } from 'node:fs';
-import { readFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
@@ -50,9 +49,13 @@ async function csrfToken(page: Page): Promise<string> {
  * el `storageState`; las siguientes lo reutilizan. Evita agotar el rate-limit de
  * `POST /api/v1/auth/login` (20/min por IP) que ya roza la suite de F2/F3 al
  * añadirse estas cinco specs.
+ *
+ * El estado de sesión (cookies de admin) se escribe en un **directorio temporal
+ * propio** con permisos restrictivos (`0o700` el directorio, `0o600` el archivo)
+ * y se **borra al terminar el proceso** del runner.
  */
 export async function createAdminContext(browser: Browser): Promise<BrowserContext> {
-  const stateFile = join(tmpdir(), 'simiente-e2e-f10-admin.json');
+  const stateFile = adminStateFile();
   if (!existsSync(stateFile)) {
     const context = await browser.newContext();
     try {
@@ -65,11 +68,28 @@ export async function createAdminContext(browser: Browser): Promise<BrowserConte
       }
       expect(login.ok(), `login de administrador → ${login.status()}`).toBe(true);
       await context.storageState({ path: stateFile });
+      chmodSync(stateFile, 0o600);
     } finally {
       await context.close();
     }
   }
   return browser.newContext({ storageState: stateFile });
+}
+
+let stateDir: string | null = null;
+
+/** Directorio temporal propio (0o700) con el `storageState`, borrado al salir. */
+function adminStateFile(): string {
+  if (!stateDir) {
+    stateDir = mkdtempSync(join(tmpdir(), 'simiente-e2e-f10-'));
+    chmodSync(stateDir, 0o700);
+    process.once('exit', () => {
+      if (stateDir) {
+        rmSync(stateDir, { recursive: true, force: true });
+      }
+    });
+  }
+  return join(stateDir, 'admin-state.json');
 }
 
 /**
