@@ -349,7 +349,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 
 ## Fase 4 — Núcleo de plataforma (`backend/internal/platform/`)
 
-- [ ] T408 · `platform/audit`: 15 códigos `event.*`/`activity.*`/`category.*` · `[backend]` `[P]` (P1)
+- [X] T408 · `platform/audit`: 15 códigos `event.*`/`activity.*`/`category.*` · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/internal/platform/audit/audit.go` y `audit_test.go` (EDITADOS).
   - **Qué hace**: amplía el registro cerrado del plumbing de F2 (R4-10) con los **15 códigos**
