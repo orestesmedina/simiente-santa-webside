@@ -330,7 +330,9 @@ español siempre presente y límites de extensión. ¿Dónde vive cada regla?
     si hay imagen** (FR-020, `CHECK` en la BD también); quitar la imagen = `imageFile: null`.
   - Límites (constantes del service, revisables): título 160, detalle **2.000** (FR-018/FR-019),
     lugar 200, URL de mapa 500, organizador 160, frecuencia 160, texto alternativo 300, nombre de
-    categoría 120.
+    categoría 120. Además, el listado público se acota con la constante de seguridad **200
+    elementos por bloque** (`maxBlockItems`, RG4-8 del plan: aplicada en `GetProximamente` y
+    documentada en el contrato — `getProximamente`/`ProximamentePublica` —).
 - Ante datos inválidos: `400 invalid` con `details` por campo y **sin guardado parcial** (la
   mutación completa —incluida la lista de fechas— es una sola transacción).
 
@@ -440,6 +442,15 @@ favoritos se queda donde está, con el sitio completo alrededor (nav, pie, selec
 navegación **sigue sin ofrecer el enlace** (R4-7/R4-12: el ítem está oculto en la barra, el menú
 móvil y el mapa del sitio); el aviso es la red de seguridad para la URL directa. Nunca se
 renderizan borradores ni vencidos en esa página (FR-013 "por ninguna vía").
+
+**Lectura de FR-013 "sin contenido"** (constancia, M6 de `analyze.md`; coincide con `ux.md` §2.5):
+la frase «cuando no haya ningún evento ni actividad publicados» se lee como **«sin nada publicado
+y próximo»** — la única materia que la sección puede mostrar (FR-002/FR-006) —. Con elementos
+publicados pero **todos vencidos**, la sección quedaría vacía, lo que la propia FR-013 ("nunca
+secciones vacías") y SC-012 prohíben: por eso la condición de ocultar es "sin nada publicado **y
+próximo**" y el comportamiento es exactamente el de esta decisión (página con aviso, **sin
+redirigir**; ítem oculto en barra, menú hamburguesa y mapa del sitio del pie). La validación de
+SC-012 lo exige tal cual.
 
 **Alternativas descartadas.** Redirigir a `/` (la propuesta anterior de este documento: el humano
 la descartó — una URL que "no lleva a ninguna parte" sin explicación confunde, sobre todo a

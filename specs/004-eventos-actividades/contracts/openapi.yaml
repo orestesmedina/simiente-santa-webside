@@ -166,7 +166,11 @@ paths:
         resuelta también (Q6).
 
         Sin autenticación, sin filtros ni paginación (FR-003: el visitante no
-        hace nada para ver lo inmediato). **Claves omitidas cuando están
+        hace nada para ver lo inmediato). Cada bloque viene acotado por una
+        **constante de seguridad del servidor: máximo 200 elementos por bloque**
+        (RG4-8 del plan, `maxBlockItems`); si el volumen real la superara, se
+        sirven los 200 primeros ya ordenados y un "ver más"/paginación sería el
+        ajuste futuro acordado con el humano. **Claves omitidas cuando están
         vacías** (SC-012): si `events` y `activities` están ambas ausentes, no
         hay nada publicado y próximo y la navegación del sitio oculta la sección
         (FR-022). `Cache-Control: no-store`.
@@ -874,7 +878,9 @@ components:
         "Lo que viene" publicado y con fecha desde hoy en adelante, resuelto a
         `lang` (fallback `en → es` por campo, FR-008). Las claves de bloque están
         presentes **solo** si tienen elementos (SC-012); si están presentes, sus
-        arrays nunca son `null` (§8.1.2). `events` va ordenado por la primera
+        arrays nunca son `null` (§8.1.2) y están acotados a **200 elementos**
+        cada uno (constante de seguridad del servidor, RG4-8 del plan).
+        `events` va ordenado por la primera
         fecha próxima de cada evento; `activities` por su fecha (FR-003).
       properties:
         lang:
@@ -1048,7 +1054,7 @@ components:
     EventoAdmin:
       type: object
       required:
-        [id, titleEs, detailEs, placeEs, publicationState, dates, isPast, createdAt, updatedAt]
+        [id, titleEs, detailEs, placeEs, publicationState, dates, nextDate, isPast, createdAt, updatedAt]
       description: |
         Evento completo del panel: ambos idiomas (es obligatorio, en opcional),
         todas sus fechas (próximas y pasadas) y su estado de publicación (FR-010,
@@ -1113,8 +1119,12 @@ components:
         nextDate:
           type: [string, "null"]
           description: |
-            Primera fecha próxima (`YYYY-MM-DD`) o `null` si no hay: el panel
-            señala al equipo que falta cargar la próxima fecha (default revisable).
+            **Siempre presente en la respuesta** (no es un campo opcional: está
+            en `required` y solo su **valor** puede ser nulo). Primera fecha
+            próxima (`YYYY-MM-DD`) o `null` cuando el elemento no tiene ninguna:
+            el panel señala entonces que falta cargar la próxima fecha (default
+            revisable). El cliente distingue así "sin próxima fecha" (`null`) de
+            cualquier otra cosa.
         isPast:
           type: boolean
           description: "`true` cuando el evento no tiene ninguna fecha próxima (Q4)."

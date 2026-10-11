@@ -2,7 +2,7 @@
 
 > Documento de diseño para `disenador-ux`. Fuentes: `spec.md` de F4 (aclaraciones Q1–Q6 resueltas el 2026-10-11), `ux.md` de F3 (modelo de formato, textos y patrones de panel), `ux.md` de F10 (sistema de diseño y movimiento **ya entregado**: «Marea Turquesa»), el Manual de Identidad (`resources/MANUAL DE MARCA.pdf`) y el código actual de `frontend/src/` (React 19 + Tailwind 4; componentes de F2/F3/F10 ya construidos).
 > No es código: lo implementa el `dev-frontend`. Rutas y contratos los fija el `arquitecto`; aquí se proponen.
-> **Decisiones de UX a revisar por el humano**: ver §9 (resumen). Cada una lleva su marca ⟲; las marcadas ✅ quedaron **resueltas por el humano el 2026-10-11** (D-1: ruta `/eventos` · D-6: permiso nuevo `categorias` · D-13: aviso sin redirección).
+> **Decisiones de UX a revisar por el humano**: ver §9 (resumen). Cada una lleva su marca ⟲; las marcadas ✅ quedaron **resueltas por el humano el 2026-10-11** (D-1: ruta `/eventos` · D-6: permiso nuevo `categorias` · D-13: aviso sin redirección) **o cerradas por decisión firme realineada el 2026-10-11** (D-16: 409 categoría en uso · D-22: fechas sin conversión de zona).
 > F4 **aplica** el sistema de F10 y los patrones de F2/F3; **no redefine** tokens, navegación, selector de idioma, modo oscuro ni el rediseño del panel (F10B).
 
 ---
@@ -205,7 +205,7 @@ grilla de cards 1 col, imagen arriba 16:9, todo el resto apilado
 | Error con caché previa | Se mantiene el último contenido válido y abajo del bloque un aviso discreto: «No pudimos actualizar; ves la última versión disponible.» (F3 §4.1). |
 | Imagen rota o sin imagen | La tarjeta conserva título, fecha, lugar y detalle; `onError` retira la imagen de la tarjeta sin transformar el layout (sin «quiebra»). |
 | Fallback es→en (US5) | El contenido sin inglés se muestra en español, idéntico diseño, SIN marca de «sin traducir» (FR-008). |
-| Elemento del día en curso | Sí aparece entre lo próximo **durante ese día**, incluso si una hora ya pasó (el criterio es por día, Q3/Q4); desaparece del listado al terminar su fecha (Q4). |
+| Elemento del día en curso | Aparece entre lo próximo **mientras su hora no haya pasado**, con la regla de retiro exacta (R4-2/SC-009): hoy **sin** hora de fin → visible todo el día; hoy con hora de fin (`endTime`) **ya terminada** → **fuera** de «lo que viene» (se retira al terminar su fecha/hora); mañana en adelante → visible. |
 | Fecha pasada en el contenido | El sistema puede guardarlo en el panel pero NO lo muestra aquí (Q3). Un evento con TODAS sus fechas pasadas no aparece, pero SÍ se conserva en el panel. |
 | Duplicado de concepto | No existe duplicado de imagen ni de fecha: cada elemento es distinto; el orden dentro de un mismo bloque resuelve el empate de manera estable (ver §9, D-14). |
 | `prefers-reduced-motion` | Sin revelado, todo visible al instante, contenido íntegro (FR-009 de F10, incondicional). |
@@ -223,6 +223,8 @@ grilla de cards 1 col, imagen arriba 16:9, todo el resto apilado
 - **«Gestión de actividades»** (con permiso `actividades`) → `/panel/actividades`
 - **«Categorías»** (con permiso `categorias`) → `/panel/categorias` (✅ D-6, resuelta: permiso nuevo `categorias`).
 Una cuenta con solo «eventos» NO ve el acceso de actividades: los módulos son independientes (FR-012, Decisión 5). Ni «eventos» ni «actividades» implican el permiso «categorias» ni al revés.
+
+> **Alcance de F4 (cierra I4):** estas tres tarjetas de `AccesosRapidos` en `InicioPage` —y la de «Categorías»— **sí forman parte de F4** y las cubre la tarea de panel (extiende su alcance a `features/panel/components/AccesosRapidos.tsx`, con prueba de que cada tarjeta se muestra solo con su permiso; `hasPermission`, patrón F10 — §10).
 
 ### 4.3 Panel — Gestión de eventos — `/panel/eventos` (US2, US4)
 
@@ -262,7 +264,7 @@ Simétrico a §4.3 con ActividadForm:
 - Listado (`Table`): **Nombre** (es/en, con en pendiente si falta), **Cuántos elementos la usan** («3 eventos · 1 actividad» — ayuda para eliminar a conciencia), **Acciones**: `Editar` · `Eliminar`.
 - **Agregar categoría** → `Dialog` con nombre es (obligatorio) + en (opcional). La creación/edición de una categoría no requiere publicar (el catálogo no es contenido público: solo etiqueta que viaja con cada elemento).
 - **Los elementos guardan el nombre calculado en el momento**: si se renombra «Acción social» a «Ayuda social», los elementos la muestran con el nombre actual (relación por referencia).
-- **Eliminar categorías**: `ConfirmDialog` danger. Si la categoría tiene elementos ligados: el modal lo dice («Hay 4 elementos con la categoría "Ayuda social". Al eliminarla, esos elementos quedarán sin categoría.») y sin categoría es válido (spec Q6) ⟲ D-16.
+- **Eliminar categorías**: `ConfirmDialog` danger. **Decisión firme (⟩ plan/contrato): una categoría en uso NO se puede borrar** — la API la rechaza con **409 (conflict)** por la FK `RESTRICT`; la interfaz nunca ofrece desligarla ni continuar: el diálogo lo explica con la cuenta («Está en uso por N elementos: quítala primero de los elementos») y su única acción es cerrar. ✅ D-16 (cerrada).
 - El catálogo inicial sembrado: acción social, predicación, adoración, entrevista, noche de oración, otro.
 
 ### 4.7 Pantalla de estado vacío (cada módulo de panel)
@@ -370,7 +372,7 @@ Simétrico a §4.3 con ActividadForm:
 | `MapLink` | Enlace exterior (`target="_blank" rel="noopener"`) con texto «Ver ubicación» (icono + texto) y `aria-label` completo (D-20). |
 | `HiddenNotice` | Aviso de sección oculta (H1 + mensaje de interfaz, sin datos; D-13). |
 | `useUpcomingEvents` | TanStack Query: consulta pública de eventos+actividades próximos (contrato del `arquitecto`); alimenta la página y la presencia en `useSiteLinks`. |
-| `features/publico/eventos/formatoFechas.ts` | Escribir en palabras las fechas (`Intl.DateTimeFormat` por idioma): «viernes 17 de octubre, 7:00 p. m.» / «Friday, October 17, 7:00 PM»; horarios en 12 h según el locale. |
+| `features/publico/eventos/formatoFechas.ts` | Escribir en palabras las fechas (`Intl.DateTimeFormat` por idioma): «viernes 17 de octubre, 7:00 p. m.» / «Friday, October 17, 7:00 PM»; horarios en 12 h según el locale. **Construye la fecha desde sus partes (`YYYY-MM-DD` + `HH:MM`), sin conversión de zona horaria** (nunca `new Date(string)`; D-22). |
 
 ### 6.4 Nuevos del panel (`frontend/src/features/eventos/`)
 
@@ -416,7 +418,7 @@ Simétrico a §4.3 con ActividadForm:
 | Límite de título/lugar | «Ese texto es demasiado largo (máximo {límite}).» |
 | Imagen inválida | «Ese archivo no es una imagen válida. Usa JPG, PNG o WebP de menos de {tamaño} y prueba de nuevo.» (F3/M3) |
 | Duplicado dentro del módulo | «Ya existe un {evento/actividad} igual (mismo título, misma fecha y mismo lugar). Edita el que ya tienes o cambia algún dato.» |
-| Categoría en uso al eliminarla | «Hay {n} elementos con la categoría "{nombre}". Al eliminarla quedarán sin categoría. ¿Quieres continuar?» |
+| Categoría en uso al eliminarla | **`409 conflict`: no se puede borrar una categoría en uso.** Texto: «Está en uso por {n} elementos: quítala de los elementos primero.» (no se desliga; decisión firme del plan/contrato — D-16 cerrada) |
 | Categoría duplicada | «Ya existe una categoría con ese nombre.» |
 | Evento pasado (leyenda) | «Sus fechas ya pasaron: el público no lo ve hasta que cargues una próxima fecha.» |
 | Sección sin publicados | «Nada está publicado ahora: el público no ve esta sección hasta que publiques al menos un {evento/actividad}.» |
@@ -441,7 +443,7 @@ Simétrico a §4.3 con ActividadForm:
 | `events.location.link` | Ver ubicación | See location |
 | `events.date.next` | Próxima fecha | Next date |
 | `events.date.more` | Más fechas | More dates |
-| `events.empty.hidden` | Ahora mismo no hay nada publicado en esta sección. Vuelve pronto. | There's nothing published here right now. Check back soon. |
+| `events.empty.hidden` | «Ahora mismo no hay nada publicado en esta sección. Vuelve pronto.» — **copia canónica en §4.1** (D-13); aquí solo se referencia. | «There's nothing published here right now. Check back soon.» |
 | `events.category.aria` | Categoría: {nombre} | Category: {name} |
 | `events.loading` | Cargando… | Loading… |
 | `events.error.load` | No pudimos cargar los eventos y actividades. Revisa tu conexión y vuelve a intentarlo. | We couldn't load the events and activities. Check your connection and try again. |
@@ -476,7 +478,7 @@ Fechas: **se escriben desde el dato**, no desde el diccionario (`formatoFechas.t
 
 - **Interfaz** (siempre bilingüe): diccionario `es.ts`/`en.ts` de F3, sin librería externa; `LanguageProvider` y `localStorage` intactos; primera visita en español, sin auto-detección.
 - **Contenido** (por elemento): español obligatorio, inglés opcional; el fallback es→es lo resuelve el servidor en la entrega (FR-008); el frontend nunca muestra un campo vacío ni traducción automática.
-- **Fechas**: mismo dato, distinta presentación por idioma; helpers de `formatoFechas.ts` (`Intl.DateTimeFormat('es'|'en')`), con **zona horaria del navegador** (coherente con `lib/format.ts`) — no implica cambiar el día ni la hora reales; el valor guardado es el mismo. Nota ⟲ D-22: si en el futuro se necesitase fijar la zona horaria de la iglesia, es un cambio de contrato del backend, no del diseño.
+- **Fechas**: mismo dato, distinta presentación por idioma; los helpers de `formatoFechas.ts` (`Intl.DateTimeFormat('es'|'en')`) construyen la fecha **a partir de sus partes (`YYYY-MM-DD` + hora), sin conversión de zona horaria** — el dato de fecha es el **del lugar** y **nunca se recalcula ni se convierte** (R4-3; contrato `Date`/`ClockTime` «no es un timestamp: no se convierte de zona horaria»). Prohibido `new Date("YYYY-MM-DD")` con `Intl` sobre la zona del navegador: lo parsea como UTC y desplaza un día en zonas UTC−x (incluida `America/Costa_Rica`, UTC−6), lo que FR-009 prohibe. Nota ✅ D-22 (cerrada): sin conversión, hoy y siempre; si algún día se quisiera fijar la zona horaria de la iglesia, sería un cambio de contrato del backend, no del diseño.
 - **El panel NO cambia de idioma** (siempre en español, FR-016); solo la página pública tiene el `LanguageSwitcher`.
 
 ---
@@ -500,13 +502,13 @@ Fechas: **se escriben desde el dato**, no desde el diccionario (`formatoFechas.t
 | D-13 ✅ | Abrir `/eventos` sin nada publicado muestra **página mínima** (H1 + aviso de interfaz) y nav sin el ítem; **sin redirigir** a la portada (confirmado por el humano el 2026-10-11). | Redirigir a `/` (descartado: URL extraña sin explicación). |
 | D-14 ⟲ | El **empate de fecha y hora** se ordena por título (es) alfabéticamente: **estable y reproducible** (default de la spec, revisable). | Orden por creación. |
 | D-15 ⟲ | Las **categorías** se administran con nombre es/en (en el panel muestra ES y en EN se usa en el público si existe). | Categorías en una sola lengua (la cara del público). |
-| D-16 ⟲ | Al eliminar una categoría **en uso**, se avisa con la cuenta y se permite continuar (los elementos quedan sin categoría). | Bloquear la eliminación hasta desasociar elementos (más pasos). |
+| D-16 ✅ | **RESUELTA (decisión firme, contrato 2026-10-11):** borrar una categoría **en uso** se rechaza con **409 conflict** (FK `RESTRICT`); la UI lo dice («Está en uso por N elementos: quítala de los elementos primero») y **no ofrece desligarla ni continuar**. | Avisar la cuenta y permitir continuar desligando (superado: la API lo rechaza). |
 | D-17 ⟲ | Sin paginación en la página pública (spec default); si algún día crecen demasiado, el «Ver más» sería un ajuste menor acordado con el humano. | Paginar a N por página. |
 | D-18 ⟲ | `Esc` del `Dialog` de evento/actividad NO descarta sin aviso cuando hay cambios (mejor seguro con lista de fechas). | Igual que F3 (cierre directo). |
 | D-19 ⟲ | **No hay filtro de rango de fechas** en ninguno de las vistas: el alcance temporal lo decide el sistema (desde hoy + próximo cronológico). | `DateRangeFilter` del panel en listados (aporte técnico, no UX del público). |
 | D-20 ⟲ | El enlace «Ver ubicación» lleva `aria-label` completo («Ver ubicación de {título}» / «See location for {title}»). | Texto a solas con contexto del h3 cercano. |
 | D-21 ⟲ | **Contenido en fallback dentro de página en inglés** con `lang="es"` en su envoltorio. | Sin marca de idioma en el nodo (menos correcto para lectores de pantalla). |
-| D-22 ⟲ | Las fechas se muestran en la **zona horaria del navegador** (coherente con `lib/format.ts` de F2). | Fijar zona de la iglesia (cambio de contrato; fuera de F4). |
+| D-22 ✅ | **RESUELTA (alineada con decisión firme, R4-3/contrato, 2026-10-11):** las fechas se presentan **sin conversión de zona horaria**: el helper construye la fecha desde sus partes (`YYYY-MM-DD` + `HH:MM`); el dato es el local del lugar; nada de `new Date("YYYY-MM-DD")` (los parsea como UTC y desplaza un día en zonas UTC−x). | Formatear con la zona del navegador vía `lib/format.ts` (superado: era una trampa de desplazamiento de día). Fijar zona de la iglesia (cambio de contrato; fuera de F4). |
 | D-23 ⟲ | La **presencia de la sección en la navegación** se deduce de la respuesta pública de eventos compartida por queryClient (una sola petición alimenta página, barra y pie). | Consulta separada solo para saber si la sección existe (doble carga). |
 
 ---

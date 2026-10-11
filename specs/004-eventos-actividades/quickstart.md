@@ -299,7 +299,8 @@ Checklist manual sobre `$WEB/eventos` (la ejecuta `qa-tester`; referencia WCAG 2
 2. **Toques**: cada enlace/botón con área de al menos 44 px (regla de la skill `react-frontend`);
    el enlace de mapa se activa con comodidad.
 3. **Teclado**: recorrido completo con `Tab` en orden comprensible, foco visible y activación con
-   `Enter`/`Espacio` (incluidos los enlaces de cada elemento y el selector de idioma).
+   `Enter`/`Espacio` (incluidos los enlaces de cada elemento y el selector de idioma). Lo automatiza
+   también el e2e de teclado de §13 (`e2e/agenda-accesibilidad.spec.ts`, SC-008).
 4. **Lector de pantalla**: títulos de bloque claros (`h1`/`h2`), imagen con el `alt` cargado en el
    panel (FR-020), fechas como texto legible (no solo números) y `<time datetime>` semántico.
 5. **Baja visión**: contraste suficiente **en tema claro y oscuro** (F10) y ampliación del texto al
@@ -351,6 +352,9 @@ curl -s -b /tmp/ss.jar "$API/api/v1/admin/auditoria/acciones?limit=20" | jq
 
 - Cada operación aparece con **quién** (`actorName`/`actorEmail`), **qué** (código `event.*`,
   `activity.*` o `category.*` + `targetLabel` como `Eventos · Vigilia de oración`) y **cuándo**.
+- En el **panel**, el módulo de auditoría muestra cada acción con su **etiqueta humana** (p. ej.
+  «Creó el evento "…"», `ux.md` §4.9): `ACTION_LABELS` cubre los 15 códigos nuevos. Los `home.*` de
+  F3 siguen mostrando el código crudo (deuda heredada, fuera del alcance de F4).
 - **Regla de códigos** (research R4-10): un **alta** registra `*.create` aunque nazca publicada;
   `*.publish`/`*.unpublish` **solo** aparecen en cambios de estado; una edición que cambia datos y
   estado deja **dos filas**; las subidas de imagen (§6) se auditan con `event.image.upload` /
@@ -371,7 +375,7 @@ go test ./... -cover                   # ≥80 % en internal/agenda/service*.go 
 cd ../frontend
 npm run lint && npm run typecheck
 npm test -- --run                      # Vitest + MSW (página pública, panel, i18n)
-npx playwright test e2e/agenda-publica.spec.ts e2e/agenda-panel.spec.ts   # e2e (local)
+npx playwright test e2e/agenda-publica.spec.ts e2e/agenda-panel.spec.ts e2e/agenda-accesibilidad.spec.ts   # e2e (local)
 
 make ci                                # lint + test + security (govulncheck, npm audit)
 ```
@@ -390,7 +394,7 @@ make ci                                # lint + test + security (govulncheck, np
 | SC-004 (crear y publicar en <2 min) | §3–§5 (observación en e2e panel) |
 | SC-005 / SC-011 (permiso verificado, cruce de módulos) | §11, §13 |
 | SC-006 (inglés completo, fallback a español) | §8, §13 |
-| SC-007 / SC-008 (dispositivos y accesibilidad) | §10, §13 (e2e en 3 anchos) |
+| SC-007 / SC-008 (dispositivos y accesibilidad) | §10, §13 (e2e en 3 anchos y e2e de teclado) |
 | SC-009 (retiro automático; 0 vencidos en "lo que viene") | §9, §13 (fixtures con fechas fijas) |
 | SC-010 (personas de distintas edades) | §10.7 (protocolo de usabilidad; informe `pruebas-usabilidad-SC-010.md`) |
 | SC-012 (0 secciones vacías; navegación sin enlaces rotos) | §1, §7 |
