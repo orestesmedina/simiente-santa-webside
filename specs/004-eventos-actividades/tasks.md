@@ -172,7 +172,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 > **parametrizado** (§IV, CWE-89) y **nunca** se edita una migración aplicada (§VI). Numeración sin
 > huecos desde `000001` (F3 terminó en `000006`).
 
-- [ ] T401 · Migración `000007_create_agenda_content` · `[db]`
+- [X] T401 · Migración `000007_create_agenda_content` · `[db]`
 
   - **Archivos**: `backend/migrations/000007_create_agenda_content.up.sql` y
     `000007_create_agenda_content.down.sql` (NUEVOS).
