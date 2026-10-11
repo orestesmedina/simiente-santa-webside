@@ -323,7 +323,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 **Independent Test**: en modo normal las secciones se revelan claramente al entrar en pantalla (duración y distancia sobre el suelo de perceptibilidad); con `prefers-reduced-motion` no se revela nada y todo funciona igual.
 
-- [ ] T1017 · `usePrefersReducedMotion` (preferencia de movimiento en vivo) · `[frontend]`
+- [X] T1017 · `usePrefersReducedMotion` (preferencia de movimiento en vivo) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/motion/usePrefersReducedMotion.ts`, `frontend/src/features/publico/motion/motion.test.tsx` (NUEVOS).
   - **Qué hace**: hook que expone `prefers-reduced-motion` vía `matchMedia('(prefers-reduced-motion: reduce)')` con listener `change` (se respeta **en caliente**, sin recargar: edge case de la spec). Es la **segunda capa** de la doble capa de D6 (la primera es el CSS global de T1004). *Cubre FR-006/SC-005*.
@@ -331,7 +331,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: `Reveal`/`RevealGroup`/`MobileMenu`/cabecera pueden consultar la preferencia en vivo.
   - **Commit sugerido**: `feat(frontend): usePrefersReducedMotion con matchMedia en vivo`
 
-- [ ] T1018 · `Reveal` / `useReveal` (revelado progresivo, observer compartido) · `[frontend]`
+- [X] T1018 · `Reveal` / `useReveal` (revelado progresivo, observer compartido) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/motion/Reveal.tsx`, `frontend/src/features/publico/motion/useReveal.ts` (NUEVOS), `motion.test.tsx` (EDITADO **aditivamente**).
   - **Qué hace**: envoltorio de revelado al scroll (P10-4/R10-5): `IntersectionObserver` **compartido** (`rootMargin: 0px 0px -10% 0px` o umbral equivalente), entradas con `opacity` + `translateY(var(--motion-distance))` (o lateral según `from`), duración `--motion-duration-reveal` (≥ 400 ms, ≤ 800 ms), curva `--motion-ease-out`, **una sola vez por elemento y por carga**. **Progresivo (R10-5)**: el contenido **nace visible** por defecto; el estado pendiente solo se aplica cuando JS está montado y no hay movimiento reducido; con JS caído, con movimiento reducido o si el observer no dispara (salvavidas de ~1 s) el contenido se ve igualmente; `focusin` sobre un elemento pendiente lo **revela al instante** (el foco nunca queda sobre algo oculto). Solo `opacity`/`transform` (compositor, FR-007), `will-change` temporal. *Cubre FR-005/FR-007/FR-009/SC-014* y los edge cases «JS caído», «foco temprano» y «animación fallida».
@@ -339,7 +339,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: el revelado es perceptible y verificable (parametrizado, no «a ojo») y nunca oculta contenido necesario (FR-009).
   - **Commit sugerido**: `feat(frontend): Reveal, revelado progresivo al scroll`
 
-- [ ] T1019 · `RevealGroup` (entrada escalonada con tope) · `[frontend]`
+- [X] T1019 · `RevealGroup` (entrada escalonada con tope) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/motion/RevealGroup.tsx` (NUEVO), `motion.test.tsx` (EDITADO **aditivamente**).
   - **Qué hace**: reparte `--reveal-index` entre los hijos (2–4 elementos: tarjetas de una fila, ítems de una lista) → `transition-delay` de `--motion-stagger-step` (**80 ms**, D21) por salto, **tope 3 saltos (240 ms máx.)** y secuencia total del bloque ≤ 800 ms (D5). Con movimiento reducido, sin delays. *Cubre FR-005/SC-014* («entrada escalonada cuando convenga»).
@@ -347,7 +347,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: el escalonado es perceptible pero acotado (nunca «secuencia larga»).
   - **Commit sugerido**: `feat(frontend): RevealGroup, entrada escalonada acotada`
 
-- [ ] T1020 · `useScrolled` + cabecera `data-scrolled` (superficie, sin cambio de geometría) · `[frontend]`
+- [X] T1020 · `useScrolled` + cabecera `data-scrolled` (superficie, sin cambio de geometría) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/motion/useScrolled.ts` (NUEVO), `frontend/src/features/publico/components/SiteHeader.tsx` (EDITADO), `motion.test.tsx` y `SiteHeader.test.tsx` (EDITADOS **aditivamente**).
   - **Qué hace**: sentinela observada con `IntersectionObserver` (sin listener de `scroll`) que activa `data-scrolled` en la cabecera al bajar y lo quita al volver arriba. La cabecera transiciona **solo su superficie** —fondo translúcido → vidrio (`backdrop-filter` **acotado a la cabecera**, borde hairline turquesa, sombra suave), `--motion-duration-header` (220 ms)— **sin cambio de geometría** (D8: misma altura → cero riesgo para anclas y `scroll-padding-top`). Con movimiento reducido, cambio instantáneo. Si DevTools muestra coste de pintura del blur en el dispositivo modesto de referencia, se degrada a superficie sólida sin `backdrop-filter` (FR-007/RG10-9). *Cubre FR-014/FR-005* («cabecera con transición al bajar»).
@@ -365,7 +365,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 **Independent Test**: recorrer la portada publicada muestra el mismo sistema en las 8 secciones (cabecera, hero, quiénes somos, horario, WhatsApp, contacto, redes, pie), legible con contenidos reales de distinta forma, en 320 px / 768 px / 1280 px, en tema claro y oscuro, y con logotipo intacto.
 
-- [ ] T1021 · `IdentityHero` aplicado a la propuesta B (con entrada de hero) · `[frontend]`
+- [X] T1021 · `IdentityHero` aplicado a la propuesta B (con entrada de hero) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/components/IdentityHero.tsx` (EDITADO), `frontend/src/features/publico/components/BrandLogo.tsx` (**sin cambios**), `IdentityHero.test.tsx` (NUEVO o ampliado aditivamente).
   - **Qué hace**: hero de identidad con la composición B: titular en Bebas Neue, lema en Playfair itálica, CTAs con `PublicButton` — «Ver horario» (ancla a `#horario`) y un CTA hacia WhatsApp con **nombre propio que no contiene «Escribir por WhatsApp» ni «Entrar al grupo»** (p. ej. «Escríbenos por WhatsApp»): esos dos nombres pertenecen a los canales de `WhatsAppSection` y `homePage.test.tsx` los resuelve con **coincidencia única** (D19/C2; microcopy ajustada respecto a la maqueta B: manda el contrato congelado, SC-008) —, imagen de portada en marco de vidrio (`Card glass`), texto izquierda / imagen derecha en escritorio y columna en móvil, padding con `--space-section-tight`/`--pad-panel`, y **entrada de hero** de `--motion-duration-hero` (solo la primera carga real: claves React estables, FR-008). El logotipo se muestra **con sus colores originales** sobre `--logo-surface` (pastilla crema) en ambos temas, sin `filter`/inversión (FR-002/FR-024; la prueba `BrandLogo.test.tsx` que lo prohíbe se conserva intacta). Sin JS/animación, el hero se ve completo desde el primer instante (FR-007/FR-009). *Cubre FR-001/FR-002/FR-004/US1*.
@@ -373,7 +373,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: el hero cumple la maqueta B en ambos temas; 0 reglas de recoloreo sobre el logotipo.
   - **Commit sugerido**: `feat(frontend): IdentityHero con la propuesta B (F10)`
 
-- [ ] T1022 · `WhoWeAreSection` + `ScheduleSection` aplicadas · `[frontend]` `[P4]`
+- [X] T1022 · `WhoWeAreSection` + `ScheduleSection` aplicadas · `[frontend]` `[P4]`
 
   - **Archivos**: `frontend/src/features/publico/components/WhoWeAreSection.tsx`, `ScheduleSection.tsx` (EDITADOS) + sus tests (NUEVOS/ampliados aditivamente).
   - **Qué hace**: aplica el sistema (tokens semánticos en vez de colores explícitos, `Card`/`SectionHeading`, `--space-section` entre secciones, `--space-block` título→contenido, jerarquía y legibilidad para todas las edades FR-004) a «quiénes somos» (panel de vidrio) y al horario (hora en Bebas turquesa grande, filas legibles, densidad útil conservada). **Contrato congelado del horario (corrección M2)**: se conservan **ambas** representaciones con su breakpoint actual — la `table` (`hidden … sm:table`) con `caption` `sr-only` cuyo **nombre accesible sigue siendo «Horario de servicios»** (lo exige `portada-publica.spec.ts`) y la lista de tarjetas `ul` (`sm:hidden`, consultada como `#horario li` por `portada-accesibilidad.spec.ts` a 160 px) —; solo cambia el vestido (tokens, tipografía, espaciado). Contenidos reales de distinta forma (texto largo, un servicio suelto) sin huecos ni desbordes. *Cubre FR-001/FR-003/FR-004/SC-001*.
@@ -381,7 +381,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: ambas secciones aplican el sistema (0 excepciones: SC-001) y sus tests de F3 siguen en verde sin cambios.
   - **Commit sugerido**: `feat(frontend): Quienes somos y Horario con el sistema visual (F10)`
 
-- [ ] T1023 · `WhatsAppSection` + `ContactSection` aplicadas · `[frontend]` `[P4]`
+- [X] T1023 · `WhatsAppSection` + `ContactSection` aplicadas · `[frontend]` `[P4]`
 
   - **Archivos**: `WhatsAppSection.tsx`, `ContactSection.tsx` (EDITADOS) + tests.
   - **Qué hace**: sistema aplicado a WhatsApp (CTA verde de marca con `PublicButton`, microinteracción marcada) y contacto (filas-pastilla: dirección/correo/teléfono con desplazamiento de 6 px en hover, `transform` only, FR-008; datos de F3 intactos). `--space-section-tight` si se encadenan como bloque denso (D9). Mismos contratos y textos de F3. *Cubre FR-001/FR-003/FR-004/SC-001*.
@@ -389,7 +389,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: mismas funciones y datos que F3, aspecto B, ambos temas correctos.
   - **Commit sugerido**: `feat(frontend): WhatsApp y Contacto con el sistema visual (F10)`
 
-- [ ] T1024 · `SocialSection` + `SectionSkeleton` aplicadas · `[frontend]` `[P4]`
+- [X] T1024 · `SocialSection` + `SectionSkeleton` aplicadas · `[frontend]` `[P4]`
 
   - **Archivos**: `SocialSection.tsx`, `SectionSkeleton.tsx`, `SocialIcon.tsx` (EDITADOS solo si hace falta) + tests.
   - **Qué hace**: redes como chips con elevación/relleno en hover (`transform`/`opacity`), `SocialIcon` conservando su contrato (los iconos de marca no se recolorean fuera de la paleta: FR-002); `SectionSkeleton` re-pensada para B: paneles de vidrio fantasmas con las medidas y separaciones de la sección destino y pulso sutil **solo si hay movimiento** (el estado de carga nunca depende de la animación). *Cubre FR-001/FR-003/FR-009/SC-001*.
@@ -397,7 +397,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: redes y carga con el sistema; 0 cambios de contenido.
   - **Commit sugerido**: `feat(frontend): Redes y skeleton con el sistema visual (F10)`
 
-- [ ] T1025 · Capa decorativa B (blobs `aria-hidden`, glass moderado, degradable) · `[frontend]` `[P4]`
+- [X] T1025 · Capa decorativa B (blobs `aria-hidden`, glass moderado, degradable) · `[frontend]` `[P4]`
 
   - **Archivos**: `frontend/src/features/publico/components/GradientBlobs.tsx` (NUEVO), `frontend/src/index.css` (EDITADO: estilos de blobs/glass si no caben como utilidades), `GradientBlobs.test.tsx` (NUEVO).
   - **Qué hace**: los 2 blobs de gradiente de la propuesta B en deriva continua al fondo (solo `transform`/`opacity` animados, 26–32 s alternos), **decorativos** (`aria-hidden`, nunca tras texto esencial con contraste insuficiente), con blur **estático moderado y acotado** (es el mayor coste de B) y regla de degradación (RG10-9/`ux.md` §9.4): si el dispositivo de referencia modesto muestra tirones o tareas largas > 50 ms atribuibles a los blobs, se reduce el blur o se retiran **antes** que entorpecer la lectura (FR-007). Con `prefers-reduced-motion`: **sin blobs animados** (estáticos o ausentes). Sin parallax ni scroll-scrub (D5). *Cubre FR-001/FR-005/FR-007* (dirección visual de B).
@@ -405,7 +405,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: la atmósfera B se percibe sin coste de fluidez en el dispositivo de referencia (checklist `quickstart.md`) y degrada limpio.
   - **Commit sugerido**: `feat(frontend): capa decorativa de la propuesta B (blobs y glass)`
 
-- [ ] T1026 · `HomePage`: composición con `Reveal`/`RevealGroup` (sin re-animaciones) · `[frontend]`
+- [X] T1026 · `HomePage`: composición con `Reveal`/`RevealGroup` (sin re-animaciones) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/pages/HomePage.tsx` (EDITADO), `homePage.test.tsx` (EDITADO **aditivamente**).
   - **Qué hace**: envuelve los bloques de cada sección con `Reveal` (variante lateral alternada en escritorio / vertical en móvil) y sus componentes internos con `RevealGroup` (stagger acotado), aplica el acento animado de `SectionHeading`, y garantiza **claves React estables por sección** (`key` = ancla): cambiar de idioma o de tema re-renderiza **sin re-montar**, las secciones vistas no se re-animan y el hero solo entra en la primera carga (FR-008/SC-014 «0 rebotes ni parpadeos»). El salto por ancla combina desplazamiento suave + revelado del destino. *Cubre FR-005/FR-008/SC-014* y el edge case «cambio de idioma/tema no re-anima».
