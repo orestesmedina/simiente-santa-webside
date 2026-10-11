@@ -298,7 +298,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 
 ## Fase 3 — Contrato OpenAPI y tipos
 
-- [ ] T406 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.5.0) · `[backend]`
+- [X] T406 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.5.0) · `[backend]`
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO). *No* se toca
     `specs/004-eventos-actividades/contracts/openapi.yaml` (snapshot inmutable, P4-16).
@@ -331,7 +331,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     del frontend (T407).
   - **Commit sugerido**: `docs(api): fusionar delta de F4 en el contrato vivo (0.5.0)`
 
-- [ ] T407 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
+- [X] T407 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/schema.d.ts` (GENERADO y commiteado).
   - **Qué hace**: ejecuta `make api-gen` (o `npm run api-gen`) contra **`backend/api/openapi.yaml`**

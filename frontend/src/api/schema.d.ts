@@ -150,8 +150,10 @@ export interface paths {
         put?: never;
         /**
          * Acción de inicialización única (primer administrador)
-         * @description Crea el rol "Administrador" (con los 9 permisos del catálogo) y la cuenta
-         *     inicial, capaz de crear usuarios y roles de inmediato (FR-007, US2).
+         * @description Crea el rol "Administrador" (con los **10** permisos del catálogo —F4
+         *     añadió `categorias`—) y la cuenta inicial, capaz de crear usuarios y roles
+         *     de inmediato (FR-007, US2). El rol nace con **todo** el catálogo, que el
+         *     servidor lee de la base de datos al inicializar.
          *
          *     - Solo funciona mientras **no exista ninguna cuenta**: repetirla → `409`.
          *     - Exige la cabecera `X-Setup-Token` con el valor de `BOOTSTRAP_TOKEN`
@@ -339,10 +341,13 @@ export interface paths {
         };
         /**
          * Catálogo de permisos por módulo
-         * @description Lista el catálogo fijo de permisos (los módulos del producto más la
+         * @description Lista el catálogo de permisos (los módulos del producto más la
          *     administración de usuarios y roles, FR-015). Es el que se usa para armar
-         *     roles; los módulos de F3–F9 aparecen como reservados hasta que se
-         *     construyan. Requiere permiso `admin_usuarios_roles`.
+         *     roles; los módulos de F5–F9 aparecen como reservados hasta que se
+         *     construyan (F3 activó `portada` y F4 activa `eventos`, `actividades` y el
+         *     permiso nuevo `categorias`, con el que el catálogo pasa a **10**). El
+         *     catálogo **no** es un enum del contrato: se lee de la base de datos.
+         *     Requiere permiso `admin_usuarios_roles`.
          */
         get: operations["listPermissions"];
         put?: never;
@@ -469,14 +474,22 @@ export interface paths {
         };
         /**
          * Descarga pública de una imagen subida desde el panel
-         * @description Sirve el archivo de imagen (logo o imagen de portada) cuyo nombre generó
-         *     el servidor en la subida (`img_<uuid>.<ext>`, research R3-8). **Política de
-         *     publicación (FR-013/SC-002, analyze C4)**: solo se sirven archivos
-         *     **referenciados por contenido publicado** — en F3, el logo o la imagen de
-         *     portada de una identidad `published` —. Un archivo que no esté referenciado
-         *     por contenido publicado (elemento retirado a borrador, identidad en
-         *     borrador, subida huérfana o inexistente) responde `404 not_found`, y el
-         *     nombre que no cumple el patrón responde `400 invalid` (analyze M6).
+         * @description Sirve el archivo de imagen (logo o imagen de portada de F3, o la imagen de
+         *     un evento o una actividad de F4) cuyo nombre generó el servidor en la
+         *     subida (`img_<uuid>.<ext>`, research R3-8). **Política de publicación
+         *     (FR-013/SC-002, analyze C4; R4-6 de F4)**: solo se sirven archivos
+         *     **referenciados por contenido publicado y visible hoy** — la identidad
+         *     `published` de la portada, o un evento/actividad `published` **con una
+         *     fecha próxima** (la misma regla del servidor que
+         *     `GET /api/v1/proximamente`, R4-2) —. Un archivo que no esté referenciado
+         *     por contenido publicado y próximo (elemento retirado a borrador, elemento
+         *     cuya fecha ya pasó, subida huérfana o inexistente) responde `404
+         *     not_found`, y el nombre que no cumple el patrón responde `400 invalid`
+         *     (analyze M6).
+         *
+         *     La imagen de un elemento **vencido** deja de servirse sin borrar el
+         *     archivo (decisión firme de la puerta 2 de F4): al cargarle una fecha
+         *     próxima, la misma URL vuelve a responder `200`.
          *
          *     El nombre se valida con regex antes de tocar el disco (sin *path
          *     traversal*); la respuesta lleva `X-Content-Type-Options: nosniff`,
@@ -793,6 +806,304 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/proximamente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lo que viene: próximos eventos y próximas actividades publicados
+         * @description Devuelve los dos bloques de la sección pública (FR-001, Q5): `events`
+         *     (encuentros periódicos, cada uno con la lista de sus **próximas** fechas
+         *     — la primera es "la próxima fecha" de FR-004 — y el texto de frecuencia
+         *     si existe) y `activities` (acciones puntuales con su fecha única). Solo
+         *     contenido **publicado** (FR-013/SC-002) y **con fecha desde hoy en
+         *     adelante** según la regla del servidor (FR-002/FR-006/SC-009): un
+         *     elemento cuya fecha pasó no aparece — se retira solo — y un evento sin
+         *     ninguna fecha próxima tampoco aparece (hasta que se cargue una).
+         *
+         *     Cada bloque va **ordenado cronológicamente** por la próxima fecha (los
+         *     eventos por su primera fecha próxima; las actividades por su fecha), con
+         *     desempate estable (`title`, `id`) (FR-003). Los campos traducibles
+         *     vienen ya resueltos a `lang` con fallback `en → es` (FR-008): nunca un
+         *     campo vacío por falta de traducción. La **categoría** (opcional) viene
+         *     resuelta también (Q6).
+         *
+         *     Sin autenticación, sin filtros ni paginación (FR-003: el visitante no
+         *     hace nada para ver lo inmediato). Cada bloque viene acotado por una
+         *     **constante de seguridad del servidor: máximo 200 elementos por bloque**
+         *     (RG4-8 del plan, `maxBlockItems`); si el volumen real la superara, se
+         *     sirven los 200 primeros ya ordenados y un "ver más"/paginación sería el
+         *     ajuste futuro acordado con el humano. **Claves omitidas cuando están
+         *     vacías** (SC-012): si `events` y `activities` están ambas ausentes, no
+         *     hay nada publicado y próximo y la navegación del sitio oculta la sección
+         *     (FR-022). `Cache-Control: no-store`.
+         */
+        get: operations["getProximamente"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/eventos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lista de eventos para el panel (incluye borradores y pasados)
+         * @description Listado paginado **completo** del módulo: borradores, publicados y con
+         *     cualquier fecha (este lado es el único que los ve; exige el permiso
+         *     `eventos`). Cada fila trae `dates` (todas sus fechas, cada una con
+         *     `isPast`), `nextDate` (la primera fecha próxima, `null` si no hay — el
+         *     panel señala entonces que falta cargar la próxima fecha) y `isPast`.
+         *     Orden: `created_at DESC, id DESC` (§8.1.7). Filtro opcional por estado.
+         */
+        get: operations["listEventos"];
+        put?: never;
+        /**
+         * Crea un evento (con su lista de fechas)
+         * @description Alta de un evento (FR-010/FR-018): título, **al menos una fecha**
+         *     concreta (≤50) con hora de inicio/fin opcionales, texto opcional de
+         *     frecuencia, lugar + enlace de mapa opcional, detalle, imagen opcional
+         *     con texto alternativo, organizador opcional y categoría opcional (Q6) —
+         *     español obligatorio, inglés opcional (FR-007). Las fechas pasadas están
+         *     permitidas (el equipo puede cargar lo que ya ocurrió) pero el elemento
+         *     solo será público con una fecha próxima (FR-002/FR-006).
+         *
+         *     `publicationState` opcional (por defecto `draft`): un alta publicada
+         *     registra `event.create` (no `event.publish`, research R4-10). Guardado
+         *     atómico (datos + fechas + auditoría en una transacción; nunca cambios
+         *     parciales, FR-015). Un duplicado exacto del módulo (mismo título, lugar
+         *     y una fecha en común) responde `409` (R4-9).
+         */
+        post: operations["createEvento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/eventos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detalle de un evento (ambos idiomas, todas sus fechas)
+         * @description Ficha completa para el formulario de edición (incluye borradores; exige el permiso `eventos`).
+         */
+        get: operations["getEvento"];
+        put?: never;
+        post?: never;
+        /**
+         * Elimina un evento (definitivo, con confirmación en la interfaz)
+         * @description Borrado físico con sus fechas (FK `ON DELETE CASCADE`); sin papelera ni
+         *     recuperación (default revisable de la spec, coherente con F3). La
+         *     eliminación queda registrada (`event.delete`) y el elemento desaparece
+         *     también del sitio público de inmediato (SC-003). La interfaz pide
+         *     confirmación explicando que no se puede deshacer.
+         */
+        delete: operations["deleteEvento"];
+        options?: never;
+        head?: never;
+        /**
+         * Edita un evento (los campos presentes)
+         * @description Actualización parcial (FR-010): solo se tocan los campos presentes. Si
+         *     viene `dates`, **reemplaza la lista completa** de fechas (reemplazo
+         *     atómico; R4-11). Si el evento ya estaba publicado, los cambios guardados
+         *     son visibles de inmediato (FR-014: se publica al guardar); `publicationState`
+         *     cambia el estado por elemento (FR-013). Auditoría: un cambio de datos
+         *     registra `event.update`; solo de estado, `event.publish`/`event.unpublish`;
+         *     ambos a la vez, **dos filas** (R4-10).
+         */
+        patch: operations["updateEvento"];
+        trace?: never;
+    };
+    "/api/v1/admin/eventos/imagenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sube una imagen para un evento (JPEG/PNG/WebP, ≤8 MB)
+         * @description Multipart (`file`), mismas reglas que la subida de F3 (R3-8): tipo
+         *     detectado por **firma binaria** (sin SVG ni GIF), tope 8 MB
+         *     (`UPLOAD_MAX_BYTES`), nombre generado por el servidor
+         *     (`img_<uuid>.<ext>`) y respuesta con la referencia a incluir en
+         *     `imageFile`. La imagen se sirve con `GET /api/v1/media/{fileName}` solo
+         *     mientras esté referenciada por un evento **publicado y próximo** (R4-6).
+         *     Auditoría: `event.image.upload` (fail-closed: si el registro falla, la
+         *     subida se aborta y el archivo se elimina).
+         */
+        post: operations["uploadEventoImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/actividades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lista de actividades para el panel (incluye borradoras y pasadas)
+         * @description Listado paginado completo (exige el permiso `actividades`): cada fila
+         *     trae su fecha única con `isPast` y el `isPast` del elemento. Orden:
+         *     `created_at DESC, id DESC` (§8.1.7). Filtro opcional por estado.
+         */
+        get: operations["listActividades"];
+        put?: never;
+        /**
+         * Crea una actividad (fecha única, sin periodicidad)
+         * @description Alta de una actividad puntual (FR-011/FR-019, Decisión 3): título, **una
+         *     fecha** con hora de inicio/fin opcionales (un día concreto; sin
+         *     periodicidad), lugar + enlace de mapa opcional, detalle, imagen
+         *     opcional con texto alternativo, organizador opcional y categoría
+         *     opcional (Q6) — español obligatorio, inglés opcional. Auditoría
+         *     `activity.create` (aunque nazca publicada). Duplicado exacto del módulo
+         *     (mismo título, fecha y lugar) → `409` (R4-9).
+         */
+        post: operations["createActividad"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/actividades/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detalle de una actividad (ambos idiomas)
+         * @description Ficha completa para el formulario de edición (incluye borradoras; exige el permiso `actividades`).
+         */
+        get: operations["getActividad"];
+        put?: never;
+        post?: never;
+        /**
+         * Elimina una actividad (definitiva, con confirmación en la interfaz)
+         * @description Borrado físico (sin papelera), registrado con `activity.delete`; desaparece del público de inmediato.
+         */
+        delete: operations["deleteActividad"];
+        options?: never;
+        head?: never;
+        /**
+         * Edita una actividad (los campos presentes)
+         * @description Actualización parcial (FR-011) con la misma regla de publicación que los
+         *     eventos (FR-013/FR-014): `publicationState` por elemento y "se publica al
+         *     guardar". Auditoría `activity.update` / `activity.publish` /
+         *     `activity.unpublish` (dos filas si cambian datos y estado a la vez).
+         */
+        patch: operations["updateActividad"];
+        trace?: never;
+    };
+    "/api/v1/admin/actividades/imagenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sube una imagen para una actividad (JPEG/PNG/WebP, ≤8 MB)
+         * @description Igual que `POST /api/v1/admin/eventos/imagenes` (mismas reglas R3-8),
+         *     tras el permiso `actividades`. Auditoría `activity.image.upload`.
+         */
+        post: operations["uploadActividadImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/categorias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Catálogo de categorías (compartido por eventos y actividades)
+         * @description Catálogo completo para los selectores de los formularios y su gestión
+         *     (Q6). Exige el permiso **`categorias`** (10.º del catálogo de F2,
+         *     sembrado en la migración `000009`; research R4-4 — cambio de alcance
+         *     aprobado el 2026-10-11: **no** basta `eventos` ni `actividades`).
+         *     Listado acotado en el servidor (≤100, `ORDER BY sortOrder, id`),
+         *     sin paginación: es un catálogo pequeño (§8.1.3, misma excepción
+         *     documentada que las colecciones de F3).
+         */
+        get: operations["listCategorias"];
+        put?: never;
+        /**
+         * Crea una categoría del catálogo
+         * @description Alta en el catálogo (Q6): nombre en español obligatorio y en inglés
+         *     opcional, con `sortOrder` opcional. Nombre duplicado → `409`. Requiere
+         *     el permiso `categorias`. Auditoría `category.create`.
+         */
+        post: operations["createCategoria"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/categorias/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Elimina una categoría del catálogo
+         * @description Borrado físico con confirmación en la interfaz. Si hay eventos o
+         *     actividades usando la categoría responde `409 conflict` (FK `ON DELETE
+         *     RESTRICT`, R4-5 — **decisión firme** de la puerta 2: la categoría en
+         *     uso no se desliga automáticamente): primero hay que quitarles la
+         *     categoría. Requiere el permiso `categorias`. Auditoría
+         *     `category.delete`.
+         */
+        delete: operations["deleteCategoria"];
+        options?: never;
+        head?: never;
+        /**
+         * Edita una categoría (los campos presentes)
+         * @description Actualización parcial del catálogo (Q6). Renombrar está permitido y el
+         *     cambio se hace visible de inmediato en los elementos publicados que la
+         *     usan (es un dato del elemento, como cualquier otro). Nombre duplicado →
+         *     `409`. Requiere el permiso `categorias`. Auditoría `category.update`.
+         */
+        patch: operations["updateCategoria"];
         trace?: never;
     };
 }
@@ -1165,15 +1476,24 @@ export interface components {
              *     cambios de estado (una edición que cambia datos y estado deja dos
              *     filas); la subida de una imagen se audita con `home.image.upload`
              *     (`analyze` I8).
+             *
+             *     F4 (FR-017) añade los 15 códigos `event.*`, `activity.*` y
+             *     `category.*` (incluidos los tres del catálogo de categorías), con la
+             *     **misma** regla: el alta usa `*.create` aunque el elemento nazca
+             *     publicado; `*.publish`/`*.unpublish` registran **solo** cambios de
+             *     estado (datos y estado a la vez → dos filas); la subida de una imagen
+             *     se audita con `event.image.upload`/`activity.image.upload`.
              * @enum {string}
              */
-            action: "user.create" | "user.update" | "user.activate" | "user.deactivate" | "user.password_reset" | "role.create" | "role.update" | "role.delete" | "home.identity.update" | "home.about.update" | "home.contact.update" | "home.schedule.create" | "home.schedule.update" | "home.schedule.delete" | "home.whatsapp.create" | "home.whatsapp.update" | "home.whatsapp.delete" | "home.social.create" | "home.social.update" | "home.social.delete" | "home.image.upload" | "home.publish" | "home.unpublish";
+            action: "user.create" | "user.update" | "user.activate" | "user.deactivate" | "user.password_reset" | "role.create" | "role.update" | "role.delete" | "home.identity.update" | "home.about.update" | "home.contact.update" | "home.schedule.create" | "home.schedule.update" | "home.schedule.delete" | "home.whatsapp.create" | "home.whatsapp.update" | "home.whatsapp.delete" | "home.social.create" | "home.social.update" | "home.social.delete" | "home.image.upload" | "home.publish" | "home.unpublish" | "event.create" | "event.update" | "event.delete" | "event.publish" | "event.unpublish" | "event.image.upload" | "activity.create" | "activity.update" | "activity.delete" | "activity.publish" | "activity.unpublish" | "activity.image.upload" | "category.create" | "category.update" | "category.delete";
             /**
              * @description Sobre qué se hizo: una cuenta (`user`), un rol (`role`) o un elemento
-             *     de contenido de la portada (`content`, F3). Para `content`,
-             *     `targetId` es `null` (los elementos de la portada no tienen FK en
-             *     `admin_actions`) y `targetLabel` identifica el elemento
-             *     (`Portada · <Sección> · <nombre>`).
+             *     de contenido (`content`, F3 para la portada y F4 para eventos,
+             *     actividades y categorías de agenda). Para `content`, `targetId` es
+             *     `null` (los elementos de contenido no tienen FK en `admin_actions`) y
+             *     `targetLabel` identifica el elemento
+             *     (`Portada · <Sección> · <nombre>`, `Eventos · <título>`,
+             *     `Actividades · <título>`, `Categorías · <nombre>`).
              * @enum {string}
              */
             targetKind: "user" | "role" | "content";
@@ -1183,14 +1503,16 @@ export interface components {
              *     (p. ej. una creación rechazada por duplicado) o cuando el rol ya fue
              *     eliminado (FR-017): el registro se conserva igualmente (FR-025) y su
              *     `targetLabel` sigue diciendo sobre qué fue. En las acciones con
-             *     `targetKind: content` (F3) es siempre `null`: el elemento de la
-             *     portada se identifica por su `targetLabel`.
+             *     `targetKind: content` (F3/F4) es siempre `null`: el elemento de
+             *     contenido se identifica por su `targetLabel`.
              */
             targetId: string | null;
             /**
              * @description Etiqueta del objetivo en el momento de la acción (correo de la cuenta,
-             *     nombre del rol o, en F3, `Portada · <Sección> · <nombre del
-             *     elemento>`). Se conserva aunque después se edite o elimine.
+             *     nombre del rol o, en las acciones de contenido, `Portada · <Sección>
+             *     · <nombre del elemento>` (F3), `Eventos · <título>`,
+             *     `Actividades · <título>` o `Categorías · <nombre>` (F4)). Se conserva
+             *     aunque después se edite o elimine.
              */
             targetLabel: string | null;
             /**
@@ -1569,6 +1891,333 @@ export interface components {
             mimeType: "image/jpeg" | "image/png" | "image/webp";
             sizeBytes: number;
         };
+        /**
+         * @description Fecha de calendario del lugar ("YYYY-MM-DD"). No es un timestamp: no se
+         *     convierte de zona horaria (FR-009: el día real del elemento no cambia).
+         *     El formato visible lo localiza el cliente.
+         */
+        Date: string;
+        /**
+         * @description Hora "HH:MM" de 24 h del lugar. El formato a.m./p.m. es presentación del
+         *     cliente (patrón de F3).
+         */
+        ClockTime: string;
+        /** @description Categoría publicada del elemento, ya localizada a `lang` (Q6). */
+        CategoriaPublica: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        /** @description Imagen opcional del elemento con su texto alternativo accesible (FR-020). */
+        ImagenPublica: {
+            /** @description URL relativa al origen de la API (`/api/v1/media/<file>`). */
+            url: string;
+            /** @description Texto alternativo (FR-020); resuelto a `lang` con fallback. */
+            alt: string;
+        };
+        /**
+         * @description Fecha concreta de un evento con su horario opcional (Q2). Solo fechas
+         *     **próximas** viajan en la respuesta pública (FR-002/FR-006).
+         */
+        OcurrenciaPublica: {
+            date: components["schemas"]["Date"];
+            /** @description Hora de inicio opcional (`null`/ausente = sin hora). */
+            startTime?: components["schemas"]["ClockTime"];
+            /** @description Hora de fin opcional; **exige `startTime`** (decisión firme de la puerta 2) y siempre es posterior a él. */
+            endTime?: components["schemas"]["ClockTime"];
+        };
+        /**
+         * @description "Lo que viene" publicado y con fecha desde hoy en adelante, resuelto a
+         *     `lang` (fallback `en → es` por campo, FR-008). Las claves de bloque están
+         *     presentes **solo** si tienen elementos (SC-012); si están presentes, sus
+         *     arrays nunca son `null` (§8.1.2) y están acotados a **200 elementos**
+         *     cada uno (constante de seguridad del servidor, RG4-8 del plan).
+         *     `events` va ordenado por la primera
+         *     fecha próxima de cada evento; `activities` por su fecha (FR-003).
+         */
+        ProximamentePublica: {
+            /**
+             * @description Idioma en el que se resolvieron los contenidos.
+             * @enum {string}
+             */
+            lang: "es" | "en";
+            events?: components["schemas"]["EventoPublico"][];
+            activities?: components["schemas"]["ActividadPublica"][];
+        };
+        /**
+         * @description Evento publicado con **al menos una fecha próxima** (FR-004): `dates[0]`
+         *     es "la próxima fecha" que el visitante identifica; el resto son las
+         *     siguientes cargadas. `frequency` es el texto opcional de frecuencia (p.
+         *     ej. «todos los viernes»); el sistema **no** calcula recurrencias.
+         */
+        EventoPublico: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @description Texto opcional de frecuencia, ya localizado (puede provenir del español por fallback). */
+            frequency?: string;
+            dates: components["schemas"]["OcurrenciaPublica"][];
+            place: string;
+            /** @description Enlace de mapa/ubicación opcional (solo se valida el formato; no se verifica el destino). */
+            mapUrl?: string;
+            /** @description Detalle/descripción, texto plano (≤2.000 caracteres), ya localizado. */
+            detail: string;
+            /** @description Organizador/encargado opcional (texto). */
+            organizer?: string;
+            category?: components["schemas"]["CategoriaPublica"];
+            image?: components["schemas"]["ImagenPublica"];
+        };
+        /**
+         * @description Actividad publicada con **fecha única** (Decisión 3/FR-005): un día
+         *     concreto con hora de inicio y hora de fin opcionales (un solo valor de
+         *     hora o ninguno también es válido).
+         */
+        ActividadPublica: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            date: components["schemas"]["Date"];
+            startTime?: components["schemas"]["ClockTime"];
+            endTime?: components["schemas"]["ClockTime"];
+            place: string;
+            mapUrl?: string;
+            detail: string;
+            organizer?: string;
+            category?: components["schemas"]["CategoriaPublica"];
+            image?: components["schemas"]["ImagenPublica"];
+        };
+        /** @description Listado paginado de eventos del panel (§8.1.2/§8.1.3). */
+        EventoAdminList: {
+            items: components["schemas"]["EventoAdmin"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        /** @description Listado paginado de actividades del panel (§8.1.2/§8.1.3). */
+        ActividadAdminList: {
+            items: components["schemas"]["ActividadAdmin"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        /** @description Catálogo completo (acotado en el servidor, ≤100; sin paginación). */
+        CategoriaAdminList: {
+            items: components["schemas"]["CategoriaAdmin"][];
+        };
+        /** @description Fecha concreta del evento en el panel, con su horario opcional y su marca de pasado (Q4). */
+        FechaAdmin: {
+            /** Format: uuid */
+            id: string;
+            date: components["schemas"]["Date"];
+            startTime?: components["schemas"]["ClockTime"];
+            endTime?: components["schemas"]["ClockTime"];
+            /**
+             * @description `true` cuando la fecha ya no es "próxima" según la regla del servidor
+             *     (R4-2): el panel muestra el elemento como pasado sin tocar su estado.
+             */
+            isPast: boolean;
+        };
+        /**
+         * @description Evento completo del panel: ambos idiomas (es obligatorio, en opcional),
+         *     todas sus fechas (próximas y pasadas) y su estado de publicación (FR-010,
+         *     US4 esc. 7).
+         */
+        EventoAdmin: {
+            /** Format: uuid */
+            id: string;
+            titleEs: string;
+            titleEn?: string | null;
+            /** @description Texto opcional de frecuencia en español (Q1). */
+            frequencyEs?: string | null;
+            frequencyEn?: string | null;
+            detailEs: string;
+            detailEn?: string | null;
+            placeEs: string;
+            placeEn?: string | null;
+            mapUrl?: string | null;
+            organizerEs?: string | null;
+            organizerEn?: string | null;
+            /** Format: uuid */
+            categoryId?: string | null;
+            imageFile?: string | null;
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            publicationState: components["schemas"]["PublicationState"];
+            /** @description Fechas del evento en orden ascendente (próximas y pasadas). */
+            dates: components["schemas"]["FechaAdmin"][];
+            /**
+             * @description **Siempre presente en la respuesta** (no es un campo opcional: está
+             *     en `required` y solo su **valor** puede ser nulo). Primera fecha
+             *     próxima (`YYYY-MM-DD`) o `null` cuando el elemento no tiene ninguna:
+             *     el panel señala entonces que falta cargar la próxima fecha (default
+             *     revisable). El cliente distingue así "sin próxima fecha" (`null`) de
+             *     cualquier otra cosa.
+             */
+            nextDate: string | null;
+            /** @description `true` cuando el evento no tiene ninguna fecha próxima (Q4). */
+            isPast: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description Fecha concreta que se guarda para un evento (con horario opcional). */
+        FechaInput: {
+            date: components["schemas"]["Date"];
+            startTime?: components["schemas"]["ClockTime"];
+            endTime?: components["schemas"]["ClockTime"];
+        };
+        /**
+         * @description Alta de evento (FR-015). `dates` lleva entre 1 y 50 fechas sin repetir
+         *     (una por día). `publicationState` opcional (por defecto `draft`).
+         */
+        EventoInput: {
+            titleEs: string;
+            titleEn?: string | null;
+            frequencyEs?: string | null;
+            frequencyEn?: string | null;
+            detailEs: string;
+            detailEn?: string | null;
+            placeEs: string;
+            placeEn?: string | null;
+            /** @description URL https válida (tag `url` de `platform/validate`); solo formato. */
+            mapUrl?: string | null;
+            organizerEs?: string | null;
+            organizerEn?: string | null;
+            /**
+             * Format: uuid
+             * @description Categoría del catálogo (Q6); desconocida → `400 invalid`. `null` = sin categoría.
+             */
+            categoryId?: string | null;
+            /** @description Nombre devuelto por `POST /api/v1/admin/eventos/imagenes`. */
+            imageFile?: string | null;
+            /** @description Obligatorio si hay `imageFile` (FR-020). */
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            publicationState?: components["schemas"]["PublicationState"];
+            dates: components["schemas"]["FechaInput"][];
+        };
+        /**
+         * @description Edición parcial: solo los campos presentes se modifican. Si `dates`
+         *     viene, **reemplaza la lista completa** (mínimo 1 fecha). Un campo con
+         *     `null` explícito borra su valor opcional (p. ej. `mapUrl`, `categoryId`,
+         *     `imageFile`).
+         */
+        EventoPatch: {
+            titleEs?: string;
+            titleEn?: string | null;
+            frequencyEs?: string | null;
+            frequencyEn?: string | null;
+            detailEs?: string;
+            detailEn?: string | null;
+            placeEs?: string;
+            placeEn?: string | null;
+            mapUrl?: string | null;
+            organizerEs?: string | null;
+            organizerEn?: string | null;
+            /** Format: uuid */
+            categoryId?: string | null;
+            imageFile?: string | null;
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            publicationState?: components["schemas"]["PublicationState"];
+            dates?: components["schemas"]["FechaInput"][];
+        };
+        /** @description Actividad completa del panel (ambos idiomas, fecha única y estado; FR-011). */
+        ActividadAdmin: {
+            /** Format: uuid */
+            id: string;
+            titleEs: string;
+            titleEn?: string | null;
+            detailEs: string;
+            detailEn?: string | null;
+            placeEs: string;
+            placeEn?: string | null;
+            mapUrl?: string | null;
+            organizerEs?: string | null;
+            organizerEn?: string | null;
+            /** Format: uuid */
+            categoryId?: string | null;
+            imageFile?: string | null;
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            date: components["schemas"]["Date"];
+            startTime?: components["schemas"]["ClockTime"];
+            endTime?: components["schemas"]["ClockTime"];
+            publicationState: components["schemas"]["PublicationState"];
+            isPast: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description Alta de actividad puntual (FR-015): una fecha única, sin periodicidad. */
+        ActividadInput: {
+            titleEs: string;
+            titleEn?: string | null;
+            detailEs: string;
+            detailEn?: string | null;
+            placeEs: string;
+            placeEn?: string | null;
+            mapUrl?: string | null;
+            organizerEs?: string | null;
+            organizerEn?: string | null;
+            /** Format: uuid */
+            categoryId?: string | null;
+            imageFile?: string | null;
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            date: components["schemas"]["Date"];
+            startTime?: components["schemas"]["ClockTime"];
+            endTime?: components["schemas"]["ClockTime"];
+            publicationState?: components["schemas"]["PublicationState"];
+        };
+        /** @description Edición parcial de una actividad (solo los campos presentes; `null` borra lo opcional). */
+        ActividadPatch: {
+            titleEs?: string;
+            titleEn?: string | null;
+            detailEs?: string;
+            detailEn?: string | null;
+            placeEs?: string;
+            placeEn?: string | null;
+            mapUrl?: string | null;
+            organizerEs?: string | null;
+            organizerEn?: string | null;
+            /** Format: uuid */
+            categoryId?: string | null;
+            imageFile?: string | null;
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            date?: components["schemas"]["Date"];
+            startTime?: components["schemas"]["ClockTime"];
+            endTime?: components["schemas"]["ClockTime"];
+            publicationState?: components["schemas"]["PublicationState"];
+        };
+        /** @description Categoría del catálogo (Q6): nombre es obligatorio, en opcional. */
+        CategoriaAdmin: {
+            /** Format: uuid */
+            id: string;
+            nameEs: string;
+            nameEn?: string | null;
+            /** @description Orden de presentación del catálogo (por defecto 0). */
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description Alta en el catálogo de categorías. */
+        CategoriaInput: {
+            nameEs: string;
+            nameEn?: string | null;
+            sortOrder?: number;
+        };
+        /** @description Edición parcial de una categoría (solo los campos presentes). */
+        CategoriaPatch: {
+            nameEs?: string;
+            nameEn?: string | null;
+            sortOrder?: number;
+        };
     };
     responses: {
         /** @description Ruta no documentada. El fallback del router responde este sobre (la stdlib respondería texto). */
@@ -1801,6 +2450,8 @@ export interface components {
         AuditTo: string;
         /** @description Identificador (UUID) del elemento de la portada. */
         PortadaItemId: string;
+        /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+        AgendaItemId: string;
     };
     requestBodies: never;
     headers: never;
@@ -2861,6 +3512,519 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             500: components["responses"]["Internal"];
+        };
+    };
+    getProximamente: {
+        parameters: {
+            query?: {
+                /** @description Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8). */
+                lang?: "es" | "en";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lo que viene, resuelto a `lang` (puede no traer ninguna clave si no hay nada publicado y próximo). */
+            200: {
+                headers: {
+                    /** @description Siempre `no-store` (SC-003: los cambios guardados se ven en la primera carga posterior). */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProximamentePublica"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    listEventos: {
+        parameters: {
+            query?: {
+                /** @description Tamaño de página (por defecto 20, tope 100). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Filas a saltar (por defecto 0). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Filtra por estado de publicación (FR-013). Sin valor: todos. */
+                publicationState?: components["schemas"]["PublicationState"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado de eventos. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoAdminList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    createEvento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventoInput"];
+            };
+        };
+        responses: {
+            /** @description Evento creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    getEvento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evento con todos sus datos. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoAdmin"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    deleteEvento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Evento eliminado. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    updateEvento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventoPatch"];
+            };
+        };
+        responses: {
+            /** @description Evento actualizado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventoAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    uploadEventoImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Archivo de imagen (JPEG, PNG o WebP por firma; máx. 8 MB).
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Imagen subida. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageUploadResult"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    listActividades: {
+        parameters: {
+            query?: {
+                /** @description Tamaño de página (por defecto 20, tope 100). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Filas a saltar (por defecto 0). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Filtra por estado de publicación (FR-013). Sin valor: todos. */
+                publicationState?: components["schemas"]["PublicationState"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado de actividades. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActividadAdminList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    createActividad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActividadInput"];
+            };
+        };
+        responses: {
+            /** @description Actividad creada. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActividadAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    getActividad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Actividad con todos sus datos. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActividadAdmin"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    deleteActividad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Actividad eliminada. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    updateActividad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActividadPatch"];
+            };
+        };
+        responses: {
+            /** @description Actividad actualizada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActividadAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    uploadActividadImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Archivo de imagen (JPEG, PNG o WebP por firma; máx. 8 MB).
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Imagen subida. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageUploadResult"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    listCategorias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catálogo de categorías. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoriaAdminList"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    createCategoria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoriaInput"];
+            };
+        };
+        responses: {
+            /** @description Categoría creada. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoriaAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    deleteCategoria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Categoría eliminada. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    updateCategoria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
+                id: components["parameters"]["AgendaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CategoriaPatch"];
+            };
+        };
+        responses: {
+            /** @description Categoría actualizada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoriaAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
         };
     };
 }
