@@ -272,6 +272,14 @@ html.js .reveal-block[data-reveal='right'] {
   transform: translateX(var(--motion-distance));
 }
 
+/* En móvil todo entra desde un solo eje (vertical), como pide ux.md §5. */
+@media (max-width: 860px) {
+  html.js .reveal-block[data-reveal='left'],
+  html.js .reveal-block[data-reveal='right'] {
+    transform: translateY(var(--motion-distance));
+  }
+}
+
 .reveal-block[data-reveal='in'] {
   opacity: 1;
   transform: none;

@@ -2,6 +2,8 @@ import { Button } from '../../../components/Button';
 import { Notice } from '../../../components/Notice';
 import { usePublicHomeData } from '../hooks/usePublicHomeData';
 import { useLanguage } from '../i18n/useLanguage';
+import { Reveal } from '../motion/Reveal';
+import { RevealGroup } from '../motion/RevealGroup';
 import { ContactSection } from '../components/ContactSection';
 import { IdentityHero } from '../components/IdentityHero';
 import { ScheduleSection } from '../components/ScheduleSection';
@@ -17,6 +19,13 @@ import { WhoWeAreSection } from '../components/WhoWeAreSection';
  * sin fallback de idioma en el cliente). Estados: esqueletos al cargar, error
  * con «Volver a intentar» sin contenido previo y aviso discreto si falla una
  * actualización con datos ya en pantalla.
+ *
+ * Movimiento (F10 · T1026/FR-005/FR-008): cada sección se envuelve en `Reveal`
+ * (entrada lateral alternada en escritorio; vertical en móvil) y el conjunto se
+ * escalona con `RevealGroup` (tope acotado). Las **claves React estables por
+ * ancla** garantizan que cambiar de idioma o de tema re-renderiza **sin
+ * re-montar**: las secciones ya vistas no se re-animan y el hero solo entra en
+ * la primera carga real (SC-014).
  */
 export function HomePage() {
   const { t } = useLanguage();
@@ -24,7 +33,7 @@ export function HomePage() {
 
   if (query.isPending) {
     return (
-      <div className="py-4">
+      <div>
         <SectionSkeleton />
         <SectionSkeleton />
       </div>
@@ -33,7 +42,7 @@ export function HomePage() {
 
   if (query.isError && !query.data) {
     return (
-      <section className="bg-navy px-4 py-16 text-white sm:px-6">
+      <section className="bg-surface px-4 py-section-tight text-ink sm:px-6">
         <div className="mx-auto w-full max-w-3xl">
           <h1 className="font-display text-[clamp(2.5rem,7vw,4.75rem)] leading-none">
             {t('brand.name')}
@@ -67,11 +76,34 @@ export function HomePage() {
           whatsappHref={whatsapp && whatsapp.length > 0 ? '#whatsapp' : undefined}
         />
       )}
-      {about && <WhoWeAreSection about={about} />}
-      {schedule && schedule.length > 0 && <ScheduleSection items={schedule} />}
-      {whatsapp && whatsapp.length > 0 && <WhatsAppSection items={whatsapp} />}
-      {contact && <ContactSection contact={contact} />}
-      {socials && socials.length > 0 && <SocialSection items={socials} />}
+
+      <RevealGroup>
+        {about && (
+          <Reveal key="quienes-somos" from="left">
+            <WhoWeAreSection about={about} />
+          </Reveal>
+        )}
+        {schedule && schedule.length > 0 && (
+          <Reveal key="horario" from="right">
+            <ScheduleSection items={schedule} />
+          </Reveal>
+        )}
+        {whatsapp && whatsapp.length > 0 && (
+          <Reveal key="whatsapp" from="left">
+            <WhatsAppSection items={whatsapp} />
+          </Reveal>
+        )}
+        {contact && (
+          <Reveal key="contacto" from="right">
+            <ContactSection contact={contact} />
+          </Reveal>
+        )}
+        {socials && socials.length > 0 && (
+          <Reveal key="redes" from="left">
+            <SocialSection items={socials} />
+          </Reveal>
+        )}
+      </RevealGroup>
     </>
   );
 }
