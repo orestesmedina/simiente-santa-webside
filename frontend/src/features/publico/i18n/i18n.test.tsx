@@ -185,3 +185,50 @@ describe('claves i18n nuevas de F10 (FR-019/SC-010)', () => {
     expect(en['hero.cta.whatsapp']).not.toContain('Join the group');
   });
 });
+
+describe('selector de idioma compacto (F10 · T1027/FR-015/FR-016/FR-017)', () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => window.localStorage.clear());
+
+  it('conserva los nombres completos: sin siglas, sin píldoras y sin menú', () => {
+    renderApp();
+
+    expect(screen.getByRole('radio', { name: 'Español' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Inglés' })).toBeInTheDocument();
+    expect(screen.queryByText('ES')).toBeNull();
+    expect(screen.queryByText('EN')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  it('usa un formato compacto (pastilla fina) con objetivo táctil ≥ 44 px', () => {
+    const { container } = renderApp();
+
+    const fieldset = container.querySelector('fieldset') as HTMLElement;
+    expect(fieldset.className).toContain('rounded-full');
+    expect(fieldset.className).toContain('gap-1');
+    expect(fieldset.className).not.toContain('gap-3');
+
+    const label = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    expect(label.className).toContain('min-h-11');
+    expect(label.className).toContain('text-sm');
+    expect(label.className).not.toContain('gap-1.5');
+  });
+
+  it('resalta el idioma activo con el acento del sistema', () => {
+    renderApp();
+
+    const active = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    const inactive = screen.getByRole('radio', { name: 'Inglés' }).closest('label') as HTMLElement;
+    expect(active.className).toContain('font-bold');
+    expect(active.className).toContain('text-accent');
+    expect(inactive.className).not.toContain('font-bold');
+  });
+
+  it('no provoca desplazamiento horizontal (contenedor en línea, sin anchos forzados)', () => {
+    const { container } = renderApp();
+
+    const fieldset = container.querySelector('fieldset') as HTMLElement;
+    expect(fieldset.className).toContain('inline-flex');
+    expect(fieldset.className).not.toMatch(/\bw-screen\b|\bmin-w-full\b/);
+  });
+});
