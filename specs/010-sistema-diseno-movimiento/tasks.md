@@ -151,7 +151,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 **⚠️ CRITICAL**: ninguna fase de US puede empezar sin esta fase completa.
 
-- [ ] T1001 · Tokens semánticos de tema claro/oscuro en `frontend/src/index.css` · `[frontend]` `[P1]`
+- [X] T1001 · Tokens semánticos de tema claro/oscuro en `frontend/src/index.css` · `[frontend]` `[P1]`
 
   - **Archivos**: `frontend/src/index.css` (EDITADO). **Sin tocar** los tokens de F3 (`--color-navy`, `--color-teal`, `--color-cream`, `--color-coral`, `--color-green`, tipografías): la capa semántica es **aditiva** (P10-2, R10-2).
   - **Qué hace**: añade `@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));` y el bloque de variables **semánticas** por tema bajo `html[data-theme='light']` / `html[data-theme='dark']`: `--surface`, `--surface-raised`, `--text`, `--text-muted`, `--border`, `--accent`, `--accent-strong` (turquesa de texto `#0e7a66` en claro / turquesa puro en oscuro), `--focus`, `--shadow`, `--logo-surface` (pastilla crema del logotipo) — todas derivadas de la paleta de marca respetando la proporción 70/20/10 y las reglas del logotipo (FR-002/FR-024). Las registra con `@theme inline` para que existan utilidades (`bg-surface`, `text-muted`, `border-subtle`…). Documenta la tabla de pares de contraste AA por tema en `specs/010-sistema-diseno-movimiento/quickstart.md` (referencia de QA, RG10-7). *Cubre FR-023/FR-024/FR-002*, P10-1/P10-2.
@@ -159,7 +159,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: la capa semántica es aditiva, el panel no cambia un solo píxel (revisión visual) y la tabla de contraste por par de tokens queda documentada.
   - **Commit sugerido**: `feat(frontend): tokens semanticos de tema claro/oscuro (F10)`
 
-- [ ] T1002 · Script anti-FOUC y marcador `js` en `frontend/index.html` · `[frontend]` `[P1]`
+- [X] T1002 · Script anti-FOUC y marcador `js` en `frontend/index.html` · `[frontend]` `[P1]`
 
   - **Archivos**: `frontend/index.html` (EDITADO).
   - **Qué hace**: inserta un script **inline** (~10 líneas, sin dependencias) **antes de las hojas de estilo**: lee `localStorage['ss.theme']`; si no es `'light'|'dark'`, usa `matchMedia('(prefers-color-scheme: dark)')`; fija `document.documentElement.dataset.theme` y `style.colorScheme`; añade el marcador `js` en `<html>` (T1013 lo usa para el fallback sin JS del menú). Idempotente y silencioso (`try/catch` si `localStorage` falla → tema del sistema). *Cubre FR-023* y mitiga RG10-1 (parpadeo «antes y después» del tema al cargar).
@@ -167,7 +167,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: al cargar con el sistema en modo oscuro y sin elección guardada no se ve el parpadeo del tema claro; sin JS, el sitio es usable.
   - **Commit sugerido**: `feat(frontend): script anti-FOUC del tema en index.html`
 
-- [ ] T1003 · Tokens de espaciado de sección (`--space-section*`) en `frontend/src/index.css` · `[frontend]`
+- [X] T1003 · Tokens de espaciado de sección (`--space-section*`) en `frontend/src/index.css` · `[frontend]`
 
   - **Archivos**: `frontend/src/index.css` (EDITADO, sobre T1001).
   - **Qué hace**: añade la capa de espaciado vertical de sección **por breakpoint** (D9, P10-15/R10-16): `--space-section` (3.25/4/5.5/7 rem), `--space-section-tight` (2/2.5/3.5/4.5 rem), `--space-block` (1.5/2/2.5/3 rem) en los cortes < 480 / 480–767 / 768–1279 / ≥ 1280 px, más los tokens de `ux.md` §0.3 (`--pad-panel`, `--pad-text`, `--space-fluid`). Los registra en `@theme inline` para que existan utilidades (`py-section`, `py-section-tight`, `gap-block`, `p-panel`). **Ninguna sección define su propio padding vertical mágico** (regla de composición para F4–F9). *Cubre el «más aire» de FR-001/FR-003/US1* (FR-026 propuesta B).
@@ -175,7 +175,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: el aire entre secciones se puede calibrar en **un solo sitio** (los tokens); nada del panel usa estos tokens (R10-8).
   - **Commit sugerido**: `feat(frontend): tokens de espaciado vertical de seccion (F10)`
 
-- [ ] T1004 · Tokens de movimiento + `prefers-reduced-motion` global + `scroll-*` · `[frontend]`
+- [X] T1004 · Tokens de movimiento + `prefers-reduced-motion` global + `scroll-*` · `[frontend]`
 
   - **Archivos**: `frontend/src/index.css` (EDITADO, sobre T1003).
   - **Qué hace**: (1) tokens de movimiento de la tabla de plan P10-12/R10-13 (**fuente única de números**, D21/M3) — `--motion-duration-micro` (180 ms), `--motion-duration-header` (220 ms), `--motion-duration-reveal` (**600 ms**, dentro del techo de 800 ms), `--motion-duration-hero` (700 ms), `--motion-distance` (28 px; 20 px ≤ 480 px), `--motion-stagger-step` (80 ms, tope 3 saltos = 240 máx.), `--motion-ease-out` y `--motion-ease-standard` — con la regla dura de **suelo de perceptibilidad** (toda entrada ≥ 400 ms y ≥ 16 px) documentada junto a ellos; (2) `html { scroll-padding-top: var(--header-offset, 0px); scroll-behavior: smooth }` con el suave **solo** bajo `prefers-reduced-motion: no-preference`; (3) el bloque global `@media (prefers-reduced-motion: reduce)` que anula **todo** el sistema de movimiento (transiciones y animaciones a 0 s, sin delays, sin transforms de revelado, `scroll-behavior: auto`). *Cubre FR-005/FR-006/FR-014* (D5/D6).
@@ -183,7 +183,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: los parámetros del sistema de movimiento están en **una sola capa calibrable** (sin valores sueltos por componente) y el movimiento reducido anula todo por CSS.
   - **Commit sugerido**: `feat(frontend): tokens de movimiento y respeto global de reduced-motion`
 
-- [ ] T1005 · `useTheme` + `ThemeProvider` (persistencia `ss.theme`, `matchMedia` en vivo) · `[frontend]` `[P2]`
+- [X] T1005 · `useTheme` + `ThemeProvider` (persistencia `ss.theme`, `matchMedia` en vivo) · `[frontend]` `[P2]`
 
   - **Archivos**: `frontend/src/features/publico/theme/ThemeProvider.tsx`, `frontend/src/features/publico/theme/useTheme.ts`, `frontend/src/features/publico/theme/theme.test.tsx` (NUEVOS). El cableado en `PublicLayout` llega con T1011/T1028.
   - **Qué hace**: contexto de tema siguiendo el patrón `LanguageProvider` de F3 (P10-3/R10-3): estado del **tema efectivo** (`'light' | 'dark'`) y de la **preferencia guardada** (`preference: 'light' | 'dark' | null`); `setTheme('light'|'dark')` aplica de inmediato `document.documentElement.dataset.theme` y `style.colorScheme` y persiste en `localStorage['ss.theme']`; **sin elección guardada** el tema es el del sistema y el listener `change` de `matchMedia('(prefers-color-scheme: dark)')` lo respeta **en caliente**; **con elección manual** prevalece la manual hasta que se cambie (edge case de la spec). Persistencia con tolerancia de F3: sin `localStorage` → tema del sistema, sin errores ni avisos. El panel **no** se envuelve (P10-11: el atributo es global pero el efecto es solo del sitio público). *Cubre FR-023/SC-012*.
@@ -191,7 +191,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: los 3 caminos de US5 (sistema → manual → persistencia) pasan en unitarias; el hook es la única fuente de verdad del tema.
   - **Commit sugerido**: `feat(frontend): ThemeProvider y useTheme con persistencia y matchMedia en vivo`
 
-- [ ] T1006 · Claves i18n nuevas es/en (`messages.ts`, `es.ts`, `en.ts`) · `[frontend]` `[P2]`
+- [X] T1006 · Claves i18n nuevas es/en (`messages.ts`, `es.ts`, `en.ts`) · `[frontend]` `[P2]`
 
   - **Archivos**: `frontend/src/features/publico/i18n/messages.ts`, `es.ts`, `en.ts` (EDITADOS), `frontend/src/features/publico/i18n/i18n.test.tsx` (EDITADO **solo añadiendo** casos: D12).
   - **Qué hace**: añade al catálogo tipado `publicMessageKeys` las claves nuevas de la tabla de nomenclatura (**nomenclatura única, M1/D11**): `nav.menu.open/close`, `nav.menu.label`, `footer.sitemap.label/explore/contact/social/home`, `theme.label`, `theme.toDark`, `theme.toLight` — con los textos es/en de `ux.md` §7. Las claves **existentes no se renombran ni cambian de texto** (contrato congelado R10-9: `nav.label` sigue siendo «Secciones de la portada», `lang.es`/`lang.en`, `lang.label`, `a11y.skip` = «Saltar al contenido principal», `brand.name`, `footer.welcome`…). **Nada de claves nuevas que choquen con el contrato**: `nav.groupLabel`, `skipToContent` y `lang.groupLabel` de `ux.md` §7 son «voz de diseño» y se resuelven con las claves congeladas `nav.label`, `a11y.skip` y `lang.label`. *Cubre FR-019/SC-010*.
@@ -199,7 +199,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: `npm run typecheck` impide dejar una clave sin traducir; las aserciones de F3 del test no se han tocado (D12).
   - **Commit sugerido**: `feat(frontend): claves i18n nuevas de F10 (menu, mapa del sitio, tema)`
 
-- [ ] T1007 · `useSiteLinks` (fuente única de enlaces visibles) · `[frontend]` `[P2]`
+- [X] T1007 · `useSiteLinks` (fuente única de enlaces visibles) · `[frontend]` `[P2]`
 
   - **Archivos**: `frontend/src/features/publico/hooks/useSiteLinks.ts`, `frontend/src/features/publico/hooks/useSiteLinks.test.ts` (NUEVOS). `sections.ts` **sin cambios** (solo se tocaría si la propuesta reordena secciones; aquí no lo hace).
   - **Qué hace**: hook único que devuelve los enlaces navegables a partir de `presentSections(data)` de `features/publico/sections.ts` (mismo criterio borrador de F3: una sección sin contenido publicado **no** es enlace) con su `anchor`, su etiqueta (misma clave i18n de `PUBLIC_SECTIONS`) y, para el futuro F4–F9, un campo opcional `href` de **ruta ya implementada** (hoy vacío: no se inventan enlaces). Es la única fuente de la cabecera (`SiteHeader`/`PublicNav`/`MobileMenu`) y del pie (`FooterSiteMap`): nav y pie nunca se desincronizan ni en nombres ni en borradores (FR-012/FR-027). Puede exponer también los grupos de contacto/redes del pie (datos de `PortadaPublica`) para `FooterSiteMap`.
@@ -215,7 +215,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 **Purpose**: componentes base reutilizables en `frontend/src/components/publico/` (nunca en el inventario compartido del panel, R10-8) para que **no haya dos estilos distintos para la misma función** (FR-003).
 
-- [ ] T1008 · `PublicButton` (variantes de marca + microinteracciones) · `[frontend]` `[P3]`
+- [X] T1008 · `PublicButton` (variantes de marca + microinteracciones) · `[frontend]` `[P3]`
 
   - **Archivos**: `frontend/src/components/publico/PublicButton.tsx`, `frontend/src/components/publico/PublicButton.test.tsx` (NUEVOS).
   - **Qué hace**: botón/enlace de acción con variantes `primary` (turquesa), `accent` (coral, solo gráfico) y `secondary` (contorno), tipografía Poppins, objetivo táctil ≥ 44 px, foco visible (anillo turquesa 2 px) y microinteracción de `--motion-duration-micro` (hover/`:focus-visible`/`:active` con `transform: translateY(-2px)`/`scale(1.02)` máximo, **solo** `transform`/`opacity`/colores: FR-008 sin desplazar el maquetado). Usa utilidades semánticas (funciona en ambos temas). **Excluye** cualquier efecto sobre el logotipo (FR-002). *Cubre FR-003/FR-008/FR-004*.
@@ -223,7 +223,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: es el **único** estilo de botón de acción del sitio público (SC-011); heredable por F4–F9.
   - **Commit sugerido**: `feat(frontend): PublicButton, boton base del sistema publico`
 
-- [ ] T1009 · `SectionHeading` (patrón único de título de sección + acento) · `[frontend]` `[P3]`
+- [X] T1009 · `SectionHeading` (patrón único de título de sección + acento) · `[frontend]` `[P3]`
 
   - **Archivos**: `frontend/src/components/publico/SectionHeading.tsx`, `frontend/src/components/publico/SectionHeading.test.tsx` (NUEVOS).
   - **Qué hace**: encabezado de sección único (kicker/número 01–05 en Bebas Neue + título en Bebas + acento turquesa animable `scaleX` 0→1, 500 ms, **deshabilitado** con movimiento reducido vía CSS de T1004). Recibe el texto por props/children (sin i18n interna: las claves las resuelve cada sección). Jerarquía de encabezado correcta (`h2` bajo el `h1` del hero). *Cubre FR-003/FR-004/FR-005*.
@@ -231,7 +231,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: todas las secciones de la portada y futuras usan este componente para sus títulos (0 jerarquías distintas).
   - **Commit sugerido**: `feat(frontend): SectionHeading, patron unico de titulo de seccion`
 
-- [ ] T1010 · `Card` (panel de vidrio por tema) · `[frontend]` `[P3]`
+- [X] T1010 · `Card` (panel de vidrio por tema) · `[frontend]` `[P3]`
 
   - **Archivos**: `frontend/src/components/publico/Card.tsx`, `frontend/src/components/publico/Card.test.tsx` (NUEVOS).
   - **Qué hace**: superficie de contenido («panel de vidrio» de la propuesta B): radio, borde `--border`, sombra `--shadow`, fondo `--surface-raised` (translúcido en la variante `glass`), padding con `--pad-panel`, microinteracción de elevación en hover **solo** donde sea interactivo (una Card clicable) y nunca sobre imágenes de marca. Usa tokens de tema (ambos temas correctos por construcción). *Cubre FR-003/FR-024*.
@@ -249,7 +249,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
 
 **Independent Test**: en escritorio la barra es visible y fija y las anclas llegan a cada sección sin tapar el título; a 320 px el menú hamburguesa se abre/cierra con ratón y teclado (foco gestionado, Escape, scrim, sin scroll de fondo) y el pie lista las secciones visibles con enlaces que funcionan; 0 desplazamientos horizontales.
 
-- [ ] T1011 · `SiteHeader` (cabecera fija, marca, clúster de controles, `<nav>` visible) · `[frontend]`
+- [X] T1011 · `SiteHeader` (cabecera fija, marca, clúster de controles, `<nav>` visible) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/components/SiteHeader.tsx`, `frontend/src/features/publico/components/SiteHeader.test.tsx` (NUEVOS); `frontend/src/features/publico/components/PublicLayout.tsx` (EDITADO: delega la cabecera a `SiteHeader`).
   - **Qué hace**: extrae la cabecera de `PublicLayout` a un componente propio: `position: sticky; top: 0` (siempre fija, ambos modos, FR-014), fila de marca (`BrandLogo` **con sus colores originales** + nombre completo de la identidad publicada como **enlace a `/`**) y clúster de controles (slot del selector de idioma + slot del control de tema de T1028) + `<nav aria-label={t('nav.label')}>` que **permanece visible en todos los anchos** (D14: la lista de anclas colapsa, el `<nav>` nunca; dentro del `<nav>` viven el botón de T1013 y la **única** lista de enlaces, D15). **Marca a < 480 px (C3/D20)**: puede mostrar solo el monograma **visualmente**, pero el enlace de marca conserva siempre el nombre completo —que contiene «Simiente»— como texto accesible y en su `innerText`, con técnica **`sr-only`** (**nunca** `display:none`: el `tabCycle` congelado de `portada-accesibilidad.spec.ts` exige un `<a>` cuyo `innerText` incluya «Simiente» a 320 px). Mantiene el contrato congelado (R10-9): mismos `aria-label`, mismos enlaces `href="#…"`, mismas claves i18n que hoy. *Cubre FR-010/FR-014/FR-025*.
@@ -257,7 +257,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: `PublicLayout` ya no dibuja la cabecera a mano; las e2e congeladas de F3 (`portada-publica.spec.ts`, `portada-accesibilidad.spec.ts`) siguen en verde **sin cambios**.
   - **Commit sugerido**: `refactor(frontend): SiteHeader, cabecera fija del sitio publico`
 
-- [ ] T1012 · `PublicNav` de escritorio (anclas `flex-wrap`, sin scroll de enlaces) · `[frontend]`
+- [X] T1012 · `PublicNav` de escritorio (anclas `flex-wrap`, sin scroll de enlaces) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/components/PublicNav.tsx`, `frontend/src/features/publico/components/PublicNav.test.tsx` (NUEVOS).
   - **Qué hace**: lista de anclas de sección (de `useSiteLinks`) en filas `flex-wrap` compactas **sin `overflow-x-auto`** (fin del caso (a) del «scroll incómodo»), objetivos ≥ 44 px, foco visible, subrayado turquesa que se despliega en hover/foco (FR-008). Escala a F4–F9 (~8–10 enlaces) en una o varias filas compactas (FR-012). Es **la única lista de enlaces del `<nav>`** (D15/C4): `MobileMenu` (T1013) reutiliza estos mismos nodos y no monta una segunda lista. Debajo de 861 px la lista se colapsa con **`display:none` bajo la media query** (D16/I2, clase tipo `hidden …`): los enlaces ocultos **no son enfocables** ni están en el árbol de accesibilidad (FR-013) pero **siguen en el DOM** (sin atributos `hidden`/`aria-hidden`/`inert` de React: jsdom debe seguir viéndolos). La lógica del botón vive en T1013; con el fallback sin JS la lista se muestra siempre como filas compactas. *Cubre FR-011/FR-012/SC-004*.
@@ -265,7 +265,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: en escritorio no existe ningún carrusel/scroll de enlaces; con la previsión de secciones F4–F9 (inyectando entradas extra en el test) la lista sigue íntegra.
   - **Commit sugerido**: `feat(frontend): PublicNav con anclas en filas flex-wrap`
 
-- [ ] T1013 · `MobileMenu` + botón hamburguesa (≤ 860 px, patrón *disclosure*) · `[frontend]`
+- [X] T1013 · `MobileMenu` + botón hamburguesa (≤ 860 px, patrón *disclosure*) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/components/MobileMenu.tsx`, `frontend/src/features/publico/components/MobileMenu.test.tsx` (NUEVOS); `PublicNav.tsx` (EDITADO: monta el botón **dentro** del `<nav>`, D14).
   - **Qué hace**: menú hamburguesa accesible para móvil ≤ 860 px (D4, P10-13/R10-14), patrón *disclosure* de las guías APG, sin librerías: (1) **botón** `<button>` real **dentro del `<nav>`** (es `<button>`: no compite por nombre con los enlaces, D14) con nombre accesible localizado (`nav.menu.open`/`nav.menu.close` dinámico), `aria-expanded` sincronizado, `aria-controls` al id del panel/lista, objetivo **≥ 44 px**, icono ☰→✕ **decorativo** (el nombre accesible es el texto localizado); (2) **panel = la única lista de enlaces del `<nav>`** (D15/C4): `MobileMenu` **no monta una lista duplicada**; es el **controlador** de la lista de `useSiteLinks` (mismos nodos, mismas claves i18n → mismos nombres que en escritorio), que al abrir se presenta como panel con superficie sólida por tokens, altura máxima `calc(100dvh - var(--header-offset))` con scroll interno propio, **control visible de cierre** y **scrim** que cierra al tocar fuera; cerrada a ≤ 860 px la lista está con `display:none` (D16: fuera del orden de tabulación y del árbol de accesibilidad, FR-013) y al abrir (o ≥ 861 px) vuelve a ser visible y enfocable; (3) **foco — patrón *disclosure* APG, SIN trampa de foco** (D17/I1): al abrir, el foco entra al primer enlace de la lista; `Escape` / control visible / scrim / botón cierran y **devuelven el foco al botón**; activar una sección cierra el panel y el foco continúa en el destino; `Tab`/`Shift+Tab` **pueden salir del panel** hacia la barra de controles y el resto de la página (es una lista de enlaces normal, **no** un diálogo: **sin** `role="dialog"`, **sin** `aria-modal`); (4) **sin scroll de fondo**: `html[data-nav-open='true'] { overflow: hidden }` mientras está abierto (rueda y teclado); (5) **cruce de breakpoint** (≥ 861 px): el panel se cierra solo, `aria-expanded` vuelve a `false`, reaparecen las filas de anclas, sin estados residuales; (6) **sin gestos** (solo clic/toque y teclado); (7) **fallback sin JS** (sin el marcador `js` de T1002): las anclas se pintan como filas compactas visibles a cualquier ancho y el botón no se renderiza; (8) transiciones del panel con `--motion-duration-micro` y **apertura/cierre instantáneos** con movimiento reducido. **D2: el panel NO contiene el selector de idioma** (solo enlaces de secciones). *Cubre FR-010/FR-013/FR-025/US2 esc. 2–3–7, SC-003/SC-004/SC-009*.
@@ -273,7 +273,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: el ciclo completo abrir→navegar→cerrar funciona con ratón y con teclado; se **recuenta** el ciclo de tabulación de `portada-accesibilidad.spec.ts` (`tabCycle` < 30 pasos a 320 px, RG10-21 — el inventario de paradas está en **T1015**, corrección I3) y sigue cumpliendo **sin editar la prueba**.
   - **Commit sugerido**: `feat(frontend): MobileMenu, menu hamburguesa accesible en movil`
 
-- [ ] T1014 · `--header-offset` (ResizeObserver) + `scroll-padding-top` efectivo + integración · `[frontend]`
+- [X] T1014 · `--header-offset` (ResizeObserver) + `scroll-padding-top` efectivo + integración · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/components/SiteHeader.tsx` (EDITADO), `frontend/src/features/publico/components/PublicLayout.tsx` (EDITADO), tests de ambos (EDITADOS **aditivamente**).
   - **Qué hace**: mide la altura real de la cabecera con `ResizeObserver` (con el menú cerrado: el panel es overlay y no altera la altura) y la publica como `--header-offset` en `<html>` para que el `scroll-padding-top` de T1004 impida que la barra tape el destino de un ancla (título de sección siempre visible tras el salto: FR-014/RG10-3). Termina la integración: `PublicLayout` monta `ThemeProvider` (T1005) + `SiteHeader` + `main` + `PublicFooter`, pasando las secciones presentes. *Cubre FR-014/FR-025*, edge case «la barra fija no tapa el destino».
@@ -281,7 +281,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: saltar a una sección deja su título visible (no tapado) con y sin zoom 200 %; las suites congeladas siguen en verde.
   - **Commit sugerido**: `feat(frontend): scroll-padding-top medido desde la cabecera fija`
 
-- [ ] T1015 · `FooterSiteMap` (Explorar / Contacto / Síguenos, sin enlaces rotos) · `[frontend]`
+- [X] T1015 · `FooterSiteMap` (Explorar / Contacto / Síguenos, sin enlaces rotos) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/components/FooterSiteMap.tsx`, `frontend/src/features/publico/components/FooterSiteMap.test.tsx` (NUEVOS).
   - **Qué hace**: mapa del sitio dentro del `<footer>` existente (sin crear otro landmark `contentinfo`): `<nav aria-label={t('footer.sitemap.label')}>` con **nombre accesible propio y distinto** del de la cabecera (dos `navigation` sin nombres distintos romperían las consultas congeladas) y los **3 grupos con su rótulo visible** (D3): **Explorar** (`footer.sitemap.explore`: «Inicio» + las secciones de `useSiteLinks`), **Contacto** (`footer.sitemap.contact`: dirección, correo, teléfono, WhatsApp — mismos datos del bloque 04) y **Síguenos** (`footer.sitemap.social`: Facebook, Instagram, YouTube — mismos enlaces del bloque 05).
@@ -305,7 +305,7 @@ Los nombres del grupo Contacto del pie **no** llevan clave nueva: se componen co
   - **Criterio de terminado**: el mapa lista el 100 % de las secciones visibles y 0 secciones sin publicar; con la previsión F4–F9 (entradas extra en el test) sigue sin enlaces rotos.
   - **Commit sugerido**: `feat(frontend): FooterSiteMap, mapa del sitio en el pie`
 
-- [ ] T1016 · `PublicFooter` con la propuesta B (monta `FooterSiteMap` + franja lema/idioma) · `[frontend]`
+- [X] T1016 · `PublicFooter` con la propuesta B (monta `FooterSiteMap` + franja lema/idioma) · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/components/PublicFooter.tsx` (EDITADO), `frontend/src/features/publico/components/PublicFooter.test.tsx` (NUEVO o ampliado **aditivamente**).
   - **Qué hace**: aplica el sistema visual al pie (tokens semánticos, `--pad-panel`, `--space-section-tight`): marca + lema (`footer.welcome`, Playfair itálica), monta `FooterSiteMap` (T1015) y conserva la franja inferior con el lema y el **selector de idioma** (comportamiento F3 intacto, US4 esc. 5). El `<footer>`/landmark `contentinfo` de F3 se conserva tal cual (R10-9). **La marca del pie sigue siendo texto, no enlace** (D20/C3): el enlace cuyo texto incluye «Simiente» lo garantiza la cabecera (T1011) y así el pie no añade paradas al ciclo de tabulación (I3). *Cubre FR-027/FR-003/US2 esc. 8*.
