@@ -242,3 +242,45 @@ html {
 html.js [data-reveal]:not([data-reveal='in']) .section-heading-accent {
   transform: scaleX(0);
 }
+
+/*
+ * Lista de navegación del sitio público (F10 · T1012/T1013/D15/D16).
+ * · Escritorio (≥ 861 px): filas `flex-wrap` compactas, sin scroll lateral.
+ * · Móvil (≤ 860 px): colapsada con `display:none` (fuera del orden de
+ *   tabulación y del árbol de accesibilidad) salvo con el menú abierto
+ *   (`data-open='true'`), en cuyo caso se presenta como panel.
+ * · Sin JS (`html:not(.js)`): se muestran siempre las filas compactas.
+ */
+.public-nav-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+@media (max-width: 860px) {
+  .public-nav-list {
+    display: none;
+  }
+
+  .public-nav-list[data-open='true'] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    position: fixed;
+    inset: var(--header-offset, 0px) 0 auto 0;
+    z-index: 40;
+    max-height: calc(100dvh - var(--header-offset, 0px));
+    overflow-y: auto;
+    padding: 1rem 6vw 2rem;
+    background: var(--surface-raised);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  html:not(.js) .public-nav-list {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}

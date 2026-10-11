@@ -6,6 +6,7 @@ import type { SiteLink } from '../hooks/useSiteLinks';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import { useLanguage } from '../i18n/useLanguage';
 import { BrandLogo } from './BrandLogo';
+import { PublicNav } from './PublicNav';
 
 export interface SiteHeaderProps {
   /** Identidad publicada (marca y logotipo); si no hay, respaldo de marca. */
@@ -48,23 +49,7 @@ export function SiteHeader({ identity, links, actions }: SiteHeaderProps) {
           <span className="font-display text-2xl max-[480px]:sr-only">{brandName}</span>
         </Link>
 
-        <nav
-          aria-label={t('nav.label')}
-          className="order-2 min-w-0 flex-none min-[861px]:order-none min-[861px]:flex-1"
-        >
-          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {links.map((link) => (
-              <li key={link.id}>
-                <a
-                  href={link.href}
-                  className="inline-flex min-h-11 items-center whitespace-nowrap font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                >
-                  {t(link.messageKey)}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <PublicNav links={links} />
 
         <div className="ml-auto flex items-center gap-2">
           <LanguageSwitcher className="text-ink" />
