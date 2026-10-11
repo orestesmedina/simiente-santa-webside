@@ -62,6 +62,8 @@ html[data-theme='light'] {
   --border: rgb(238 243 248 / 0.16);
   --accent: #00c9a7;
   --accent-strong: #0e7a66;
+  --accent-hover: #0e7a66;
+  --on-accent-hover: #ffffff;
   --focus: #00c9a7;
   --shadow: 0 18px 44px rgb(5 10 20 / 0.35);
   --logo-surface: #f5f2ec;
@@ -76,6 +78,8 @@ html[data-theme='dark'] {
   --border: rgb(238 243 248 / 0.14);
   --accent: #00c9a7;
   --accent-strong: #00c9a7;
+  --accent-hover: #00c9a7;
+  --on-accent-hover: #1a2b4a;
   --focus: #00c9a7;
   --shadow: 0 18px 44px rgb(0 0 0 / 0.5);
   --logo-surface: #f5f2ec;
@@ -93,6 +97,8 @@ html[data-theme='dark'] {
   --color-line: var(--border);
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent-hover: var(--on-accent-hover);
   --color-focus: var(--focus);
   --color-logo-surface: var(--logo-surface);
   --shadow-surface: var(--shadow);

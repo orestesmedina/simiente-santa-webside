@@ -29,7 +29,7 @@ const BASE =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 const VARIANTS: Record<PublicButtonVariant, string> = {
-  primary: 'bg-accent text-navy hover:bg-accent-strong hover:text-white',
+  primary: 'bg-accent text-navy hover:bg-accent-hover hover:text-on-accent-hover',
   // Coral solo como detalle gráfico (nunca como texto de marca).
   accent: 'bg-coral text-navy',
   secondary: 'border-2 border-current bg-transparent text-ink hover:bg-surface-raised',
