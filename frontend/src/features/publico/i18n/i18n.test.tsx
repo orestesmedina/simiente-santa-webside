@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { contrast, readSystemCss, tokenValues } from '../../../test/contrast';
 import { en } from './en';
 import { es } from './es';
 import { LanguageProvider } from './LanguageProvider';
@@ -220,8 +221,9 @@ describe('selector de idioma compacto (F10 · T1027/FR-015/FR-016/FR-017)', () =
     const active = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
     const inactive = screen.getByRole('radio', { name: 'Inglés' }).closest('label') as HTMLElement;
     expect(active.className).toContain('font-bold');
-    expect(active.className).toContain('text-accent');
+    expect(active.className).toContain('bg-accent');
     expect(inactive.className).not.toContain('font-bold');
+    expect(inactive.className).not.toContain('bg-accent');
   });
 
   it('no provoca desplazamiento horizontal (contenedor en línea, sin anchos forzados)', () => {
@@ -245,5 +247,26 @@ describe('selector de idioma compacto (F10 · T1027/FR-015/FR-016/FR-017)', () =
     const label = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
     expect(label.className).toContain('px-0.5');
     expect(label.className).not.toContain('px-1');
+  });
+
+  it('la opción activa usa un par de contraste sólido y cumple AA en ambos temas (N1)', () => {
+    renderApp();
+
+    const active = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    // Par sólido (sin alfa): fondo `--accent` + texto navy, igual que el botón primario.
+    expect(active.className).toContain('bg-accent');
+    expect(active.className).toContain('text-navy');
+    expect(active.className).toContain('font-bold');
+
+    const css = readSystemCss();
+    const backgrounds = tokenValues(css, 'accent');
+    const navy = tokenValues(css, 'color-navy')[0];
+    expect(backgrounds, 'un valor de acento por tema').toHaveLength(2);
+    expect(contrast(backgrounds[0], navy), 'opción activa en tema claro').toBeGreaterThanOrEqual(
+      4.5,
+    );
+    expect(contrast(backgrounds[1], navy), 'opción activa en tema oscuro').toBeGreaterThanOrEqual(
+      4.5,
+    );
   });
 });

@@ -42,7 +42,7 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
             key={code}
             className={[
               'inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full px-0.5 text-sm',
-              active ? 'bg-accent/15 font-bold text-accent' : 'font-medium text-muted',
+              active ? 'bg-accent font-bold text-navy' : 'font-medium text-muted',
             ].join(' ')}
           >
             <input
