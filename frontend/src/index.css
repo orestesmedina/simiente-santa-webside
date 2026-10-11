@@ -307,6 +307,26 @@ html[data-theme='dark'] {
 }
 
 /*
+ * Entrada del hero (F10 · T1021): solo en la primera carga real (claves React
+ * estables, FR-008) y con el token de hero. Con `prefers-reduced-motion` el
+ * bloque global la deja en su estado final al instante.
+ */
+@keyframes hero-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-distance));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-enter {
+  animation: hero-enter var(--motion-duration-hero) var(--motion-ease-out) both;
+}
+
+/*
  * Lista de navegación del sitio público (F10 · T1012/T1013/D15/D16).
  * · Escritorio (≥ 861 px): filas `flex-wrap` compactas, sin scroll lateral.
  * · Móvil (≤ 860 px): colapsada con `display:none` (fuera del orden de

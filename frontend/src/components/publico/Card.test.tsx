@@ -45,4 +45,10 @@ describe('Card · superficie de contenido (FR-003/FR-024)', () => {
 
     expect(container.firstElementChild?.tagName).toBe('LI');
   });
+
+  it('padded={false} quita el padding de panel (marco de imagen a sangre)', () => {
+    const { container } = render(<Card padded={false}>Contenido</Card>);
+
+    expect((container.firstElementChild as HTMLElement).className).not.toContain('p-panel');
+  });
 });

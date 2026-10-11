@@ -20,6 +20,9 @@ describe('PublicButton · primitiva de acción (FR-003/FR-008)', () => {
 
     rerender(<PublicButton variant="secondary">A</PublicButton>);
     expect(screen.getByRole('button').className).toContain('border-current');
+
+    rerender(<PublicButton variant="whatsapp">A</PublicButton>);
+    expect(screen.getByRole('button').className).toContain('bg-leaf');
   });
 
   it('renderiza un enlace cuando recibe href', () => {

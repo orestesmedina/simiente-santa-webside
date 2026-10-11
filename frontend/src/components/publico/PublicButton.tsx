@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /** Variantes de acción del sitio público (FR-003): un solo estilo por función. */
-export type PublicButtonVariant = 'primary' | 'accent' | 'secondary';
+export type PublicButtonVariant = 'primary' | 'accent' | 'secondary' | 'whatsapp';
 
 export interface PublicButtonProps {
   variant?: PublicButtonVariant;
@@ -33,6 +33,8 @@ const VARIANTS: Record<PublicButtonVariant, string> = {
   // Coral solo como detalle gráfico (nunca como texto de marca).
   accent: 'bg-coral text-navy',
   secondary: 'border-2 border-current bg-transparent text-ink hover:bg-surface-raised',
+  // Verde de marca: exclusivo del CTA de WhatsApp (FR-006).
+  whatsapp: 'bg-leaf text-white',
 };
 
 function classesFor(variant: PublicButtonVariant, className: string): string {

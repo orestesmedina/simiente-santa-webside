@@ -31,6 +31,8 @@ export const publicMessageKeys = [
   'identity.mission',
   'identity.vision',
   'identity.lema',
+  'hero.cta.schedule',
+  'hero.cta.whatsapp',
   'contact.phone',
   'contact.email',
   'contact.address',

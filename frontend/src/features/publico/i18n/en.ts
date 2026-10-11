@@ -25,6 +25,8 @@ export const en: PublicMessages = {
   'identity.mission': 'Our mission',
   'identity.vision': 'Our vision',
   'identity.lema': 'Our motto',
+  'hero.cta.schedule': 'See schedule',
+  'hero.cta.whatsapp': 'Message us on WhatsApp',
   'contact.phone': 'Phone',
   'contact.email': 'Email',
   'contact.address': 'Address',

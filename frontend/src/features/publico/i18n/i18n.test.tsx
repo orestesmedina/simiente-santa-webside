@@ -174,4 +174,14 @@ describe('claves i18n nuevas de F10 (FR-019/SC-010)', () => {
     expect(es['theme.toLight']).toBe('Cambiar a tema claro');
     expect(en['theme.toLight']).toBe('Switch to light theme');
   });
+
+  it('los CTA del hero no colisionan con los canales de WhatsApp (D19)', () => {
+    expect(es['hero.cta.schedule']).toBe('Ver horario');
+    expect(es['hero.cta.whatsapp']).toBe('Escríbenos por WhatsApp');
+    // El nombre del CTA del hero NO contiene los de la sección 03.
+    expect(es['hero.cta.whatsapp']).not.toContain('Escribir por WhatsApp');
+    expect(es['hero.cta.whatsapp']).not.toContain('Entrar al grupo');
+    expect(en['hero.cta.whatsapp']).not.toContain('Chat on WhatsApp');
+    expect(en['hero.cta.whatsapp']).not.toContain('Join the group');
+  });
 });

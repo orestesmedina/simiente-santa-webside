@@ -7,6 +7,8 @@ export interface CardProps {
   variant?: CardVariant;
   /** Añade elevación en hover **solo** cuando la tarjeta es interactiva. */
   interactive?: boolean;
+  /** `false` quita el padding de panel (p. ej. un marco de imagen a sangre). */
+  padded?: boolean;
   as?: 'div' | 'section' | 'article' | 'li';
   className?: string;
   children: ReactNode;
@@ -22,7 +24,7 @@ export interface CardProps {
  * aplica **únicamente** si la tarjeta es interactiva; nunca sobre imágenes de
  * marca (FR-002).
  */
-const BASE = 'rounded-[26px] border border-line p-panel shadow-surface';
+const BASE = 'rounded-[26px] border border-line shadow-surface';
 
 const VARIANTS: Record<CardVariant, string> = {
   solid: 'bg-surface-raised',
@@ -36,11 +38,18 @@ const INTERACTIVE =
 export function Card({
   variant = 'solid',
   interactive = false,
+  padded = true,
   as: Tag = 'div',
   className = '',
   children,
 }: CardProps) {
-  const classes = [BASE, VARIANTS[variant], interactive ? INTERACTIVE : '', className]
+  const classes = [
+    BASE,
+    padded ? 'p-panel' : '',
+    VARIANTS[variant],
+    interactive ? INTERACTIVE : '',
+    className,
+  ]
     .filter(Boolean)
     .join(' ');
 

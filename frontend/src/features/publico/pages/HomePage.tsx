@@ -61,7 +61,12 @@ export function HomePage() {
         </div>
       )}
 
-      {identity && <IdentityHero identity={identity} />}
+      {identity && (
+        <IdentityHero
+          identity={identity}
+          whatsappHref={whatsapp && whatsapp.length > 0 ? '#whatsapp' : undefined}
+        />
+      )}
       {about && <WhoWeAreSection about={about} />}
       {schedule && schedule.length > 0 && <ScheduleSection items={schedule} />}
       {whatsapp && whatsapp.length > 0 && <WhatsAppSection items={whatsapp} />}
