@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Entregar |
+| Fase | 7/9 · Entregar (entregables listos; en la puerta 3) |
 | Ciclo de corrección | 3/3 (cerrado: los tres roles aprobaron en el ciclo 3) |
-| Próximo paso | Entrega: `devops` (CI, Docker, `.env.example`, PR) + `documentador` (CHANGELOG, README, notas); luego **puerta 3** (aprobar merge y despliegue) |
+| Próximo paso | **Puerta 3**: el humano abre el PR (el entorno no tiene `gh`) y aprueba el merge; el despliegue a producción también lo aprueba un humano |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -49,6 +49,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-11 — **Fase 7 (Entregar) preparada**: `devops` verificó la entrega (`make ci` EXIT=0, unit 409, sin deriva, Docker sano, `.env.example` sin cambios) y redactó `pr.md`; `documentador` actualizó `CHANGELOG.md` (**0.4.0**), `README.md` y creó `docs/entrega/F10-sistema-de-diseno-y-movimiento.md`. **El push y la apertura del PR quedan para el humano** (el entorno no tiene `gh` ni credenciales). Roadmap: F10 → **en revisión**.
 - 2026-10-11 — **Convergencia (Fase 6): Converged** — 36/36 tareas `[X]`, 0 pendientes; los tres roles aprobaron. Arranca la Fase 7 (entrega).
 - 2026-10-11 — **Fase 5 (Validar) cerrada — APROBADO por los tres roles** (ciclo 3): `qa-tester`, `revisor-codigo` y `seguridad` aprobaron tras 3 ciclos de corrección (C1, C2, IMP-1, I1 → N1 → limpio). Unit **409**, e2e **25/25** F10 + **8/8** congeladas, 0 pruebas congeladas editadas. Consolidado en `revision-2026-10-11-final.md`. Arranca la convergencia.
 - 2026-10-11 — **Ciclo 2 (re-validación)**: `qa-tester` **APROBADO** (IMP-1 cerrado: selector 152×44 px < F3), `seguridad` **APROBADO** (M1 cerrado), `revisor-codigo` **RECHAZADO** por **N1**: la corrección de IMP-1 introdujo una regresión de contraste (opción activa del selector a 4,05:1 en tema claro, < AA). Arranca el ciclo 3.
