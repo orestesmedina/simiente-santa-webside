@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<!-- MAQUETA F10 — Propuesta B «Cielo Abierto» · Solo diseño, no es código de producción. -->
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F10 · Propuesta B — Cielo Abierto · Maqueta</title>
+<style>
+  :root{
+    --navy:#1a2b4a; --navy-soft:#e3e8f0; --teal:#00c9a7; --teal-strong:#0e7a66;
+    --cream:#F5F2EC; --coral:#ff6b3d; --leaf:#217638;
+    --bg:#1a2b4a;                /* El azul marino es el cielo: fondo dominante 70 % */
+    --panel:#22355c;             /* derivado de marca para capas */
+    --ink:#ffffff; --ink-soft:rgba(255,255,255,.72); --hair:rgba(255,255,255,.18);
+    --radius:1rem; --focus:#00c9a7;
+    --font-display:'Bebas Neue', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+    --font-body:'Poppins', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+    --font-emph:'Playfair Display', Georgia, 'Times New Roman', serif;
+  }
+  [data-theme="dark"]{ /* oscuro aún más hondo: cielo nocturno */
+    --bg:#0d1626; --panel:#131f36; --ink:#eef1f6; --ink-soft:rgba(238,241,246,.68); --hair:rgba(238,241,246,.14);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); font-size:1.125rem; line-height:1.65}
+
+  .skip{position:absolute; left:-999px; top:.5rem; background:var(--teal); color:#0d1626; padding:.5rem 1rem; border-radius:.5rem; z-index:99; font-weight:600}
+  .skip:focus{left:.5rem}
+  :where(a,button):focus-visible{outline:2px solid var(--focus); outline-offset:2px; border-radius:.4rem}
+
+  /* ===== Cabecera fija: banda delgada que nunca opaca el contenido ===== */
+  header.top{position:fixed; inset:0 0 auto 0; z-index:50; background:var(--bg); border-bottom:1px solid var(--hair);
+    transition:background .3s ease}
+  header.top.atras{background:color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter:blur(8px)}
+  .top-inner{max-width:74rem; margin:0 auto; padding:.5rem 1rem; display:flex; align-items:center; gap:.5rem 1rem; flex-wrap:wrap; row-gap:.1rem}
+  .brand{display:flex; align-items:center; gap:.6rem; text-decoration:none; margin-right:auto}
+  .logo{width:38px; height:38px; object-fit:contain} /* logo intacto, sobre su propia pastilla crema para legibilidad en ambos temas */
+  .brand b{font-family:var(--font-display); font-size:1.25rem; letter-spacing:.07em}
+  nav.roster{display:flex; flex-wrap:wrap; gap:.2rem} /* todo visible, sin hamburguesa ni scroll lateral */
+  nav.roster a{text-decoration:none; color:var(--ink); font-size:.9rem; padding:.5rem .62rem; border-radius:999px; min-height:44px; display:flex; align-items:center; transition:color .2s, background .2s}
+  nav.roster a:hover{background:var(--panel)}
+  nav.roster a[aria-current]{color:var(--teal)}
+  .tools{display:flex; align-items:center; gap:.5rem}
+  .lang{display:flex; align-items:center; font-size:.85rem; border:1px solid var(--hair); border-radius:999px; overflow:hidden}
+  .lang .lbl{padding:.45rem .55rem .45rem .8rem; opacity:.6; font-size:.78rem}
+  .lang a{text-decoration:none; color:var(--ink); padding:.5rem .8rem; min-height:36px; display:flex; align-items:center}
+  .lang a[aria-current]{background:var(--teal); color:#0d1626; font-weight:600}
+  .theme-btn{background:transparent; border:1px solid var(--hair); border-radius:999px; height:44px; min-width:44px; padding:0 .7rem; color:var(--ink); font-size:1.05rem; cursor:pointer}
+  .theme-btn:hover{border-color:var(--teal)}
+
+  /* ===== Hero a sangre completa: el cielo ===== */
+  main{padding-top:6.2rem}
+  .hero{min-height:72vh; display:grid; place-items:center; text-align:center; padding:3rem 1rem 4rem; position:relative; overflow:hidden}
+  .hero::before{ /* haz de luz de turquesa: geometría, no decoración sobre el logo */
+    content:""; position:absolute; width:140vmax; height:140vmax; left:50%; top:100%; transform:translateX(-50%);
+    background:radial-gradient(circle at center, rgba(0,201,167,.16), transparent 55%); pointer-events:none}
+  .hero > *{position:relative}
+  .logo-hero{width:clamp(88px,12vw,140px); object-fit:contain; margin-bottom:1.4rem} /* tal cual el archivo, nunca efectos */
+  h1{font-family:var(--font-display); font-size:clamp(3.2rem,10vw,6.5rem); line-height:.95; letter-spacing:.02em}
+  .sub{font-family:var(--font-emph); font-style:italic; font-size:clamp(1.25rem,3vw,1.7rem); color:var(--ink-soft); max-width:38rem; margin:.9rem auto 1.8rem}
+  .cta-row{display:flex; gap:.9rem; flex-wrap:wrap; justify-content:center}
+  .btn{display:inline-flex; align-items:center; gap:.55rem; background:var(--teal); color:#0d1626; font-weight:600; text-decoration:none; border-radius:999px; padding:.8rem 1.7rem; min-height:48px; transition:transform .2s ease, background .2s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn.ghost{background:transparent; color:var(--ink); border:1.5px solid var(--hair)}
+  .btn.ghost:hover{border-color:var(--teal)}
+  .estrella{position:absolute; border-radius:50%; background:var(--teal); opacity:.5} /* micropíxeles de marca (Q6) */
+  .estrella.e1{width:6px;height:6px;left:14%;top:26%} .estrella.e2{width:4px;height:4px;left:80%;top:18%}
+  .estrella.e3{width:3px;height:3px;left:26%;top:12%} .estrella.e4{width:5px;height:5px;left:68%;top:60%}
+
+  /* ===== Secciones: capas de panel que flotan sobre el cielo ===== */
+  section{max-width:74rem; margin:0 auto; padding:2.2rem 1rem}
+  .capa{background:var(--panel); border:1px solid var(--hair); border-radius:1.5rem; padding:2rem 1.5rem}
+  @media(min-width:800px){ .capa{padding:2.8rem 2.6rem} }
+  .sec-head{display:flex; align-items:baseline; gap:.9rem; margin-bottom:1.8rem}
+  h2{font-family:var(--font-display); font-size:clamp(2.1rem,5.5vw,3.2rem); line-height:1}
+  .num{color:var(--teal); font-family:var(--font-display); font-size:1.35rem}
+  .lectura{max-width:46rem; color:var(--ink-soft)}
+  .tarjetas{display:grid; gap:1rem; grid-template-columns:1fr}
+  @media(min-width:640px){ .tarjetas{grid-template-columns:repeat(2,1fr)} }
+  @media(min-width:980px){ .tarjetas{grid-template-columns:repeat(3,1fr)} }
+  .card{background:var(--bg); border:1px solid var(--hair); border-radius:1.2rem; padding:1.3rem; transition:border-color .25s, transform .25s}
+  .card:hover{border-color:var(--teal); transform:translateY(-3px)}
+  .card h3{font-weight:600; margin-bottom:.2rem}
+  .hora{font-family:var(--font-display); font-size:2rem; color:var(--teal); line-height:1.05}
+  .lugar{font-size:.95rem; color:var(--ink-soft)}
+  .contacto{display:grid; gap:1.2rem; grid-template-columns:1fr}
+  @media(min-width:760px){ .contacto{grid-template-columns:repeat(3,1fr)} }
+  .dato .k{font-size:.78rem; letter-spacing:.2em; text-transform:uppercase; color:var(--teal); margin-bottom:.3rem}
+  .dato a{color:var(--ink); text-decoration:none; border-bottom:1px solid var(--hair)}
+  .dato a:hover{color:var(--teal); border-color:var(--teal)}
+  .redes{display:flex; flex-wrap:wrap; gap:.7rem}
+  .pill-red{display:inline-flex; align-items:center; gap:.55rem; background:var(--bg); border:1px solid var(--hair); border-radius:999px; padding:.65rem 1.3rem; text-decoration:none; color:var(--ink); font-weight:500; transition:border-color .2s, transform .2s}
+  .pill-red:hover{border-color:var(--teal); transform:translateY(-2px)}
+  .coral-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--coral)} /* acento 10 %, puntual */
+
+  /* ===== Pie ===== */
+  footer.site{border-top:1px solid var(--hair); padding:2.4rem 1rem 2.2rem; text-align:center}
+  .foot-inner{max-width:74rem; margin:0 auto; display:flex; flex-direction:column; gap:1rem; align-items:center}
+  .frase{font-family:var(--font-emph); font-style:italic; font-size:1.3rem; color:var(--ink-soft)}
+  .foot-foot{display:flex; gap:1.2rem; align-items:center; flex-wrap:wrap; justify-content:center}
+  .foot-foot a{color:var(--ink); text-decoration:none; padding:.55rem; display:inline-flex; min-height:44px; align-items:center}
+  .foot-foot a:hover{color:var(--teal)}
+  .foot-lang{display:flex; gap:.3rem; font-size:.85rem; align-items:center}
+  .foot-lang a{text-decoration:none; color:var(--ink); padding:.4rem .6rem; border-radius:999px}
+  .foot-lang a[aria-current]{background:var(--teal); color:#0d1626; font-weight:600}
+
+  /* ===== Movimiento moderado ===== */
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important; transform:none !important} html{scroll-behavior:auto} }
+  .reveal{opacity:1}
+  @media (prefers-reduced-motion: no-preference){
+    .reveal{opacity:0; transform:translateY(12px); transition:opacity .45s ease, transform .45s ease}
+    .reveal.visible{opacity:1; transform:none}
+    .estrella{animation:titilar 4s ease-in-out infinite}
+    @keyframes titilar{0%,100%{opacity:.5}50%{opacity:.15}}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido principal</a>
+
+<header class="top" id="topbar">
+  <div class="top-inner">
+    <a class="brand" href="#contenido">
+      <!-- El logo se apoya en pastilla crema para verse intacto sobre navy y sobre oscuro -->
+      <span style="background:#F5F2EC; border-radius:10px; padding:3px; display:inline-flex"><svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 32c0-9 2.5-16 9-21-1.5 12-4 17-9 21z" fill="#217638"/><circle cx="15.5" cy="26" r="3.2" fill="#1a2b4a"/></svg></span>
+      <b>SIMIENTE SANTA</b>
+    </a>
+    <nav class="roster" aria-label="Secciones de la portada">
+      <a href="#somos">Quiénes somos</a>
+      <a href="#horario">Horario</a>
+      <a href="#whatsapp">WhatsApp</a>
+      <a href="#contacto">Contacto</a>
+      <a href="#redes">Redes</a>
+    </nav>
+    <div class="tools">
+      <div class="lang" role="group" aria-label="Idioma">
+        <span class="lbl" aria-hidden="true">🌐</span>
+        <a href="#" aria-current="true" lang="es">Español</a>
+        <a href="#" lang="en">English</a>
+      </div>
+      <button class="theme-btn" id="themeBtn" type="button" aria-pressed="false" aria-label="Cambiar a tema oscuro">🌙</button>
+    </div>
+  </div>
+</header>
+
+<main id="contenido">
+  <div class="hero">
+    <span class="estrella e1" aria-hidden="true"></span><span class="estrella e2" aria-hidden="true"></span>
+    <span class="estrella e3" aria-hidden="true"></span><span class="estrella e4" aria-hidden="true"></span>
+    <div>
+      <svg class="logo-hero" viewBox="0 0 40 40" aria-label="Logotipo de la iglesia Simiente Santa"><circle cx="20" cy="20" r="19" fill="#F5F2EC"/><path d="M20 32c0-9 2.5-16 9-21-1.5 12-4 17-9 21z" fill="#217638"/><circle cx="15.5" cy="26" r="3.2" fill="#1a2b4a"/></svg>
+      <h1>BIENVENIDO<br>A TU CASA</h1>
+      <p class="sub">«Esta siempre será tu casa.» — Simiente Santa, iglesia cristiana</p>
+      <div class="cta-row">
+        <a class="btn" href="#horario">Ver horario de servicios</a>
+        <a class="btn ghost" href="#whatsapp">Escribir por WhatsApp <span class="coral-dot" aria-hidden="true"></span></a>
+      </div>
+    </div>
+  </div>
+
+  <section id="somos" class="reveal"><div class="capa">
+    <div class="sec-head"><span class="num" aria-hidden="true">◆ 01</span><h2>Quiénes somos</h2></div>
+    <div class="lectura"><p>Texto real de «quiénes somos» publicado desde el panel. La capa flotante abre un respiro dentro del cielo azul: aire, foco y jerarquía sin recargar.</p></div>
+  </div></section>
+
+  <section id="horario" class="reveal"><div class="capa">
+    <div class="sec-head"><span class="num" aria-hidden="true">◆ 02</span><h2>Horario de servicios</h2></div>
+    <div class="tarjetas">
+      <div class="card"><div class="hora">10:00 a. m.</div><h3>Culto de adoración</h3><p class="lugar">Domingo · Templo principal</p></div>
+      <div class="card"><div class="hora">7:00 p. m.</div><h3>Estudio bíblico</h3><p class="lugar">Miércoles · Salón anexo</p></div>
+      <div class="card"><div class="hora">6:30 a. m.</div><h3>Oración de la mañana</h3><p class="lugar">Viernes · En línea</p></div>
+    </div>
+  </div></section>
+
+  <section id="whatsapp" class="reveal"><div class="capa">
+    <div class="sec-head"><span class="num" aria-hidden="true">◆ 03</span><h2>WhatsApp</h2></div>
+    <div class="tarjetas">
+      <div class="card"><h3>Consejería pastoral</h3><p class="lugar">Mensaje directo</p><br><a class="btn" href="#">Escribir por WhatsApp</a></div>
+      <div class="card"><h3>Grupo de oración</h3><p class="lugar">Grupo</p><br><a class="btn ghost" href="#">Entrar al grupo</a></div>
+    </div>
+  </div></section>
+
+  <section id="contacto" class="reveal"><div class="capa">
+    <div class="sec-head"><span class="num" aria-hidden="true">◆ 04</span><h2>Contacto</h2></div>
+    <div class="contacto">
+      <div class="dato"><p class="k">Dirección</p><p>De la iglesia 100, San José</p></div>
+      <div class="dato"><p class="k">Correo</p><a href="mailto:hola@simiente.santa">hola@simiente.santa</a></div>
+      <div class="dato"><p class="k">Teléfono</p><a href="tel:+50688888888">+506 8888 8888</a></div>
+    </div>
+  </div></section>
+
+  <section id="redes" class="reveal">
+    <div class="sec-head"><span class="num" aria-hidden="true">◆ 05</span><h2>Redes sociales</h2></div>
+    <div class="redes">
+      <a class="pill-red" href="#">✦ Ver en Facebook</a>
+      <a class="pill-red" href="#">◎ Ver en Instagram</a>
+      <a class="pill-red" href="#">▷ Ver en YouTube</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="foot-inner">
+    <p class="frase">«Esta siempre será tu casa.»</p>
+    <div class="foot-foot">
+      <a href="#contenido">↑ Volver arriba</a>
+      <div class="foot-lang" role="group" aria-label="Idioma">
+        <a href="#" aria-current="true">Español</a><a href="#">English</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Maqueta: alterna tema. App real: recuerda elección (FR-023) y respeta la preferencia del sistema.
+  const btn=document.getElementById('themeBtn'), root=document.documentElement, bar=document.getElementById('topbar');
+  btn.addEventListener('click',()=>{
+    const dark=root.dataset.theme==='dark';
+    root.dataset.theme=dark?'light':'dark';
+    btn.textContent=dark?'🌙':'☀️';
+    btn.setAttribute('aria-pressed',String(!dark));
+    btn.setAttribute('aria-label',dark?'Cambiar a tema oscuro':'Cambiar a tema claro');
+  });
+  addEventListener('scroll',()=>bar.classList.toggle('atras',scrollY>40),{passive:true});
+  const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add('visible')),{threshold:.1});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

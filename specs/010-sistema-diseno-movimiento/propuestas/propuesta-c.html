@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<!-- MAQUETA F10 — Propuesta C «Luz Serena» · Solo diseño, no es código de producción. -->
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F10 · Propuesta C — Luz Serena · Maqueta</title>
+<style>
+  :root{
+    --navy:#1a2b4a; --navy-soft:#e3e8f0; --teal:#00c9a7; --teal-strong:#0e7a66;
+    --cream:#F5F2EC; --coral:#ff6b3d; --leaf:#217638;
+    --bg:#ffffff; --wash:var(--cream); --ink:var(--navy); --hair:var(--navy-soft);
+    --focus:var(--teal-strong);
+    --font-display:'Bebas Neue', 'Arial Narrow', 'Helvetica Neue', sans-serif;
+    --font-body:'Poppins', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+    --font-emph:'Playfair Display', Georgia, 'Times New Roman', serif;
+  }
+  [data-theme="dark"]{ /* tinta nocturna cálida: papel oscuro, tinta crema */
+    --bg:#10192b; --wash:#182338; --ink:#edf0f5; --hair:#2c3a58; --focus:var(--teal);
+    --teal-strong:var(--teal);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); font-size:1.125rem; line-height:1.65}
+  :where(a,button):focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+  a{color:inherit}
+
+  .skip{position:absolute; left:-999px; top:.5rem; background:var(--navy); color:#fff; padding:.5rem 1rem; z-index:99; border-radius:.25rem; font-weight:600}
+  .skip:focus{left:.75rem; top:.75rem}
+  [data-theme="dark"] .skip{background:var(--teal); color:#10192b}
+
+  /* ===== Cabecera:Una línea de tinta fina. Todo sobre el papel, sin cajas ===== */
+  header.top{position:fixed; inset:0 0 auto 0; z-index:50; background:var(--bg); border-bottom:1px solid var(--ink);}
+  .top-inner{max-width:68rem; margin:0 auto; padding:.5rem 1rem; display:flex; align-items:center; gap:.35rem .8rem; flex-wrap:wrap; row-gap:.1rem}
+  .brand{display:flex; align-items:center; gap:.55rem; text-decoration:none; margin-right:auto}
+  .logo{width:34px; height:34px; object-fit:contain}
+  .brand b{font-family:var(--font-body); font-weight:600; font-size:.95rem; letter-spacing:.28em; text-transform:uppercase}
+  nav.menu{display:flex; flex-wrap:wrap; gap:.1rem}
+  nav.menu a{text-decoration:none; font-size:.85rem; letter-spacing:.06em; padding:.55rem .55rem; min-height:44px; display:flex; align-items:center; color:var(--ink); position:relative}
+  nav.menu a::after{content:""; position:absolute; left:.55rem; right:.55rem; bottom:.6rem; height:2px; background:var(--teal-strong); transform:scaleX(0); transform-origin:left; transition:transform .25s ease}
+  nav.menu a:hover::after, nav.menu a[aria-current]::after{transform:scaleX(1)}
+  [data-theme="dark"] nav.menu a::after{background:var(--teal)}
+  .tools{display:flex; align-items:center; gap:.4rem}
+  .lang{display:flex; align-items:center; gap:.1rem; font-size:.82rem}
+  .lang .lbl{font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; opacity:.55}
+  .lang a{text-decoration:none; padding:.5rem .5rem; min-height:36px; display:flex; align-items:center; color:var(--ink); opacity:.75}
+  .lang a[aria-current]{opacity:1; font-weight:600; text-decoration:underline; text-underline-offset:4px; text-decoration-color:var(--teal-strong)}
+  [data-theme="dark"] .lang a[aria-current]{text-decoration-color:var(--teal)}
+  .theme-btn{background:transparent; border:1.5px solid var(--ink); width:44px; height:44px; border-radius:50%; font-size:1rem; cursor:pointer; color:var(--ink); transition:background .2s,color .2s}
+  .theme-btn:hover{background:var(--ink); color:var(--bg)}
+
+  main{max-width:68rem; margin:0 auto; padding:5.6rem 1rem 0}
+
+  /* ===== Hero editorial: retícula asimétrica de tinta y aire ===== */
+  .hero{padding:2.5rem 0 4rem; display:grid; gap:2.2rem; border-bottom:1px solid var(--hair); padding-bottom:4rem}
+  @media(min-width:900px){ .hero{grid-template-columns:7fr 5fr; align-items:end} }
+  .over{font-size:.8rem; letter-spacing:.28em; text-transform:uppercase; display:flex; gap:.8rem; align-items:center; margin-bottom:1rem; opacity:.75}
+  .over::before{content:""; width:2.4rem; height:2px; background:var(--teal-strong)} [data-theme="dark"] .over::before{background:var(--teal)}
+  h1{font-family:var(--font-emph); font-weight:400; font-size:clamp(2.4rem,6vw,4.2rem); line-height:1.12}
+  h1 b{font-family:var(--font-display); font-weight:400; letter-spacing:.03em; display:block; font-size:1.25em; line-height:.95; text-transform:uppercase}
+  .hero-meta{display:grid; gap:1rem; border-top:1px solid var(--hair); padding-top:1.2rem; font-size:.95rem}
+  .hero-media{aspect-ratio:3/2; background:var(--wash); border:1px solid var(--hair); border-radius:.25rem; display:grid; place-items:center; color:var(--ink)}
+  .media-note{font-size:.8rem; letter-spacing:.2em; text-transform:uppercase; opacity:.6}
+  .hero-actions{display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.4rem}
+  .link-u{display:inline-flex; align-items:center; gap:.5rem; text-decoration:none; font-weight:600; border-bottom:2px solid var(--teal-strong); padding:.35rem .1rem; min-height:44px; transition:color .2s}
+  .link-u:hover{color:var(--teal-strong)} [data-theme="dark"] .link-u:hover{color:var(--teal)}
+  [data-theme="dark"] .link-u{border-color:var(--teal)}
+  .btn-sol{display:inline-flex; align-items:center; gap:.5rem; background:var(--ink); color:var(--bg); border:1.5px solid var(--ink); text-decoration:none; font-weight:600; padding:.7rem 1.5rem; min-height:48px; border-radius:999px; transition:background .2s,color .2s}
+  .btn-sol:hover{background:transparent; color:var(--ink)}
+
+  section{padding:3.6rem 1rem; max-width:68rem; margin:0 auto}
+  .sec-head{display:grid; grid-template-columns:auto 1fr auto; gap:1rem; align-items:baseline; border-bottom:1px solid var(--hair); padding-bottom:.7rem; margin-bottom:1.8rem}
+  .num{font-family:var(--font-display); font-size:1.2rem; color:var(--teal-strong)} [data-theme="dark"] .num{color:var(--teal)}
+  h2{font-size:1rem; letter-spacing:.3em; text-transform:uppercase; font-weight:600}
+  aside.nota{font-family:var(--font-emph); font-style:italic; font-size:.95rem; opacity:.7; text-align:right}
+  .cols{display:grid; gap:1.6rem}
+  @media(min-width:820px){ .cols{grid-template-columns:5fr 4fr} .cols.relato{grid-template-columns:2fr 1fr; gap:3rem} }
+  .relato p:first-child{font-family:var(--font-emph); font-style:italic; font-size:1.35rem; line-height:1.5}
+  .ficha{background:var(--wash); border:1px solid var(--hair); padding:1.4rem; border-radius:.25rem}
+  .fila{display:grid; grid-template-columns:8.5rem 1fr; gap:1rem; padding:1rem .4rem; border-bottom:1px solid var(--hair); transition:background .2s}
+  .fila:last-child{border-bottom:0}
+  .fila:hover{background:color-mix(in srgb, var(--teal) 8%, transparent)}
+  .dia{font-family:var(--font-display); font-size:1.15rem; letter-spacing:.05em}
+  .hrs{font-weight:600} .hrs small{display:block; font-weight:400; font-size:.9rem; opacity:.75}
+  .btn{display:inline-flex; align-items:center; gap:.5rem; background:var(--teal); color:#0d1626; font-weight:600; text-decoration:none; padding:.75rem 1.5rem; min-height:48px; border-radius:2px; transition:transform .2s}
+  .btn:hover{transform:translateX(2px)}
+  .btn.l2{background:transparent; border:1.5px solid var(--ink); color:var(--ink)}
+  .datos{display:grid; gap:0; border-top:1px solid var(--ink)}
+  .dato{display:grid; grid-template-columns:7rem 1fr; gap:1rem; padding:1rem .2rem; border-bottom:1px solid var(--hair); align-items:baseline}
+  .dato .k{font-size:.78rem; letter-spacing:.22em; text-transform:uppercase; opacity:.6}
+  .dato a{text-decoration:none; border-bottom:1px solid var(--hair); font-weight:500}
+  .dato a:hover{border-color:var(--teal-strong); color:var(--teal-strong)} [data-theme="dark"] .dato a:hover{color:var(--teal); border-color:var(--teal)}
+  .lista-red{border-top:1px solid var(--ink)}
+  .item-red{display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:1rem .2rem; border-bottom:1px solid var(--hair); text-decoration:none}
+  .item-red:hover{background:var(--wash)}
+  .item-red .n{font-weight:600; display:flex; gap:.6rem; align-items:center}
+  .ver{font-size:.85rem; letter-spacing:.16em; text-transform:uppercase; display:inline-flex; gap:.4rem; align-items:center}
+
+  footer.site{margin-top:3rem; background:var(--ink); color:var(--bg); padding:2.6rem 1rem}
+  .foot-inner{max-width:68rem; margin:0 auto; display:flex; flex-wrap:wrap; gap:1.4rem 2rem; align-items:baseline}
+  .foot-inner .marca{font-family:var(--font-display); font-size:1.8rem; letter-spacing:.06em}
+  .foot-inner .frase{font-family:var(--font-emph); font-style:italic; flex-basis:100%; font-size:1.15rem; opacity:.9}
+  .foot-inner a{color:inherit; text-decoration:none; padding:.5rem .2rem; display:inline-flex; min-height:44px; align-items:center; border-bottom:1px solid transparent}
+  .foot-inner a:hover{border-color:var(--teal)}
+  .foot-lang{margin-left:auto; display:flex; gap:.4rem; align-items:center; font-size:.85rem}
+  .foot-lang a[aria-current]{text-decoration:underline; text-underline-offset:4px}
+
+  /* Movimiento moderado: desvanecer breve al entrar; nada con reduce-motion */
+  .reveal{opacity:1}
+  @media (prefers-reduced-motion: no-preference){
+    .reveal{opacity:0; transform:translateY(10px); transition:opacity .5s ease, transform .5s ease}
+    .reveal.visible{opacity:1; transform:none}
+    html{scroll-behavior:smooth}
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important} html{scroll-behavior:auto} }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido principal</a>
+
+<header class="top">
+  <div class="top-inner">
+    <a class="brand" href="#contenido">
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 33c0-10 3-18 10-24-2 14-5 20-10 24z" fill="#217638"/><circle cx="15" cy="27" r="3" fill="#1a2b4a"/></svg>
+      <b>Simiente Santa</b>
+    </a>
+    <nav class="menu" aria-label="Secciones de la portada">
+      <a href="#somos">Quiénes somos</a>
+      <a href="#horario">Horario</a>
+      <a href="#whatsapp">WhatsApp</a>
+      <a href="#contacto">Contacto</a>
+      <a href="#redes">Redes</a>
+    </nav>
+    <div class="tools">
+      <div class="lang" role="group" aria-label="Idioma">
+        <span class="lbl" aria-hidden="true">ES·</span>  <!-- etiqueta contextual; el nombre completo es el enlace accesible -->
+        <a href="#" aria-current="true" lang="es">Español</a>
+        <span aria-hidden="true">/</span>
+        <a href="#" lang="en">English</a>
+      </div>
+      <button class="theme-btn" id="themeBtn" type="button" aria-pressed="false" aria-label="Cambiar a tema oscuro">☾</button>
+    </div>
+  </div>
+</header>
+
+<main id="contenido">
+  <div class="hero">
+    <div class="reveal">
+      <p class="over">Iglesia cristiana · San José</p>
+      <h1>Brotamos para dar vida<b>Simiente Santa</b></h1>
+      <p style="margin-top:1.2rem; max-width:34rem; color:color-mix(in srgb, var(--ink) 78%, transparent)">Lema y bienvenida publicados desde el panel. Menos cajas, más tinta: el blanco manda y la marca se lee como en una página de libro.</p>
+      <div class="hero-actions">
+        <a class="btn-sol" href="#horario">Ver horario</a>
+        <a class="link-u" href="#whatsapp">Escribir por WhatsApp →</a>
+      </div>
+    </div>
+    <div class="hero-media reveal" role="img" aria-label="Imagen de la portada de la iglesia">
+      <span class="media-note">Imagen de portada (del panel)</span>
+    </div>
+  </div>
+
+  <section id="somos" class="reveal">
+    <div class="sec-head"><span class="num" aria-hidden="true">01</span><h2>Quiénes somos</h2><aside class="nota" aria-hidden="true">casa · fe · vida</aside></div>
+    <div class="cols relato">
+      <p>Texto real de «quiénes somos» publicado desde el panel, conservando los saltos de línea tal como los escribió el equipo. El contraste y el cuerpo de 18 px garantizados para todas las edades.</p>
+      <div class="ficha"><strong>En pocas palabras</strong><p style="font-size:.95rem; margin-top:.4rem">Las frases de énfasis emocional van en Playfair itálica; el énfasis nunca sobra.</p></div>
+    </div>
+  </section>
+
+  <section id="horario" class="reveal">
+    <div class="sec-head"><span class="num" aria-hidden="true">02</span><h2>Horario de servicios</h2><aside class="nota" aria-hidden="true">te esperamos</aside></div>
+    <div class="cols"><div>
+      <div class="fila"><span class="dia">Domingo</span><span class="hrs">10:00 a. m.<small>Culto de adoración · Templo principal</small></span></div>
+      <div class="fila"><span class="dia">Miércoles</span><span class="hrs">7:00 p. m.<small>Estudio bíblico · Salón anexo</small></span></div>
+      <div class="fila"><span class="dia">Viernes</span><span class="hrs">6:30 a. m.<small>Oración · En línea</small></span></div>
+    </div>
+    <div class="ficha"><strong>¿Primera vez?</strong><p style="font-size:.95rem; margin-top:.4rem">Los primeros domingos hay un punto de bienvenida en la entrada. (Contenido real vendría del panel; aquí solo se muestra el hueco de respiro del sistema.)</p></div>
+    </div>
+  </section>
+
+  <section id="whatsapp" class="reveal">
+    <div class="sec-head"><span class="num" aria-hidden="true">03</span><h2>WhatsApp</h2><aside class="nota" aria-hidden="true">hablemos</aside></div>
+    <div class="cols">
+      <div class="ficha"><strong>Consejería pastoral</strong><p style="font-size:.95rem; margin:.3rem 0 .8rem">Mensaje directo</p><a class="btn" href="#">Escribir por WhatsApp</a></div>
+      <div class="ficha"><strong>Grupo de oración</strong><p style="font-size:.95rem; margin:.3rem 0 .8rem">Grupo</p><a class="btn l2" href="#">Entrar al grupo</a></div>
+    </div>
+  </section>
+
+  <section id="contacto" class="reveal">
+    <div class="sec-head"><span class="num" aria-hidden="true">04</span><h2>Contacto</h2><aside class="nota" aria-hidden="true">estamos cerca</aside></div>
+    <div class="datos">
+      <div class="dato"><span class="k">Dirección</span><p>De la iglesia 100, San José</p></div>
+      <div class="dato"><span class="k">Correo</span><a href="mailto:hola@simiente.santa">hola@simiente.santa</a></div>
+      <div class="dato"><span class="k">Teléfono</span><a href="tel:+50688888888">+506 8888 8888</a></div>
+    </div>
+  </section>
+
+  <section id="redes" class="reveal">
+    <div class="sec-head"><span class="num" aria-hidden="true">05</span><h2>Redes sociales</h2><aside class="nota" aria-hidden="true">síguenos</aside></div>
+    <div class="lista-red">
+      <a class="item-red" href="#"><span class="n">✦ Facebook de la iglesia</span><span class="ver">Ver en Facebook →</span></a>
+      <a class="item-red" href="#"><span class="n">◎ Instagram de la iglesia</span><span class="ver">Ver en Instagram →</span></a>
+      <a class="item-red" href="#"><span class="n">▷ YouTube de la iglesia</span><span class="ver">Ver en YouTube →</span></a>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="foot-inner">
+    <p class="frase">«Esta siempre será tu casa.»</p>
+    <p class="marca">SIMIENTE SANTA</p>
+    <a href="#contenido">↑ Subir</a>
+    <div class="foot-lang" role="group" aria-label="Idioma">
+      <a href="#" aria-current="true">Español</a><span aria-hidden="true">/</span><a href="#">English</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Maqueta: alterna tema. App real: recuerda la elección y respeta la preferencia del sistema (FR-023).
+  const btn=document.getElementById('themeBtn'), root=document.documentElement;
+  btn.addEventListener('click',()=>{
+    const dark=root.dataset.theme==='dark';
+    root.dataset.theme=dark?'light':'dark';
+    btn.textContent=dark?'☾':'☀';
+    btn.setAttribute('aria-pressed',String(!dark));
+    btn.setAttribute('aria-label',dark?'Cambiar a tema oscuro':'Cambiar a tema claro');
+  });
+  const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add('visible')),{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
