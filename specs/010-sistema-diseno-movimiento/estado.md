@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (PR aprobado; pendiente el merge y el borrado de la rama) |
+| Fase | **Terminada** (F10 fusionada en `main`; PR [#7](https://github.com/orestesmedina/simiente-santa-webside/pull/7) aprobado y mergeado el 2026-10-11) |
 | Ciclo de corrección | 3/3 (cerrado: los tres roles aprobaron en el ciclo 3) |
-| Próximo paso | El humano hace el **merge** y borra la rama; al confirmarlo, marcar F10 como **terminada** en el roadmap. Despliegue a producción: pendiente de decisión |
+| Próximo paso | F10 cerrada y **costo congelado** (276.8 M ≈ $4.37). Siguiente: **F10B** (rediseño del panel) o **F4** (eventos y actividades). Despliegue a producción pendiente de decisión |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -49,6 +49,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-11 — **F10 TERMINADA**: el humano fusionó el PR [#7](https://github.com/orestesmedina/simiente-santa-webside/pull/7) en `main` (merge *squash* `8f2ff09`, que incluye el cierre de costos). Roadmap: F10 → **terminada**. Siguiente: **F10B** (panel) o **F4**. Despliegue pendiente de decisión.
 - 2026-10-11 — **Puerta 3 superada (PR aprobado)**: el humano abrió el PR, el **CI pasó** y autorizó el cierre del costo para hacer el merge y borrar la rama. `make costos CERRAR=1` → **276.8 M ≈ $4.37 (cerrado)**. Pendiente: merge + borrado de rama; al confirmarlo, F10 → **terminada**. (Corregida además la numeración de fase a la canónica de 9: Entregar = 9/9.)
 - 2026-10-11 — **Fase 7 (Entregar) preparada**: `devops` verificó la entrega (`make ci` EXIT=0, unit 409, sin deriva, Docker sano, `.env.example` sin cambios) y redactó `pr.md`; `documentador` actualizó `CHANGELOG.md` (**0.4.0**), `README.md` y creó `docs/entrega/F10-sistema-de-diseno-y-movimiento.md`. **El push y la apertura del PR quedan para el humano** (el entorno no tiene `gh` ni credenciales). Roadmap: F10 → **en revisión**.
 - 2026-10-11 — **Convergencia (Fase 6): Converged** — 36/36 tareas `[X]`, 0 pendientes; los tres roles aprobaron. Arranca la Fase 7 (entrega).
