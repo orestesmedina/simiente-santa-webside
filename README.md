@@ -1,6 +1,6 @@
 # Simiente Santa
 
-Sitio web de la Iglesia Simiente Santa: sitio público (desde F3 la portada con la información general de la iglesia; eventos, grupos, ministerios y donaciones por llegar) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
+Sitio web de la Iglesia Simiente Santa: sitio público (desde F3 la portada con la información general de la iglesia; desde F10 con el sistema visual y de movimiento moderno; eventos, grupos, ministerios y donaciones por llegar) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
 
 ## Qué es la F1 (Estructura base)
 
@@ -39,6 +39,18 @@ La funcionalidad **F3** es la primera cara pública del sitio: la portada que cu
 
 Rama: `003-portada-info-general`. Spec, plan, UX y quickstart en [`specs/003-portada-info-general/`](specs/003-portada-info-general/).
 
+## Qué es F10 (Sistema de diseño y movimiento)
+
+La funcionalidad **F10** es el rediseño moderno del sitio público (propuesta visual **B «Marea Turquesa»**, elegida por el cliente), aplicado a la portada de F3 y dejado como base para las secciones F4–F9:
+
+- **Sistema visual moderno** construido sobre el Manual de Identidad y los tokens de F3: tipografías de marca, proporción de color 70/20/10, componentes reutilizables y más aire entre secciones (tokens `--space-section*`).
+- **Movimiento marcado/elegante con revelado al hacer scroll**: las secciones se revelan al entrar en pantalla y cada elemento interactivo responde en hover, foco y activación, **respetando por completo `prefers-reduced-motion`** (sin animaciones y con todo el contenido disponible).
+- **Navegación por dispositivo**: barra fija visible en escritorio y **menú hamburguesa accesible en móvil** (≤ 860 px), más el **mapa del sitio en el pie** (grupos Explorar / Contacto / Síguenos).
+- **Selector de idioma compacto** (mismos textos completos, menos espacio) y **modo oscuro del sitio público** con interruptor manual: por defecto sigue la preferencia del dispositivo y la elección se recuerda en el mismo dispositivo.
+- **Sin cambios de comportamiento ni de datos**: el contenido, el bilingüismo, la publicación por elemento, los permisos, la auditoría y el panel de F2/F3 siguen intactos. El rediseño del panel queda para **F10B**.
+
+Rama: `010-sistema-diseno-movimiento`. Spec, plan, UX y quickstart en [`specs/010-sistema-diseno-movimiento/`](specs/010-sistema-diseno-movimiento/).
+
 ## Prerrequisito
 
 **Docker** (con Docker Compose v2) en ejecución. Es el único requisito (FR-001 de la spec de F1): el clon limpio levanta **sin `.env`** y sin tener Go ni Node instalados.
@@ -65,7 +77,7 @@ docker compose ps                      # db y redis (healthy), backend y fronten
 curl -i http://localhost:8080/healthz  # 200 → {"status":"ok","database":"connected"}
 ```
 
-Abrir <http://localhost:5173>: desde F3 esa es la **portada pública** de la iglesia; con la base recién migrada se muestra sin secciones, porque no hay contenido publicado todavía (el equipo lo carga desde el panel). La pantalla «Estado del sistema» de F1, que antes ocupaba el inicio, está ahora en <http://localhost:5173/health>. El **panel de administración** está en <http://localhost:5173/login> y todavía no tiene cuentas: hay que inicializarlo (siguiente sección).
+Abrir <http://localhost:5173>: desde F3 esa es la **portada pública** de la iglesia; con la base recién migrada se muestra sin secciones, porque no hay contenido publicado todavía (el equipo lo carga desde el panel). Desde F10 esa portada se navega con **barra fija en escritorio** y con el **botón «Menú» en móvil**, y trae el **selector de idioma compacto**, el **interruptor de tema claro/oscuro** y el **mapa del sitio en el pie**. La pantalla «Estado del sistema» de F1, que antes ocupaba el inicio, está ahora en <http://localhost:5173/health>. El **panel de administración** está en <http://localhost:5173/login> y todavía no tiene cuentas: hay que inicializarlo (siguiente sección).
 
 Detener: `make down` (los datos se conservan en el volumen `pgdata`; `make down && make up` es repetible).
 
@@ -159,7 +171,7 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 | `make lint` | `gofmt` + `go vet` + `golangci-lint` (backend) y ESLint + `tsc` (frontend) |
 | `make security` | `govulncheck ./...` (Go) y `npm audit --audit-level=high` (frontend) |
 | `make ci` | `lint` + `test` + `security`: lo mismo que corre el CI |
-| `make db-migrate` | Aplica las migraciones de `backend/migrations` con `golang-migrate` (F2 añadió `000002`–`000004`; F3, `000005`–`000006`) |
+| `make db-migrate` | Aplica las migraciones de `backend/migrations` con `golang-migrate` (F2 añadió `000002`–`000004`; F3, `000005`–`000006`; F10 no añade ninguna) |
 | `make doctor` | Verifica que el entorno tenga todo lo necesario (Docker, Go, Node, hooks, kit…) |
 | `make e2e` | Pruebas end-to-end con Playwright (requiere `make up` levantado) |
 | `make api-gen` | Regenera `frontend/src/api/schema.d.ts` desde `backend/api/openapi.yaml` |
@@ -223,19 +235,21 @@ Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda
 
 - **`VITE_API_URL` se hornea en el build** (plan R6): la URL de la API queda dentro del bundle del frontend. Por defecto `http://localhost:8080` y compose la deriva de `HTTP_PORT`. Por eso **cambiar puertos exige `docker compose up -d --build`** (o borrar la imagen del frontend), y al cambiar `WEB_PORT` hay que ajustar también `CORS_ALLOWED_ORIGINS`.
 - **Artefactos generados (se commitean)**: `frontend/src/api/schema.d.ts` se regenera con `make api-gen` cuando cambia `backend/api/openapi.yaml`; el código de sqlc con `make sqlc-gen` cuando cambian `backend/migrations/` o `backend/internal/db/queries/`. Regla de revisión (plan R4): un PR que toca migraciones o consultas debe regenerar `internal/db/`, y uno que toca el contrato debe regenerar `schema.d.ts`. `make sqlc-verify` comprueba que no hay deriva.
-- **E2E**: `make e2e` necesita el stack levantado (`make up`) y el navegador de Playwright instalado (arriba). El CI del kit **no** corre e2e. Notas de F2/F3: si en tu entorno faltan las librerías de sistema de Chromium (`libnspr4`, `libnss3`, `libasound2`) y no puedes instalarlas, las suites se pueden correr con la imagen oficial de Playwright (`mcr.microsoft.com/playwright:v1.63.0-jammy`) contra el stack levantado; y conviene ejecutarlas **en serie** (`--workers=1`), porque en paralelo saturan el rate-limit de 20 peticiones/min por IP a `/api/v1/auth/login` y producen `429` espurios. Así se validaron F2 (**3/3**) y F3 (**7/7**: `acceso`, `auditoria`, `portada-accesibilidad`, `portada-panel`, `portada-patch-null`, `portada-publica` y `status`).
+- **E2E**: `make e2e` necesita el stack levantado (`make up`) y el navegador de Playwright instalado (arriba). El CI del kit **no** corre e2e. Notas de F2/F3: si en tu entorno faltan las librerías de sistema de Chromium (`libnspr4`, `libnss3`, `libasound2`) y no puedes instalarlas, las suites se pueden correr con la imagen oficial de Playwright (`mcr.microsoft.com/playwright:v1.63.0-jammy`) contra el stack levantado; y conviene ejecutarlas **en serie** (`--workers=1`), porque en paralelo saturan el rate-limit de 20 peticiones/min por IP a `/api/v1/auth/login` y producen `429` espurios. Así se validaron F2 (**3/3**) y F3 (**7/7**: `acceso`, `auditoria`, `portada-accesibilidad`, `portada-panel`, `portada-patch-null`, `portada-publica` y `status`). En F10 (2026-10-11) se corrieron en **dos tandas** —las suites congeladas de F2/F3 (**8/8**, incluida `portada-imagenes`) y las nuevas de F10 (**25/25**: `diseno-movimiento`, `navegacion-movil`, `tema-oscuro`, `movimiento`, `movimiento-reducido` y `qa-medidas-f10`)—.
 
 ## Documentación relacionada
 
-- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1, la 0.2.0 a F2 y la 0.3.0 a F3.
+- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1, la 0.2.0 a F2, la 0.3.0 a F3 y la 0.4.0 a F10.
 - [`docs/entrega/F1-estructura-base.md`](docs/entrega/F1-estructura-base.md) — notas de entrega de F1 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F2-acceso-y-gestion-de-usuarios.md`](docs/entrega/F2-acceso-y-gestion-de-usuarios.md) — notas de entrega de F2 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F3-portada-e-informacion-general.md`](docs/entrega/F3-portada-e-informacion-general.md) — notas de entrega de F3 para el cliente (lenguaje no técnico).
+- [`docs/entrega/F10-sistema-de-diseno-y-movimiento.md`](docs/entrega/F10-sistema-de-diseno-y-movimiento.md) — notas de entrega de F10 para el cliente (lenguaje no técnico).
 - [`specs/001-estructura-base/quickstart.md`](specs/001-estructura-base/quickstart.md) — validación ejecutable de F1 de punta a punta (qué se espera en cada escenario).
 - [`specs/002-acceso-gestion-usuarios/quickstart.md`](specs/002-acceso-gestion-usuarios/quickstart.md) — validación ejecutable de F2 (inicialización, sesión, usuarios, roles y auditoría).
 - [`specs/003-portada-info-general/quickstart.md`](specs/003-portada-info-general/quickstart.md) — validación ejecutable de F3 (portada pública, edición desde el panel, publicación por elemento, imágenes, idioma y auditoría).
+- [`specs/010-sistema-diseno-movimiento/quickstart.md`](specs/010-sistema-diseno-movimiento/quickstart.md) — validación ejecutable de F10 (sistema visual, tema claro/oscuro, movimiento y movimiento reducido, navegación por dispositivo, mapa del sitio e idioma compacto, con checklist de aceptación en §9).
 - [`docs/tecnico/arquitectura.md`](docs/tecnico/arquitectura.md) — arquitectura del sistema; **§8 es la receta** de 10 pasos para agregar un área de negocio nueva.
 - [`docs/tecnico/decisiones.md`](docs/tecnico/decisiones.md) — decisiones de arquitectura y su justificación.
 - [`docs/GUIA-INICIO.md`](docs/GUIA-INICIO.md) — guía del kit: agentes de IA, entorno WSL y problemas comunes.
-- [`docs/producto/roadmap.md`](docs/producto/roadmap.md) — funcionalidades F1–F9 y su estado.
+- [`docs/producto/roadmap.md`](docs/producto/roadmap.md) — funcionalidades F1–F10 (y F10B) y su estado.
 - [`.specify/memory/constitution.md`](.specify/memory/constitution.md) — reglas no negociables del proyecto.
