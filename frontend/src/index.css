@@ -327,6 +327,62 @@ html[data-theme='dark'] {
 }
 
 /*
+ * Blobs de marea (F10 · T1025): capa decorativa al fondo, solo `transform`,
+ * acotada por un contenedor con `overflow-hidden` (0 desbordes). Estáticos con
+ * `prefers-reduced-motion`.
+ */
+:root {
+  --blob-1: rgb(0 201 167 / 0.4);
+  --blob-2: rgb(0 201 167 / 0.25);
+}
+
+html[data-theme='dark'] {
+  --blob-1: rgb(0 201 167 / 0.28);
+  --blob-2: rgb(0 201 167 / 0.2);
+}
+
+.public-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.public-blob-1 {
+  top: -14vw;
+  right: -12vw;
+  width: 46vw;
+  height: 46vw;
+  background: var(--blob-1);
+  animation: public-marea 26s ease-in-out infinite alternate;
+}
+
+.public-blob-2 {
+  bottom: -10vw;
+  left: -12vw;
+  width: 38vw;
+  height: 38vw;
+  background: var(--blob-2);
+  animation: public-marea 32s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes public-marea {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-6vw, 7vh) scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-blob {
+    animation: none;
+  }
+}
+
+/*
  * Lista de navegación del sitio público (F10 · T1012/T1013/D15/D16).
  * · Escritorio (≥ 861 px): filas `flex-wrap` compactas, sin scroll lateral.
  * · Móvil (≤ 860 px): colapsada con `display:none` (fuera del orden de

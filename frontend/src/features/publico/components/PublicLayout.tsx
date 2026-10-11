@@ -4,6 +4,7 @@ import { usePublicHomeData } from '../hooks/usePublicHomeData';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { useLanguage } from '../i18n/useLanguage';
 import { ThemeProvider } from '../theme/ThemeProvider';
+import { GradientBlobs } from './GradientBlobs';
 import { PublicFooter } from './PublicFooter';
 import { SiteHeader } from './SiteHeader';
 
@@ -32,10 +33,12 @@ function PublicChrome() {
   const links = useSiteLinks();
 
   return (
-    <div className="flex min-h-screen flex-col bg-white font-sans text-navy">
+    <div className="relative isolate flex min-h-screen flex-col bg-surface font-sans text-ink">
+      <GradientBlobs />
+
       <a
         href="#contenido"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-navy focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-navy"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded focus:bg-logo-surface focus:px-4 focus:py-2 focus:font-medium focus:text-navy focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-accent"
       >
         {t('a11y.skip')}
       </a>
