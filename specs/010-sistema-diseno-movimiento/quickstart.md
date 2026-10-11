@@ -158,10 +158,16 @@ movimiento reducido están **por completo ausentes** y todo funciona igual.
       (objetivo **≥ 44 px**, con **nombre accesible** claro —lector de pantalla lo anuncia como menú
       de secciones— y estado anunciado: **`aria-expanded`** / **`aria-controls`** correctos).
 - [ ] **Abrir/cerrar con ratón** (clic) **y con teclado** (`Enter`/`Espacio` sobre el botón): al
-      **abrir, el foco entra en el panel** (primer enlace); **`Escape`**, el **control visible de
+      **abrir, el foco entra en la lista** (primer enlace); **`Escape`**, el **control visible de
       cierre**, el **toque/clic fuera** (scrim) y el propio botón lo cierran y **devuelven el foco al
-      botón**; con el panel abierto, `Tab` recorre solo el panel y su botón; al elegir una sección,
+      botón**; **sin trampa de foco** (patrón *disclosure* de APG, **no** un diálogo: sin
+      `role="dialog"` ni `aria-modal`): `Tab`/`Shift+Tab` **pueden salir del panel** hacia la barra
+      (el idioma y el tema siguen operables) y el resto de la página; al elegir una sección,
       el panel se cierra y el foco sigue en el destino.
+- [ ] El panel es **la misma lista de enlaces de la navegación** (una sola lista en el DOM, sin
+      duplicados): con el menú **cerrado** a ≤ 860 px esos enlaces **no son alcanzables con `Tab`**
+      (quedan **fuera del orden de tabulación**, no solo invisibles) y al abrir vuelven a ser
+      visibles y enfocables.
 - [ ] Con el panel abierto, la página de fondo **no se desplaza** (ni con rueda ni con teclado) y el
       panel se adapta a pantallas bajas (scroll interno propio si hace falta).
 - [ ] **Sin gestos**: todo se opera con toques, clics y teclado (ni swipe ni deslizamientos).
@@ -186,6 +192,13 @@ movimiento reducido están **por completo ausentes** y todo funciona igual.
 - [ ] Accesible: landmark `nav` con **nombre accesible propio** (distinto del de la cabecera), lista
       real de enlaces, foco visible, objetivos ≥ 44 px, contraste AA **en ambos temas** (la auditoría
       de contraste de los e2e ya incluye el pie).
+- [ ] **Sin grupos vacíos**: un grupo sin ítems **no se renderiza** y, si no hay nada que listar (0
+      secciones, sin contacto ni redes), **no se dibuja el mapa**; los rótulos de grupo son
+      etiquetas planas (**no** encabezados).
+- [ ] **Nombres accesibles únicos**: los enlaces del grupo Contacto llevan prefijo de contexto
+      («Contacto: …»; la dirección es **texto**, no enlace) y los de Síguenos etiquetas planas
+      («Facebook», «Instagram», «YouTube»): ningún nombre del pie duplica el de un enlace de sección
+      ni el de un CTA.
 - [ ] Clic en un enlace del pie → el título de la sección destino queda visible (la barra fija no lo
       tapa).
 

@@ -74,22 +74,8 @@
   .burger[aria-expanded="true"] .b3{transform:translateY(-7px) rotate(-45deg)}
   .scrim{position:fixed; inset:0; z-index:40; background:rgba(5,10,20,.55); opacity:0; pointer-events:none; transition:opacity .35s ease}
   .scrim.on{opacity:1; pointer-events:auto}
-  .menu{position:fixed; inset:0 0 auto 0; top:0; z-index:44; height:auto; min-height:100vh;
-    background:rgba(13,22,38,.92); backdrop-filter:blur(16px); border-right:1px solid var(--line);
-    display:flex; flex-direction:column; overflow-y:auto; padding:calc(84px + var(--space-block)) 6vw var(--space-section);
-    visibility:hidden; opacity:0; transform:translateY(-14px);
-    transition:opacity .35s var(--ease), transform .35s var(--ease), visibility 0s linear .35s}
-  .menu.open{visibility:visible; opacity:1; transform:none; transition:opacity .35s var(--ease), transform .35s var(--ease), visibility 0s}
-  .menu ul{list-style:none; padding:0; margin:0; width:100%; max-width:640px}
-  .menu li{opacity:0; transform:translateY(-10px); transition:opacity .3s ease, transform .3s ease}
-  .menu.open li{opacity:1; transform:none}
-  .menu.open li:nth-child(1){transition-delay:60ms} .menu.open li:nth-child(2){transition-delay:120ms}
-  .menu.open li:nth-child(3){transition-delay:180ms} .menu.open li:nth-child(4){transition-delay:240ms}
-  .menu.open li:nth-child(5){transition-delay:300ms} .menu.open li:nth-child(6){transition-delay:360ms}
-  .menu a{display:flex; justify-content:space-between; align-items:center; gap:1rem; min-height:56px; padding:.8rem .5rem;
-    color:#fff; text-decoration:none; font-size:1.15rem; border-bottom:1px solid var(--line)}
-  .menu a::after{content:'›'; color:var(--turquesa); font-size:1.3rem}
-  .menu a:hover,.menu a:focus-visible{color:var(--turquesa)}
+  /* C4/I2: en móvil el panel del menú es el PROPIO <nav id="menuPanel"> (una sola lista en el DOM).
+     Sus estilos de panel y su colapso explícito (display:none fuera del tab order) viven en la media query de 860 px. */
 
   main{padding-top:86px}
   .wrap{max-width:1080px; margin:0 auto; padding:0 5vw}
@@ -140,7 +126,7 @@
     max-width:1180px; margin:0 auto}
   .f-brand .lema{color:var(--turquesa); font-size:1.2rem; margin-top:var(--space-fluid)}
   .sitemap{display:contents}
-  .f-col h2{font-family:Poppins,sans-serif; text-transform:uppercase; letter-spacing:.16em; font-size:.8rem; color:var(--turquesa); font-weight:600}
+  .f-col h3{font-family:Poppins,sans-serif; text-transform:uppercase; letter-spacing:.16em; font-size:.8rem; color:var(--turquesa); font-weight:600}
   .f-col ul{list-style:none; padding:0; margin:var(--space-fluid) 0 0}
   .f-col a{display:inline-flex; align-items:center; min-height:44px; padding:.35rem 0; color:var(--muted); text-decoration:none; font-size:.95rem;
     transition:color .3s, transform .3s var(--ease), background-size .3s}
@@ -157,7 +143,7 @@
     html{scroll-behavior:auto}
     .blob{animation:none}
     [data-reveal]{opacity:1 !important; transform:none !important; transition:none !important}
-    .glass,.btn,.theme,.burger,.contact-row,.social a,nav a,.skip,header,.f-col a,.scrim,.menu,.menu li{transition:none !important}
+    .glass,.btn,.theme,.burger,.contact-row,.social a,nav,nav a,.skip,header,.f-col a,.scrim{transition:none !important}
   }
   @media (max-width:980px){ .f-top{grid-template-columns:1fr 1fr; row-gap:var(--space-block)} .sitemap{display:contents} }
   @media (max-width:760px){
@@ -167,22 +153,42 @@
   }
   @media (max-width:640px){ .f-top{grid-template-columns:1fr} }
   @media (max-width:860px){
-    nav{display:none}
-    .burger{display:inline-flex}
     header{flex-wrap:nowrap}
     .brand{font-size:1.2rem}
+    .burger{display:inline-flex}
+    /* C4: el panel es el PROPIO <nav> — la MISMA lista recolocada por CSS, sin duplicados.
+       I2: cerrado → display:none: fuera del tab order y del árbol de accesibilidad */
+    nav{display:none; position:fixed; inset:0 0 auto 0; top:0; z-index:44; width:100%; flex-wrap:nowrap; flex-direction:column; align-items:stretch;
+      margin:0; min-height:100vh; background:rgba(13,22,38,.92); backdrop-filter:blur(16px); border-bottom:1px solid var(--line);
+      padding:calc(84px + var(--space-block)) 6vw var(--space-section); overflow-y:auto;
+      visibility:hidden; opacity:0; transform:translateY(-14px);
+      transition:opacity .18s var(--ease), transform .18s var(--ease), visibility 0s linear .18s}
+    nav.open{visibility:visible; opacity:1; transform:none; transition:opacity .18s var(--ease), transform .18s var(--ease), visibility 0s}
+    nav a{display:flex; justify-content:space-between; align-items:center; gap:1rem; min-height:56px; padding:.8rem .5rem; font-size:1.05rem;
+      background-size:0 0; opacity:0; transform:translateY(-10px); transition:opacity .15s ease, transform .15s ease}
+    nav.open a{opacity:1; transform:none}
+    nav.open a:nth-child(1){transition-delay:40ms} nav.open a:nth-child(2){transition-delay:70ms}
+    nav.open a:nth-child(3){transition-delay:100ms} nav.open a:nth-child(4){transition-delay:130ms}
+    nav.open a:nth-child(5){transition-delay:160ms}
+    nav a::after{content:'›'; color:var(--turquesa); font-size:1.3rem}
   }
-  @media (max-width:480px){ .brand .bname{display:none} .lang{font-size:.8rem; padding:.2rem .45rem} }
+  @media (max-width:480px){
+    /* C3: ocultar SOLO visualmente — el nombre accesible «Simiente» queda íntegro (prueba congelada a 320 px) */
+    .brand .bname{position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+    .lang{font-size:.8rem; padding:.2rem .45rem}
+  }
 </style>
 </head>
 <body>
-<a class="skip" href="#contenido" data-es="Ir al contenido" data-en="Skip to content">Ir al contenido</a>
+<a class="skip" href="#contenido" data-es="Saltar al contenido principal" data-en="Skip to main content">Saltar al contenido principal</a>
 <div class="blob b1" aria-hidden="true"></div>
 <div class="blob b2" aria-hidden="true"></div>
 
 <header id="barra">
   <a class="brand" href="#top"><span class="logo" aria-hidden="true">SS</span> <span class="bname">SIMIENTE SANTA</span></a>
-  <nav aria-label="Secciones del sitio">
+  <!-- C4: UNA sola lista — este mismo <nav> es, en móvil, el panel del menú (styles en @media 860px).
+       Los ítems son solo la lista dinámica de secciones publicadas: nada hardcodeado dentro del landmark. -->
+  <nav aria-label="Secciones de la portada" id="menuPanel">
     <a href="#quienes">Quiénes somos</a><a href="#horario">Horario</a><a href="#whatsapp">WhatsApp</a><a href="#contacto">Contacto</a><a href="#redes">Redes</a>
   </nav>
   <div class="actions">
@@ -196,16 +202,6 @@
   </div>
 </header>
 
-<div class="menu" id="menuPanel" role="dialog" aria-label="Menú de secciones" aria-modal="false">
-  <ul>
-    <li><a href="#top" data-es="Inicio" data-en="Home">Inicio</a></li>
-    <li><a href="#quienes" data-es="Quiénes somos" data-en="Who we are">Quiénes somos</a></li>
-    <li><a href="#horario" data-es="Horario" data-en="Schedule">Horario</a></li>
-    <li><a href="#whatsapp" data-es="WhatsApp" data-en="WhatsApp">WhatsApp</a></li>
-    <li><a href="#contacto" data-es="Contacto" data-en="Contact">Contacto</a></li>
-    <li><a href="#redes" data-es="Redes" data-en="Social">Redes</a></li>
-  </ul>
-</div>
 <div class="scrim" id="scrim"></div>
 
 <main id="contenido">
@@ -284,9 +280,12 @@
       <p class="lema" data-es="«Esta siempre será tu casa.»" data-en="“This will always be your home.”">«Esta siempre será tu casa.»</p>
     </div>
 
+    <!-- C1: mapa del sitio condicional — un grupo sin ítems NO se renderiza; sin ningún grupo, <nav.sitemap>
+         no se renderiza. Rótulos de grupo en <h3>, NUNCA <h2> (las pruebas congeladas exigen cero headings
+         de nivel 2 en la página completa y que «Contacto»/«WhatsApp» no sean headings cuando faltan datos). -->
     <nav class="sitemap" aria-label="Mapa del sitio">
       <div class="f-col">
-        <h2 data-es="Explorar" data-en="Explore">Explorar</h2>
+        <h3 data-es="Explorar" data-en="Explore">Explorar</h3>
         <ul>
           <li><a href="#top" data-es="Inicio" data-en="Home">Inicio</a></li>
           <li><a href="#quienes" data-es="Quiénes somos" data-en="Who we are">Quiénes somos</a></li>
@@ -296,24 +295,27 @@
           <li><a href="#redes" data-es="Redes sociales" data-en="Social media">Redes sociales</a></li>
         </ul>
       </div>
+      <!-- C2: nombres accesibles ÚNICOS — prefijo de contexto, jamás el dato desnudo
+           (duplicaría los enlaces mailto/tel del bloque 04) ni el social.action de las secciones -->
       <div class="f-col">
-        <h2 data-es="Contacto" data-en="Contact">Contacto</h2>
+        <h3 data-es="Contacto" data-en="Contact">Contacto</h3>
         <ul>
-          <li><a href="#" data-es="Dirección del templo" data-en="Church address">Dirección del templo</a></li>
-          <li><a href="#" data-es="Correo de la iglesia" data-en="Church email">Correo</a></li>
-          <li><a href="#" data-es="Teléfono" data-en="Phone">Teléfono</a></li>
-          <li><a href="#">WhatsApp</a></li>
+          <li><a href="#" aria-label="Contacto: Dirección del templo" data-es="Contacto: Dirección del templo" data-en="Contact: Church address"><span aria-hidden="true">Dirección del templo</span></a></li>
+          <li><a href="#" aria-label="Contacto: Correo" data-es="Contacto: Correo" data-en="Contact: Email"><span aria-hidden="true">Correo</span></a></li>
+          <li><a href="#" aria-label="Contacto: Teléfono" data-es="Contacto: Teléfono" data-en="Contact: Phone"><span aria-hidden="true">Teléfono</span></a></li>
+          <li><a href="#" aria-label="Contacto: WhatsApp" data-es="Contacto: WhatsApp" data-en="Contact: WhatsApp"><span aria-hidden="true">WhatsApp</span></a></li>
         </ul>
       </div>
+      <!-- C2: Síguenos usa las etiquetas PLANAS de SOCIAL_NETWORK_LABELS, nunca «Ver en {network}» -->
       <div class="f-col">
-        <h2 data-es="Síguenos" data-en="Follow us">Síguenos</h2>
+        <h3 data-es="Síguenos" data-en="Follow us">Síguenos</h3>
         <ul>
           <li><a href="#">Facebook</a></li>
           <li><a href="#">Instagram</a></li>
           <li><a href="#">YouTube</a></li>
         </ul>
       </div>
-      <!-- Patrón listo para crecer (F4–F9): añadir aquí otra .f-col con su <h2> de grupo
+      <!-- Patrón listo para crecer (F4–F9): añadir aquí otra .f-col con su <h3> de grupo
            SOLO cuando la sección exista y esté publicada (por ej., «Eventos»). -->
     </nav>
   </div>
@@ -381,9 +383,9 @@
   const up = () => bar.classList.toggle('scrolled', scrollY > 40);
   addEventListener('scroll', up, {passive:true}); up();
 
-  /* ===== Menú hamburguesa móvil: patrón accesible ===== */
+  /* ===== Menú hamburguesa móvil: patrón disclosure (APG) — la MISMA lista del <nav> ===== */
   const burger = document.getElementById('menuBtn');
-  const panel = document.getElementById('menuPanel');
+  const panel = document.getElementById('menuPanel'); /* es el propio <nav> de la cabecera: una sola lista */
   const scrim = document.getElementById('scrim');
   const mqMenu = matchMedia('(max-width:860px)');
   let menuOpen = false;
@@ -395,7 +397,7 @@
     panel.classList.add('open'); scrim.classList.add('on');
     document.documentElement.style.overflow = 'hidden'; /* sin scroll de fondo */
     const first = panel.querySelector('a');
-    if (first) setTimeout(()=>first.focus(), reduce.matches ? 0 : 90); /* el foco entra al abrir */
+    if (first) setTimeout(()=>first.focus(), reduce.matches ? 0 : 90); /* el foco entra al primer enlace */
   }
   function closeMenu(returnFocus){
     if (!menuOpen) return;
@@ -404,21 +406,15 @@
     burgerLabel();
     panel.classList.remove('open'); scrim.classList.remove('on');
     document.documentElement.style.overflow = '';
-    if (returnFocus !== false) burger.focus(); /* vuelve al botón al cerrar */
+    if (returnFocus !== false) burger.focus(); /* Escape/botón: el foco vuelve al botón */
   }
   burger.addEventListener('click', () => menuOpen ? closeMenu() : openMenu());
   scrim.addEventListener('click', () => closeMenu());
   panel.addEventListener('click', e => { if (e.target.closest('a')) closeMenu(false); }); /* ancla: cierra sin robar foco */
   document.addEventListener('keydown', e => {
     if (!menuOpen) return;
-    if (e.key === 'Escape'){ closeMenu(); return; }
-    if (e.key === 'Tab'){
-      /* foco encapsulado: botón + enlaces del panel */
-      const items = [burger, ...panel.querySelectorAll('a')];
-      const i = items.indexOf(document.activeElement);
-      if (e.shiftKey && (i === 0 || i === -1)){ e.preventDefault(); items[items.length-1].focus(); }
-      else if (!e.shiftKey && i === items.length-1){ e.preventDefault(); items[0].focus(); }
-    }
+    if (e.key === 'Escape'){ closeMenu(); }
+    /* Sin trampa de foco (disclosure): Tab sigue por la página — idioma y tema de la barra quedan operables. */
   });
   mqMenu.addEventListener?.('change', e => { if (!e.matches) closeMenu(false); });
 })();

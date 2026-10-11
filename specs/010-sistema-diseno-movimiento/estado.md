@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar (diseño final B listo; falta confirmar el ajuste de spec) |
+| Fase | 4/9 · Implementar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Confirmar el ajuste de spec (menú hamburguesa en móvil) y el diseño final B; luego Fase 3 (tareas + coherencia) |
+| Próximo paso | Implementar según `tasks.md` (36 tareas T1001–T1036), en el orden planificado; un commit por tarea. Empezar por tokens/tema (T1001–T1004) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -42,11 +42,14 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 - 2026-10-10 — **Arranque de F10 (decisión del humano en sesión).** Ante la pregunta «¿qué funcionalidad arrancamos?», el humano eligió **F10 — Sistema de diseño y movimiento** antes que F4, coherente con la Decisión 11 del roadmap (construirlo antes de F4 para que las secciones futuras nazcan ya con el sistema). Se arranca el flujo `equipo-feature` en la rama `010-sistema-diseno-movimiento`.
 - 2026-10-10 — **Aclaraciones de F10 resueltas por el cliente** (registradas en `spec.md`, sección «Aclaraciones resueltas (2026-10-10)»; también decisión 12 del roadmap): **Q1** F10 incluye también el **panel de administración** (no solo el sitio público); **Q2** el «scroll incómodo» eran **ambos** casos (enlaces que se desplazan de lado en móvil y navegación que se pierde al bajar); **Q3** navegación en **barra fija siempre visible**; **Q4** animación **moderada** (respetando `prefers-reduced-motion`); **Q5** el selector **solo compacta los textos actuales** (sin píldoras ni desplegables, comportamiento de F3 intacto); **Q6** **se permite crear iconografía/ilustraciones nuevas** dentro de la marca; **Q7** **se incluye el modo oscuro** (sitio y panel); **Q8** referencias de inspiración (no copiar) `iglesiaoasis.com` y `river-arena.org`, y el cliente quiere **3 propuestas de diseño distintas e innovadoras** antes de implementar.
+- 2026-10-10 — **Cierre de la puerta 2 (confirmación del cliente).** El cliente **confirmó** el ajuste de spec (menú hamburguesa en móvil) y el **diseño final B**; además decidió: el **selector de idioma no se repite dentro del panel del menú móvil** (solo cabecera y pie) y los **rótulos del mapa del sitio** son **Explorar / Contacto / Síguenos**. Fase 2 cerrada; arranca la Fase 3 (tareas + coherencia).
+- 2026-10-10 — **Microcopy del CTA del hero (F10).** Para no duplicar el nombre accesible «Escribir por WhatsApp» (que pertenece a la sección de WhatsApp y está **congelado** en las pruebas de F3), el CTA del hero usa un texto propio («Escríbenos por WhatsApp»). Es una divergencia menor frente a la maqueta B; si el cliente exige el texto exacto, se escala (SC-008 prohíbe editar pruebas existentes).
 
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-10 — **Fase 3 cerrada**: `tasks.md` (36 tareas T1001–T1036, 20 `[P]`) y `analyze.md`. El primer `analyze` **rechazó** (4 CRÍTICOS + 3 IMPORTANTES: colisiones con pruebas congeladas de F2/F3); corregidos por `arquitecto` y `disenador-ux` (una sola lista en el nav, patrón *disclosure* sin trampa de foco, colapso fuera del tab order, mapa sin grupos vacíos, nombres accesibles únicos, marca «Simiente» con `sr-only`, recuento de tabulación < 30). Re-análisis: **APROBADO** (0 críticos). Queda **M4** (umbral de tamaño del selector) como MENOR para QA. Arranca la Fase 4 (implementar).
 - 2026-10-10 — **Diseño final B aplicado**: `ux.md` reescrito como diseño final de **B «Marea Turquesa»** (más aire entre secciones con tokens de espaciado, **mapa del sitio** en el pie con grupos accesibles, **menú hamburguesa accesible** en móvil ≤ 860 px) y `propuesta-b.html` reescrita; `plan.md`/`research.md`/`quickstart.md` alineados (navegación por dispositivo, componente de mapa del sitio, tokens de espaciado, e2e del menú). Spec actualizada: FR-010 a FR-014 por dispositivo, **FR-027** (mapa del sitio) y **SC-015** nuevos. Pendiente: confirmar el ajuste de spec.
 - 2026-10-10 — **Puerta 2 (iteración 2): plan aprobado y propuesta elegida (B).** El cliente aprobó el plan («Apruebo el plan») y eligió la propuesta **B «Marea Turquesa»** con tres cambios: (1) **más aire entre paneles** (hoy se sienten pegados); (2) **mapa del sitio en el pie** con todas las opciones (referencia Apple/Microsoft); (3) en **móvil, la navegación se oculta en un menú hamburguesa** (en escritorio sigue visible). Mantiene el orden actual de secciones. El punto (3) **cambia FR-010 de la spec** («sin menús ocultos»): se actualiza la spec y se re-confirma con el humano.
 - 2026-10-10 — **Iteración de diseño 2 completada**: `arquitecto` refuerza el plan de movimiento (revelados de **600 ms** con desplazamiento 20–28 px y *stagger* de 80 ms; suelo de perceptibilidad ≥ 400 ms/16 px y techo ≤ 800 ms; cabecera que transiciona al bajar; `scroll-behavior: smooth` solo sin reduced-motion; **0 dependencias nuevas**); `disenador-ux` entrega **3 propuestas nuevas** —A «Bento Vivo», B «Marea Turquesa», C «Huella Tipográfica»— y reescribe `ux.md` y las maquetas con revelado real por scroll. Pendiente: **puerta 2** (iteración 2).

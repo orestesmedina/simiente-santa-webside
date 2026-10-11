@@ -383,26 +383,36 @@ rebote/curvas elásticas tipo `back.out` («nada estridente ni infantil»).
 
 **Decisión**: en pantallas **≤ 860 px** (breakpoint 860 — ver R10-6, alineado con `ux.md` y la
 maqueta `propuesta-b.html`), la lista de anclas se colapsa tras un **botón hamburguesa** con el
-patrón de **divulgación** de las guías APG (WAI-ARIA Authoring Practices): un *disclosure* con
-contención de foco, **no un diálogo modal** — sin `aria-modal`, sin librerías de *focus-trap*, sin
-gestos.
+patrón de **divulgación** de las guías APG (WAI-ARIA Authoring Practices): un *disclosure*
+**sin contención de foco y sin diálogo modal** (decisión de coherencia 2026-10-10, corrige el
+hallazgo I1 del `analyze.md`) — sin `role="dialog"`, sin `aria-modal`, sin librerías de
+*focus-trap*, sin gestos.
 
-- **Botón**: `<button>` real (no `div`, no `summary`), **nombre accesible localizado**
-  (`nav.menu.toggle`: «Menú de secciones» / «Section menu»), **`aria-expanded`** sincronizado con el
-  estado y **`aria-controls`** con el id del panel; área de toque **≥ 44 px**; siempre visible en la
-  cabecera (es lo que mantiene FR-014 «alcanzable en todo momento» en móvil: los enlaces están a **un
-  toque**).
-- **Panel**: la lista de secciones **del mismo modelo `sections.ts`** (mismas claves i18n → mismos
-  nombres accesibles que en escritorio; R10-15 comparte la fuente), con superficie sólida por tokens
+- **Botón**: `<button>` real (no `div`, no `summary`), ubicado **dentro** del `<nav>` nombrado
+  (es `<button>`: no compite por nombre con los enlaces), **nombre accesible localizado**
+  dinámico (`nav.menu.open`/`nav.menu.close`; nomenclatura única de `tasks.md` D11/M1),
+  **`aria-expanded`** sincronizado con el
+  estado y **`aria-controls`** con el id del panel/lista; área de toque **≥ 44 px**; siempre visible
+  en la cabecera (es lo que mantiene FR-014 «alcanzable en todo momento» en móvil: los enlaces están
+  a **un toque**).
+- **Panel**: **la misma lista de enlaces del `<nav>`** (una única lista en el DOM, del mismo modelo
+  `sections.ts` — mismas claves i18n → mismos nombres accesibles que en escritorio; R10-15 comparte
+  la fuente —; `MobileMenu` **no** monta una lista duplicada: corrige el hallazgo C4 del
+  `analyze.md`), con superficie sólida por tokens
   (`--surface`, correcta en claro y oscuro), altura máxima `calc(100dvh - var(--header-offset))` con
-  **scroll interno** si la lista es larga (F4–F9), y **control visible de cierre**.
+  **scroll interno** si la lista es larga (F4–F9), y **control visible de cierre**. Con el panel
+  **cerrado** a ≤ 860 px la lista se oculta con **`display:none` bajo la media query**: los enlaces
+  quedan **fuera del orden de tabulación y del árbol de accesibilidad** (FR-013, corrige I2) pero
+  **siguen en el DOM** para jsdom (sin atributos `hidden`/`aria-hidden`/`inert` de React).
 - **Gestión de foco** (el punto más delicado; RG10-17 — igual que `ux.md` §2.3/§6): al abrir, el
-  foco **entra en el panel** (primer enlace de la lista; el control visible de cierre está
+  foco **entra en la lista** (primer enlace; el control visible de cierre está
   presente); **`Escape`**, el **control visible** de cierre, el **toque/clic fuera** (scrim) y el
   propio botón lo cierran y **devuelven el foco al botón**; activar una sección cierra el panel y el
-  foco continúa en el destino del ancla; mientras está abierto, `Tab`/`Shift+Tab` quedan
-  **contenidos en el panel y su botón** (el fondo va con scrim y sin scroll: no hay nada operable
-  detrás). El foco nunca queda sobre contenido oculto (coherente con R10-5).
+  foco continúa en el destino del ancla; **sin trampa de foco**: `Tab`/`Shift+Tab` pueden **salir
+  del panel** hacia la barra de controles y el resto de la página (el panel es una lista de enlaces
+  normal, **no** un diálogo; el idioma y el tema siguen alcanzables y la página entera sigue
+  operable con teclado y lector de pantalla). El foco nunca queda sobre contenido oculto (coherente
+  con R10-5).
 - **Sin scroll de fondo**: `html[data-nav-open='true'] { overflow: hidden }` mientras el panel está
   abierto (rueda y teclado); se restaura al cerrar (RG10-19; prueba en iOS/Android en QA).
 - **Sin gestos desconocidos**: solo clic/toque y teclado (`Enter`/`Espacio`); ni swipe ni
@@ -425,13 +435,28 @@ leyendo las suites, que **fijan** el diseño:
    dentro del `<nav>` y solo la lista colapsa.
 2. Las unitarias de jsdom (`homePage.test.tsx`) consultan los enlaces del `<nav>` → los enlaces
    **permanecen en el DOM** y el colapso es CSS (sin `hidden`/`aria-hidden`/`inert` de React; en
-   jsdom no se aplican media queries → las consultas siguen pasando sin cambios).
-3. La travesía por teclado congelada a 320 px exige que el ciclo contenga las 5 etiquetas de sección
-   y cierre en **< 30 pasos** (`tabCycle`) → con el menú cerrado, esas etiquetas las aporta el
-   **mapa del sitio del pie** (mismas claves i18n) y el saldo de paradas de tabulación es mínimo
-   (botón hamburguesa y control de tema se suman; las anclas de cabecera dejan de ser tabulables en
-   móvil) — recuento verificado en implementación (RG10-21).
-4. La auditoría de objetivos ≥ 44 px a 320 px incluye `a[href], button` visibles → botón y panel se
+   jsdom no se aplican media queries → las consultas siguen pasando sin cambios), pero a ≤ 860 px
+   con el panel cerrado el colapso es **`display:none` bajo la media query** (fuera del orden de
+   tabulación y del árbol de accesibilidad: corrige I2).
+3. Las consultas del `<nav>` nombrado resuelven por **coincidencia única** (`within(nav).getByRole('link', …)`,
+   `sectionsNav.getByRole('link', …)`) → hay **una sola lista de enlaces** en el DOM y `MobileMenu`
+   la reutiliza (corrige C4).
+4. La travesía por teclado congelada a 320 px exige que el ciclo contenga las 5 etiquetas de sección,
+   un `<a>` cuyo texto incluya «Simiente» y cierre en **< 30 pasos** (`tabCycle`) → con el menú
+   cerrado, esas etiquetas las aporta el **mapa del sitio del pie** (mismas claves i18n), el enlace
+   de marca conserva el nombre completo (técnica `sr-only` si se oculta la palabra a < 480 px;
+   corrige C3) y el saldo neto de paradas es de **+6…+8** (el inventario y el recuento viven en
+   `tasks.md` T1015; corrige I3) — recuento verificado en implementación (RG10-21).
+5. Las consultas congeladas por **coincidencia única** de `homePage.test.tsx` (correo, teléfono,
+   «Escribir por WhatsApp», «Entrar al grupo», «Ver en Facebook») prohíben duplicar nombres
+   accesibles → los enlaces del pie usan prefijos de contexto («Contacto: …»),
+   etiquetas planas de `SOCIAL_NETWORK_LABELS`, la dirección del pie es texto y el
+   CTA del hero no usa los nombres de `WhatsAppSection` (corrige C2).
+6. Las aserciones `queryByRole('heading', …)` congeladas (respuesta vacía sin ningún `h2`; sin
+   encabezado «Contacto»/«WhatsApp» cuando esas secciones no existen) → los grupos del pie se
+   renderizan **solo con ítems**, el mapa solo con algo que listar y sus rótulos son **etiquetas
+   no-heading** (resuelven por nombre a cualquier nivel; corrige C1).
+7. La auditoría de objetivos ≥ 44 px a 320 px incluye `a[href], button` visibles → botón y panel se
    diseñan a ese umbral.
 
 **Alternativas descartadas**:
@@ -459,6 +484,17 @@ leyendo las suites, que **fijan** el diseño:
   las etiquetas congeladas de la travesía por teclado se cumplen por construcción (ver R10-14).
 - **Contenido**: las secciones de la portada de hoy (`quienes-somos`, `horario`, `whatsapp`,
   `contacto`, `redes`); opcionalmente un enlace a la portada (`/`) si `ux.md` lo decide.
+- **Reglas de renderizado (corrige C1)**: un grupo **no se renderiza si no tiene ítems** (Explorar
+  solo con secciones publicadas; Contacto solo con datos de contacto; Síguenos solo con redes) y el
+  mapa entero **no se dibuja si no hay nada que listar**; los rótulos de grupo son **etiquetas
+  no-heading** (`<p>`/`<span>`, nunca `h2`/`h3`: `queryByRole('heading', …)` de las suites congeladas
+  resuelve por nombre a cualquier nivel y «Contacto» colisionaría con el `h2` de la sección).
+- **Nombres accesibles únicos (corrige C2)**: Contacto enlza con prefijo de contexto
+  («Contacto: Correo» `mailto:`, «Contacto: Teléfono» `tel:`, «Contacto: WhatsApp» — un solo enlace, el
+  primer canal —) y Síguenos con
+  etiquetas planas de `SOCIAL_NETWORK_LABELS` («Facebook», «Instagram», «YouTube»), **nunca**
+  `social.action` ni `whatsapp.action.*`; la dirección es **texto**, no enlace; ningún nombre del pie
+  duplica el de un enlace de sección ni el de un CTA.
 - **Regla «sin enlaces rotos»**: **solo se renderizan destinos existentes** — secciones con contenido
   publicado (mismo criterio borrador/publicado de F3: una sección ausente no deja enlace muerto) y,
   para **F4–F9**, entradas del modelo con `href` de **ruta ya implementada**. El modelo se extiende
