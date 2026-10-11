@@ -217,7 +217,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     anterior (§VI).
   - **Commit sugerido**: `feat(db): ampliar admin_actions a eventos, actividades y categorías (000008)`
 
-- [ ] T403 · Migración `000009_seed_permission_categorias` · `[db]`
+- [X] T403 · Migración `000009_seed_permission_categorias` · `[db]`
 
   - **Archivos**: `backend/migrations/000009_seed_permission_categorias.up.sql` y `.down.sql`
     (NUEVOS).
