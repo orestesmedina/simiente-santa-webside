@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F10 · Diseño final — Propuesta B «Marea Turquesa» (maqueta)</title>
+<style>
+  :root{
+    --navy:#1a2b4a; --crema:#F5F2EC; --turquesa:#00c9a7; --txt-tq:#0e7a66; --coral:#ff6b3d; --verde:#217638;
+    --bg:var(--navy); --panel:rgba(255,255,255,.06); --glass:rgba(255,255,255,.08);
+    --txt:#eef3f8; --muted:#aebdd6; --line:rgba(238,243,248,.16);
+    --glow1:rgba(0,201,167,.5); --dur:.75s; --ease:cubic-bezier(.16,1,.3,1);
+
+    /* ===== tokens de espaciado (ronda 3 — más aire; base para F4–F9) ===== */
+    --space-section: clamp(5rem, 11vw, 8.5rem);          /* separación ENTRE secciones */
+    --space-block:   clamp(1.4rem, 3vw, 2.25rem);        /* separación ENTRE bloques de una sección */
+    --space-fluid:   clamp(.8rem, 2vw, 1.25rem);         /* separación fina (filas, líneas, chips) */
+    --pad-panel:     clamp(2rem, 5vw, 3.5rem);           /* márgenes internos generosos de los paneles glass */
+    --pad-text:      clamp(1rem, 2.4vw, 1.6rem);         /* aire dentro de texto/detalles */
+  }
+  html[data-theme="dark"]{
+    --bg:#0b1424; --panel:rgba(255,255,255,.05); --glass:rgba(16,27,48,.7);
+    --glow1:rgba(0,201,167,.28);
+  }
+  html[data-theme="light"]{
+    --bg:var(--navy); --panel:#22355c; --glass:rgba(255,255,255,.06);
+    --glow1:rgba(0,201,167,.4);
+  }
+  *{box-sizing:border-box; margin:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg); color:var(--txt); font-family:Poppins,system-ui,sans-serif; font-size:18px; line-height:1.65; overflow-x:hidden}
+  h1,h2,h3{font-family:'Bebas Neue',sans-serif; letter-spacing:.02em; line-height:1.05}
+  .lema{font-family:'Playfair Display',Georgia,serif; font-style:italic}
+  .kicker{font-family:Poppins,sans-serif; text-transform:uppercase; letter-spacing:.18em; font-size:.8rem; color:var(--turquesa); font-weight:600}
+  .skip{position:absolute; left:8px; top:-48px; background:var(--turquesa); color:#103b31; padding:.6rem 1rem; border-radius:8px; z-index:99; transition:top .2s}
+  .skip:focus{top:8px}
+  :focus-visible{outline:2px solid var(--turquesa); outline-offset:2px}
+
+  /* ===== blobs de marea (solo si hay movimiento) ===== */
+  .blob{position:fixed; border-radius:50%; filter:blur(70px); z-index:-1; opacity:.9; pointer-events:none}
+  .b1{width:46vw; height:46vw; background:var(--glow1); top:-14vw; right:-12vw; animation:marea 26s ease-in-out infinite alternate}
+  .b2{width:38vw; height:38vw; background:rgba(0,201,167,.25); bottom:-10vw; left:-12vw; animation:marea 32s ease-in-out infinite alternate-reverse}
+  @keyframes marea{from{transform:translate(0,0) scale(1)} to{transform:translate(-6vw,7vh) scale(1.15)}}
+
+  /* ===== barra fija (escritorio: siempre visible; móvil: controla el menú) ===== */
+  header{position:fixed; inset:0 0 auto 0; z-index:50; display:flex; flex-wrap:wrap; align-items:center; gap:.6rem 1rem; padding:14px 4vw;
+    transition:background .5s ease, padding .5s ease, border-color .5s ease, backdrop-filter .5s; border-bottom:1px solid transparent}
+  header.scrolled{background:rgba(13,22,38,.72); backdrop-filter:blur(12px); padding:8px 4vw; border-bottom-color:var(--turquesa)}
+  html[data-theme="light"] header.scrolled{background:rgba(10,19,36,.8)}
+  .brand{display:flex; align-items:center; gap:.6rem; font-family:'Bebas Neue'; font-size:1.4rem; color:#fff; text-decoration:none}
+  .logo{width:34px; height:34px; border-radius:50%; background:#F5F2EC; color:var(--navy); display:grid; place-items:center; font-family:'Bebas Neue'; font-size:1.05rem; flex:none}
+  nav{display:flex; flex-wrap:wrap; gap:.15rem; margin-right:auto}
+  nav a{color:#fff; padding:.6rem .7rem; text-decoration:none; font-size:.92rem; font-weight:500; min-height:44px; display:inline-flex; align-items:center}
+  nav a{background-image:linear-gradient(var(--turquesa),var(--turquesa)); background-repeat:no-repeat; background-size:0 3px; background-position:left calc(100% - 4px);
+    transition:background-size .4s var(--ease), color .3s}
+  nav a:hover,nav a:focus-visible{background-size:100% 3px}
+  .actions{display:flex; align-items:center; gap:.55rem; margin-left:auto}
+  .lang{font-size:.85rem; display:flex; align-items:center; gap:.3rem; border:1px solid var(--line); border-radius:999px; padding:.25rem .6rem; color:#fff}
+  .lang button{all:unset; cursor:pointer; padding:.35rem .3rem; opacity:.75; border-bottom:2px solid transparent}
+  .lang button.act{opacity:1; font-weight:700; border-color:var(--turquesa)}
+  .theme{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:rgba(255,255,255,.08); color:#fff; cursor:pointer; font-size:1.1rem; flex:none;
+    transition:transform .3s var(--ease), background .3s}
+  .theme:hover{transform:translateY(-2px); background:rgba(0,201,167,.25)}
+  .theme:active{transform:scale(.94)}
+
+  /* ===== menú hamburguesa (solo móvil; escritorio mantiene la barra sin hamburguesa) ===== */
+  .burger{display:none; width:44px; height:44px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.08); cursor:pointer; flex:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:5px;
+    transition:transform .3s var(--ease), background .3s}
+  .burger:hover{background:rgba(0,201,167,.18)}
+  .burger .b{width:20px; height:2px; border-radius:2px; background:#fff; transition:transform .3s var(--ease), opacity .25s}
+  .burger[aria-expanded="true"] .b1{transform:translateY(7px) rotate(45deg)}
+  .burger[aria-expanded="true"] .b2{opacity:0}
+  .burger[aria-expanded="true"] .b3{transform:translateY(-7px) rotate(-45deg)}
+  .scrim{position:fixed; inset:0; z-index:40; background:rgba(5,10,20,.55); opacity:0; pointer-events:none; transition:opacity .35s ease}
+  .scrim.on{opacity:1; pointer-events:auto}
+  /* C4/I2: en móvil el panel del menú es el PROPIO <nav id="menuPanel"> (una sola lista en el DOM).
+     Sus estilos de panel y su colapso explícito (display:none fuera del tab order) viven en la media query de 860 px. */
+
+  main{padding-top:86px}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 5vw}
+
+  /* ===== respiración entre secciones y bloques (ronda 3) ===== */
+  section{padding-top:var(--space-section); scroll-margin-top:96px}
+  #top{padding-top:calc(var(--space-section) * .8)}
+
+  /* ===== revelado marcado: paneles entran de los lados, alternando ===== */
+  [data-reveal="in"]{opacity:1; transform:none; transition:opacity var(--dur) var(--ease), transform var(--dur) var(--ease); transition-delay:var(--d,0ms)}
+  html.js [data-reveal]:not([data-reveal="in"]){opacity:0; transform:translateX(var(--from,60px))}
+  html.js [data-reveal="left"]{--from:-60px}
+  html.js [data-reveal="up"]{--from:0px; transform:translateY(56px)}
+
+  .glass{background:var(--glass); backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:26px; padding:var(--pad-panel);
+    transition:transform .4s var(--ease), border-color .4s, box-shadow .4s}
+  .glass:hover{transform:translateY(-6px); border-color:rgba(0,201,167,.5); box-shadow:0 18px 44px rgba(0,0,0,.35)}
+  .glass > * + *{margin-top:var(--space-block)}
+  .hero{display:grid; grid-template-columns:1.1fr .9fr; gap:clamp(2rem,6vw,4rem); align-items:center; min-height:78vh}
+  .hero h1{font-size:clamp(3rem,7.5vw,5.4rem)}
+  .hero h1 em{font-family:'Playfair Display',serif; font-style:italic; color:var(--turquesa)}
+  .hero .lema{color:var(--muted); font-size:1.2rem}
+  .hero-cta{display:flex; flex-wrap:wrap; gap:var(--space-fluid)}
+  .hero-img{aspect-ratio:4/3; border-radius:26px; background:linear-gradient(140deg,rgba(0,201,167,.25),rgba(255,255,255,.06)); border:1px solid var(--line);
+    display:grid; place-items:center; text-align:center; font-size:.9rem; color:var(--muted); padding:1.2rem}
+  .btn{display:inline-block; padding:.95rem 1.7rem; border-radius:999px; background:var(--turquesa); color:#0e3b32; text-decoration:none; font-weight:700;
+    transition:transform .3s var(--ease), box-shadow .3s, filter .3s}
+  .btn:hover{transform:translateY(-3px) scale(1.02); box-shadow:0 12px 30px rgba(0,201,167,.4); filter:brightness(1.06)}
+  .btn:active{transform:scale(1.04)}
+  .btn.ghost{background:transparent; border:2px solid currentColor; color:#fff}
+  .btn.wa{background:var(--verde); color:#eaffe0}
+  .num{font-family:'Bebas Neue'; font-size:1.6rem; color:var(--turquesa)}
+  .sched{font-family:'Bebas Neue'; font-size:clamp(2.2rem,5vw,3.6rem); color:var(--turquesa)}
+  .sched-grid{display:grid; grid-template-columns:1fr 1fr; gap:var(--space-block)}
+  .contact-row{display:flex; gap:.7rem; align-items:center; min-height:48px; padding:.8rem 1rem; border-radius:14px; border:1px solid var(--line); text-decoration:none;
+    transition:background .3s, transform .3s var(--ease)}
+  .contact-row + .contact-row{margin-top:var(--space-fluid)}
+  .contact-row:hover,.contact-row:focus-visible{background:rgba(0,201,167,.12); transform:translateX(6px)}
+  .social{display:flex; flex-wrap:wrap; gap:12px}
+  .social a{padding:.8rem 1.35rem; border-radius:999px; border:1px solid var(--line); text-decoration:none; color:#fff; font-size:.95rem; min-height:44px; display:inline-flex; align-items:center;
+    transition:transform .3s var(--ease), background .3s}
+  .social a:hover,.social a:focus-visible{transform:translateY(-4px); background:rgba(0,201,167,.18)}
+
+  /* ===== pie con mapa del sitio (ronda 3): columnas en escritorio, apilado en móvil ===== */
+  footer{margin-top:var(--space-section); border-top:1px solid var(--line); background:rgba(13,22,38,.5)}
+  html[data-theme="dark"] footer{background:rgba(10,17,32,.6)}
+  .f-top{display:grid; grid-template-columns:1.3fr 1fr 1.1fr 1.1fr; gap:var(--pad-panel); padding:var(--pad-panel) 6vw;
+    max-width:1180px; margin:0 auto}
+  .f-brand .lema{color:var(--turquesa); font-size:1.2rem; margin-top:var(--space-fluid)}
+  .sitemap{display:contents}
+  .f-col h3{font-family:Poppins,sans-serif; text-transform:uppercase; letter-spacing:.16em; font-size:.8rem; color:var(--turquesa); font-weight:600}
+  .f-col ul{list-style:none; padding:0; margin:var(--space-fluid) 0 0}
+  .f-col a{display:inline-flex; align-items:center; min-height:44px; padding:.35rem 0; color:var(--muted); text-decoration:none; font-size:.95rem;
+    transition:color .3s, transform .3s var(--ease), background-size .3s}
+  .f-col a:hover,.f-col a:focus-visible{color:#fff; transform:translateX(4px)}
+  .f-bottom{display:flex; flex-wrap:wrap; gap:1rem; align-items:center; border-top:1px solid var(--line); padding:1.3rem 6vw;
+    max-width:1180px; margin:0 auto}
+  .f-bottom .lema{color:var(--muted); font-size:1rem}
+  .f-bottom .lang{margin-left:auto}
+  .note{margin:14px auto; text-align:center; font-size:.8rem; color:var(--muted); max-width:680px; padding:0 6vw}
+
+  .visually-hidden{position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    .blob{animation:none}
+    [data-reveal]{opacity:1 !important; transform:none !important; transition:none !important}
+    .glass,.btn,.theme,.burger,.contact-row,.social a,nav,nav a,.skip,header,.f-col a,.scrim{transition:none !important}
+  }
+  @media (max-width:980px){ .f-top{grid-template-columns:1fr 1fr; row-gap:var(--space-block)} .sitemap{display:contents} }
+  @media (max-width:760px){
+    .hero{grid-template-columns:1fr; min-height:0}
+    .social a{flex:1 1 auto; text-align:center; justify-content:center}
+    .sched-grid{grid-template-columns:1fr}
+  }
+  @media (max-width:640px){ .f-top{grid-template-columns:1fr} }
+  @media (max-width:860px){
+    header{flex-wrap:nowrap}
+    .brand{font-size:1.2rem}
+    .burger{display:inline-flex}
+    /* C4: el panel es el PROPIO <nav> — la MISMA lista recolocada por CSS, sin duplicados.
+       I2: cerrado → display:none: fuera del tab order y del árbol de accesibilidad */
+    nav{display:none; position:fixed; inset:0 0 auto 0; top:0; z-index:44; width:100%; flex-wrap:nowrap; flex-direction:column; align-items:stretch;
+      margin:0; min-height:100vh; background:rgba(13,22,38,.92); backdrop-filter:blur(16px); border-bottom:1px solid var(--line);
+      padding:calc(84px + var(--space-block)) 6vw var(--space-section); overflow-y:auto;
+      visibility:hidden; opacity:0; transform:translateY(-14px);
+      transition:opacity .18s var(--ease), transform .18s var(--ease), visibility 0s linear .18s}
+    nav.open{visibility:visible; opacity:1; transform:none; transition:opacity .18s var(--ease), transform .18s var(--ease), visibility 0s}
+    nav a{display:flex; justify-content:space-between; align-items:center; gap:1rem; min-height:56px; padding:.8rem .5rem; font-size:1.05rem;
+      background-size:0 0; opacity:0; transform:translateY(-10px); transition:opacity .15s ease, transform .15s ease}
+    nav.open a{opacity:1; transform:none}
+    nav.open a:nth-child(1){transition-delay:40ms} nav.open a:nth-child(2){transition-delay:70ms}
+    nav.open a:nth-child(3){transition-delay:100ms} nav.open a:nth-child(4){transition-delay:130ms}
+    nav.open a:nth-child(5){transition-delay:160ms}
+    nav a::after{content:'›'; color:var(--turquesa); font-size:1.3rem}
+  }
+  @media (max-width:480px){
+    /* C3: ocultar SOLO visualmente — el nombre accesible «Simiente» queda íntegro (prueba congelada a 320 px) */
+    .brand .bname{position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+    .lang{font-size:.8rem; padding:.2rem .45rem}
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido" data-es="Saltar al contenido principal" data-en="Skip to main content">Saltar al contenido principal</a>
+<div class="blob b1" aria-hidden="true"></div>
+<div class="blob b2" aria-hidden="true"></div>
+
+<header id="barra">
+  <a class="brand" href="#top"><span class="logo" aria-hidden="true">SS</span> <span class="bname">SIMIENTE SANTA</span></a>
+  <!-- C4: UNA sola lista — este mismo <nav> es, en móvil, el panel del menú (styles en @media 860px).
+       Los ítems son solo la lista dinámica de secciones publicadas: nada hardcodeado dentro del landmark. -->
+  <nav aria-label="Secciones de la portada" id="menuPanel">
+    <a href="#quienes">Quiénes somos</a><a href="#horario">Horario</a><a href="#whatsapp">WhatsApp</a><a href="#contacto">Contacto</a><a href="#redes">Redes</a>
+  </nav>
+  <div class="actions">
+    <div class="lang" role="group" aria-label="Idioma">
+      <button class="act" id="btnEs">Español</button><span aria-hidden="true">/</span><button id="btnEn">English</button>
+    </div>
+    <button class="theme" id="themeToggle" aria-pressed="false" aria-label="Cambiar a tema oscuro">🌙</button>
+    <button class="burger" id="menuBtn" aria-expanded="false" aria-controls="menuPanel" aria-label="Abrir menú de secciones">
+      <span class="b b1" aria-hidden="true"></span><span class="b b2" aria-hidden="true"></span><span class="b b3" aria-hidden="true"></span>
+    </button>
+  </div>
+</header>
+
+<div class="scrim" id="scrim"></div>
+
+<main id="contenido">
+  <section id="top" class="wrap hero">
+    <div data-reveal="left">
+      <p class="kicker" data-es="Bienvenido a casa" data-en="Welcome home">Bienvenido a casa</p>
+      <h1 data-es="BIENVENIDO A TU CASA EN CRISTO" data-en="WELCOME TO YOUR HOME IN CHRIST">BIENVENIDO A <em>TU CASA</em> EN CRISTO</h1>
+      <p class="lema" data-es="«Brotamos para dar vida.»" data-en="“We sprout to give life.”">«Brotamos para dar vida.»</p>
+      <div class="hero-cta">
+        <a class="btn" href="#horario" data-es="Ver horario" data-en="See schedule">Ver horario</a>
+        <a class="btn wa" href="#whatsapp" data-es="Escribir por WhatsApp" data-en="Message us on WhatsApp">Escribir por WhatsApp</a>
+      </div>
+    </div>
+    <div class="hero-img" data-reveal="up" style="--d:140ms">
+      <span data-es="Imagen de portada del panel (F3) aquí; marco de vidrio; nunca sobre el logotipo." data-en="Hero image goes here; glass frame; never over the logo.">Imagen de portada aquí</span>
+    </div>
+  </section>
+
+  <section id="quienes" class="wrap">
+    <div class="glass" data-reveal="up">
+      <p><span class="num">01</span></p>
+      <h2 data-es="QUIÉNES SOMOS" data-en="WHO WE ARE">QUIÉNES SOMOS</h2>
+      <p data-es="Contenido real de F3: misión y visión editadas desde el panel." data-en="Real F3 content: mission and vision.">Misión y visión del panel de F3 aquí.</p>
+    </div>
+  </section>
+
+  <section id="horario" class="wrap">
+    <div class="glass" data-reveal="left">
+      <p><span class="num">02</span></p>
+      <h2 data-es="HORARIO DE SERVICIOS" data-en="SERVICE SCHEDULE">HORARIO DE SERVICIOS</h2>
+      <div class="sched-grid">
+        <div><p class="sched">10:00 <small style="font-size:.42em">a. m.</small></p><p>Culto de adoración · Domingo</p></div>
+        <div><p class="sched">7:00 <small style="font-size:.42em">p. m.</small></p><p>Estudio bíblico · Miércoles</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="whatsapp" class="wrap">
+    <div class="glass" data-reveal="left">
+      <p><span class="num">03</span></p>
+      <h2>WHATSAPP</h2>
+      <p data-es="Canales publicados por la iglesia." data-en="Published WhatsApp channels.">Te respondemos rápido.</p>
+      <a class="btn wa" href="#" data-es="Abrir WhatsApp" data-en="Open WhatsApp">Abrir WhatsApp</a>
+    </div>
+  </section>
+
+  <section id="contacto" class="wrap">
+    <div class="glass" data-reveal="up">
+      <p><span class="num">04</span></p>
+      <h2 data-es="CONTACTO" data-en="CONTACT">CONTACTO</h2>
+      <a class="contact-row" href="#">📍 <span data-es="Dirección del templo (F3)" data-en="Church address (F3)">Dirección del templo</span></a>
+      <a class="contact-row" href="#">✉️ <span data-es="Correo de la iglesia (F3)" data-en="Church email (F3)">Correo</span></a>
+      <a class="contact-row" href="#">📞 <span data-es="Teléfono (F3)" data-en="Phone (F3)">Teléfono</span></a>
+    </div>
+  </section>
+
+  <section id="redes" class="wrap">
+    <div class="glass" data-reveal="left">
+      <p><span class="num">05</span></p>
+      <h2 data-es="REDES SOCIALES" data-en="SOCIAL MEDIA">REDES SOCIALES</h2>
+      <div class="social">
+        <a href="#" data-reveal style="--d:0ms" data-es="Facebook de la iglesia" data-en="Facebook">Facebook</a>
+        <a href="#" data-reveal style="--d:100ms" data-es="Instagram" data-en="Instagram">Instagram</a>
+        <a href="#" data-reveal style="--d:200ms" data-es="YouTube" data-en="YouTube">YouTube</a>
+      </div>
+    </div>
+  </section>
+
+  <p class="note">Maqueta del diseño final (Propuesta B «Marea Turquesa», ronda 3) · F10 — solo diseño. El logotipo real se muestra intacto sobre su pastilla crema (aquí, monograma placeholder). Inspira­ción: Apple / Microsoft — sin copiar.</p>
+</main>
+
+<footer>
+  <div class="f-top">
+    <div class="f-brand">
+      <a class="brand" href="#top"><span class="logo" aria-hidden="true">SS</span> SIMIENTE SANTA</a>
+      <p class="lema" data-es="«Esta siempre será tu casa.»" data-en="“This will always be your home.”">«Esta siempre será tu casa.»</p>
+    </div>
+
+    <!-- C1: mapa del sitio condicional — un grupo sin ítems NO se renderiza; sin ningún grupo, <nav.sitemap>
+         no se renderiza. Rótulos de grupo en <h3>, NUNCA <h2> (las pruebas congeladas exigen cero headings
+         de nivel 2 en la página completa y que «Contacto»/«WhatsApp» no sean headings cuando faltan datos). -->
+    <nav class="sitemap" aria-label="Mapa del sitio">
+      <div class="f-col">
+        <h3 data-es="Explorar" data-en="Explore">Explorar</h3>
+        <ul>
+          <li><a href="#top" data-es="Inicio" data-en="Home">Inicio</a></li>
+          <li><a href="#quienes" data-es="Quiénes somos" data-en="Who we are">Quiénes somos</a></li>
+          <li><a href="#horario" data-es="Horario de servicios" data-en="Service schedule">Horario de servicios</a></li>
+          <li><a href="#whatsapp" data-es="WhatsApp" data-en="WhatsApp">WhatsApp</a></li>
+          <li><a href="#contacto" data-es="Contacto" data-en="Contact">Contacto</a></li>
+          <li><a href="#redes" data-es="Redes sociales" data-en="Social media">Redes sociales</a></li>
+        </ul>
+      </div>
+      <!-- C2: nombres accesibles ÚNICOS — prefijo de contexto, jamás el dato desnudo
+           (duplicaría los enlaces mailto/tel del bloque 04) ni el social.action de las secciones -->
+      <div class="f-col">
+        <h3 data-es="Contacto" data-en="Contact">Contacto</h3>
+        <ul>
+          <li><a href="#" aria-label="Contacto: Dirección del templo" data-es="Contacto: Dirección del templo" data-en="Contact: Church address"><span aria-hidden="true">Dirección del templo</span></a></li>
+          <li><a href="#" aria-label="Contacto: Correo" data-es="Contacto: Correo" data-en="Contact: Email"><span aria-hidden="true">Correo</span></a></li>
+          <li><a href="#" aria-label="Contacto: Teléfono" data-es="Contacto: Teléfono" data-en="Contact: Phone"><span aria-hidden="true">Teléfono</span></a></li>
+          <li><a href="#" aria-label="Contacto: WhatsApp" data-es="Contacto: WhatsApp" data-en="Contact: WhatsApp"><span aria-hidden="true">WhatsApp</span></a></li>
+        </ul>
+      </div>
+      <!-- C2: Síguenos usa las etiquetas PLANAS de SOCIAL_NETWORK_LABELS, nunca «Ver en {network}» -->
+      <div class="f-col">
+        <h3 data-es="Síguenos" data-en="Follow us">Síguenos</h3>
+        <ul>
+          <li><a href="#">Facebook</a></li>
+          <li><a href="#">Instagram</a></li>
+          <li><a href="#">YouTube</a></li>
+        </ul>
+      </div>
+      <!-- Patrón listo para crecer (F4–F9): añadir aquí otra .f-col con su <h3> de grupo
+           SOLO cuando la sección exista y esté publicada (por ej., «Eventos»). -->
+    </nav>
+  </div>
+
+  <div class="f-bottom">
+    <span class="lema" data-es="Brotamos para dar vida" data-en="We sprout to give life">Brotamos para dar vida</span>
+    <div class="lang" role="group" aria-label="Idioma">
+      <button class="act" id="btnEs2">Español</button><span aria-hidden="true">/</span><button id="btnEn2">English</button>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  document.documentElement.classList.add('js');
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* Tema: guardado > sistema. (B arranca en dark: su estado de reposo ya es navy) */
+  const apply = t => { root.dataset.theme = t;
+    const b = document.getElementById('themeToggle');
+    b.textContent = t==='dark' ? '☀️' : '🌙';
+    b.setAttribute('aria-pressed', t==='dark');
+    b.setAttribute('aria-label', t==='dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'); };
+  const saved = localStorage.getItem('f10-tema');
+  apply(saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'dark'));
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const t = root.dataset.theme==='dark' ? 'light' : 'dark';
+    apply(t); localStorage.setItem('f10-tema', t); });
+
+  /* Revelado al hacer scroll, una sola vez por elemento */
+  const pending = () => document.querySelectorAll('[data-reveal]:not([data-reveal="in"])');
+  const show = el => el.dataset.reveal = 'in';
+  if (reduce.matches || !('IntersectionObserver' in window)) pending().forEach(show);
+  else {
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting){ show(e.target); io.unobserve(e.target); } }), {threshold:.15, rootMargin:'0px 0px -8% 0px'});
+    pending().forEach(el => io.observe(el));
+    document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.reveal !== undefined) show(e.target); }, true);
+  }
+
+  /* Idioma demo (solo maqueta; el real es F3). Incluye footer y etiquetas del menú móvil. */
+  let lang = 'es';
+  const esBtns = [document.getElementById('btnEs'), document.getElementById('btnEs2')];
+  const enBtns = [document.getElementById('btnEn'), document.getElementById('btnEn2')];
+  function burgerLabel(){
+    const b = document.getElementById('menuBtn');
+    const open = b.getAttribute('aria-expanded') === 'true';
+    b.setAttribute('aria-label', open
+      ? (lang==='es' ? 'Cerrar menú de secciones' : 'Close sections menu')
+      : (lang==='es' ? 'Abrir menú de secciones' : 'Open sections menu'));
+  }
+  function setLang(l){
+    lang = l; root.lang = l;
+    esBtns.forEach(b => b.classList.toggle('act', l==='es'));
+    enBtns.forEach(b => b.classList.toggle('act', l==='en'));
+    document.querySelectorAll('[data-es]').forEach(el => { const v = el.dataset[l]; if (v) el.textContent = v; });
+    burgerLabel();
+  }
+  esBtns.forEach(b => b.addEventListener('click', ()=>setLang('es')));
+  enBtns.forEach(b => b.addEventListener('click', ()=>setLang('en')));
+
+  /* Barra: vidrio + borde turquesa al bajar */
+  const bar = document.getElementById('barra');
+  const up = () => bar.classList.toggle('scrolled', scrollY > 40);
+  addEventListener('scroll', up, {passive:true}); up();
+
+  /* ===== Menú hamburguesa móvil: patrón disclosure (APG) — la MISMA lista del <nav> ===== */
+  const burger = document.getElementById('menuBtn');
+  const panel = document.getElementById('menuPanel'); /* es el propio <nav> de la cabecera: una sola lista */
+  const scrim = document.getElementById('scrim');
+  const mqMenu = matchMedia('(max-width:860px)');
+  let menuOpen = false;
+
+  function openMenu(){
+    menuOpen = true;
+    burger.setAttribute('aria-expanded','true');
+    burgerLabel();
+    panel.classList.add('open'); scrim.classList.add('on');
+    document.documentElement.style.overflow = 'hidden'; /* sin scroll de fondo */
+    const first = panel.querySelector('a');
+    if (first) setTimeout(()=>first.focus(), reduce.matches ? 0 : 90); /* el foco entra al primer enlace */
+  }
+  function closeMenu(returnFocus){
+    if (!menuOpen) return;
+    menuOpen = false;
+    burger.setAttribute('aria-expanded','false');
+    burgerLabel();
+    panel.classList.remove('open'); scrim.classList.remove('on');
+    document.documentElement.style.overflow = '';
+    if (returnFocus !== false) burger.focus(); /* Escape/botón: el foco vuelve al botón */
+  }
+  burger.addEventListener('click', () => menuOpen ? closeMenu() : openMenu());
+  scrim.addEventListener('click', () => closeMenu());
+  panel.addEventListener('click', e => { if (e.target.closest('a')) closeMenu(false); }); /* ancla: cierra sin robar foco */
+  document.addEventListener('keydown', e => {
+    if (!menuOpen) return;
+    if (e.key === 'Escape'){ closeMenu(); }
+    /* Sin trampa de foco (disclosure): Tab sigue por la página — idioma y tema de la barra quedan operables. */
+  });
+  mqMenu.addEventListener?.('change', e => { if (!e.matches) closeMenu(false); });
+})();
+</script>
+</body>
+</html>

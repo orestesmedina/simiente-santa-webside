@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F10 · Propuesta C — «Huella Tipográfica» (maqueta)</title>
+<style>
+  :root{
+    --navy:#1a2b4a; --crema:#F5F2EC; --turquesa:#00c9a7; --txt-tq:#0e7a66; --coral:#ff6b3d; --verde:#217638;
+    --bg:#ffffff; --tinta:var(--navy); --txt:var(--navy); --muted:#5f6b85; --line:#e2ddd2;
+    --banda:var(--navy); --banda-txt:#fff; --dur:.65s; --ease:cubic-bezier(.16,1,.3,1);
+  }
+  html[data-theme="dark"]{
+    --bg:#101a2c; --txt:#edf0f5; --muted:#9dabc6; --line:#2c3a58; --banda:#F5F2EC; --banda-txt:var(--navy);
+    --txt-tq:#00c9a7;
+  }
+  *{box-sizing:border-box; margin:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg); color:var(--txt); font-family:Poppins,system-ui,sans-serif; font-size:18px; line-height:1.7}
+  h1,h2,h3,.bebas{font-family:'Bebas Neue',sans-serif; letter-spacing:.01em; line-height:1.02}
+  .lema{font-family:'Playfair Display',Georgia,serif; font-style:italic}
+  .kicker{text-transform:uppercase; letter-spacing:.22em; font-size:.78rem; color:var(--txt-tq); font-weight:600}
+  .skip{position:absolute; left:8px; top:-48px; background:var(--turquesa); color:#103b31; padding:.6rem 1rem; border-radius:6px; z-index:99; transition:top .2s}
+  .skip:focus{top:8px}
+  :focus-visible{outline:2px solid var(--turquesa); outline-offset:2px}
+
+  /* ===== barra fija: se compacta y gana hairline + sombra ===== */
+  header{position:fixed; inset:0 0 auto 0; z-index:50; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem 1.1rem; padding:16px 5vw;
+    background:color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter:blur(6px);
+    transition:padding .45s ease, box-shadow .45s ease, background .45s ease, border-color .45s ease; border-bottom:1px solid transparent}
+  header.scrolled{padding:9px 5vw; background:var(--bg); border-bottom-color:var(--line); box-shadow:0 10px 30px rgba(26,43,74,.08)}
+  .brand{display:flex; align-items:baseline; gap:.6rem}
+  .logo{width:32px; height:32px; border-radius:8px; background:var(--banda); color:var(--banda-txt); display:grid; place-items:center; font-family:'Bebas Neue'; font-size:1rem; transition:width .45s var(--ease), height .45s var(--ease)}
+  .brand small{letter-spacing:.28em; font-weight:600; font-size:.8rem}
+  header.scrolled .logo{width:26px; height:26px}
+  nav{display:flex; flex-wrap:wrap; gap:.1rem; margin-right:auto}
+  nav a{padding:.65rem .7rem; text-decoration:none; font-size:.92rem; color:inherit}
+  nav a span.navline{display:block; height:2px; background:var(--turquesa); margin-top:2px; border-radius:2px; transform:scaleX(0); transform-origin:left; transition:transform .4s var(--ease)}
+  nav a:hover .navline, nav a:focus-visible .navline{transform:scaleX(1)}
+  .lang{font-size:.82rem; display:flex; gap:.3rem; align-items:center}
+  .lang button{all:unset; cursor:pointer; padding:.4rem .3rem; opacity:.7}
+  .lang button.act{opacity:1; font-weight:700; text-decoration:underline; text-decoration-color:var(--turquesa); text-decoration-thickness:2px; text-underline-offset:5px}
+  .theme{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:transparent; color:inherit; cursor:pointer;
+    transition:transform .3s var(--ease), border-color .3s}
+  .theme:hover{transform:translateY(-2px); border-color:var(--turquesa)}
+  .theme:active{transform:scale(.94)}
+
+  main{padding-top:96px}
+  .wrap{max-width:1020px; margin:0 auto; padding:0 5vw}
+  section{padding:70px 0 20px; scroll-margin-top:96px}
+
+  /* ===== revelado: máscara por línea + fade para bloques ===== */
+  .mask{overflow:hidden; display:block}
+  .mask > span{display:block; transform:none}
+  html.js [data-lines] .mask > span{transform:translateY(115%)}
+  html.js [data-lines="in"] .mask > span{transform:none; transition:transform .62s var(--ease);}
+  html.js [data-lines="in"] .mask:nth-child(1) > span{transition-delay:0ms}
+  html.js [data-lines="in"] .mask:nth-child(2) > span{transition-delay:120ms}
+  html.js [data-lines="in"] .mask:nth-child(3) > span{transition-delay:240ms}
+  html.js [data-lines="in"] .mask:nth-child(4) > span{transition-delay:360ms}
+  [data-reveal="in"]{opacity:1; transform:none; transition:opacity var(--dur) var(--ease), transform var(--dur) var(--ease); transition-delay:var(--d,0ms)}
+  html.js [data-reveal]:not([data-reveal="in"]){opacity:0; transform:translateY(34px)}
+
+  .hero{min-height:66vh}
+  .hero h1{font-size:clamp(3rem,9vw,6.2rem)}
+  .hero .f2{font-family:'Playfair Display',serif; font-style:italic; color:var(--txt-tq)}
+  html[data-theme="dark"] .hero .f2{color:var(--turquesa)}
+  .hero-img{margin:26px 0 8px; aspect-ratio:16/7; border-radius:14px; background:linear-gradient(120deg,#e8efe2,#cfe3d8); display:grid; place-items:center; color:var(--muted); font-size:.9rem}
+  .num{font-family:'Bebas Neue'; font-size:4.2rem; color:transparent; -webkit-text-stroke:1.5px var(--txt-tq); line-height:.9}
+  html[data-theme="dark"] .num{-webkit-text-stroke-color:var(--turquesa)}
+  .headrow{display:grid; grid-template-columns:auto 1fr; gap:1.2rem; align-items:baseline; margin-bottom:20px}
+  .headrow .lema{color:var(--muted); font-size:1.05rem}
+  .fila{display:flex; justify-content:space-between; gap:1.4rem; padding:1.05rem .4rem; border-bottom:1px solid var(--line); text-decoration:none;
+    transition:background .3s, padding-left .3s var(--ease)}
+  .fila:hover,.fila:focus-visible{background:color-mix(in srgb, var(--turquesa) 7%, transparent); padding-left:1rem; border-radius:8px}
+  .fila .hora{font-family:'Bebas Neue'; font-size:1.7rem}
+  .btn{display:inline-block; margin-top:14px; padding:.9rem 1.6rem; border-radius:10px; background:var(--txt); color:var(--bg); text-decoration:none; font-weight:600;
+    transition:transform .25s var(--ease), box-shadow .25s}
+  .btn:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(26,43,74,.2)}
+  .btn:active{transform:scale(.97)}
+  .banda{background:var(--banda); color:var(--banda-txt); border-radius:18px; padding:44px 6vw; margin:10px -5vw 0}
+  .banda .fila{border-bottom-color:color-mix(in srgb, var(--banda-txt) 22%, transparent)}
+  .banda .fila:hover,.banda .fila:focus-visible{background:rgba(255,255,255,.08)}
+  html[data-theme="dark"] .banda .fila:hover{background:rgba(26,43,74,.08)}
+  .banda .hora{color:var(--txt-tq)} html[data-theme="dark"] .banda .hora{color:var(--turquesa)}
+  footer{margin-top:80px; background:var(--navy); color:#fff; padding:46px 6vw; border-top:4px solid var(--turquesa)}
+  footer .lema{color:var(--turquesa); font-size:1.3rem; margin:10px 0 18px}
+  .foot-lang{font-size:.85rem}
+  .foot-lang button{color:#fff}
+  .note{margin:14px auto; text-align:center; font-size:.8rem; color:var(--muted); max-width:620px}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    [data-lines] .mask > span{transform:none !important; transition:none !important}
+    [data-reveal]{opacity:1 !important; transform:none !important; transition:none !important}
+    .fila,.btn,.theme,nav a .navline,.skip,.logo,header{transition:none !important}
+    .logo{width:32px !important; height:32px !important}
+  }
+  @media (max-width:720px){ .hero{min-height:0} .hero-img{aspect-ratio:4/3} .headrow{grid-template-columns:1fr; gap:.2rem} .num{font-size:3rem} }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido" data-es="Ir al contenido" data-en="Skip to content">Ir al contenido</a>
+<header id="barra">
+  <a class="brand" href="#top" style="text-decoration:none; color:inherit">
+    <span class="logo" aria-hidden="true">SS</span><small>SIMIENTE&nbsp;SANTA</small>
+  </a>
+  <nav aria-label="Secciones del sitio">
+    <a href="#quienes">Quiénes somos<span class="navline" aria-hidden="true"></span></a>
+    <a href="#horario">Horario<span class="navline" aria-hidden="true"></span></a>
+    <a href="#whatsapp">WhatsApp<span class="navline" aria-hidden="true"></span></a>
+    <a href="#contacto">Contacto<span class="navline" aria-hidden="true"></span></a>
+    <a href="#redes">Redes<span class="navline" aria-hidden="true"></span></a>
+  </nav>
+  <div class="lang" role="group" aria-label="Idioma">
+    <button class="act" id="btnEs">Español</button><span aria-hidden="true">/</span><button id="btnEn">English</button>
+  </div>
+  <button class="theme" id="themeToggle" aria-pressed="false" aria-label="Cambiar a tema oscuro">🌙</button>
+</header>
+
+<main id="contenido">
+  <section id="top" class="wrap hero">
+    <p class="kicker" data-reveal data-es="Iglesia en tu barrio" data-en="Church in your neighborhood">Iglesia en tu barrio</p>
+    <h1 data-lines aria-label="Tu casa en Cristo, tu raíz viva">
+      <span class="mask"><span data-es="TU CASA" data-en="YOUR HOME">TU CASA</span></span>
+      <span class="mask"><span class="f2" data-es="en Cristo," data-en="in Christ,">en Cristo,</span></span>
+      <span class="mask"><span data-es="TU RAÍZ VIVA" data-en="YOUR LIVING ROOT">TU RAÍZ VIVA</span></span>
+    </h1>
+    <div class="hero-img" data-reveal style="--d:200ms"><span data-es="Imagen de portada de F3 aquí (recuadro fino, nunca sobre el logotipo)" data-en="F3 hero image here; fine frame; never over the logo">Imagen de portada aquí</span></div>
+    <div data-reveal style="--d:380ms">
+      <p class="lema" data-es="«Brotamos para dar vida.»" data-en="“We sprout to give life.”">«Brotamos para dar vida.»</p>
+      <a class="btn" href="#horario" data-es="Ver horario" data-en="See schedule">Ver horario</a>
+      <a class="btn" style="background:var(--verde); color:#eaffe0" href="#whatsapp" data-es="Escribir por WhatsApp" data-en="Message us on WhatsApp">Escribir por WhatsApp</a>
+    </div>
+  </section>
+
+  <section id="quienes" class="wrap">
+    <div class="headrow" data-reveal><span class="num" aria-hidden="true">01</span><div><h2 data-es="QUIÉNES SOMOS" data-en="WHO WE ARE">QUIÉNES SOMOS</h2><p class="lema">casa · fe · vida</p></div></div>
+    <p data-reveal data-es="Texto real del panel de F3: la misión y la visión de la iglesia, con subrayados turquesa que se despliegan en hover." data-en="Real F3 panel content here.">Misión y visión de F3 aquí, con texto grande y muy legible; el subrayado turquesa aparece solo al pasar el cursor.</p>
+  </section>
+
+  <section id="horario" class="wrap">
+    <div class="headrow" data-reveal><span class="num" aria-hidden="true">02</span><div><h2 data-es="HORARIO" data-en="SCHEDULE">HORARIO</h2><p class="lema" data-es="te esperamos" data-en="we wait for you">te esperamos</p></div></div>
+    <div class="banda" data-reveal style="--d:120ms">
+      <a class="fila" href="#"><span>DOMINGO · <span data-es="Culto de adoración" data-en="Worship service">Culto de adoración</span></span><span class="hora">10:00 a. m.</span></a>
+      <a class="fila" href="#"><span>MIÉRCOLES · <span data-es="Estudio bíblico" data-en="Bible study">Estudio bíblico</span></span><span class="hora">7:00 p. m.</span></a>
+    </div>
+  </section>
+
+  <section id="whatsapp" class="wrap">
+    <div class="headrow" data-reveal><span class="num" aria-hidden="true">03</span><div><h2>WHATSAPP</h2><p class="lema" data-es="te escuchamos" data-en="we hear you">te escuchamos</p></div></div>
+    <div data-reveal style="--d:120ms">
+      <a class="btn" style="background:var(--verde); color:#eaffe0" href="#" data-es="Abrir WhatsApp" data-en="Open WhatsApp">Abrir WhatsApp</a>
+    </div>
+  </section>
+
+  <section id="contacto" class="wrap">
+    <div class="headrow" data-reveal><span class="num" aria-hidden="true">04</span><div><h2 data-es="CONTACTO" data-en="CONTACT">CONTACTO</h2></div></div>
+    <div>
+      <a class="fila" href="#" data-reveal style="--d:0ms"><span>📍 <span data-es="Dirección" data-en="Address">Dirección</span></span><span data-es="Ver en el mapa →" data-en="Open map →">Ver →</span></a>
+      <a class="fila" href="#" data-reveal style="--d:90ms"><span>✉️ <span data-es="Correo" data-en="Email">Correo</span></span><span data-es="Escribir correo →" data-en="Send email →">Escribir →</span></a>
+      <a class="fila" href="#" data-reveal style="--d:180ms"><span>📞 <span data-es="Teléfono" data-en="Phone">Teléfono</span></span><span data-es="Llamar →" data-en="Call →">Llamar →</span></a>
+    </div>
+  </section>
+
+  <section id="redes" class="wrap">
+    <div class="headrow" data-reveal><span class="num" aria-hidden="true">05</span><div><h2 data-es="REDES SOCIALES" data-en="SOCIAL MEDIA">REDES SOCIALES</h2></div></div>
+    <div>
+      <a class="fila" href="#" data-reveal style="--d:0ms"><span data-es="Facebook de la iglesia" data-en="Facebook">Facebook de la iglesia</span><span data-es="Ver en Facebook →" data-en="Open Facebook →">Ver →</span></a>
+      <a class="fila" href="#" data-reveal style="--d:90ms"><span data-es="Instagram de la iglesia" data-en="Instagram">Instagram de la iglesia</span><span data-es="Ver en Instagram →" data-en="Open Instagram →">Ver →</span></a>
+      <a class="fila" href="#" data-reveal style="--d:180ms"><span data-es="YouTube de la iglesia" data-en="YouTube">YouTube de la iglesia</span><span data-es="Ver en YouTube →" data-en="Open YouTube →">Ver →</span></a>
+    </div>
+  </section>
+
+  <p class="note">Maqueta de la Propuesta C «Huella Tipográfica» · F10 — solo diseño. El logotipo real (resources/simiente.jpeg) se muestra intacto; aquí, monograma placeholder.</p>
+</main>
+
+<footer>
+  <p style="letter-spacing:.3em; font-weight:600; font-size:.85rem">SIMIENTE&nbsp;SANTA</p>
+  <p class="lema" data-es="«Brotamos para dar vida.»" data-en="“We sprout to give life.”">«Brotamos para dar vida.»</p>
+  <div class="lang foot-lang" role="group" aria-label="Idioma">
+    <button id="btnEsF" class="act">Español</button><span aria-hidden="true">/</span><button id="btnEnF">English</button>
+  </div>
+</footer>
+
+<script>
+(function(){
+  document.documentElement.classList.add('js');
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* Tema: elección guardada > preferencia del sistema */
+  const apply = t => { root.dataset.theme = t;
+    const b = document.getElementById('themeToggle');
+    b.textContent = t==='dark' ? '☀️' : '🌙';
+    b.setAttribute('aria-pressed', t==='dark');
+    b.setAttribute('aria-label', t==='dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'); };
+  apply(localStorage.getItem('f10-tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const t = root.dataset.theme==='dark' ? 'light' : 'dark';
+    apply(t); localStorage.setItem('f10-tema', t); });
+
+  /* Revelado: titulares línea a línea (data-lines) + bloques fade (data-reveal); UNA sola vez */
+  const shown = el => el.dataset.x === '1';
+  function show(el){
+    el.dataset.x = '1';
+    if (el.hasAttribute('data-lines')) el.setAttribute('data-lines','in');
+    else el.dataset.reveal = 'in';
+  }
+  const all = () => document.querySelectorAll('[data-lines],[data-reveal]');
+  if (reduce.matches || !('IntersectionObserver' in window)) {
+    all().forEach(show);
+  } else {
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting){ show(e.target); io.unobserve(e.target); }
+    }), {threshold:.18, rootMargin:'0px 0px -9% 0px'});
+    all().forEach(el => { if (!shown(el)) io.observe(el); });
+    document.addEventListener('focusin', e => {
+      const t = e.target.closest('[data-reveal],[data-lines]');
+      if (t && !shown(t)) show(t);
+    }, true);
+  }
+
+  /* Barra: compactado al bajar */
+  const bar = document.getElementById('barra');
+  const up = () => bar.classList.toggle('scrolled', scrollY > 40);
+  addEventListener('scroll', up, {passive:true}); up();
+
+  /* Idioma demo (solo maqueta; el real es F3) */
+  function setLang(l){
+    root.lang = l;
+    document.querySelectorAll('.lang button').forEach(b => {
+      const isEs = b.id==='btnEs' || b.id==='btnEsF';
+      b.classList.toggle('act', (l==='es') === isEs); });
+    document.querySelectorAll('[data-es]').forEach(el => { const v = el.dataset[l]; if (v) el.textContent = v; });
+  }
+  document.getElementById('btnEs').onclick = ()=>setLang('es');
+  document.getElementById('btnEn').onclick = ()=>setLang('en');
+  document.getElementById('btnEsF').onclick = ()=>setLang('es');
+  document.getElementById('btnEnF').onclick = ()=>setLang('en');
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { contrast, readSystemCss, tokenValues } from '../../../test/contrast';
 import { en } from './en';
 import { es } from './es';
 import { LanguageProvider } from './LanguageProvider';
@@ -114,5 +115,158 @@ describe('i18n del sitio público', () => {
     window.localStorage.clear();
     renderApp();
     expect(screen.getByTestId('lang')).toHaveTextContent('es');
+  });
+});
+
+describe('claves i18n nuevas de F10 (FR-019/SC-010)', () => {
+  const CLAVES_NUEVAS = [
+    'nav.menu.open',
+    'nav.menu.close',
+    'nav.menu.label',
+    'footer.sitemap.label',
+    'footer.sitemap.explore',
+    'footer.sitemap.contact',
+    'footer.sitemap.social',
+    'footer.sitemap.home',
+    'theme.label',
+    'theme.toDark',
+    'theme.toLight',
+  ] as const;
+
+  it('existen en es y en, y ninguna queda vacía', () => {
+    for (const key of CLAVES_NUEVAS) {
+      expect(es[key], `es.${key}`).toBeTruthy();
+      expect(en[key], `en.${key}`).toBeTruthy();
+      expect(es[key].trim().length, `es.${key} no vacía`).toBeGreaterThan(0);
+      expect(en[key].trim().length, `en.${key} no vacía`).toBeGreaterThan(0);
+    }
+  });
+
+  it('las claves congeladas de F3 conservan su texto (contrato R10-9)', () => {
+    expect(es['nav.label']).toBe('Secciones de la portada');
+    expect(en['nav.label']).toBe('Page sections');
+    expect(es['a11y.skip']).toBe('Saltar al contenido principal');
+    expect(en['a11y.skip']).toBe('Skip to main content');
+    expect(es['lang.label']).toBe('Idioma');
+    expect(en['lang.label']).toBe('Language');
+  });
+
+  it('los textos nuevos son los del catálogo de ux.md §7', () => {
+    expect(es['nav.menu.open']).toBe('Abrir menú de secciones');
+    expect(en['nav.menu.open']).toBe('Open sections menu');
+    expect(es['nav.menu.close']).toBe('Cerrar menú de secciones');
+    expect(en['nav.menu.close']).toBe('Close sections menu');
+    expect(es['nav.menu.label']).toBe('Menú de secciones');
+    expect(en['nav.menu.label']).toBe('Sections menu');
+    expect(es['footer.sitemap.label']).toBe('Mapa del sitio');
+    expect(en['footer.sitemap.label']).toBe('Site map');
+    expect(es['footer.sitemap.explore']).toBe('Explorar');
+    expect(en['footer.sitemap.explore']).toBe('Explore');
+    expect(es['footer.sitemap.contact']).toBe('Contacto');
+    expect(en['footer.sitemap.contact']).toBe('Contact');
+    expect(es['footer.sitemap.social']).toBe('Síguenos');
+    expect(en['footer.sitemap.social']).toBe('Follow us');
+    expect(es['footer.sitemap.home']).toBe('Inicio');
+    expect(en['footer.sitemap.home']).toBe('Home');
+    expect(es['theme.label']).toBe('Tema');
+    expect(en['theme.label']).toBe('Theme');
+    expect(es['theme.toDark']).toBe('Cambiar a tema oscuro');
+    expect(en['theme.toDark']).toBe('Switch to dark theme');
+    expect(es['theme.toLight']).toBe('Cambiar a tema claro');
+    expect(en['theme.toLight']).toBe('Switch to light theme');
+  });
+
+  it('los CTA del hero no colisionan con los canales de WhatsApp (D19)', () => {
+    expect(es['hero.cta.schedule']).toBe('Ver horario');
+    expect(es['hero.cta.whatsapp']).toBe('Escríbenos por WhatsApp');
+    // El nombre del CTA del hero NO contiene los de la sección 03.
+    expect(es['hero.cta.whatsapp']).not.toContain('Escribir por WhatsApp');
+    expect(es['hero.cta.whatsapp']).not.toContain('Entrar al grupo');
+    expect(en['hero.cta.whatsapp']).not.toContain('Chat on WhatsApp');
+    expect(en['hero.cta.whatsapp']).not.toContain('Join the group');
+  });
+});
+
+describe('selector de idioma compacto (F10 · T1027/FR-015/FR-016/FR-017)', () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => window.localStorage.clear());
+
+  it('conserva los nombres completos: sin siglas, sin píldoras y sin menú', () => {
+    renderApp();
+
+    expect(screen.getByRole('radio', { name: 'Español' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Inglés' })).toBeInTheDocument();
+    expect(screen.queryByText('ES')).toBeNull();
+    expect(screen.queryByText('EN')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  it('usa un formato compacto (pastilla fina) con objetivo táctil ≥ 44 px', () => {
+    const { container } = renderApp();
+
+    const fieldset = container.querySelector('fieldset') as HTMLElement;
+    expect(fieldset.className).toContain('rounded-full');
+    expect(fieldset.className).toContain('gap-0.5');
+    expect(fieldset.className).not.toContain('gap-3');
+
+    const label = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    expect(label.className).toContain('min-h-11');
+    expect(label.className).toContain('text-sm');
+    expect(label.className).not.toContain('gap-1.5');
+  });
+
+  it('resalta el idioma activo con el acento del sistema', () => {
+    renderApp();
+
+    const active = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    const inactive = screen.getByRole('radio', { name: 'Inglés' }).closest('label') as HTMLElement;
+    expect(active.className).toContain('font-bold');
+    expect(active.className).toContain('bg-accent');
+    expect(inactive.className).not.toContain('font-bold');
+    expect(inactive.className).not.toContain('bg-accent');
+  });
+
+  it('no provoca desplazamiento horizontal (contenedor en línea, sin anchos forzados)', () => {
+    const { container } = renderApp();
+
+    const fieldset = container.querySelector('fieldset') as HTMLElement;
+    expect(fieldset.className).toContain('inline-flex');
+    expect(fieldset.className).not.toMatch(/\bw-screen\b|\bmin-w-full\b/);
+  });
+
+  it('no añade cromo que agrande la huella frente a F3 (IMP-1)', () => {
+    const { container } = renderApp();
+
+    // Sin borde ni padding vertical propios: la huella depende solo de las
+    // opciones (que ya eran `min-h-11` en F3) y del espaciado reducido.
+    const fieldset = container.querySelector('fieldset') as HTMLElement;
+    expect(fieldset.className).not.toContain('border');
+    expect(fieldset.className).not.toMatch(/\bpy-\d/);
+    expect(fieldset.className).toContain('px-0.5');
+
+    const label = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    expect(label.className).toContain('px-0.5');
+    expect(label.className).not.toContain('px-1');
+  });
+
+  it('la opción activa usa un par de contraste sólido y cumple AA en ambos temas (N1)', () => {
+    renderApp();
+
+    const active = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    // Par sólido (sin alfa): fondo `--accent` + texto navy, igual que el botón primario.
+    expect(active.className).toContain('bg-accent');
+    expect(active.className).toContain('text-navy');
+    expect(active.className).toContain('font-bold');
+
+    const css = readSystemCss();
+    const backgrounds = tokenValues(css, 'accent');
+    const navy = tokenValues(css, 'color-navy')[0];
+    expect(backgrounds, 'un valor de acento por tema').toHaveLength(2);
+    expect(contrast(backgrounds[0], navy), 'opción activa en tema claro').toBeGreaterThanOrEqual(
+      4.5,
+    );
+    expect(contrast(backgrounds[1], navy), 'opción activa en tema oscuro').toBeGreaterThanOrEqual(
+      4.5,
+    );
   });
 });

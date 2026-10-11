@@ -273,3 +273,41 @@ describe('HomePage · estados', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('HomePage · movimiento (F10 T1026/FR-005/FR-008)', () => {
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => window.localStorage.clear());
+
+  it('monta cada sección dentro de un bloque de revelado', async () => {
+    responder(completa);
+
+    const { container } = renderHome();
+    await screen.findByRole('heading', { name: 'Iglesia Simiente Santa' });
+
+    for (const anchor of ['quienes-somos', 'horario', 'whatsapp', 'contacto', 'redes']) {
+      const section = container.querySelector(`#${anchor}`);
+      expect(section, `sección ${anchor}`).not.toBeNull();
+      expect(section?.closest('.reveal-block'), `${anchor} dentro de un bloque`).not.toBeNull();
+    }
+    expect(container.querySelector('.reveal-group')).not.toBeNull();
+  });
+
+  it('el hero tiene su propia entrada y no se re-anima al cambiar de idioma', async () => {
+    responder(completa);
+
+    const { container } = renderHome();
+    await screen.findByRole('heading', { name: 'Iglesia Simiente Santa' });
+    expect(
+      container.querySelector('section[aria-labelledby="portada-nombre"]')?.className,
+    ).toContain('hero-enter');
+
+    const who = container.querySelector('#quienes-somos');
+    expect(who).not.toBeNull();
+
+    await userEvent.click(screen.getAllByRole('radio', { name: 'Inglés' })[0]);
+    expect(await screen.findByRole('navigation', { name: 'Page sections' })).toBeInTheDocument();
+
+    // Claves React estables: React reutiliza el mismo nodo (no re-monta → no re-anima).
+    expect(container.querySelector('#quienes-somos')).toBe(who);
+  });
+});

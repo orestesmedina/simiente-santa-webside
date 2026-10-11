@@ -1,4 +1,7 @@
 import type { WhatsappChannelPublic } from '../../../api/portada';
+import { Card } from '../../../components/publico/Card';
+import { PublicButton } from '../../../components/publico/PublicButton';
+import { SectionHeading } from '../../../components/publico/SectionHeading';
 import { useLanguage } from '../i18n/useLanguage';
 
 export interface WhatsAppSectionProps {
@@ -22,42 +25,38 @@ function WhatsAppIcon() {
 }
 
 /**
- * Canales de WhatsApp (ux.md §4.1): una tarjeta por canal con su nombre como
- * título y el CTA correcto según el tipo (`direct` → «Escribir por WhatsApp»,
- * `group` → «Entrar al grupo»). El enlace ya viene resuelto por el servidor
- * (`wa.me` o URL del grupo) y se abre con un clic (SC-009).
+ * Canales de WhatsApp con el sistema visual de la propuesta B (F10 · T1022/T1023):
+ * panel de vidrio y CTA verde de marca (`PublicButton variant="whatsapp"`) con
+ * microinteracción marcada. El nombre accesible de cada CTA sigue siendo
+ * «Escribir por WhatsApp»/«Entrar al grupo» (contrato congelado de F3) y el
+ * enlace ya viene resuelto por el servidor (`wa.me` o URL del grupo).
  */
 export function WhatsAppSection({ items }: WhatsAppSectionProps) {
   const { t } = useLanguage();
 
   return (
-    <section id="whatsapp" aria-labelledby="whatsapp-title" className="bg-cream py-12 sm:py-20">
+    <section id="whatsapp" aria-labelledby="whatsapp-title" className="py-section">
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <h2
-          id="whatsapp-title"
-          className="font-display text-[clamp(1.75rem,4.5vw,2.5rem)] leading-tight text-navy"
-        >
-          {t('nav.sections.whatsapp')}
-        </h2>
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-          {items.map((channel) => (
-            <li
-              key={channel.id}
-              className="rounded-2xl border border-navy-soft bg-white p-6 shadow-brand"
-            >
-              <h3 className="font-sans text-xl font-semibold text-navy">{channel.name}</h3>
-              <a
-                href={channel.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-lg bg-teal px-4 py-2 font-medium text-navy hover:bg-teal-strong hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+        <Card variant="glass" className="flex flex-col gap-block">
+          <SectionHeading id="whatsapp-title" kicker="03">
+            {t('nav.sections.whatsapp')}
+          </SectionHeading>
+
+          <ul className="grid gap-block sm:grid-cols-2">
+            {items.map((channel) => (
+              <li
+                key={channel.id}
+                className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-raised p-4"
               >
-                <WhatsAppIcon />
-                {channel.kind === 'direct' ? t('whatsapp.action.dm') : t('whatsapp.action.group')}
-              </a>
-            </li>
-          ))}
-        </ul>
+                <h3 className="font-sans text-xl font-semibold text-ink">{channel.name}</h3>
+                <PublicButton href={channel.url} external variant="whatsapp" className="self-start">
+                  <WhatsAppIcon />
+                  {channel.kind === 'direct' ? t('whatsapp.action.dm') : t('whatsapp.action.group')}
+                </PublicButton>
+              </li>
+            ))}
+          </ul>
+        </Card>
       </div>
     </section>
   );

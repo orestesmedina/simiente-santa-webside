@@ -4,6 +4,37 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
+## [0.4.0] — 2026-10-11
+
+Cuarta entrega: **F10 — Sistema de diseño y movimiento** (rama `010-sistema-diseno-movimiento`). Spec aprobada: [`specs/010-sistema-diseno-movimiento/spec.md`](specs/010-sistema-diseno-movimiento/spec.md). Verificación de cierre en verde ([`cierre.md`](specs/010-sistema-diseno-movimiento/cierre.md): lint, tipos, build de producción y unit **409/409** en verde, sin deriva de generados, **0 cambios** en backend, migraciones, API, infra ni `.env.example`). Validación del 2026-10-11 en **tres ciclos**, con **APROBADO** de [QA](specs/010-sistema-diseno-movimiento/revision-2026-10-11-qa-ciclo3.md), [revisión de código](specs/010-sistema-diseno-movimiento/revision-2026-10-11-codigo-ciclo3.md) y [seguridad](specs/010-sistema-diseno-movimiento/revision-2026-10-11-seguridad-ciclo3.md) sin hallazgos bloqueantes ([consolidado](specs/010-sistema-diseno-movimiento/revision-2026-10-11-final.md)).
+
+### Agregado
+
+- **Sistema visual moderno, propuesta B «Marea Turquesa»** (elegida por el cliente en la puerta 2) aplicado a todo el sitio público: tipografías de marca (Bebas Neue / Poppins / Playfair Display), proporción de color 70/20/10, componentes base reutilizables (botones, tarjetas, encabezados de sección, estados de foco/hover/activo, imágenes y pie) y **más aire entre secciones** mediante tokens de espaciado (`--space-section*`). Sigue el Manual de Identidad (`resources/MANUAL DE MARCA.pdf`): el logotipo nunca se deforma, recolorea, gira ni lleva efectos; la iconografía y las ilustraciones nuevas se crean dentro de la marca (decisión del cliente, FR-002).
+- **Movimiento marcado/elegante con revelado al hacer scroll** (decisión del cliente en la puerta 2): las secciones y sus componentes se revelan al entrar en pantalla (entrada escalonada, desplazamiento de 20–28 px, revelados de ~600 ms y ≤ 0,8 s como capa visual) y cada elemento interactivo da retroalimentación clara en hover, foco y activación. **`prefers-reduced-motion` desactiva por completo** el movimiento (FR-006): el contenido aparece completo de inmediato y el 100 % de las funciones sigue disponible; ninguna animación bloquea ni retrasa una acción (FR-007/FR-009).
+- **Navegación por dispositivo** (FR-010…FR-014): **barra de enlaces visible y fija en escritorio** y **menú hamburguesa accesible en móvil** (≤ 860 px) claramente etiquetado («Menú», objetivo táctil ≥ 44 px) con estado abierto/cerrado anunciado, foco gestionado (entra al abrir, vuelve al botón al cerrar), cierre con Escape y sin desplazamiento del fondo. Desaparece el «scroll incómodo» que reportó el cliente: ningún enlace requiere desplazamiento lateral y la navegación sigue alcanzable al bajar la página.
+- **Mapa del sitio en el pie** (propuesta B, FR-027): lista las secciones visibles con enlaces que funcionan, en los grupos **Explorar / Contacto / Síguenos**, y queda preparado para las secciones F4–F9 sin enlaces rotos (una sección sin contenido publicado no aparece).
+- **Selector de idioma compacto** (FR-015…FR-017): mismos textos completos «Español» / «English» con menos tamaño y espacio (152 × 44 px, por debajo de los 159 × 44 de F3) y **sin píldoras ni menú desplegable**; el comportamiento de F3 no cambia (cambio inmediato, memoria en el dispositivo, primera visita en español).
+- **Modo oscuro del sitio público con interruptor manual** (FR-023/FR-024): por defecto el sitio sigue la **preferencia del dispositivo** y el control de la cabecera permite elegir claro u oscuro **de inmediato y sin recargar**, recordando la elección entre visitas (`localStorage` `ss.theme`). Contraste WCAG 2.1 AA verificado en ambos temas; el logotipo conserva siempre sus colores originales.
+- **Cimientos reutilizables para F4–F9** (FR-018): el sistema visual, el movimiento, la navegación, el selector y los temas quedan definidos y documentados en [`frontend/src/components/publico/README.md`](frontend/src/components/publico/README.md) para que las secciones futuras nazcan con el sistema.
+- **Pruebas**: unitarias y de componentes **409/409** (65 archivos), e2e de F10 **25/25** (`diseno-movimiento`, `navegacion-movil`, `tema-oscuro`, `movimiento`, `movimiento-reducido`, `qa-medidas-f10`) y e2e congeladas de F2/F3 **8/8 sin editarse** (SC-008); **sin dependencias nuevas**.
+
+### Cambiado
+
+- **La portada pública de F3 cambia de aspecto, no de comportamiento** (FR-020): el contenido y su gestión desde el panel, el bilingüismo con su fallback, los estados borrador/publicado, los permisos, la auditoría, las rutas y las URLs se conservan íntegros; solo cambian la presentación, la navegación, el movimiento, el formato del selector de idioma y el tema (claro/oscuro).
+- **La navegación en móvil pasa a menú hamburguesa accesible** (antes una barra de enlaces que se desplazaba lateralmente); en escritorio queda como barra fija siempre visible.
+- **El selector de idioma ocupa menos espacio** en la cabecera y en el pie, sin perder los nombres completos de cada idioma.
+- **El pie añade el mapa del sitio** con las secciones visibles del sitio.
+- **El panel de administración no se toca**: conserva su aspecto y todas sus funciones de F2/F3; su rediseño queda para **F10B**.
+
+### No entra en esta versión
+
+- **Sin rediseño del panel de administración**: login, usuarios, roles, auditoría y layout del panel siguen como hasta ahora; llega con **F10B**.
+- **Sin las secciones F4–F9**: F10 no construye eventos, actividades, grupos, ministerios, donaciones, noticias/galería ni medios; solo deja el sistema para que nazcan con él.
+- **Sin datos nuevos, migraciones ni endpoints**: F10 es un cambio exclusivamente de presentación del sitio público (backend, API e infra intactos).
+- **Pendientes de verificación humana** (no de código), para la revisión de aceptación con el cliente: el visto bueno de «moderno y fiel a la marca» (SC-002), «0 copias de las referencias» (SC-013), el carácter del movimiento (SC-014), la calificación visual (SC-001/SC-011), el contraste fino en tema oscuro (SC-009) y las pruebas con personas de distintas edades (SC-003/SC-010); la checklist está en [`quickstart.md` §9](specs/010-sistema-diseno-movimiento/quickstart.md).
+- **Sin despliegue a producción**: la entrega se completa con el merge humano del PR de la rama `010-sistema-diseno-movimiento`.
+
 ## [0.3.0] — 2026-10-10
 
 Tercera entrega: **F3 — Portada e información general** (rama `003-portada-info-general`). Spec aprobada: [`specs/003-portada-info-general/spec.md`](specs/003-portada-info-general/spec.md). Verificación de cierre en verde ([`cierre.md`](specs/003-portada-info-general/cierre.md): `make ci` EXIT=0, e2e 7/7, cobertura 84,7 % en `internal/portada/service*.go`, sin deriva de generados). Validación del 2026-10-10 en dos ciclos: el primero rechazó un bloqueante (la semántica `null` de los `PATCH`) y el segundo quedó **sin hallazgos bloqueantes** — [QA](specs/003-portada-info-general/revision-2026-10-10-qa-ciclo2.md), [revisión de código](specs/003-portada-info-general/revision-2026-10-10-codigo-ciclo2.md) y [seguridad](specs/003-portada-info-general/revision-2026-10-10-seguridad-ciclo2.md) aprobados, con deuda menor aceptada (ver [`estado.md`](specs/003-portada-info-general/estado.md)).

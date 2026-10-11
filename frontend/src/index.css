@@ -32,3 +32,428 @@
   /* Sombra suave y cálida de las tarjetas de portada (ux.md §1.3). */
   --shadow-brand: 0 2px 8px rgb(26 43 74 / 0.1);
 }
+
+/*
+ * ── Capa semántica de tema (F10 · P10-1/P10-2/R10-1/R10-2) ───────────────────
+ * Es **aditiva**: no toca los tokens de marca de F3 (`--color-navy`, `--color-teal`,
+ * `--color-cream`…), de modo que el panel no cambia un solo píxel (FR-020). El
+ * sitio público usa las utilidades semánticas (`bg-surface`, `text-ink`,
+ * `text-muted`, `border-line`, `text-accent`…) y el tema se resuelve por el
+ * atributo `data-theme` de `<html>`: lo fija el script anti-FOUC de `index.html`
+ * antes del primer pintado y lo mantiene `ThemeProvider` en caliente.
+ *
+ * `dark:` queda ligado al atributo (no a `prefers-color-scheme`) con el
+ * `@custom-variant` de Tailwind 4.
+ */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Tema claro (reposo natural de la propuesta B «Marea Turquesa»: navy dominante
+ * con texto crema, proporción 70/20/10 del Manual de Identidad).
+ * El logotipo nunca se recolorea: se apoya siempre en `--logo-surface` (pastilla
+ * crema) en ambos temas (FR-002/FR-024).
+ */
+:root,
+html[data-theme='light'] {
+  --surface: #1a2b4a;
+  --surface-raised: rgb(255 255 255 / 0.08);
+  --text: #eef3f8;
+  --text-muted: #aebdd6;
+  --border: rgb(238 243 248 / 0.16);
+  --accent: #00c9a7;
+  --accent-strong: #0e7a66;
+  --accent-hover: #0e7a66;
+  --on-accent-hover: #ffffff;
+  --focus: #00c9a7;
+  --shadow: 0 18px 44px rgb(5 10 20 / 0.35);
+  --logo-surface: #f5f2ec;
+}
+
+/* Tema oscuro: navy más profundo y vidrio oscuro (ux.md §0.4). */
+html[data-theme='dark'] {
+  --surface: #0b1424;
+  --surface-raised: rgb(16 27 48 / 0.7);
+  --text: #eef3f8;
+  --text-muted: #aebdd6;
+  --border: rgb(238 243 248 / 0.14);
+  --accent: #00c9a7;
+  --accent-strong: #00c9a7;
+  --accent-hover: #00b598;
+  --on-accent-hover: #1a2b4a;
+  --focus: #00c9a7;
+  --shadow: 0 18px 44px rgb(0 0 0 / 0.5);
+  --logo-surface: #f5f2ec;
+}
+
+/*
+ * Registro de la capa semántica como utilidades de Tailwind 4 (`inline` para que
+ * la utilidad use la variable en vivo y respete el tema activo).
+ */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent-hover: var(--on-accent-hover);
+  --color-focus: var(--focus);
+  --color-logo-surface: var(--logo-surface);
+  --shadow-surface: var(--shadow);
+}
+
+/*
+ * ── Espaciado vertical de sección (F10 · P10-15/R10-16/D9) ───────────────────
+ * «Más aire» entre secciones con un único punto de calibración. Valores por
+ * breakpoint (más predecibles de verificar que un `clamp()` continuo): la
+ * calibración final la cierra QA con la propuesta B (RG10-22/SC-002).
+ *
+ * Regla de composición para F4–F9: **toda** sección usa estos tokens
+ * (`py-section`/`py-section-tight`/`gap-block`); ninguna define su propio
+ * padding vertical mágico. Nada del panel los usa (R10-8).
+ */
+:root {
+  --space-section: 3.25rem;
+  --space-section-tight: 2rem;
+  --space-block: 1.5rem;
+  --space-fluid: clamp(0.8rem, 2vw, 1.25rem);
+  --pad-panel: clamp(2rem, 5vw, 3.5rem);
+  --pad-text: clamp(1rem, 2.4vw, 1.6rem);
+}
+
+@media (min-width: 480px) {
+  :root {
+    --space-section: 4rem;
+    --space-section-tight: 2.5rem;
+    --space-block: 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --space-section: 5.5rem;
+    --space-section-tight: 3.5rem;
+    --space-block: 2.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --space-section: 7rem;
+    --space-section-tight: 4.5rem;
+    --space-block: 3rem;
+  }
+}
+
+/* Utilidades heredables: `py-section`, `py-section-tight`, `gap-block`, `p-panel`… */
+@theme inline {
+  --spacing-section: var(--space-section);
+  --spacing-section-tight: var(--space-section-tight);
+  --spacing-block: var(--space-block);
+  --spacing-fluid: var(--space-fluid);
+  --spacing-panel: var(--pad-panel);
+  --spacing-text: var(--pad-text);
+}
+
+/*
+ * ── Sistema de movimiento (F10 · P10-12/R10-13/D5/D21) ───────────────────────
+ * **Única fuente numérica** de tiempos y distancias (manda esta tabla; los
+ * e2e miden el mismo techo de ≤ 800 ms).
+ *
+ * Reglas duras:
+ *  · Suelo de perceptibilidad: todo revelado/transición de entrada ≥ 400 ms y
+ *    ≥ 16 px (o fade completo 0→1) — «nunca casi imperceptible» (SC-014).
+ *  · Techo: ≤ 800 ms por elemento y por secuencia de bloque.
+ *  · Solo `opacity`/`transform`/colores (compositor): 0 desplazamientos del
+ *    maquetado y 0 bloqueo de lectura (FR-007).
+ */
+:root {
+  --motion-duration-micro: 180ms;
+  --motion-duration-header: 220ms;
+  --motion-duration-reveal: 600ms;
+  --motion-duration-hero: 700ms;
+  --motion-distance: 28px;
+  --motion-stagger-step: 80ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 480px) {
+  :root {
+    --motion-distance: 20px;
+  }
+}
+
+/*
+ * El destino de un ancla nunca queda tapado por la cabecera fija: el
+ * `scroll-padding-top` usa la altura real medida con `ResizeObserver` (T1014).
+ * El desplazamiento suave solo existe si el usuario no pidió movimiento reducido.
+ */
+html {
+  scroll-padding-top: var(--header-offset, 0px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/*
+ * `prefers-reduced-motion` es **incondicional** (FR-006/SC-005/D6): anula todo
+ * el sistema de movimiento (transiciones, animaciones, delays, revelados y
+ * desplazamiento suave). Es la primera de las dos capas; la segunda es el hook
+ * `usePrefersReducedMotion` en vivo (T1017).
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/*
+ * Acento de los títulos de sección (F10 · T1009): subrayado turquesa que se
+ * despliega (`scaleX`) con el token de revelado. Es **progresivo**: visible por
+ * defecto y solo arranca desde 0 cuando vive dentro de un bloque de revelado aún
+ * pendiente (`html.js [data-reveal]:not([data-reveal='in'])`, T1018), de modo que
+ * sin JS o con movimiento reducido el acento ya está desplegado.
+ */
+.section-heading-accent {
+  display: block;
+  height: 0.25rem;
+  width: 4rem;
+  background: var(--accent);
+  transform-origin: left;
+  transform: scaleX(1);
+  transition: transform var(--motion-duration-reveal) var(--motion-ease-out);
+}
+
+html.js [data-reveal]:not([data-reveal='in']) .section-heading-accent {
+  transform: scaleX(0);
+}
+
+/*
+ * Revelado al scroll (F10 · T1018/FR-005/FR-009): el contenido **nace visible**;
+ * el estado pendiente solo lo pinta `html.js` (marcador de `index.html`) y el
+ * bloque global de `prefers-reduced-motion` (T1004) lo anula. Solo `opacity` y
+ * `transform` (compositor); el escalonado de `RevealGroup` llega por
+ * `--reveal-index` y el retardo explícito por `--reveal-delay`.
+ */
+.reveal-block {
+  transition-property: opacity, transform;
+  transition-duration: var(--motion-duration-reveal);
+  transition-timing-function: var(--motion-ease-out);
+  transition-delay: var(--reveal-delay, calc(var(--reveal-index, 0) * var(--motion-stagger-step)));
+}
+
+html.js .reveal-block[data-reveal='up'] {
+  opacity: 0;
+  transform: translateY(var(--motion-distance));
+}
+
+html.js .reveal-block[data-reveal='left'] {
+  opacity: 0;
+  transform: translateX(calc(-1 * var(--motion-distance)));
+}
+
+html.js .reveal-block[data-reveal='right'] {
+  opacity: 0;
+  transform: translateX(var(--motion-distance));
+}
+
+/* En móvil todo entra desde un solo eje (vertical), como pide ux.md §5. */
+@media (max-width: 860px) {
+  html.js .reveal-block[data-reveal='left'],
+  html.js .reveal-block[data-reveal='right'] {
+    transform: translateY(var(--motion-distance));
+  }
+}
+
+.reveal-block[data-reveal='in'] {
+  opacity: 1;
+  transform: none;
+}
+
+/*
+ * El revelado lateral desplaza el bloque hasta `--motion-distance` (28 px) antes
+ * de entrar: mientras está pendiente, su caja sobresale del ancho del documento y
+ * la página ganaría scroll horizontal (FR-011/SC-004). El grupo recorta ese
+ * desborde con `overflow-x: clip` (no crea contenedor de scroll ni afecta a
+ * `position: sticky` ni a elementos `fixed`). No se aplica al bloque individual
+ * (el clip debe ser del ancestro) ni al documento (ocultaría otros desbordes
+ * reales).
+ */
+.reveal-group {
+  overflow-x: clip;
+}
+
+/*
+ * Cabecera desplazada (F10 · T1020/FR-014): al bajar, la cabecera transiciona
+ * **solo su superficie** —vidrio + borde turquesa + sombra— con el token de
+ * cabecera, **sin cambiar su geometría** (misma altura → anclas y
+ * `scroll-padding-top` estables, D8). Con movimiento reducido, cambio
+ * instantáneo (bloque global de T1004).
+ */
+:root {
+  --header-scrolled: rgb(13 22 38 / 0.72);
+}
+
+html[data-theme='dark'] {
+  --header-scrolled: rgb(10 17 32 / 0.8);
+}
+
+.public-header {
+  transition:
+    background-color var(--motion-duration-header) var(--motion-ease-standard),
+    border-color var(--motion-duration-header) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-header) var(--motion-ease-standard);
+}
+
+.public-header[data-scrolled='true'] {
+  background-color: var(--header-scrolled);
+  backdrop-filter: blur(12px);
+  border-bottom-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+/*
+ * Entrada del hero (F10 · T1021): solo en la primera carga real (claves React
+ * estables, FR-008) y con el token de hero. Con `prefers-reduced-motion` el
+ * bloque global la deja en su estado final al instante.
+ */
+@keyframes hero-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-distance));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-enter {
+  animation: hero-enter var(--motion-duration-hero) var(--motion-ease-out) both;
+}
+
+/*
+ * Blobs de marea (F10 · T1025): capa decorativa al fondo, solo `transform`,
+ * acotada por un contenedor con `overflow-hidden` (0 desbordes). Estáticos con
+ * `prefers-reduced-motion`.
+ */
+:root {
+  --blob-1: rgb(0 201 167 / 0.4);
+  --blob-2: rgb(0 201 167 / 0.25);
+}
+
+html[data-theme='dark'] {
+  --blob-1: rgb(0 201 167 / 0.28);
+  --blob-2: rgb(0 201 167 / 0.2);
+}
+
+.public-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.public-blob-1 {
+  top: -14vw;
+  right: -12vw;
+  width: 46vw;
+  height: 46vw;
+  background: var(--blob-1);
+  animation: public-marea 26s ease-in-out infinite alternate;
+}
+
+.public-blob-2 {
+  bottom: -10vw;
+  left: -12vw;
+  width: 38vw;
+  height: 38vw;
+  background: var(--blob-2);
+  animation: public-marea 32s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes public-marea {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-6vw, 7vh) scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-blob {
+    animation: none;
+  }
+}
+
+/*
+ * Lista de navegación del sitio público (F10 · T1012/T1013/D15/D16).
+ * · Escritorio (≥ 861 px): filas `flex-wrap` compactas, sin scroll lateral.
+ * · Móvil (≤ 860 px): colapsada con `display:none` (fuera del orden de
+ *   tabulación y del árbol de accesibilidad) salvo con el menú abierto
+ *   (`data-open='true'`), en cuyo caso se presenta como panel.
+ * · Sin JS (`html:not(.js)`): se muestran siempre las filas compactas.
+ *
+ * Con el panel abierto, la página de fondo **no se desplaza** (ni con rueda ni
+ * con teclado): el scroll se bloquea en el elemento raíz mientras
+ * `data-nav-open='true'` (T1013/FR-013).
+ */
+html[data-nav-open='true'] {
+  overflow: hidden;
+}
+
+.public-nav-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+
+@media (max-width: 860px) {
+  .public-nav-list {
+    display: none;
+  }
+  .public-nav-list[data-open='true'] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    position: fixed;
+    inset: var(--header-offset, 0px) 0 auto 0;
+    z-index: 40;
+    max-height: calc(100dvh - var(--header-offset, 0px));
+    overflow-y: auto;
+    padding: 1rem 6vw 2rem;
+    background: var(--surface-raised);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  html:not(.js) .public-nav-list {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}

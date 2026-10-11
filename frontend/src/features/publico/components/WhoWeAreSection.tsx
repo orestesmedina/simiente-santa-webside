@@ -1,4 +1,6 @@
 import type { AboutPublic } from '../../../api/portada';
+import { Card } from '../../../components/publico/Card';
+import { SectionHeading } from '../../../components/publico/SectionHeading';
 import { useLanguage } from '../i18n/useLanguage';
 
 export interface WhoWeAreSectionProps {
@@ -6,28 +8,26 @@ export interface WhoWeAreSectionProps {
 }
 
 /**
- * «Quiénes somos» (ux.md §4.1): texto plano con los saltos de línea simples
- * preservados (`whitespace-pre-line`) en una columna de lectura cómoda.
+ * «Quiénes somos» con el sistema visual de la propuesta B (F10 · T1022): panel
+ * de vidrio (`Card glass`) con el encabezado único (`SectionHeading`, kicker 01)
+ * y el texto con los saltos de línea simples preservados. Usa los tokens
+ * semánticos de tema (ambos temas correctos) y `--space-section` para la
+ * separación vertical (nunca padding propio mágico).
  */
 export function WhoWeAreSection({ about }: WhoWeAreSectionProps) {
   const { t } = useLanguage();
 
   return (
-    <section
-      id="quienes-somos"
-      aria-labelledby="quienes-somos-title"
-      className="bg-cream py-12 sm:py-20"
-    >
+    <section id="quienes-somos" aria-labelledby="quienes-somos-title" className="py-section">
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <h2
-          id="quienes-somos-title"
-          className="font-display text-[clamp(1.75rem,4.5vw,2.5rem)] leading-tight text-navy"
-        >
-          {t('nav.sections.who')}
-        </h2>
-        <p className="mt-4 max-w-3xl whitespace-pre-line text-lg leading-relaxed text-navy">
-          {about.text}
-        </p>
+        <Card variant="glass" className="flex flex-col gap-block">
+          <SectionHeading id="quienes-somos-title" kicker="01">
+            {t('nav.sections.who')}
+          </SectionHeading>
+          <p className="max-w-3xl whitespace-pre-line text-lg leading-relaxed text-ink">
+            {about.text}
+          </p>
+        </Card>
       </div>
     </section>
   );
