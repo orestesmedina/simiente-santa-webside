@@ -4,6 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Estado del sistema · Iglesia Simiente Santa</title>
+    <!--
+      Script anti-FOUC del tema (F10 · T1002/P10-3/R10-3): resuelve el tema antes
+      del primer pintado (elección guardada en `ss.theme` > preferencia del
+      sistema) y lo deja en `<html data-theme>` + `color-scheme`. También marca
+      `js` para que el CSS pueda degradar con elegancia si el script no corre
+      (el colapso del menú móvil solo aplica con `js`, T1013). Idempotente y
+      silencioso: si `localStorage`/`matchMedia` fallan, cae al tema claro.
+    -->
+    <script>
+      (function () {
+        var theme = 'light';
+        try {
+          var stored = window.localStorage.getItem('ss.theme');
+          if (stored === 'light' || stored === 'dark') {
+            theme = stored;
+          } else if (
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          ) {
+            theme = 'dark';
+          }
+        } catch (error) {
+          // Almacenamiento no disponible: se usa el tema claro sin avisos.
+        }
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.documentElement.classList.add('js');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
