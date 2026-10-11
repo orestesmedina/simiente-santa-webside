@@ -221,3 +221,24 @@ html {
     transform: none !important;
   }
 }
+
+/*
+ * Acento de los títulos de sección (F10 · T1009): subrayado turquesa que se
+ * despliega (`scaleX`) con el token de revelado. Es **progresivo**: visible por
+ * defecto y solo arranca desde 0 cuando vive dentro de un bloque de revelado aún
+ * pendiente (`html.js [data-reveal]:not([data-reveal='in'])`, T1018), de modo que
+ * sin JS o con movimiento reducido el acento ya está desplegado.
+ */
+.section-heading-accent {
+  display: block;
+  height: 0.25rem;
+  width: 4rem;
+  background: var(--accent);
+  transform-origin: left;
+  transform: scaleX(1);
+  transition: transform var(--motion-duration-reveal) var(--motion-ease-out);
+}
+
+html.js [data-reveal]:not([data-reveal='in']) .section-heading-accent {
+  transform: scaleX(0);
+}
