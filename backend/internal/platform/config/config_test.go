@@ -21,7 +21,7 @@ func canonicalKeys() []string {
 		envAppEnv, envHTTPPort, envDatabaseURL, envLogLevel, envCORSOrigins,
 		envRedisURL, envSessionSecret, envSessionCookieSecure,
 		envSessionIdleTTLMinutes, envSessionAbsoluteTTLMinutes, envBootstrapToken,
-		envUploadDir, envUploadMaxBytes,
+		envUploadDir, envUploadMaxBytes, envAppTZ,
 	}
 }
 
@@ -94,6 +94,47 @@ func TestLoadDefaultsWithoutEnv(t *testing.T) {
 	}
 	if cfg.UploadMaxBytes != defaultUploadMaxBytes {
 		t.Errorf("UploadMaxBytes = %d, se esperaba %d", cfg.UploadMaxBytes, defaultUploadMaxBytes)
+	}
+
+	// Zona horaria del lugar (F4/P4-3): sin APP_TZ se usa el valor firme.
+	if cfg.TimeZone == nil {
+		t.Fatal("TimeZone = nil, se esperaba America/Costa_Rica")
+	}
+	if cfg.TimeZone.String() != defaultAppTZ {
+		t.Errorf("TimeZone = %q, se esperaba %q", cfg.TimeZone.String(), defaultAppTZ)
+	}
+}
+
+// TestLoadTimeZoneDefaultIsCostaRica fija el valor firme de la puerta 2
+// (P4-3/R4-2): la zona del corte de "hoy" del retiro automático es la del lugar
+// (America/Costa_Rica, UTC−06:00 sin horario de verano), no la del contenedor.
+func TestLoadTimeZoneDefaultIsCostaRica(t *testing.T) {
+	clearEnv(t)
+	setRedis(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() devolvió error: %v", err)
+	}
+	if cfg.TimeZone == nil {
+		t.Fatal("TimeZone = nil, se esperaba America/Costa_Rica")
+	}
+	if cfg.TimeZone.String() != "America/Costa_Rica" {
+		t.Fatalf("TimeZone = %q, se esperaba America/Costa_Rica", cfg.TimeZone.String())
+	}
+
+	// Costa Rica no tiene horario de verano: todo el año es UTC−06:00.
+	_, offsetSummer := time.Date(2026, time.July, 1, 12, 0, 0, 0, cfg.TimeZone).Zone()
+	_, offsetWinter := time.Date(2026, time.January, 1, 12, 0, 0, 0, cfg.TimeZone).Zone()
+	if offsetSummer != -6*60*60 || offsetWinter != -6*60*60 {
+		t.Errorf("offset = %d/%d segundos, se esperaba -21600 en verano e invierno", offsetSummer, offsetWinter)
+	}
+
+	// El corte de "hoy" usa esa zona: a medianoche UTC ya es "ayer" en Costa
+	// Rica (UTC−06:00), que es justo lo que R4-2 exige.
+	utcMidnight := time.Date(2026, time.October, 17, 0, 30, 0, 0, time.UTC)
+	if got := utcMidnight.In(cfg.TimeZone).Format("2006-01-02"); got != "2026-10-16" {
+		t.Errorf("2026-10-17T00:30Z en %s = %q, se esperaba 2026-10-16", cfg.TimeZone, got)
 	}
 }
 
@@ -244,6 +285,16 @@ func TestLoadEachCanonicalVariable(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:   "APP_TZ",
+			envKey: envAppTZ,
+			value:  "Europe/Madrid",
+			check: func(t *testing.T, cfg Config) {
+				if cfg.TimeZone == nil || cfg.TimeZone.String() != "Europe/Madrid" {
+					t.Errorf("TimeZone = %v, se esperaba Europe/Madrid", cfg.TimeZone)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -286,6 +337,7 @@ func TestLoadInvalidValues(t *testing.T) {
 		{name: "UPLOAD_MAX_BYTES no numérico", envKey: envUploadMaxBytes, value: "ocho-megas"},
 		{name: "UPLOAD_MAX_BYTES cero", envKey: envUploadMaxBytes, value: "0"},
 		{name: "UPLOAD_MAX_BYTES negativo", envKey: envUploadMaxBytes, value: "-1"},
+		{name: "APP_TZ zona inexistente", envKey: envAppTZ, value: "Marte/Central"},
 	}
 
 	for _, tt := range tests {

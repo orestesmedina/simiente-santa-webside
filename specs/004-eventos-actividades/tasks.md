@@ -366,7 +366,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     `000008` (T402) — lo comprueba la integración de T416.
   - **Commit sugerido**: `feat(audit): codigos event.*/activity.*/category.* para F4`
 
-- [ ] T409 · `platform/config`: `APP_TZ=America/Costa_Rica` · `[backend]` `[P]` (P1)
+- [X] T409 · `platform/config`: `APP_TZ=America/Costa_Rica` · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/internal/platform/config/config.go` y `config_test.go` (EDITADOS).
   - **Qué hace**: lee `APP_TZ` con el valor por defecto **`America/Costa_Rica`** (la zona del lugar,

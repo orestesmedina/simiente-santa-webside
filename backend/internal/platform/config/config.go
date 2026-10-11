@@ -13,6 +13,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	// La base de datos de zonas IANA se embebe en el binario (es parte de la
+	// biblioteca estándar): así `time.LoadLocation(APP_TZ)` funciona en
+	// cualquier imagen de ejecución, aunque no traiga `/usr/share/zoneinfo`
+	// (la imagen distroless del backend sí lo trae, pero esto lo garantiza).
+	// No es una dependencia externa: no toca go.mod.
+	_ "time/tzdata"
 )
 
 // Entornos reconocidos por APP_ENV. APP_ENV identifica el entorno y viaja en
@@ -42,6 +48,7 @@ const (
 	envBootstrapToken            = "BOOTSTRAP_TOKEN"
 	envUploadDir                 = "UPLOAD_DIR"
 	envUploadMaxBytes            = "UPLOAD_MAX_BYTES"
+	envAppTZ                     = "APP_TZ"
 )
 
 // Valores por defecto de desarrollo: permiten `make up` en un clon limpio sin
@@ -66,6 +73,10 @@ const (
 	// tope por subida. El compose inyecta el directorio del volumen.
 	defaultUploadDir      = "./uploads"
 	defaultUploadMaxBytes = 8388608
+	// Zona horaria del lugar (F4, P4-3/R4-2): valor FIRME de la puerta 2
+	// (2026-10-11) para el corte de "hoy" del retiro automático del contenido
+	// de agenda. Costa Rica no tiene horario de verano (UTC−06:00 todo el año).
+	defaultAppTZ = "America/Costa_Rica"
 )
 
 // minSessionSecretLength es la longitud mínima razonable de SESSION_SECRET: la
@@ -110,6 +121,12 @@ type Config struct {
 	// UploadMaxBytes es el tope de tamaño por subida (UPLOAD_MAX_BYTES;
 	// por defecto 8388608 = 8 MB).
 	UploadMaxBytes int64
+	// TimeZone es la zona horaria del lugar (APP_TZ), con la que el servidor
+	// calcula "hoy" y "ahora" para el filtro público "publicado y próximo" del
+	// contenido de agenda (F4, R4-2): el corte del retiro automático es el día
+	// real de la iglesia, no el del contenedor (UTC). Valor por defecto firme:
+	// America/Costa_Rica. Es una zona IANA validada al arrancar.
+	TimeZone *time.Location
 	// Warnings son avisos de configuración no fatales que el arranque debe
 	// registrar sin impedirlo (p. ej. SESSION_SECRET débil en desarrollo o
 	// BOOTSTRAP_TOKEN vacío). En producción esas mismas debilidades son errores.
@@ -186,6 +203,16 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	cfg.UploadMaxBytes = uploadMaxBytes
+
+	// Zona horaria del lugar (F4, P4-3/R4-2): se valida como zona IANA al
+	// arrancar. Una zona que no exista impide el arranque con un error que
+	// nombra la variable (fail-closed: mejor un fallo claro al arrancar que un
+	// corte silencioso del "hoy").
+	location, err := parseTimeZone(getString(envAppTZ, defaultAppTZ))
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.TimeZone = location
 
 	// R11: en producción la cookie de sesión debe viajar por HTTPS; una cookie
 	// insegura es un fallo de configuración que debe impedir el arranque.
@@ -336,4 +363,19 @@ func parsePositiveInt64(key string, def int64) (int64, error) {
 		return 0, fmt.Errorf("%s: %q no es un número válido (entero positivo)", key, raw)
 	}
 	return n, nil
+}
+
+// parseTimeZone valida que name sea una zona horaria IANA conocida
+// (APP_TZ, F4/P4-3). `time.LoadLocation` cubre las zonas del sistema y la base
+// embebida de `time/tzdata`; un nombre desconocido devuelve un error que nombra
+// la variable (fail-closed: la zona del corte de "hoy" no se adivina).
+func parseTimeZone(name string) (*time.Location, error) {
+	location, err := time.LoadLocation(name)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"%s: %q no es una zona horaria IANA válida (usa p. ej. %s)",
+			envAppTZ, name, defaultAppTZ,
+		)
+	}
+	return location, nil
 }
