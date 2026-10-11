@@ -1,8 +1,8 @@
 {
   "rama": "010-sistema-diseno-movimiento",
-  "estado": "abierto",
+  "estado": "cerrado",
   "inicio": "2026-10-10T23:55:24Z",
-  "cerrado": null,
+  "cerrado": "2026-10-11T19:24:14Z",
   "moneda": "USD",
   "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
   "precios": [
@@ -663,6 +663,34 @@
         }
       ],
       "hasta_ms": 1791727199171
+    },
+    {
+      "id": "ses_ed7a7daccffenS9zCAwzv1Ad7g",
+      "padre": null,
+      "titulo": "Pregunta de seguup: ¿qué sigue?",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-11T19:24:14Z",
+      "desde": "2026-10-11T19:10:38Z",
+      "hasta": "2026-10-11T19:11:57Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 8,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 219606,
+            "output": 1302,
+            "reasoning": 1946,
+            "cache_read": 1535104,
+            "cache_write": 0
+          },
+          "costo": 0.039495,
+          "costo_opencode": 0.039495
+        }
+      ],
+      "hasta_ms": 1791745917701
     }
   ],
   "totales": {
@@ -730,16 +758,16 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 75,
+        "respuestas": 83,
         "tokens": {
-          "input": 1699644,
-          "output": 65777,
-          "reasoning": 39646,
-          "cache_read": 9026816,
+          "input": 1919250,
+          "output": 67079,
+          "reasoning": 41592,
+          "cache_read": 10561920,
           "cache_write": 0
         },
-        "costo": 0.34528,
-        "costo_opencode": 0.34528,
+        "costo": 0.384775,
+        "costo_opencode": 0.384775,
         "sin_precio": false
       },
       {
@@ -818,8 +846,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 275050489,
-    "costo": 4.326371,
-    "costo_opencode": 4.326371
+    "tokens": 276808447,
+    "costo": 4.365866,
+    "costo_opencode": 4.365866
   }
 }
