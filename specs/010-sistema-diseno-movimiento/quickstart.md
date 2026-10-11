@@ -3,9 +3,10 @@
 **Feature**: F10 · **Branch**: `010-sistema-diseno-movimiento`
 
 Cómo **levantar** el sitio público rediseñado y **validar** cada parte del alcance: sistema visual,
-tema claro/oscuro (sistema → interruptor → persistencia), movimiento y movimiento reducido,
-navegación fija sin scroll incómodo y selector de idioma compacto. Sirve como guía de QA manual
-(SC-002, SC-007, SC-009, SC-012) y de verificación de **no-regresión** (SC-008).
+tema claro/oscuro (sistema → interruptor → persistencia), movimiento **marcado/elegante con revelado
+al hacer scroll** y movimiento reducido, navegación fija sin scroll incómodo y selector de idioma
+compacto. Sirve como guía de QA manual (SC-002, SC-007, SC-009, SC-012, SC-014) y de verificación de
+**no-regresión** (SC-008).
 
 > Nota: este documento se escribe en la fase de plan; los comandos y rutas son los del stack
 > vigente (F1–F3). Si la implementación mueve algo, se actualiza aquí.
@@ -74,25 +75,52 @@ Además:
 - [ ] 0 fallos de contraste AA en textos, botones, estados interactivos y foco **en ambos temas**
       (revisión por estado: reposo, hover, foco, activo, éxito/error si los hay).
 
-## 4. Validar el movimiento y el movimiento reducido (US3, SC-005/SC-006)
+## 4. Validar el movimiento y el movimiento reducido (US3, SC-005/SC-006/SC-014)
+
+> Nivel esperado (**marcado/elegante con revelado al hacer scroll**, FR-005): el movimiento se
+> **percibe con claridad** —nada «casi imperceptible»— pero sigue siendo elegante: sin parallax, sin
+> mareos y sin secuencias largas. Parámetros de referencia (tokens de `research.md` R10-13):
+> revelados ≈ 600 ms con desplazamiento de 20–28 px, escalonado de 80 ms entre componentes,
+> microinteracciones ≈ 180 ms, techo de 800 ms por secuencia.
 
 **Con movimiento normal** (sistema sin «reducir movimiento»):
 
-- [ ] Microinteraciones claras y agradables en hover, foco y activación; **sin desplazar** el maquetado.
-- [ ] El contenido entra con transiciones **suaves y breves** (nivel moderado: nada llamativo ni
-      largo) que no retrasan la lectura.
-- [ ] Cambiar de idioma o de tema **no re-anima** secciones vistas ni provoca parpadeos ni
-      descolocaciones.
-- [ ] El contenido útil es visible e interactivo **desde el primer instante** (nunca bloqueado por
-      una animación); fluidez en un dispositivo modesto.
+- [ ] Al **bajar** por la página, cada sección y sus componentes **se revelan al entrar en pantalla**
+      de forma claramente perceptible (fade + desplazamiento), con **entrada escalonada** en grupos
+      (tarjetas de una fila, ítems de una lista): se ve la cascada, no una entrada única plana.
+- [ ] Las transiciones entre secciones (salto por ancla) y las microinteracciones (hover, foco,
+      activación) se **notan** y son agradables; **sin desplazar** el maquetado y **sin** efectos
+      mareantes (sin parallax, sin rebotes elásticos, sin desenfoques).
+- [ ] Ninguna animación dura lo que una espera: la secuencia más larga de un bloque termina en
+      **≤ ~0,8 s**; el contenido se lee con normalidad mientras las animaciones se reproducen.
+- [ ] **El contenido nunca queda bloqueado**: lo que aún se está revelando es **clicable** y operable
+      (una acción durante la animación responde al instante); el foco de teclado sobre un elemento
+      pendiente lo **muestra de inmediato**.
+- [ ] **Cabecera al bajar**: al desplazarse, la cabecera **transiciona** a su estado compacto de
+      superficie (fondo más sólido, borde/sombra suaves) de forma perceptible **sin cambiar de
+      altura** ni descolocar el contenido; al volver arriba, regresa.
+- [ ] **Anclas con desplazamiento suave**: un clic en un enlace de navegación desliza hasta la
+      sección (no salta en seco) y el título del destino queda visible (la barra no lo tapa).
+- [ ] Cambiar de idioma o de tema **no re-anima** secciones vistas ni provoca parpadeos, rebotes ni
+      descolocaciones (SC-014).
+- [ ] El contenido útil es visible e interactivo **desde el primer instante** (la animación es una
+      capa visual); fluidez en un dispositivo modesto (checklist de rendimiento: sin tirones al bajar;
+      en DevTools → Performance no hay tareas largas atribuibles al movimiento).
 
 **Con movimiento reducido** (sistema con «reducir movimiento»; DevTools → Rendering → *Emulate
-prefers-reduced-motion: reduce*, o la opción del sistema):
+prefers-reduced-motion: reduce*, o la opción del sistema; en e2e:
+`page.emulateMedia({ reducedMotion: 'reduce' })`):
 
-- [ ] **0 animaciones** de entrada, revelado o desplazamiento: el contenido aparece **completo de
-      inmediato**.
+- [ ] **0 animaciones** de entrada, revelado, escalonado o desplazamiento: el contenido aparece
+      **completo de inmediato** (sin fades ni desplazamientos al bajar), y la cabecera cambia de
+      estado **sin transición**.
+- [ ] El salto a las anclas es **instantáneo** (sin desplazamiento suave).
 - [ ] **100 % de las funciones y la información** disponibles, idénticas al modo con movimiento.
 - [ ] Activar «reducir movimiento» **con el sitio abierto** surte efecto sin recargar.
+
+**Comparación directa (SC-005/SC-014)**: recorrer la portada en ambas configuraciones, una detrás de
+otra: en modo normal el revelado al scroll y las transiciones se **perciben claramente**; con
+movimiento reducido están **por completo ausentes** y todo funciona igual.
 
 ## 5. Validar la navegación (US2, SC-003/SC-004)
 
@@ -102,8 +130,10 @@ prefers-reduced-motion: reduce*, o la opción del sistema):
       página **nunca** provoca desplazamiento horizontal (comprobar también con ~8–10 enlaces si se
       simula la previsión de F4–F9).
 - [ ] Al **bajar** por la página, la navegación **permanece visible y accesible** (barra fija), sin
-      tapar contenido ni descolocar el maquetado.
-- [ ] Clic en un enlace → la **sección destino y su título quedan visibles** (la barra no los tapa).
+      tapar contenido ni descolocar el maquetado; la cabecera **transiciona su superficie** al bajar
+      (estado `data-scrolled`, ver §4) sin cambiar de altura.
+- [ ] Clic en un enlace → la **sección destino y su título quedan visibles** (la barra no los tapa),
+      con desplazamiento **suave** (instantáneo con movimiento reducido, ver §4).
 - [ ] Teclado: orden de foco comprensible, **foco visible siempre**, cada enlace indica a qué sección
       lleva; lector de pantalla: etiquetas correctas.
 - [ ] Una persona con poca experiencia encuentra y usa la navegación con un solo clic o toque
@@ -138,7 +168,7 @@ cd frontend
 npm test -- --run        # unitarias: tema, movimiento, navegación, selector + TODAS las de F2/F3
 npm run typecheck
 npm run lint
-make e2e                 # Playwright: diseno-movimiento, tema-oscuro, movimiento-reducido
+make e2e                 # Playwright: diseno-movimiento, tema-oscuro, movimiento, movimiento-reducido
                          # + portada-publica, portada-accesibilidad, portada-panel, portada-imagenes,
                          #   portada-patch-null, acceso, auditoria, status  (SIN CAMBIOS, SC-008)
 make ci                  # pipeline completo
@@ -153,6 +183,10 @@ modifica la prueba para hacerla pasar.
 - [ ] La propuesta visual elegida (una de las 3 de `ux.md`, FR-026) se reconoce en la implementación
       y el cliente la califica como **moderna y acorde a su marca** («no parece un diseño típico y
       común de IA») (SC-002).
-- [ ] 0 elementos copiados de las referencias (`iglesiaoasis.com`, `river-arena.org`) (SC-013).
+- [ ] El **movimiento** se percibe como **marcado y elegante**: el cliente confirma que el revelado
+      al scroll, el escalonado y las transiciones **se notan de verdad** (nada «casi imperceptible»)
+      y que el conjunto **no resulta estridente ni mareante** (SC-014).
+- [ ] 0 elementos copiados de las referencias (`iglesiaoasis.com`, `river-arena.org`, `apple.com`,
+      `microsoft.com/es-cr`) (SC-013).
 - [ ] Cimientos para F4–F9 entregados y documentados (`ux.md` + este plan): una sección nueva
-      construida con ellos encaja sin rediseño (SC-011).
+      construida con ellos encaja sin rediseño (SC-011), incluidos los **tokens de movimiento**.

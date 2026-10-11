@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar (entregables listos; en la puerta 2) |
+| Fase | 2/9 · Planificar (iteración de diseño 2: en la puerta 2) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | **Puerta 2**: aprobar el plan y elegir una de las 3 propuestas (A/B/C); luego Fase 3 (tareas + coherencia) |
+| Próximo paso | **Puerta 2 (iteración 2)**: aprobar el plan de movimiento actualizado y elegir una de las 3 propuestas nuevas (A/B/C); luego Fase 3 (tareas + coherencia) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -47,6 +47,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-10 — **Iteración de diseño 2 completada**: `arquitecto` refuerza el plan de movimiento (revelados de **600 ms** con desplazamiento 20–28 px y *stagger* de 80 ms; suelo de perceptibilidad ≥ 400 ms/16 px y techo ≤ 800 ms; cabecera que transiciona al bajar; `scroll-behavior: smooth` solo sin reduced-motion; **0 dependencias nuevas**); `disenador-ux` entrega **3 propuestas nuevas** —A «Bento Vivo», B «Marea Turquesa», C «Huella Tipográfica»— y reescribe `ux.md` y las maquetas con revelado real por scroll. Pendiente: **puerta 2** (iteración 2).
+- 2026-10-10 — **Puerta 2 — iteración de diseño 1 (feedback del cliente).** El cliente **no aprobó el plan** y **rechazó las 3 propuestas** (A/B/C). Pidió **más animación**: transiciones entre componentes y **revelado de las secciones al hacer scroll** (las actuales le parecieron «muy pobres, casi imperceptibles»). Añadió referencias de inspiración: `apple.com`, `microsoft.com/es-cr` y `river-arena.org` (además de `iglesiaoasis.com`). Implica: subir el nivel de animación (de moderado a **marcado/elegante con revelado al hacer scroll**), ajustar el plan de movimiento y **rehacer las 3 propuestas** con una dirección nueva. Sigue vigente: respetar `prefers-reduced-motion`, no bloquear contenido y no regresar F2/F3.
 - 2026-10-10 — **Fase 2 completada**: `plan.md`, `research.md`, `data-model.md` (sin cambios de datos), `contracts/README.md` (sin cambios de API) y `quickstart.md` (`arquitecto`); `ux.md` con **3 propuestas** —A «Raíz Viva», B «Cielo Abierto», C «Luz Serena»— más maquetas HTML navegables en `propuestas/` (`disenador-ux`). Sin dependencias nuevas (movimiento con CSS puro); tema con `data-theme` + variables semánticas. Pendiente: **puerta 2** (aprobar el plan y elegir una propuesta).
 - 2026-10-10 — **Puerta 1 superada:** el humano aprobó la spec (**«Apruebo la spec»**) con dos ajustes de alcance: **F10 = sitio público + modo oscuro** (con **interruptor manual claro/oscuro**) y el **panel se separa a F10B**. Aprobación registrada en «Aprobaciones». Roadmap: F10 ajustada y **F10B** añadida (decisión 13). Arranca la Fase 2 (plan + 3 propuestas de diseño).
 - 2026-10-10 — **8 aclaraciones resueltas con el cliente** (Q1–Q8): F10 se amplía a **panel de administración + modo oscuro**, navegación en **barra fija siempre visible**, animación **moderada**, selector de idioma **solo compactado**, **iconografía/ilustraciones nuevas permitidas**, referencias de inspiración y **3 propuestas de diseño a presentar antes de implementar**. Spec actualizada por `analista-producto`. Pendiente: aprobación de la spec (puerta 1).

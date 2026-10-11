@@ -1,234 +1,251 @@
 <!DOCTYPE html>
-<!-- MAQUETA F10 — Propuesta A «Raíz Viva» · Solo diseño, no es código de producción. -->
 <html lang="es" data-theme="light">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>F10 · Propuesta A — Raíz Viva · Maqueta</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F10 · Propuesta A — «Bento Vivo» (maqueta)</title>
 <style>
   :root{
-    --navy:#1a2b4a; --navy-soft:#e3e8f0; --teal:#00c9a7; --teal-strong:#0e7a66;
-    --cream:#F5F2EC; --coral:#ff6b3d; --leaf:#217638; --white:#fff;
-    --bg:var(--cream); --surface:var(--white); --ink:var(--navy); --hair:#dcd6c9;
-    --radius:1.5rem; --sp:1rem;
-    --font-display:'Bebas Neue', 'Arial Narrow', 'Helvetica Neue', sans-serif;
-    --font-body:'Poppins', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
-    --font-emph:'Playfair Display', Georgia, 'Times New Roman', serif;
+    --navy:#1a2b4a; --crema:#F5F2EC; --turquesa:#00c9a7; --turquesa-txt:#0e7a66;
+    --coral:#ff6b3d; --verde:#217638;
+    --bg:var(--crema); --surface:#ffffff; --surface-alt:#1a2b4a; --card:#ffffff;
+    --txt:var(--navy); --txt-inv:#ffffff; --muted:#5a6784; --line:#dcd6c9;
+    --shadow:0 8px 30px rgba(26,43,74,.14);
+    --dur:.7s; --stagger:90ms; --ease:cubic-bezier(.16,1,.3,1);
   }
-  [data-theme="dark"]{
-    --bg:#0d1626; --surface:#16233c; --ink:#eef1f6; --hair:#2b3a57;
-    --navy:#eef1f6; /* texto "navy" pasa a claro; el navy de marca queda como superficie */
-    --teal-soft:#0f5f50; --navy-soft:#233252;
+  html[data-theme="dark"]{
+    --bg:#0d1626; --surface:#16233c; --surface-alt:#16233c; --card:#1d2c4c;
+    --txt:#edf0f6; --txt-inv:#0d1626; --muted:#9fb0cc; --line:rgba(238,241,246,.14);
+    --turquesa-txt:#00c9a7; --shadow:0 8px 30px rgba(0,0,0,.4);
   }
-  *{box-sizing:border-box; margin:0; padding:0}
+  *{box-sizing:border-box; margin:0}
   html{scroll-behavior:smooth}
-  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); font-size:1.125rem; line-height:1.6}
+  body{background:var(--bg); color:var(--txt); font-family:Poppins,system-ui,sans-serif; font-size:18px; line-height:1.65}
+  h1,h2,h3,.bebas{font-family:'Bebas Neue',Poppins,sans-serif; letter-spacing:.02em; line-height:1.05}
+  .lema{font-family:'Playfair Display',Georgia,serif; font-style:italic}
+  .kicker{font-family:Poppins,sans-serif; text-transform:uppercase; letter-spacing:.18em; font-size:.8rem; color:var(--turquesa-txt); font-weight:600}
   a{color:inherit}
+  .skip{position:absolute; left:8px; top:-48px; background:var(--turquesa); color:#123; padding:.6rem 1rem; border-radius:8px; z-index:99; transition:top .2s}
+  .skip:focus{top:8px}
+  :focus-visible{outline:2px solid var(--turquesa); outline-offset:2px}
 
-  /* ===== Cabecera fija ===== */
-  .skip{position:absolute; left:-999px; top:0; background:var(--teal); color:var(--navy); padding:.5rem 1rem; border-radius:.5rem; z-index:60; font-weight:600}
-  .skip:focus{left:.5rem; top:.5rem}
-  header.top{
-    position:fixed; inset:0 0 auto 0; z-index:50;
-    background:color-mix(in srgb, var(--bg) 82%, transparent);
-    backdrop-filter:blur(10px); border-bottom:2px solid var(--hair);
+  /* ===== BARRA FIJA (transición al scroll) ===== */
+  header{position:fixed; inset:0 0 auto 0; z-index:50; display:flex; flex-wrap:wrap; align-items:center; gap:.6rem 1.2rem;
+    padding:14px 4vw; background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(8px);
+    transition:background .45s ease, padding .45s ease, box-shadow .45s ease}
+  header.scrolled{background:var(--navy); color:#fff; padding:8px 4vw; box-shadow:0 6px 24px rgba(13,22,38,.35)}
+  header.scrolled a{color:#fff}
+  .brand{display:flex; align-items:center; gap:.6rem; font-family:'Bebas Neue',sans-serif; font-size:1.5rem}
+  .logo{width:34px; height:34px; border-radius:8px; background:linear-gradient(135deg,#217638,#00c9a7); display:grid; place-items:center; color:#fff; font-family:'Bebas Neue'; font-size:1.1rem}
+  nav{display:flex; flex-wrap:wrap; gap:.2rem; margin-right:auto}
+  nav a{padding:.6rem .7rem; text-decoration:none; font-size:.92rem; font-weight:500; position:relative}
+  nav a::after{content:""; position:absolute; left:.7rem; right:.7rem; bottom:.3rem; height:3px; border-radius:3px; background:var(--turquesa);
+    transform:scaleX(0); transform-origin:left; transition:transform .35s var(--ease)}
+  nav a:hover::after, nav a:focus-visible::after, nav a[aria-current]::after{transform:scaleX(1)}
+  .lang{font-size:.85rem; display:flex; gap:.35rem; align-items:center}
+  .lang button{all:unset; cursor:pointer; padding:.4rem .35rem; color:inherit; opacity:.75; border-bottom:2px solid transparent}
+  .lang button.act{opacity:1; font-weight:700; border-color:var(--turquesa)}
+  .theme{width:44px; height:44px; border-radius:50%; border:1px solid var(--line); background:var(--surface); color:inherit; cursor:pointer; font-size:1.15rem; display:grid; place-items:center;
+    transition:transform .25s var(--ease), box-shadow .25s}
+  .theme:hover{transform:translateY(-2px); box-shadow:var(--shadow)}
+  .theme:active{transform:scale(.94)}
+
+  main{padding-top:92px}
+  .wrap{max-width:1100px; margin:0 auto; padding:0 4vw}
+  section{padding:64px 0 20px; scroll-margin-top:96px}
+
+  /* ===== REVELADO MARCADO (bento: sube + escala + stagger) ===== */
+  [data-reveal="in"]{opacity:1; transform:none; transition:opacity var(--dur) var(--ease), transform var(--dur) var(--ease); transition-delay:var(--d,0ms)}
+  html.js [data-reveal]:not([data-reveal="in"]){opacity:0; transform:translateY(48px) scale(.94)}
+
+  .hero-grid{display:grid; grid-template-columns:1.4fr 1fr; gap:14px}
+  .tile{border-radius:22px; padding:28px; background:var(--card); box-shadow:var(--shadow); position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:center}
+  .tile:hover{box-shadow:0 14px 40px rgba(26,43,74,.22)}
+  .tile::before{ /* sheen al pasar */
+    content:""; position:absolute; top:0; left:-80%; width:60%; height:100%;
+    background:linear-gradient(105deg,transparent,rgba(0,201,167,.16),transparent);
+    transform:skewX(-18deg); transition:left .7s var(--ease); pointer-events:none}
+  .tile:hover::before{left:130%}
+  .t-navy{background:var(--navy); color:#fff}
+  .t-turq{background:var(--turquesa); color:#123a33}
+  .t-img{background:linear-gradient(150deg,#dfe8d0,#b9d9c9); min-height:260px; align-items:flex-end}
+  .sprout{font-size:3rem; opacity:.55; align-self:center}
+  .hero-grid h1{font-size:clamp(2.6rem,6vw,4.2rem)}
+  .hero-grid h1 em{font-family:'Playfair Display',serif; font-style:italic; color:var(--turquesa-txt)}
+  html[data-theme="dark"] .hero-grid h1 em{color:var(--turquesa)}
+  .tiles-mini{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:14px}
+  .mini{border-radius:16px; padding:18px; text-align:center; font-family:'Bebas Neue'; font-size:1.4rem; letter-spacing:.05em}
+  .mini svg{display:block; margin:0 auto 6px}
+  .mini i{display:block; font-family:Poppins; font-size:.75rem; font-style:normal; letter-spacing:.1em; text-transform:uppercase; opacity:.8}
+  .mini:nth-child(1){background:var(--navy); color:#fff}
+  .mini:nth-child(2){background:var(--turquesa); color:#0e3b32}
+  .mini:nth-child(3){background:var(--coral); color:#521a06}
+  .mini:nth-child(4){background:var(--verde); color:#eaffe0}
+  .m2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .btn{display:inline-block; margin-top:18px; padding:.9rem 1.6rem; border-radius:999px; background:var(--turquesa); color:#0e3b32;
+    text-decoration:none; font-weight:600; transition:transform .25s var(--ease), box-shadow .25s}
+  .btn:hover{transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,201,167,.35)}
+  .btn:active{transform:scale(1.04)} .btn.alt{background:transparent; border:2px solid currentColor; color:inherit}
+  .h2row{display:flex; align-items:baseline; gap:1rem; margin-bottom:18px}
+  .h2row .num{font-family:'Bebas Neue'; font-size:2rem; color:var(--turquesa-txt)}
+  html[data-theme="dark"] .h2row .num{color:var(--turquesa)}
+  .schedule{font-family:'Bebas Neue'; font-size:clamp(2rem,5vw,3.4rem)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .pills{display:flex; flex-wrap:wrap; gap:10px}
+  .pill{padding:.75rem 1.25rem; border-radius:999px; border:1px solid var(--line); text-decoration:none; font-size:.95rem; transition:transform .25s var(--ease), border-color .25s}
+  .pill:hover,.pill:focus-visible{transform:translateY(-3px); border-color:var(--turquesa)}
+  footer{margin-top:70px; background:var(--navy); color:#fff; border-radius:26px 26px 0 0; padding:44px 6vw; display:flex; flex-wrap:wrap; gap:1.2rem; align-items:center}
+  footer .lema{font-size:1.25rem; margin-left:auto; color:var(--turquesa)}
+  .note{margin:14px auto; text-align:center; font-size:.8rem; color:var(--muted); max-width:640px}
+
+  /* ===== prefers-reduced-motion: revelados y suave OFF ===== */
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    [data-reveal]{opacity:1 !important; transform:none !important; transition:none !important}
+    .tile::before,.tile,.btn,.theme,.pill,nav a::after{transition:none !important}
+    header{transition:none}
   }
-  .top-inner{max-width:72rem; margin:0 auto; padding:.55rem 1rem; display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .9rem; row-gap:.15rem}
-  .brand{display:flex; align-items:center; gap:.6rem; text-decoration:none; margin-right:auto}
-  .logo{width:40px; height:40px; object-fit:contain} /* logo nunca se deforma */
-  .brand b{font-family:var(--font-display); font-size:1.35rem; letter-spacing:.04em; line-height:1}
-  nav.roster{display:flex; flex-wrap:wrap; gap:.15rem .35rem} /* SIEMPRE visible, sin hamburguesa */
-  nav.roster a{font-size:.92rem; text-decoration:none; padding:.55rem .6rem; border-radius:.7rem; font-weight:500; min-height:44px; display:flex; align-items:center}
-  nav.roster a:hover{background:var(--surface)}
-  nav.roster a[aria-current]{color:var(--teal-strong); font-weight:600}
-  [data-theme="dark"] nav.roster a[aria-current]{color:var(--teal)}
-  .tools{display:flex; align-items:center; gap:.55rem}
-  .lang{display:flex; align-items:center; gap:.15rem; font-size:.85rem}
-  .lang .lbl{opacity:.65; margin-right:.15rem; font-size:.8rem}
-  .lang a{text-decoration:none; padding:.5rem .35rem; border-radius:.5rem; min-height:32px; display:flex; align-items:center; color:var(--ink)}
-  .lang a[aria-current]{color:var(--teal-strong); text-decoration:underline; text-underline-offset:3px; font-weight:600}
-  [data-theme="dark"] .lang a[aria-current]{color:var(--teal)}
-  .theme-btn{background:var(--surface); border:2px solid var(--hair); border-radius:50%; width:44px; height:44px; font-size:1.15rem; cursor:pointer; color:var(--ink)}
-  .focusable:focus-visible{outline:2px solid var(--teal-strong); outline-offset:2px; border-radius:.5rem}
-  :root{--focus:var(--teal-strong); --focus-ink:var(--navy)}
-  [data-theme="dark"]{--focus:var(--teal); --focus-ink:#0d1626}
-  .focusable:focus-visible{outline-color:var(--focus)}
-
-  /* ===== Hero ===== */
-  main{max-width:72rem; margin:0 auto; padding:5.2rem 1rem 0}
-  .hero{display:grid; gap:2rem; grid-template-columns:1fr; padding:1.5rem 0 3rem}
-  @media(min-width:900px){ .hero{grid-template-columns:1.15fr .85fr; align-items:center; padding:3rem 0 5rem} }
-  .kicker{font-size:.85rem; letter-spacing:.22em; text-transform:uppercase; color:var(--teal-strong); font-weight:600; margin-bottom:.6rem}
-  h1{font-family:var(--font-display); font-size:clamp(3rem,9vw,5.5rem); line-height:.98; letter-spacing:.01em}
-  h1 .hoja{color:var(--teal-strong)} [data-theme="dark"] h1 .hoja{color:var(--teal)}
-  .lema{font-family:var(--font-emph); font-style:italic; font-size:clamp(1.3rem,3vw,1.75rem); margin:.9rem 0 1.6rem; opacity:.92}
-  .bloques{display:grid; gap:1rem}
-  @media(min-width:640px){ .bloques{grid-template-columns:1fr 1fr} }
-  .bloque{background:var(--surface); border-radius:var(--radius); border:2px solid var(--hair); padding:1.2rem 1.4rem}
-  .bloque h3{font-size:.8rem; text-transform:uppercase; letter-spacing:.18em; color:var(--teal-strong); margin-bottom:.4rem}
-  [data-theme="dark"] .bloque h3{color:var(--teal)}
-  .hero-media{position:relative; border-radius:2rem; overflow:hidden; aspect-ratio:4/3; background:var(--navy-soft)}
-  .hero-media .ph{position:absolute; inset:0; display:grid; place-items:center; background:linear-gradient(160deg,#1a2b4a,#0d1626)}
-  .hero-media .ph span{color:#eef1f6; font-size:.9rem; letter-spacing:.15em; text-transform:uppercase; opacity:.7}
-  .semilla{position:absolute; left:-1.2rem; bottom:-1.2rem; width:96px; height:96px; object-fit:contain} /* ejemplo de ilustración nueva permitida */
-
-  /* ===== Secciones ===== */
-  section{padding:3.2rem 0}
-  .sec-head{display:flex; align-items:baseline; gap:1rem; margin-bottom:1.6rem; border-bottom:2px solid var(--hair); padding-bottom:.8rem}
-  .num{font-family:var(--font-display); color:var(--teal-strong); font-size:1.4rem} [data-theme="dark"] .num{color:var(--teal)}
-  h2{font-family:var(--font-display); font-size:clamp(2rem,5vw,3rem); line-height:1}
-  .lectura{max-width:44rem}
-  .tarjetas{display:grid; gap:1rem; grid-template-columns:1fr}
-  @media(min-width:640px){ .tarjetas{grid-template-columns:repeat(2,1fr)} .tarjetas.tres{grid-template-columns:repeat(3,1fr)} }
-  .card{background:var(--surface); border:2px solid var(--hair); border-radius:var(--radius); padding:1.3rem 1.4rem; transition:transform .25s ease, border-color .25s ease, background .25s ease}
-  .card:hover{transform:translateY(-4px); border-color:var(--teal)}
-  .card h3{font-weight:600; margin-bottom:.3rem}
-  .hora{font-family:var(--font-display); font-size:1.9rem; color:var(--teal-strong); line-height:1}
-  [data-theme="dark"] .hora{color:var(--teal)}
-  .lugar{font-size:.95rem; opacity:.8}
-  .btn{display:inline-flex; align-items:center; gap:.5rem; background:var(--teal); color:#0d1626; font-weight:600; text-decoration:none; border-radius:999px; padding:.75rem 1.5rem; min-height:48px; transition:transform .2s ease, box-shadow .2s ease}
-  .btn:hover{transform:scale(1.03); box-shadow:0 6px 16px rgba(0,201,167,.35)}
-  .btn.sec{background:transparent; border:2px solid var(--hair); color:var(--ink)}
-  .contacto{background:var(--surface); border:2px solid var(--hair); border-radius:2rem; padding:1.6rem; display:grid; gap:1rem}
-  @media(min-width:760px){ .contacto{grid-template-columns:repeat(3,1fr); padding:2rem} }
-  .dato .k{font-size:.8rem; letter-spacing:.18em; text-transform:uppercase; color:var(--teal-strong); margin-bottom:.25rem}
-  [data-theme="dark"] .dato .k{color:var(--teal)}
-  .dato a{text-decoration:none; font-weight:500}
-  .dato a:hover{color:var(--teal-strong)} [data-theme="dark"] .dato a:hover{color:var(--teal)}
-  .redes{display:flex; flex-wrap:wrap; gap:.7rem}
-  .pill-red{display:inline-flex; align-items:center; gap:.55rem; background:var(--surface); border:2px solid var(--hair); border-radius:999px; padding:.6rem 1.2rem; text-decoration:none; font-weight:500; transition:transform .2s ease}
-  .pill-red:hover{transform:translateY(-2px); border-color:var(--teal)}
-
-  /* ===== Pie ===== */
-  footer.site{margin-top:3rem; background:#16233c; color:#eef1f6; padding:2.5rem 1rem 2rem; border-radius:2rem 2rem 0 0}
-  .foot-inner{max-width:72rem; margin:0 auto; display:flex; flex-wrap:wrap; gap:1.2rem; align-items:center}
-  .foot-inner .frase{font-family:var(--font-emph); font-style:italic; font-size:1.25rem; width:100%}
-  .foot-inner a{color:#eef1f6; text-decoration:none; padding:.5rem; display:inline-flex; align-items:center; min-height:44px}
-  .foot-inner a:hover{color:var(--teal)}
-  .foot-lang{margin-left:auto; display:flex; gap:.4rem; align-items:center; font-size:.85rem; opacity:.9}
-
-  /* ===== Movimiento (nivel moderado) ===== */
-  .reveal{opacity:1; transform:none}
-  @media (prefers-reduced-motion: no-preference){
-    .reveal{opacity:0; transform:translateY(14px); transition:opacity .5s ease, transform .5s ease}
-    .reveal.visible{opacity:1; transform:none}
-    html{scroll-behavior:smooth}
-  }
-  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important} html{scroll-behavior:auto} }
+  @media (max-width:760px){ .hero-grid,.m2,.grid3{grid-template-columns:1fr} .tiles-mini{grid-template-columns:repeat(2,1fr)} .top{padding-top:120px} }
 </style>
 </head>
 <body>
-<a class="skip focusable" href="#contenido">Saltar al contenido principal</a>
-
-<!-- Cabecera: barra fija, siempre visible, enlaces siempre a la vista -->
-<header class="top">
-  <div class="top-inner">
-    <a class="brand focusable" href="#contenido">
-      <!-- Logo: object-contain, colores originales, jamás efectos (usar resources/simiente.jpeg) -->
-      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill="#F5F2EC"/><path d="M20 30c0-8 2-14 8-18-1 9-3 14-8 18z" fill="#217638"/><circle cx="16" cy="24" r="3" fill="#1a2b4a"/></svg>
-      <b>SIMIENTE SANTA</b>
-    </a>
-    <nav class="roster" aria-label="Secciones de la portada">
-      <a href="#somos" class="focusable">Quiénes somos</a>
-      <a href="#horario" class="focusable">Horario</a>
-      <a href="#whatsapp" class="focusable">WhatsApp</a>
-      <a href="#contacto" class="focusable">Contacto</a>
-      <a href="#redes" class="focusable">Redes</a>
-    </nav>
-    <div class="tools">
-      <div class="lang" role="group" aria-label="Idioma">
-        <span class="lbl" aria-hidden="true">Idioma</span>
-        <a href="#" aria-current="true" class="focusable" lang="es">Español</a>
-        <span aria-hidden="true">·</span>
-        <a href="#" class="focusable" lang="en">English</a>
-      </div>
-      <button class="theme-btn focusable" id="themeBtn" type="button" aria-pressed="false" aria-label="Cambiar a tema oscuro">🌙</button>
-    </div>
+<a class="skip" href="#contenido" data-es="Ir al contenido" data-en="Skip to content">Ir al contenido</a>
+<header id="barra">
+  <a class="brand" href="#top" style="text-decoration:none"><span class="logo" aria-hidden="true">SS</span> SIMIENTE SANTA</a>
+  <nav aria-label="Secciones del sitio">
+    <a href="#quienes">Quiénes somos</a><a href="#horario">Horario</a><a href="#whatsapp">WhatsApp</a><a href="#contacto">Contacto</a><a href="#redes">Redes</a>
+  </nav>
+  <div class="lang" role="group" aria-label="Idioma">
+    <button class="act" id="btnEs">Español</button><span aria-hidden="true">·</span><button id="btnEn">English</button>
   </div>
+  <button class="theme" id="themeToggle" aria-pressed="false" aria-label="Cambiar a tema oscuro">🌙</button>
 </header>
 
 <main id="contenido">
-  <div class="hero">
-    <div>
-      <p class="kicker">Iglesia cristiana · Bienvenido a tu casa</p>
-      <h1>Tu casa en<span class="hoja"> CRISTO</span>,<br>tu raíz<span class="hoja"> VIVA</span></h1>
-      <p class="lema">«Brotamos para dar vida.» — lema de la iglesia</p>
-      <div class="bloques">
-        <div class="bloque"><h3>Nuestra misión</h3><p>Misión publicada desde el panel (texto de ejemplo).</p></div>
-        <div class="bloque"><h3>Nuestra visión</h3><p>Visión publicada desde el panel (texto de ejemplo).</p></div>
-      </div><br>
-      <a class="btn focusable" href="#whatsapp">Escribir por WhatsApp</a>
+  <section id="top" class="wrap">
+    <p class="kicker" data-es="Bienvenido a casa" data-en="Welcome home" data-reveal>No F10 · maqueta navegable</p>
+    <div class="hero-grid" style="margin-top:12px">
+      <div class="tile t-navy" data-reveal>
+        <h1 data-es="TU CASA EN CRISTO, TU RAÍZ VIVA" data-en="YOUR HOME IN CHRIST, YOUR LIVING ROOT">TU CASA EN CRISTO, <em>TU RAÍZ VIVA</em></h1>
+        <p style="margin:10px 0 4px" data-es="Texto de identidad de F3, intacto; solo cambia el maquetado." data-en="Example content only">Sanados, amados y de pie: creemos comunidad.</p>
+        <div>
+          <a class="btn" href="#horario" data-es="Ver horario" data-en="See schedule">Ver horario</a>
+          <a class="btn alt" href="#whatsapp" data-es="Escribir por WhatsApp" data-en="Message us on WhatsApp">Escribir por WhatsApp</a>
+        </div>
+      </div>
+      <div class="tile t-img" data-reveal style="--d:90ms">
+        <span class="sprout" aria-hidden="true">🌱</span>
+        <p style="font-size:.85rem" data-es="Espacio para la imagen de portada del panel (F3), nunca sobre el logotipo." data-en="Image from panel; never over the logo.">Imagen de portada aquí</p>
+      </div>
     </div>
-    <div class="hero-media" role="img" aria-label="Imagen de la portada de la iglesia">
-      <div class="ph"><span>Imagen de portada (del panel)</span></div>
-      <!-- Ilustración nueva permitida (Q6): brote que acompaña, nunca sobre el logo -->
-      <svg class="semilla" viewBox="0 0 96 96" aria-hidden="true"><path d="M48 88C48 70 52 52 76 36c-4 26-14 40-28 52z" fill="#00c9a7" opacity=".85"/><circle cx="40" cy="80" r="7" fill="#ff6b3d"/></svg>
-    </div>
-  </div>
-
-  <section id="somos" class="reveal">
-    <div class="sec-head"><span class="num" aria-hidden="true">01</span><h2>Quiénes somos</h2></div>
-    <div class="lectura"><p>Texto real de «quiénes somos» publicado desde el panel (se preservan los saltos de línea). Esta columna de lectura respira: máximo 44 rem de ancho, cuerpo 18 px.</p></div>
-  </section>
-
-  <section id="horario" class="reveal">
-    <div class="sec-head"><span class="num" aria-hidden="true">02</span><h2>Horario de servicios</h2></div>
-    <div class="tarjetas">
-      <div class="card"><div class="hora">10:00 a. m.</div><h3>Culto de adoración</h3><p class="lugar">Domingo · Templo principal</p></div>
-      <div class="card"><div class="hora">7:00 p. m.</div><h3>Estudio bíblico</h3><p class="lugar">Miércoles · Salón anexo</p></div>
+    <div class="tiles-mini">
+      <div class="mini" data-reveal style="--d:0ms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21c-4-3-7-6-7-10a7 7 0 0 1 14 0c0 4-3 7-7 10Z"/></svg><i data-es="Fe" data-en="Faith">Fe</i></div>
+      <div class="mini" data-reveal style="--d:90ms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><i data-es="Horario" data-en="Schedule">Horario</i></div>
+      <div class="mini" data-reveal style="--d:180ms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a8 8 0 1 1-4-7"/></svg><i>WhatsApp</i></div>
+      <div class="mini" data-reveal style="--d:270ms"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16v12H4z"/><path d="m4 7 8 6 8-6"/></svg><i data-es="Contacto" data-en="Contact">Contacto</i></div>
     </div>
   </section>
 
-  <section id="whatsapp" class="reveal">
-    <div class="sec-head"><span class="num" aria-hidden="true">03</span><h2>WhatsApp</h2></div>
-    <div class="tarjetas">
-      <div class="card"><h3>Consejería pastoral</h3><p class="lugar">Mensaje directo</p><br><a class="btn focusable" href="#">Escribir por WhatsApp</a></div>
-      <div class="card"><h3>Grupo de oración</h3><p class="lugar">Grupo</p><br><a class="btn focusable" href="#">Entrar al grupo</a></div>
+  <section id="quienes" class="wrap">
+    <div class="h2row" data-reveal><span class="num">01</span><h2 data-es="QUIÉNES SOMOS" data-en="WHO WE ARE">QUIÉNES SOMOS</h2></div>
+    <div class="grid2">
+      <div class="tile" data-reveal><h3 data-es="Nuestra misión" data-en="Our mission">Nuestra misión</h3><p>Misión real del panel de F3.</p></div>
+      <div class="tile" data-reveal style="--d:90ms"><h3 data-es="Nuestra visión" data-en="Our vision">Nuestra visión</h3><p>Visión real del panel de F3.</p></div>
     </div>
   </section>
 
-  <section id="contacto" class="reveal">
-    <div class="sec-head"><span class="num" aria-hidden="true">04</span><h2>Contacto</h2></div>
-    <div class="contacto">
-      <div class="dato"><p class="k">Dirección</p><p>De la iglesia 100, San José</p></div>
-      <div class="dato"><p class="k">Correo</p><a class="focusable" href="mailto:hola@simiente.santa">hola@simiente.santa</a></div>
-      <div class="dato"><p class="k">Teléfono</p><a class="focusable" href="tel:+50688888888">+506 8888 8888</a></div>
+  <section id="horario" class="wrap">
+    <div class="h2row" data-reveal><span class="num">02</span><h2 data-es="HORARIO" data-en="SCHEDULE">HORARIO</h2></div>
+    <div class="tile grid2" data-reveal>
+      <div><p class="schedule">10:00<small style="font-size:.4em"> a. m.</small></p><p>Culto de adoración · Domingo</p></div>
+      <div><p class="schedule">7:00<small style="font-size:.4em"> p. m.</small></p><p>Estudio bíblico · Miércoles</p></div>
     </div>
   </section>
 
-  <section id="redes" class="reveal">
-    <div class="sec-head"><span class="num" aria-hidden="true">05</span><h2>Redes sociales</h2></div>
-    <div class="redes">
-      <a class="pill-red focusable" href="#">✦ Ver en Facebook</a>
-      <a class="pill-red focusable" href="#">◎ Ver en Instagram</a>
-      <a class="pill-red focusable" href="#">▷ Ver en YouTube</a>
+  <section id="whatsapp" class="wrap">
+    <div class="h2row" data-reveal><span class="num">03</span><h2 style="color:var(--verde)">WHATSAPP</h2></div>
+    <div class="tile t-turq" data-reveal style="align-items:flex-start">
+      <h3 data-es="Escríbenos, te respondemos rápido" data-en="Write to us, we reply fast">Escríbenos, te respondemos rápido</h3>
+      <a class="btn" style="background:#217638;color:#eaffe0" href="#" data-es="Abrir WhatsApp" data-en="Open WhatsApp">Abrir WhatsApp</a>
     </div>
   </section>
+
+  <section id="contacto" class="wrap">
+    <div class="h2row" data-reveal><span class="num">04</span><h2 data-es="CONTACTO" data-en="CONTACT">CONTACTO</h2></div>
+    <div class="grid3">
+      <div class="tile" data-reveal><h3 data-es="Dirección" data-en="Address">Dirección</h3><p>Datos de F3</p></div>
+      <div class="tile" data-reveal style="--d:90ms"><h3 data-es="Correo" data-en="Email">Correo</h3><p>Datos de F3</p></div>
+      <div class="tile" data-reveal style="--d:180ms"><h3 data-es="Teléfono" data-en="Phone">Teléfono</h3><p>Datos de F3</p></div>
+    </div>
+  </section>
+
+  <section id="redes" class="wrap">
+    <div class="h2row" data-reveal><span class="num">05</span><h2 data-es="REDES SOCIALES" data-en="SOCIAL MEDIA">REDES SOCIALES</h2></div>
+    <div class="pills">
+      <a class="pill" href="#" data-reveal style="--d:0ms" data-es="Facebook de la iglesia" data-en="Facebook">Facebook</a>
+      <a class="pill" href="#" data-reveal style="--d:80ms" data-es="Instagram de la iglesia" data-en="Instagram">Instagram</a>
+      <a class="pill" href="#" data-reveal style="--d:160ms" data-es="YouTube de la iglesia" data-en="YouTube">YouTube</a>
+    </div>
+  </section>
+
+  <p class="note">Maqueta de la Propuesta A «Bento Vivo» · F10 — solo diseño. El logotipo real (resources/simiente.jpeg) se muestra con sus colores originales; aquí un monograma placeholder.</p>
 </main>
 
-<footer class="site">
-  <div class="foot-inner">
-    <p class="frase">«Esta siempre será tu casa.»</p>
-    <a class="focusable" href="#contenido">↑ Subir</a>
-    <div class="foot-lang" role="group" aria-label="Idioma">
-      <a href="#" aria-current="true" class="focusable">Español</a><span aria-hidden="true">·</span><a href="#" class="focusable">English</a>
-    </div>
-  </div>
+<footer>
+  <a class="brand" href="#top" style="text-decoration:none;color:#fff"><span class="logo" aria-hidden="true">SS</span> SIMIENTE SANTA</a>
+  <span class="lema" data-es="«Brotamos para dar vida.»" data-en="“We sprout to give life.”">«Brotamos para dar vida.»</span>
+  <div class="lang" role="group" aria-label="Idioma"><button class="act">Español</button><span aria-hidden="true">·</span><button>English</button></div>
 </footer>
 
 <script>
-  // Solo para la maqueta: alterna tema; la app real recuerda la elección y sigue la preferencia del sistema (FR-023).
-  const btn=document.getElementById('themeBtn'), root=document.documentElement;
-  btn.addEventListener('click',()=>{
-    const dark=root.dataset.theme==='dark';
-    root.dataset.theme=dark?'light':'dark';
-    btn.textContent=dark?'🌙':'☀️';
-    btn.setAttribute('aria-pressed',String(!dark));
-    btn.setAttribute('aria-label',dark?'Cambiar a tema oscuro':'Cambiar a tema claro');
-  });
-  // Revelado suave y breve (nivel moderado); con reduce-motion el CSS lo anula.
-  const io=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting&&e.target.classList.add('visible')),{threshold:.12});
-  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+(function(){
+  document.documentElement.classList.add('js');
+  const root = document.documentElement;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* Tema: primero lo guardado; si no, el del sistema */
+  const saved = localStorage.getItem('f10-tema');
+  const sys = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const apply = t => { root.dataset.theme = t;
+    const b = document.getElementById('themeToggle');
+    b.textContent = t==='dark' ? '☀️' : '🌙';
+    b.setAttribute('aria-pressed', t==='dark');
+    b.setAttribute('aria-label', t==='dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'); };
+  apply(saved || sys);
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const t = root.dataset.theme==='dark' ? 'light' : 'dark';
+    apply(t); localStorage.setItem('f10-tema', t); });
+
+  /* Revelado al hacer scroll: cada elemento entra una sola vez, con stagger por delay */
+  const items = () => document.querySelectorAll('[data-reveal]:not([data-reveal="in"])');
+  function revealNow(el){ el.dataset.reveal = 'in'; }
+  if (reduce.matches || !('IntersectionObserver' in window)) {
+    items().forEach(revealNow);
+  } else {
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting){ revealNow(e.target); io.unobserve(e.target); }
+    }), {threshold: .15, rootMargin: '0px 0px -8% 0px'});
+    items().forEach(el => io.observe(el));
+    document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.reveal==='') revealNow(e.target); }, true);
+    window.addEventListener('resize', () => items().forEach(el => io.observe(el)));
+  }
+
+  /* Cambio de idioma demo (solo maqueta: el real es F3) */
+  const esBtn = document.getElementById('btnEs'), enBtn = document.getElementById('btnEn');
+  function setLang(l){
+    root.lang = l==='en' ? 'en' : 'es';
+    esBtn.classList.toggle('act', l==='es'); enBtn.classList.toggle('act', l==='en');
+    document.querySelectorAll('[data-es]').forEach(el => { const v = el.dataset[l]; if (v) el.textContent = v; });
+  }
+  esBtn.addEventListener('click', ()=>setLang('es'));
+  enBtn.addEventListener('click', ()=>setLang('en'));
+
+  /* Transición de la barra al hacer scroll */
+  const bar = document.getElementById('barra');
+  const upBar = () => bar.classList.toggle('scrolled', scrollY > 40);
+  addEventListener('scroll', upBar, {passive:true}); upBar();
+})();
 </script>
 </body>
 </html>

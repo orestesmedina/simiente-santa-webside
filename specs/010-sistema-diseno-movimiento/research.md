@@ -1,8 +1,12 @@
 # Research: F10 — Sistema de diseño y movimiento
 
 **Feature**: F10 — Sistema de diseño y movimiento · **Branch**: `010-sistema-diseno-movimiento`
-**Fase**: 0 de `/speckit.plan` (decisiones técnicas; numeración **R10-1…R10-12**, propia de F10)
-**Fecha**: 2026-10-10
+**Fase**: 0 de `/speckit.plan` (decisiones técnicas; numeración **R10-1…R10-13**, propia de F10)
+**Fecha**: 2026-10-10 · **Revisión (puerta 2, 2026-10-10)**: el cliente rechazó las 3 propuestas por
+«muy pobres, casi imperceptibles» y elevó el nivel de movimiento a **marcado/elegante con revelado al
+hacer scroll** (FR-005). Se reevaluó la estrategia de movimiento completa —CSS puro / scroll-driven vs.
+librería—: **R10-4** se reescribe, **R10-5** y **R10-10** se actualizan y se añade **R10-13**
+(parámetros, cabecera al bajar, desplazamiento suave y rendimiento).
 
 F10 es una funcionalidad **100 % de presentación del sitio público** (frontend). No hay trabajo de
 backend, ni datos, ni contratos (ver `data-model.md` y `contracts/README.md`). Las decisiones de
@@ -85,51 +89,80 @@ garantizada).
 ausente ya lo expresa; si UX pide un tercer botón «Sistema», el mecanismo lo admite sin migración);
 `sessionStorage` (no persiste entre visitas, contradice FR-023).
 
-## R10-4 — Movimiento: CSS puro + `IntersectionObserver`; **sin librería de animación**
+## R10-4 — Movimiento: `IntersectionObserver` + CSS con stagger; **sin librería de animación** (reevaluado en la puerta 2)
 
-**Decisión**: el nivel **moderado** (Q4) se construye con:
-- **Transiciones CSS** en estados hover/foco/activo (solo `transform`, `opacity`, `color`,
-  `background-color`, `box-shadow`, `border-color`: nunca propiedades que muevan el maquetado).
-- **Revelado suave y breve** del contenido con un componente `Reveal` ligero basado en
-  `IntersectionObserver` (un observer compartido por página), con `duration` corta (≈200–300 ms) y
-  desplazamiento mínimo o nulo (Q4: nada expresivo).
-- Keyframes CSS para detalles puntuales (p. ej. el acento de sección).
+> **Revisión 2026-10-10 (puerta 2)**: el cliente rechazó las 3 propuestas por «muy pobres, casi
+> imperceptibles» y elevó el nivel a **marcado/elegante con revelado al hacer scroll** (FR-005). La
+> estrategia se reevaluó completa —CSS puro / scroll-driven vs. librería— con ese nivel nuevo. El
+> problema detectado eran los **parámetros** (duración y distancia casi imperceptibles), no la
+> capacidad del mecanismo; aun así, la comparativa se rehace abajo de forma explícita. Los valores
+> concretos (duraciones, curvas, distancia, stagger) viven en **R10-13**.
 
-**Por qué sin librería** (constitución §II — dependencias nuevas requieren justificación y se
-minimizan): el nivel moderado no necesita orquestación de timelines, ni animación de layout, ni
-gestos; `framer-motion`/`GSAP` aportan peso de bundle, JS en cada frame y riesgo de descolocar el
-maquetado para un efecto que CSS hace nativamente. **0 dependencias nuevas** en F10.
+**Decisión**: el sistema de movimiento se construye con **transiciones y keyframes CSS** orquestados
+por un **`IntersectionObserver` compartido** (componente `Reveal` + `RevealGroup` con entrada
+escalonada por variable CSS), más los tokens de movimiento de R10-13. **Sin dependencias nuevas.**
 
-**Alternativas descartadas**: `framer-motion` (dependencia + JS-driven; innecesaria para «moderado»);
-`tailwindcss-animate` (plugin sin valor frente a utilidades propias); **scroll-driven animations /
-`@starting-style`** de CSS como base (soporte de navegador aún desigual en 2026: se podrían usar solo
-como mejora progresiva, nunca como único mecanismo).
+### Comparativa con el nivel nuevo (marcado/elegante + revelado al scroll + stagger)
 
-**Rendimiento (FR-007/SC-006)**: el contenido es visible e interactivo **desde el primer instante**
-(ver R10-5); las animaciones solo tocan `opacity`/`transform` (compositor, sin reflow); un
-`IntersectionObserver` compartido (no uno por elemento); sin animaciones que bloqueen clics
-(`pointer-events` intactos).
+| Opción | ¿Logra revelado + stagger **perceptible**? | Soporte (2026) | Coste | Riesgo | Veredicto |
+|---|---|---|---|---|---|
+| **A. `IntersectionObserver` + CSS** (transiciones/keyframes + stagger por variable CSS) | **Sí, total**: entrada con opacidad 0→1 + `translateY` de 20–28 px durante ~600 ms, y escalonado de 80 ms entre componentes hermanos | 100 % (API del navegador, sin flags, en todo el objetivo) | **0 KB** de bundle; animación en el compositor | **Bajo**: determinista, parámetros fijos, verificable en Playwright (estilos computados) | **ELEGIDA** |
+| **B. CSS scroll-driven animations** (`animation-timeline: view()/scroll()`) | Sí (incluso atadas al progreso del scroll), pero solo donde haya soporte | **No es Baseline**: Chrome/Edge 115+, Safari 17.4+, pero **Firefox estable aún no lo soporta por defecto** (solo con flag `layout.css.scroll-driven-animations.enabled`) → un 15–25 % de usuarios según audiencia sin el efecto | 0 KB | **Alto**: (1) en navegadores sin soporte el contenido puede quedarse clavado en el keyframe inicial (oculto) si se usa `fill-mode: both` sin guardia correcta, y `@supports (animation-timeline: scroll())` puede dar **falso positivo** en Firefox (acepta la sintaxis con el flag apagado); (2) `prefers-reduced-motion` **no** anula la línea de tiempo: hay que resetear `animation-timeline` a mano; (3) progreso dependiente de la posición de scroll → difícil de verificar de forma determinista en e2e; (4) peligros conocidos de repintado en iOS Safari | **Descartada como base** (y como mejora progresiva de F10: un efecto distinto por navegador contradice «0 rebotes/0 diferencias» de SC-014). Reevaluable en el futuro con guardias de `@supports` verificadas en Firefox real |
+| **C. Librería de animación** (`motion` —antes `framer-motion`—, `GSAP` + ScrollTrigger) | Sí, con orquestación rica (stagger declarativo, springs, timelines, pin/scrub) | Total | `motion` ≈ 18–34 KB gzip (+ ≈ 15 KB API React); `GSAP` core ≈ 27 KB + ≈ 10 KB ScrollTrigger | **Medio**: JS en cada frame, gestión de ciclo de vida (limpieza de triggers, StrictMode doble-invocación), más superficie para descolocar el maquetado; su beneficio real es **layout animations, `AnimatePresence`, gestos y pin/scrub**, que F10 **no usa** (y el scrub/parallax queda desaconsejado por la propia spec: «nada mareante») | **Descartada** (ver R10-10). Candidata natural para F10B o si una sección futura necesita transiciones de layout compartido (`layoutId`), salidas animadas o timelines complejas — con justificación §II y aprobación humana |
+
+**Por qué A alcanza el nivel marcado sin librería**: lo que el cliente percibió como «casi
+imperceptible» se corrige con **parámetros**, no con más motor — distancia de entrada 20–28 px en vez
+de «pocos píxeles», 600 ms en vez de 200–300 ms, stagger visible de 80 ms, curva con salida rápida y
+asentamiento elegante — todo lo cual CSS resuelve nativamente sobre el compositor. Una librería
+aportaría orquestación que este alcance no necesita (sin gestos, sin animación de layout, sin
+scroll-scrub) a cambio de ~20–50 KB y JS por frame, en un sitio cuyo público incluye dispositivos
+modestos y personas con poca experiencia (FR-007/SC-006). Constitución §II: **0 dependencias nuevas**
+sigue siendo la decisión, ahora **tras reevaluar explícitamente la alternativa de librería** con el
+nivel alto.
+
+**Alternativas descartadas** (detalle en la tabla): (B) scroll-driven animations como mecanismo base
+—soporte no Baseline con riesgo de contenido oculto y de `@supports` engañoso en Firefox—;
+(C) `motion`/framer-motion y `GSAP`+ScrollTrigger —dependencia nueva + JS-driven para efectos que
+CSS resuelve; sus ventajas reales quedan fuera de F10—; `tailwindcss-animate` (sin valor frente a los
+tokens de movimiento propios); librerías pequeñas de «reveal on scroll» (envuelven exactamente el
+patrón A con dependencia añadida).
+
+**Rendimiento (FR-007/SC-006)**: solo `opacity`/`transform`, `will-change` temporal y medido, un solo
+observer compartido, sin `filter`/`blur`, sin listeners de `scroll` — ver detalle en R10-13.
 
 ## R10-5 — `prefers-reduced-motion` incondicional + revelado progresivo a prueba de fallos
 
-**Decisión (doble capa)**:
-1. **CSS**: bloque global `@media (prefers-reduced-motion: reduce)` que desactiva transiciones y
-   animaciones (o las reduce a instantáneas) en todo el sitio público, y `html { scroll-behavior }`
-   suave **solo** bajo `@media (prefers-reduced-motion: no-preference)`.
+**Decisión (doble capa; incondicional incluso con el nivel marcado de FR-005)**:
+1. **CSS**: bloque global `@media (prefers-reduced-motion: reduce)` que anula **por completo** el
+   sistema de movimiento del sitio público: `transition-duration: 0s`, `animation-duration: 0s`,
+   `animation-delay: 0s`, sin desplazamientos de entrada (`transform: none` en los estados de
+   revelado) y `html { scroll-behavior: auto }` (el suave solo vive bajo `no-preference`). Con
+   movimiento reducido hay **0 revelados y 0 transiciones de entrada perceptibles** (SC-005), sea
+   cual sea el nivel de FR-005; también la cabecera cambia de estado al bajar **sin transición**.
 2. **JS**: el hook `usePrefersReducedMotion` (matchMedia con listener en vivo — la preferencia puede
    cambiar con el sitio abierto sin recargar, edge case de la spec) hace que `Reveal` **nunca oculte**
    contenido cuando hay movimiento reducido: se renderiza ya visible.
 
-**Diseño a prueba de fallos (FR-009, edge cases de la spec)**:
-- El estado por defecto del contenido es **visible**; el estado oculto se aplica **solo si** JS montó
-  `Reveal` **y** el movimiento está permitido. Si el JS falla o la animación no carga: contenido
-  visible, nunca zona en blanco.
-- **Foco sobre contenido pendiente de revelado**: manejador `focusin` (y regla CSS
-  `:focus-visible` equivalente) que hace visible el elemento **de inmediato**; el foco nunca queda
-  sobre algo transparente.
-- **Sin repeticiones molestas**: el revelado se ejecuta **una vez por elemento y por carga**; cambiar
-  de idioma o de tema re-renderiza sin re-montar (claves React estables, `key` por sección = ancla),
-  de modo que no se re-animan secciones ya vistas (US3 esc. 5).
+**Diseño a prueba de fallos (FR-007/FR-009, edge cases de la spec)**:
+- **Estado por defecto del contenido: visible**. El estado «pendiente» (opacidad 0 + desplazamiento
+  de entrada) se aplica **solo si** se dan las tres condiciones: (a) JS montó `Reveal` (marcador `js`
+  en `<html>`, puesto por el script inline anti-FOUC junto a `data-theme`), (b) el movimiento está
+  permitido y (c) el elemento aún no se ha revelado. Si el JS falla o la animación no carga:
+  contenido visible, nunca una zona en blanco. El estado pendiente usa **solo `opacity`/`transform`**
+  —nunca `visibility: hidden`, `display: none` ni `content-visibility`— de modo que el contenido
+  conserva su sitio, sigue siendo clicable (`pointer-events` intactos) y las aserciones de visibilidad
+  de las suites de F3 pasan **sin cambios** (un `opacity: 0` sigue siendo «visible» para Playwright).
+- **Salvavidas global**: un timeout de seguridad (≈ 1 s tras el montaje) que revela todo lo pendiente
+  si el observer no llegó a disparar (JS a medias, observer roto); los elementos ya en pantalla al
+  cargar se revelan de inmediato con su stagger corto —no esperan a un scroll.
+- **Foco sobre contenido pendiente de revelado**: manejador `focusin` (y regla CSS equivalente) que
+  hace visible el elemento **de inmediato**; el foco nunca queda sobre algo transparente. Igual al
+  saltar a un ancla: el destino se revela al instante.
+- **Sin repeticiones molestas**: el revelado se ejecuta **una sola vez por elemento y por carga**
+  (registro de revelados persistente por elemento); cambiar de idioma o de tema re-renderiza sin
+  re-montar (claves React estables, `key` por sección = ancla), de modo que no se re-animan secciones
+  ya vistas ni hay «rebotes» ni parpadeos (US3 esc. 6, SC-014). La entrada de la portada (hero) solo
+  ocurre en el primer montaje de cada carga real.
 
 ## R10-6 — Navegación: barra **fija** con `position: sticky` + `scroll-padding-top` medido + filas que envuelven
 
@@ -216,16 +249,27 @@ elegida obligara a cambiar, **no se edita la prueba a espaldas del criterio** �
 (`object-contain`, sin `filter|rotate|transform|shadow|mix-blend`): esa regla del logotipo se
 **conserva** (FR-002), no choca con el rediseño.
 
-## R10-10 — Sin dependencias nuevas
+## R10-10 — Sin dependencias nuevas (reevaluado con el nivel marcado de la puerta 2)
 
 **Decisión**: F10 añade **0 dependencias** (ni runtime ni dev). Todo se resuelve con React, CSS
-(Tailwind 4) y las APIs del navegador (`matchMedia`, `IntersectionObserver`, `ResizeObserver`), ya
-soportadas por el objetivo de navegadores. Constitución §II cumplida sin excepciones que justificar.
+(Tailwind 4 + tokens de movimiento) y las APIs del navegador (`matchMedia`, `IntersectionObserver`,
+`ResizeObserver`), ya soportadas por el objetivo de navegadores. Constitución §II cumplida sin
+excepciones que justificar.
 
-**Justificación negativa explícita** (por si la revisión pregunta): `framer-motion`/`GSAP`
-(innecesarias para nivel moderado, ver R10-4), `next-themes` (la lógica de R10-3 es pequeña y propia),
-`tailwindcss-animate` (sin valor), librerías de contraste/axe en runtime (la accesibilidad se audita
-en QA, como en F3).
+**Justificación explícita tras la reevaluación** (nivel marcado de FR-005): se compararon de nuevo
+`motion` (antes `framer-motion`; ≈ 18–34 KB gzip, + ≈ 15 KB con la API de React), `GSAP` +
+ScrollTrigger (≈ 27 KB core + ≈ 10 KB del plugin) y las CSS scroll-driven animations (R10-4). Ninguna
+aporta algo que este alcance necesite: F10 **no** incluye gestos, animación de layout compartido,
+salidas animadas de componentes ni escenas con scroll crucificado (el scrub y el parallax quedan
+además fuera por diseño: «nada mareante»). El nivel «marcado» se logra con **parámetros de CSS**
+(R10-13), no con un motor más potente. Si en el futuro F10B o una sección F4–F9 necesitara
+transiciones de layout (`layoutId`), `AnimatePresence` o timelines con ScrollTrigger, `motion` sería
+la candidata recomendada — pero eso exige justificación §II y **aprobación humana explícita**.
+
+**Justificación negativa del resto** (por si la revisión pregunta): `next-themes` (la lógica de R10-3
+es pequeña y propia), `tailwindcss-animate` (sin valor frente a los tokens de movimiento propios),
+librerías «reveal on scroll» (envuelven el patrón de R10-4 con dependencia añadida), librerías de
+contraste/axe en runtime (la accesibilidad se audita en QA, como en F3).
 
 ## R10-11 — Alcance del `data-theme`: global en el documento, efectivo solo en el sitio público
 
@@ -252,3 +296,63 @@ se toca. Cuando F10B rediseñe el panel, decidirá si adopta el tema.
   `ux.md` §1.1 de F3) verificada en la fase de diseño y con checklist manual de QA por tema y estado
   (reposo/hover/foco/activo); el e2e cubre presencia, foco visible y `color-scheme`, no cálculo de
   contraste.
+
+## R10-13 — Parámetros de movimiento, cabecera al bajar y desplazamiento suave (nivel «marcado/elegante»)
+
+**Decisión**: un conjunto único de **tokens de movimiento** en `frontend/src/index.css` (stitución que
+F4–F9 hereda), con **suelo de perceptibilidad** y **techo de duración** (FR-005: «hasta ~0,8 s» y
+«NUNCA casi imperceptibles»):
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--motion-duration-micro` | `180 ms` | hover/foco/activo de controles, enlaces y tarjetas |
+| `--motion-duration-header` | `220 ms` | transición de la cabecera al bajar |
+| `--motion-duration-reveal` | `600 ms` | revelado de secciones y bloques |
+| `--motion-duration-hero` | `700 ms` | entrada de la portada (solo primera carga) |
+| `--motion-distance` | `28 px` (`20 px` en pantallas ≤ 480 px) | desplazamiento de entrada |
+| `--motion-stagger-step` | `80 ms` | escalonado entre componentes hermanos (tope 3 saltos = 240 máx.) |
+| `--motion-ease-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | entradas y revelados (salida rápida, asentamiento elegante) |
+| `--motion-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` | microinteracciones y cabecera |
+
+- **Suelo de perceptibilidad (anti «casi imperceptible»)**: todo revelado o transición de entrada dura
+  **≥ 400 ms** y recorre **≥ 16 px** (o pasa de opacidad 0 a 1 de forma evidente); techo **≤ 800 ms**
+  por elemento y **≤ 800 ms** la secuencia total de un bloque (stagger incluido): se percibe con
+  claridad, pero nunca se convierte en espera ni en «secuencia larga» (SC-014).
+- **Revelado de secciones y componentes**: al entrar en pantalla (`IntersectionObserver` con
+  `rootMargin: 0px 0px -10% 0px`, un solo observer compartido), el bloque entra con fade +
+  `translateY(var(--motion-distance))` y sus componentes hijos **escalonados** (`RevealGroup` +
+  `transition-delay: calc(var(--reveal-index) * var(--motion-stagger-step))`, tope de 3 saltos). Una
+  sola vez por elemento y por carga (R10-5).
+- **Transiciones entre secciones**: al navegar por las anclas, el desplazamiento suave + el revelado
+  del destino forman la transición; el encabezado de sección anima su acento (`transform: scaleX` de
+  0→1, 500 ms) junto al título, y las tarjetas de una fila entran escalonadas. Sin cross-fade de
+  página ni orquestación entre secciones.
+- **Cabecera con transición al bajar (FR-014/FR-005)**: `SiteHeader` gana el estado `data-scrolled`
+  cuando la página se desplaza, detectado con una **sentinela** `<div>` al inicio del documento
+  observada por `IntersectionObserver` (sin listener de `scroll` en el hilo principal). La transición
+  es solo de **superficie** —`background-color` de translúcido a sólido (`--surface`), `border-color`
+  hairline y `box-shadow` suave, 220 ms— **sin cambio de geometría** (misma altura): cero riesgo de
+  descolocar anclas o de saltos de maquetado. Con movimiento reducido, el cambio de estado es
+  **instantáneo**.
+- **Desplazamiento suave a las anclas**: `html { scroll-behavior: smooth }` **solo** bajo
+  `@media (prefers-reduced-motion: no-preference)`; con movimiento reducido, `auto` (salto
+  instantáneo). El destino sigue protegido por `scroll-padding-top` medido (R10-6): la transición
+  nunca tapa el título de la sección destino.
+- **Microinteracciones más marcadas (FR-008)**: 180 ms en `hover`/`:focus-visible`/`:active` con
+  cambios de color/borde/sombra y `transform: translateY(-2px)` / `scale(1.02)` como máximo en
+  tarjetas y botones (nunca propiedades de layout → sin desplazamientos del maquetado). El logotipo
+  **queda excluido** de todo movimiento (FR-002).
+- **Rendimiento (FR-007/SC-006)**: solo `opacity` y `transform` (compositor, sin reflow); **sin
+  `filter`/`blur`** (no son del compositor y pueden marear); `will-change` **temporal y medido** —se
+  añade al empezar la animación y se retira en `transitionend`— (nada de `will-change` permanente en
+  decenas de nodos; se verifica en DevTools → Layers/Performance); un `IntersectionObserver`
+  compartido (no uno por elemento); sin listeners de `scroll`; contenido visible e interactivo desde
+  el primer instante y objetivo **0 tareas largas > 50 ms** atribuibles al movimiento en el
+  dispositivo de referencia más modesto (checklist de `quickstart.md`). Si el movimiento degrada la
+  experiencia, se reduce o se elimina antes que entorpecer la lectura (FR-007).
+
+**Alternativas descartadas**: scroll-scrubbed/parallax (la spec lo desaconseja: «nada mareante»);
+`filter: blur()` en las entradas (coste de pintura y mareo potencial); cabecera que **reduce su
+altura** al bajar (riesgo de saltos en anclas y de `scroll-padding-top` inestable; la transición de
+superficie ya es claramente perceptible); transiciones de entrada por encima de 800 ms o con
+rebote/curvas elásticas tipo `back.out` («nada estridente ni infantil»).

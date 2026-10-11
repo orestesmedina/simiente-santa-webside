@@ -2,20 +2,24 @@
 
 **Feature Branch**: `010-sistema-diseno-movimiento` · **Fecha**: 2026-10-10
 **Spec**: `spec.md` — **APROBADA** (2026-10-10, con ajuste de puerta 1: panel → F10B; modo oscuro con
-interruptor manual)
+interruptor manual; **iteración de la puerta 2**: nivel de movimiento → **marcado/elegante con
+revelado al hacer scroll**, FR-005/SC-014)
 
 > **Relación con `ux.md` (fase de diseño, `disenador-ux`, en paralelo)**: la spec (FR-026/SC-013)
 > exige **3 propuestas visuales distintas** aplicadas al sitio público y al modo oscuro, y el humano
 > aprueba una **antes de escribir código**. La **dirección visual** la fija `ux.md`; este plan fija la
 > **mecánica** —tokens, tema, movimiento, navegación, formato del selector—. La propuesta elegida
 > puede cambiar composición, acentos, iconografía e ilustraciones **sin alterar** ninguna decisión de
-> este plan (ver R10 y la sección «Frontera con el diseño»).
+> este plan (ver R10-4/R10-13 y la sección «Frontera con el diseño»).
 
 ---
 
 ## Summary
 
-F10 aplica un **sistema visual moderno y un sistema de movimiento moderado** al sitio público
+F10 aplica un **sistema visual moderno y un sistema de movimiento marcado/elegante con revelado al
+hacer scroll** (nivel elevado en la puerta 2 tras el rechazo de las propuestas «casi imperceptibles»:
+secciones y componentes que se revelan al entrar en pantalla con entrada escalonada, transiciones
+perceptibles y cabecera que transiciona al bajar — R10-4/R10-13) al sitio público
 existente (la portada de F3, con todas sus secciones), añade **modo oscuro con interruptor manual**
 (respetando por defecto `prefers-color-scheme`, con persistencia entre visitas), rediseña la
 **navegación como barra fija siempre visible** sin scroll incómodo (ni lateral de enlaces ni pérdida
@@ -30,7 +34,9 @@ accesibles, `localStorage['ss.lang']`, comportamiento bilingüe) queda **congela
 las suites de F2/F3 pasen **sin cambios** (SC-008).
 
 **Dependencias nuevas: NINGUNA** (R10-10): todo se resuelve con React, Tailwind 4 y las APIs del
-navegador (`matchMedia`, `IntersectionObserver`, `ResizeObserver`).
+navegador (`matchMedia`, `IntersectionObserver`, `ResizeObserver`). La reevaluación con el nivel de
+movimiento marcado (puerta 2) comparó `motion`/`GSAP` y las CSS scroll-driven animations y
+**confirmó** la decisión sin dependencias (comparativa en R10-4).
 
 ## Technical Context
 
@@ -41,7 +47,7 @@ navegador (`matchMedia`, `IntersectionObserver`, `ResizeObserver`).
 | Datos | `@tanstack/react-query` — mismas queries de F3 (`usePublicHomeData`, `getPortada(lang)`) |
 | i18n | Propio de F3 (`features/publico/i18n/`); solo se añaden claves nuevas (es/en) |
 | Tema | `data-theme` en `<html>` + variables semánticas + variante `dark` de Tailwind 4 (R10-1) |
-| Movimiento | CSS + `IntersectionObserver`; sin librería (R10-4) |
+| Movimiento | **CSS (transiciones/keyframes + tokens de movimiento) + `IntersectionObserver` compartido con entrada escalonada**; sin librería (R10-4/R10-13; reevaluado en la puerta 2 con el nivel marcado) |
 | Pruebas | Vitest + Testing Library (unitarias); Playwright (e2e local, `frontend/e2e/`) |
 | Backend/BD/API | **Sin cambios** (F10 es de presentación; FR-020/FR-021) |
 | Panel admin | **Sin cambios** (fuera de alcance: F10B) |
@@ -51,7 +57,7 @@ navegador (`matchMedia`, `IntersectionObserver`, `ResizeObserver`).
 | Principio | Cumplimiento |
 |---|---|
 | §I La especificación manda | Plan fiel a la spec aprobada (FR-001…FR-026); huecos = 0 (todas las preguntas resueltas 2026-10-10). Los defaults revisables se marcan donde la spec los deja abiertos. |
-| §II Arquitectura / dependencias | Solo frontend; **0 dependencias nuevas** (justificación negativa en R10-10). Sin cambios de contrato → `contracts/README.md` lo deja constatado («el contrato se escribe antes que el código» se cumple sin necesidad de delta). |
+| §II Arquitectura / dependencias | Solo frontend; **0 dependencias nuevas** (justificación negativa en R10-10, **reevaluada** con el nivel marcado de movimiento en R10-4: `motion`/`GSAP`/scroll-driven comparadas y descartadas). Sin cambios de contrato → `contracts/README.md` lo deja constatado («el contrato se escribe antes que el código» se cumple sin necesidad de delta). |
 | §III Pruebas (test-first) | Cada tarea traerá sus pruebas: unitarias (Vitest) de tema, movimiento, navegación y selector; e2e (Playwright) de navegación fija, tema, movimiento reducido y selector; no-regresión con las suites de F2/F3 sin tocar. |
 | §IV Seguridad | Sin superficie nueva (sin endpoints, sin formularios, sin `dangerouslySetInnerHTML`); `localStorage` solo guarda preferencias de presentación (`ss.lang`, `ss.theme`); sin secretos. |
 | §V Calidad | TypeScript `strict`, sin `any`; funciones pequeñas; nombres en inglés en código. |
@@ -76,8 +82,9 @@ navegador (`matchMedia`, `IntersectionObserver`, `ResizeObserver`).
 
 Mecánica **fija por este plan** (la propuesta elegida no la cambia):
 tokens semánticos con dos temas (R10-1/R10-2), resolución y persistencia del tema (R10-3), reglas de
-movimiento y `prefers-reduced-motion` (R10-4/R10-5), barra fija con `scroll-padding-top` medido y
-anclas en filas (R10-6), selector con radios nativos y textos completos (R10-7).
+movimiento marcado/elegante con revelado al scroll y `prefers-reduced-motion` (R10-4/R10-5/R10-13),
+barra fija con `scroll-padding-top` medido y anclas en filas (R10-6), selector con radios nativos y
+textos completos (R10-7).
 
 Lo que **sí decide `ux.md`**: la dirección visual concreta de la propuesta aprobada (composición de
 la portada, tratamiento tipográfico fino, dosis de color, iconografía/ilustraciones nuevas —permitidas
@@ -87,14 +94,15 @@ tendencias (FR-001) y el logotipo nunca se recolorea ni se deforma (FR-002, tamb
 
 ## Decisiones técnicas (resumen; análisis completo en `research.md`)
 
-Numeración **P10-1…P10-11** (de plan) con su **R10-x** de `research.md`.
+Numeración **P10-1…P10-12** (de plan) con su **R10-x** de `research.md` (R10-1…R10-13).
 
 | # | Decisión | Por qué (una línea) | Alternativa descartada |
 |---|---|---|---|
 | **P10-1** (R10-1) | Tema como **`data-theme` en `<html>`** + variables CSS **semánticas** (`--surface`, `--text`, `--border`, `--accent`…) registradas con `@theme inline` + `@custom-variant dark` de Tailwind 4 | El tema se resuelve en una capa de tokens: la mayoría de componentes ni menciona el tema; atributo autoexplicativo y extensible | `dark:` solo con `prefers-color-scheme` (sin interruptor); clase `.dark`; librería de temas; re-tematizar los tokens de F3 |
 | **P10-2** (R10-2) | Tokens de F3 (`--color-navy`…) **intactos**; capa semántica **aditiva**; sitio público usa utilidades semánticas | Garantiza por construcción que el panel no cambia de aspecto (FR-020) | Re-tematizar tokens existentes (recolorearía el panel); dos hojas de estilo por tema |
 | **P10-3** (R10-3) | **`ThemeProvider`** (patrón `LanguageProvider`): `localStorage['ss.theme']` (`'light'/'dark'`, ausente = sistema), `matchMedia` **en vivo**, script **inline anti-FOUC** en `index.html` | FR-023 completo: sistema por defecto, manual persistente, cambio en caliente, sin parpadeos al cargar | Resolver el tema solo en React (flash); cookie; `sessionStorage`; guardar `'system'` como valor |
-| **P10-4** (R10-4) | **Movimiento CSS puro** + `Reveal` con un `IntersectionObserver` compartido; solo `opacity`/`transform` y colores | Nivel moderado (Q4) sin orquestación: **0 dependencias**, sin riesgo de descolocar maquetado | `framer-motion`/`GSAP` (dependencias, JS por frame); scroll-driven animations como base (soporte desigual) |
+| **P10-4** (R10-4) | **Movimiento CSS + `IntersectionObserver` compartido** (`Reveal`/`RevealGroup` con entrada escalonada); solo `opacity`/`transform` y colores | Nivel **marcado/elegante** (FR-005) sin librería: revelado + stagger claramente perceptibles con **0 dependencias** y sin riesgo de descolocar el maquetado | `motion`/`GSAP` (dependencias de ~20–50 KB, JS por frame); CSS scroll-driven animations como base (no Baseline: Firefox sin soporte por defecto, riesgo de contenido clavado en el keyframe inicial) |
+| **P10-12** (R10-13) | **Tokens de movimiento** con suelo de perceptibilidad (≥ 400 ms, ≥ 16 px) y techo (≤ 800 ms, stagger ≤ 240 ms) + **cabecera con transición de superficie al bajar** (sentinela + `data-scrolled`, sin cambio de geometría) + `scroll-behavior: smooth` solo bajo `no-preference` | Corrige el «casi imperceptible» rechazado sin caer en lo estridente: parámetros únicos y verificables (e2e + revisión humana SC-014), heredables por F4–F9 | Ajustar valores «a ojo» por componente (deriva); cabecera que reduce altura al bajar (saltos de anclas); `blur`/parallax (mareo y coste de pintura) |
 | **P10-5** (R10-5) | `prefers-reduced-motion` en **doble capa** (CSS global + hook `usePrefersReducedMotion` en vivo); contenido **visible por defecto**, revelado progresivo; `focusin` revela al instante | FR-006 incondicional y edge cases: JS caído → contenido visible; foco nunca sobre algo oculto | Ocultar con CSS y confiar en que JS llega (zona en blanco si falla) |
 | **P10-6** (R10-6) | Navegación: **`position: sticky`** en la cabecera + `html { scroll-padding-top: var(--header-offset) }` medido con `ResizeObserver` + anclas en **`flex-wrap`** (fin del `overflow-x-auto`) | Elimina los dos casos del «scroll incómodo» (Q2) sin tapar contenido ni romper anclas; escala a F4–F9 en filas compactas | `fixed` + padding (se superpone); hamburguesa (prohibida); carrusel de enlaces (es el caso (a)) |
 | **P10-7** (R10-7) | Selector: **solo formato compacto** (espaciado/disposición); radios nativos, textos completos, `useId`, `ss.lang` intactos | Decisión Q5 literal + SC-008: las pruebas de F3 pasan sin cambios | Píldoras «ES/EN», menú, banderas (rechazados por el cliente) |
@@ -117,8 +125,11 @@ Numeración **P10-1…P10-11** (de plan) con su **R10-x** de `research.md`.
      70/20/10 ni las reglas del logotipo: FR-024) y registrados en `@theme inline` para las
      utilidades (`bg-surface`, `text-muted`…).
    - `html { scroll-padding-top: var(--header-offset, 0px); scroll-behavior: smooth }` (este último
-     solo bajo `prefers-reduced-motion: no-preference`).
-   - Bloque global `@media (prefers-reduced-motion: reduce)` que anula transiciones/animaciones.
+     solo bajo `prefers-reduced-motion: no-preference`; con movimiento reducido, `auto` — R10-13).
+   - Bloque global `@media (prefers-reduced-motion: reduce)` que anula **todo** el sistema de
+     movimiento (entradas, revelados, stagger, transición de cabecera y desplazamiento suave:
+     `transition-duration: 0s`, `animation-delay: 0s`, `transform: none` en estados de revelado —
+     FR-006/SC-005, R10-5).
 3. **`frontend/src/features/publico/theme/`**: `ThemeProvider.tsx` (estado del tema efectivo; aplica
    `data-theme`/`color-scheme` en `<html>`; listener `change` de `matchMedia` cuando no hay elección
    manual), `useTheme.ts` (contexto: `theme` efectivo, `preference` guardada, `setTheme('light'|'dark')`),
@@ -132,26 +143,98 @@ Numeración **P10-1…P10-11** (de plan) con su **R10-x** de `research.md`.
    (`bg-white`, `text-navy`…) a utilidades semánticas; la tabla de contraste AA por par de tokens se
    documenta en `ux.md` (fase de diseño) y se verifica en QA en ambos temas.
 
-## Estrategia de movimiento (detalle)
+## Estrategia de movimiento (detalle) — nivel **marcado/elegante con revelado al hacer scroll** (FR-005)
 
-- **Microinteracciones (FR-005/FR-008)**: transiciones cortas (≈150–200 ms) en `hover`, `:focus-visible`
-  y `:active` de enlaces, botones, tarjetas y controles (color, borde, sombra, `transform:
-  translateY(-1px)` como máximo). Nunca propiedades de layout → 0 desplazamientos del maquetado. El
-  logotipo **queda excluido** de toda microinteracción (FR-002).
-- **Revelado (FR-005/US3)**: componente `Reveal` (`features/publico/motion/`) que envuelve bloques de
-  sección: fade + desplazamiento de pocos píxeles, 200–300 ms, una sola vez por elemento. Progresivo
-  (R10-5): si no hay JS o hay movimiento reducido, el contenido nace visible.
-- **Sin repeticiones molestas (FR-008)**: claves React estables por sección (`key` = ancla) → el cambio
-  de idioma o de tema re-renderiza sin re-montar, y las secciones vistas no se re-animan.
-- **Rendimiento (FR-007/SC-006)**: un `IntersectionObserver` compartido; animaciones solo del
-  compositor; contenido visible e interactivo desde el primer instante (la animación nunca retrasa la
-  lectura más de lo imperceptible; objetivo SC-006: ≤ 0,5 s).
+> **Revisión de la puerta 2 (2026-10-10)**: el cliente rechazó el nivel «moderado» por
+> «casi imperceptible» y pidió más animación. El sistema pasa a revelado de secciones y componentes al
+> entrar en pantalla (con entrada escalonada), transiciones perceptibles, microinteracciones marcadas
+> y cabecera que transiciona al bajar. Sigue **sin parallax, sin scroll-scrub y sin secuencias
+> largas** («elegante, no estridente»). Las garantías incondicionales **no se relajan**:
+> `prefers-reduced-motion` (FR-006), contenido y funciones sin depender de la animación (FR-009) y
+> lectura/interacción desde el primer instante (FR-007).
+
+### Opción recomendada y alternativas (comparativa completa en `research.md` R10-4)
+
+- **RECOMENDADA — `IntersectionObserver` + CSS con stagger**: `Reveal`/`RevealGroup`
+  (`features/publico/motion/`) sobre un único observer compartido; entradas con `opacity` +
+  `transform`; escalonado con `transition-delay` por variable `--reveal-index`. Logra el nivel
+  marcado con **0 dependencias**, en el 100 % de los navegadores objetivo, de forma determinista y
+  verificable en e2e. Lo «casi imperceptible» se corrige con **parámetros** (tabla inferior), no con
+  un motor más potente.
+- **Descartada — CSS scroll-driven animations** (`animation-timeline: view()/scroll()`): poderosas
+  como scroll-scrub nativo, pero **no son Baseline** en 2026 (Chrome/Edge 115+, Safari 17.4+;
+  **Firefox estable solo con flag** → 15–25 % de usuarios sin efecto), con riesgo real de que el
+  contenido quede **clavado en el keyframe inicial (oculto)** en navegadores sin soporte, con
+  `@supports` que puede dar falsos positivos en Firefox, con `prefers-reduced-motion` que **no**
+  anula la línea de tiempo (hay que resetearla a mano) y con verificación no determinista en e2e. No
+  puede ser ni el mecanismo base ni una mejora progresiva de F10 (un efecto distinto por navegador
+  choca con SC-014).
+- **Descartada — librería (`motion`/framer-motion, `GSAP` + ScrollTrigger)**: ≈ 20–50 KB gzip + JS
+  por frame; sus ventajas reales (layout animations, `AnimatePresence`, gestos, pin/scrub) quedan
+  **fuera de F10**, y el scrub/parallax está desaconsejado por la propia spec. Se reevaluó por
+  exigencia del nivel alto y se volvió a descartar (constitución §II); sería la candidata de F10B o
+  de secciones futuras con transiciones de layout — siempre con justificación y aprobación humana.
+
+### Tokens de movimiento (`index.css`; cimiento heredable por F4–F9 — R10-13)
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--motion-duration-micro` | `180 ms` | hover/foco/activo |
+| `--motion-duration-header` | `220 ms` | cabecera al bajar |
+| `--motion-duration-reveal` | `600 ms` | revelado de secciones/bloques |
+| `--motion-duration-hero` | `700 ms` | entrada de la portada (solo 1ª carga) |
+| `--motion-distance` | `28 px` (`20 px` ≤ 480 px) | desplazamiento de entrada |
+| `--motion-stagger-step` | `80 ms` | escalonado entre hermanos (tope 3 saltos = 240 máx.) |
+| `--motion-ease-out` | `cubic-bezier(0.22, 1, 0.36, 1)` | entradas y revelados |
+| `--motion-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` | microinteracciones y cabecera |
+
+Reglas duras: **suelo de perceptibilidad** — todo revelado/transición de entrada ≥ 400 ms y ≥ 16 px
+(o fade completo 0→1) — y **techo** — ≤ 800 ms por elemento y ≤ 800 ms la secuencia total de un
+bloque — (FR-005 «hasta ~0,8 s» + «nunca casi imperceptibles»; SC-014).
+
+### Reglas por efecto
+
+- **Revelado al hacer scroll (FR-005/US3)**: `Reveal` envuelve bloques de sección; al entrar en
+  pantalla (`rootMargin: 0px 0px -10% 0px`) entran con fade + `translateY(var(--motion-distance))`,
+  600 ms, curva `--motion-ease-out`, **una sola vez por elemento y por carga**. Progresivo (R10-5):
+  sin JS, con movimiento reducido o si algo falla, el contenido **nace visible**.
+- **Entrada escalonada (stagger)**: `RevealGroup` reparte `--reveal-index` entre componentes
+  hermanos (tarjetas de una fila, ítems de una lista) → `transition-delay` de 80 ms por salto, tope
+  3 saltos (240 máx.); la secuencia total de un bloque nunca supera 800 ms («cuando convenga»:
+  grupos de 2–4 elementos, no listas enteras).
+- **Transiciones entre secciones/componentes**: el salto por ancla combina desplazamiento suave +
+  revelado del destino; el encabezado de sección anima su acento (`scaleX` 0→1, 500 ms) con el
+  título; sin cross-fade de página ni orquestación larga entre secciones.
+- **Cabecera con transición al bajar (FR-014)**: `SiteHeader` pasa a `data-scrolled` (sentinela
+  observada con `IntersectionObserver`, sin listener de `scroll`) y transiciona **solo su
+  superficie** —fondo translúcido → sólido, borde hairline y sombra suave, 220 ms— **sin cambio de
+  geometría** (misma altura → cero riesgo para anclas y `scroll-padding-top`). Con movimiento
+  reducido, cambio instantáneo.
+- **Desplazamiento suave a las anclas**: `html { scroll-behavior: smooth }` **solo** bajo
+  `prefers-reduced-motion: no-preference`; con movimiento reducido, `auto` (salto instantáneo). El
+  destino queda visible gracias al `scroll-padding-top` medido (R10-6).
+- **Microinteracciones marcadas (FR-008)**: 180 ms en `hover`, `:focus-visible` y `:active` de
+  enlaces, botones, tarjetas y controles (color, borde, sombra, `transform: translateY(-2px)` /
+  `scale(1.02)` como máximo). Nunca propiedades de layout → 0 desplazamientos del maquetado. El
+  logotipo **queda excluido** de todo movimiento (FR-002).
+- **Sin repeticiones molestas (FR-008/SC-014)**: claves React estables por sección (`key` = ancla) →
+  el cambio de idioma o de tema re-renderiza sin re-montar, las secciones vistas no se re-animan y el
+  hero solo entra en la primera carga real.
+- **Rendimiento (FR-007/SC-006)**: solo `opacity`/`transform` (compositor); **sin `filter`/`blur`**;
+  `will-change` **temporal** (se añade al empezar la animación y se retira en `transitionend`) y
+  medido en DevTools; un `IntersectionObserver` compartido; sin listeners de `scroll`; salvavidas de
+  1 s que revela todo lo pendiente si el observer no dispara; contenido visible e interactivo desde
+  el primer instante (la animación es una capa visual; los elementos pendientes siguen siendo
+  clicables y el foco los revela al instante). Objetivo: 0 tareas largas > 50 ms atribuibles al
+  movimiento en el dispositivo de referencia más modesto; si degrada, se reduce o se elimina.
 
 ## Estrategia de navegación (detalle)
 
 - **Cabecera fija**: `SiteHeader` (extraído de `PublicLayout`/`PublicChrome`) con
   `position: sticky; top: 0; z-index` adecuado. Composición: fila de marca (logo + nombre) y controles
-  (selector de idioma compacto + control de tema) + fila(s) de anclas.
+  (selector de idioma compacto + control de tema) + fila(s) de anclas. Al bajar, la cabecera
+  transiciona su **superficie** a `data-scrolled` (sin cambio de geometría; R10-13/P10-12), con
+  `--header-offset` re-medido por `ResizeObserver` por si la propuesta aprobada altera su altura.
 - **Sin scroll incómodo**: `PublicNav` sin `overflow-x-auto`: `flex-wrap` con filas compactas y
   objetivos ≥ 44 px; a 320 px cabecera en dos filas, todo visible, sin scroll horizontal de enlaces ni
   de página (FR-011, SC-004). El e2e comprueba `scrollWidth <= clientWidth` a 320 px.
@@ -181,7 +264,7 @@ Numeración **P10-1…P10-11** (de plan) con su **R10-x** de `research.md`.
 ```text
 specs/010-sistema-diseno-movimiento/
 ├── plan.md              # EDITABLE (este archivo, /speckit.plan)
-├── research.md          # EDITABLE (fase 0: R10-1…R10-12)
+├── research.md          # EDITABLE (fase 0: R10-1…R10-13)
 ├── data-model.md        # EDITABLE (fase 1): SIN CAMBIOS de datos, documentado
 ├── quickstart.md        # EDITABLE (fase 1: cómo levantar y validar el rediseño)
 ├── spec.md              # APROBADA — no se edita
@@ -202,15 +285,22 @@ frontend/
 │   │                                    #   intacto, foco visible (US1/US2/US4)
 │   ├── tema-oscuro.spec.ts              # NUEVO: sistema→manual→persistencia, cambio en caliente,
 │   │                                    #   logo sin recolorear, mismas funciones en ambos temas (US5)
-│   ├── movimiento-reducido.spec.ts      # NUEVO (o sección del anterior): emulateMedia
-│   │                                    #   reducedMotion='reduce' → contenido completo, sin
-│   │                                    #   animaciones de entrada/revelado (US3, SC-005)
+│   ├── movimiento.spec.ts               # NUEVO: revelado PERCEPTIBLE al scroll (opacidad/distancia
+│   │                                    #   ≥ suelo, duración en rango), stagger entre hermanos,
+│   │                                    #   cabecera con estado data-scrolled al bajar, anclas con
+│   │                                    #   desplazamiento suave y contenido operable durante la
+│   │                                    #   animación (US3 modo normal, SC-014)
+│   ├── movimiento-reducido.spec.ts      # NUEVO: emulateMedia({ reducedMotion: 'reduce' }) → 0
+│   │                                    #   revelados/transiciones de entrada, contenido completo
+│   │                                    #   desde el primer instante, scroll-behavior auto (US3,
+│   │                                    #   SC-005)
 │   └── (portada-*.spec.ts, acceso…)     # SIN CAMBIOS — red de no-regresión de F2/F3 (SC-008)
 └── src/
     ├── index.css                        # EDITADO: @custom-variant dark, tokens semánticos claro/
     │                                    #   oscuro (@theme inline), scroll-padding-top,
     │                                    #   scroll-behavior condicional, bloque global de
-    │                                    #   prefers-reduced-motion, utilidades de foco y de motion
+    │                                    #   prefers-reduced-motion, tokens de movimiento (R10-13),
+    │                                    #   utilidades de foco y de motion
     ├── components/
     │   ├── (Button, Field, …)           # SIN CAMBIOS — inventario del panel (FR-020, R10-8)
     │   └── publico/                     # NUEVO — primitivas del sistema visual público
@@ -224,9 +314,11 @@ frontend/
     │   │   ├── useTheme.ts              #   contexto: theme efectivo, preference, setTheme
     │   │   ├── ThemeToggle.tsx          #   interruptor claro/oscuro de la cabecera (accesible)
     │   │   └── theme.test.tsx
-    │   ├── motion/                      # NUEVO — R10-4/R10-5
+    │   ├── motion/                      # NUEVO — R10-4/R10-5/R10-13
     │   │   ├── Reveal.tsx               #   revelado progresivo (IntersectionObserver compartido)
+    │   │   ├── RevealGroup.tsx          #   entrada escalonada (--reveal-index, tope 3 saltos)
     │   │   ├── usePrefersReducedMotion.ts
+    │   │   ├── useScrolled.ts           #   sentinela → estado data-scrolled de la cabecera
     │   │   └── motion.test.tsx
     │   ├── i18n/
     │   │   ├── messages.ts              # EDITADO: + claves 'theme.label', 'theme.light', 'theme.dark'
@@ -238,13 +330,13 @@ frontend/
     │   │   ├── SiteHeader.tsx           # NUEVO (extraído): cabecera fija (marca, nav, idioma, tema)
     │   │   ├── PublicNav.tsx            # NUEVO: anclas en filas flex-wrap (patrón escalable F4–F9)
     │   │   ├── PublicFooter.tsx         # EDITADO: aplica tokens semánticos; selector compacto
-    │   │   ├── IdentityHero.tsx         # EDITADO: aplica sistema visual + motion moderado
+    │   │   ├── IdentityHero.tsx         # EDITADO: aplica sistema visual + entrada de hero (motion)
     │   │   ├── (WhoWeAreSection, ScheduleSection, WhatsAppSection, ContactSection,
     │   │   │    SocialSection, SectionSkeleton, BrandLogo, SocialIcon)
     │   │   │                            # EDITADOS: tokens semánticos + reglas de composición;
     │   │   │                            #   BrandLogo SIN cambios de reglas (nunca se recolorea)
     │   │   └── *.test.tsx               # EDITADOS/NUEVOS según toque
-    │   ├── pages/HomePage.tsx           # EDITADO: composición con Reveal y sistema visual
+    │   ├── pages/HomePage.tsx           # EDITADO: composición con Reveal/RevealGroup y sistema visual
     │   └── sections.ts                  # SIN CAMBIOS (o mínimo: si ux.md reordena, solo el orden)
     ├── features/(panel|usuarios|roles|auditoria|auth|informacion|status)/
     │                                    # SIN CAMBIOS — frontera F10B (FR-020)
@@ -264,7 +356,8 @@ Playwright) **y** la no-regresión (SC-008). Comandos: `npm test -- --run` · `n
 | Capa | Tipo | Qué verifica F10 | Dónde |
 |---|---|---|---|
 | Tema | Unitaria (Vitest + TL) | Primera visita sin elección → sistema (`matchMedia`); elección manual → inmediata y persistida en `ss.theme`; re-visita → manda la manual; sistema cambia en caliente **solo** sin elección manual; `localStorage` caído → sistema sin errores; `data-theme`/`color-scheme` aplicados en `<html>`; `ThemeToggle` alterna, tiene nombre accesible y estado | `features/publico/theme/theme.test.tsx` |
-| Movimiento | Unitaria | `Reveal` muestra el contenido al observar; con `prefers-reduced-motion` el contenido nace visible (0 animación); foco (`focusin`) sobre pendiente → visible al instante; JS sin montar → contenido visible (fallback); sin re-animación al re-renderizar | `features/publico/motion/motion.test.tsx` |
+| Movimiento | Unitaria | `Reveal`/`RevealGroup`: el contenido pendiente se revela al observar con fade + `translateY` (parámetros ≥ suelo: ≥ 400 ms, ≥ 16 px — SC-014); escalonado de 80 ms con tope de 3 saltos; una sola vez por elemento (sin re-animación al re-renderizar); con `prefers-reduced-motion` el contenido nace visible (0 animación) y la preferencia en vivo se respeta sin recargar; foco (`focusin`) sobre pendiente → visible al instante; JS sin montar o salvavidas (timeout) → contenido visible (fallback) | `features/publico/motion/motion.test.tsx` |
+| Cabecera al bajar | Unitaria | `useScrolled` (sentinela): `data-scrolled` se activa al bajar y se quita al volver arriba; con movimiento reducido el cambio es instantáneo (sin transición); sin listeners de `scroll` | `features/publico/motion/motion.test.tsx` |
 | Navegación | Unitaria | `SiteHeader`/`PublicNav`: todas las anclas presentes, sin `overflow-x-auto`, `scroll-padding-top` actualizado con la altura medida; secciones ausentes (borrador) no dejan enlaces rotos (hereda F3) | tests de `SiteHeader`/`PublicNav` |
 | Selector | Unitaria | Comportamiento idéntico a F3 (las pruebas existentes de `i18n.test.tsx` pasan **sin cambios**); formato compacto: textos completos, nombre accesible completo, sin siglas | `i18n.test.tsx` (existente) + assertions de formato |
 | i18n | Unitaria | Claves nuevas (`theme.*`) presentes en `es` y `en` (exhaustividad tipada) | `i18n.test.tsx` |
@@ -272,16 +365,21 @@ Playwright) **y** la no-regresión (SC-008). Comandos: `npm test -- --run` · `n
 | No-regresión | Unitaria | **Todas** las suites de F2/F3 pasan sin editar (incluida `BrandLogo.test.tsx`: logo sin `filter/transform/...`) | `npm test -- --run` |
 | E2E navegación | Playwright | Navegación visible al bajar (barra fija); clic en ancla → título de la sección visible (no tapado); 320 px: sin scroll horizontal de página ni de enlaces, todos los enlaces alcanzables; recorrido con teclado y foco visible; selector: cambia idioma al instante, persiste al navegar y entre visitas, primera visita en español | `e2e/diseno-movimiento.spec.ts` |
 | E2E tema | Playwright | Tres caminos de US5: sistema oscuro sin elección → oscuro; manual → inmediato y persistente tras recarga; primera visita → sistema. Logo con colores originales en oscuro; mismas funciones/contenido en ambos temas; control accesible por teclado | `e2e/tema-oscuro.spec.ts` |
-| E2E movimiento reducido | Playwright | `emulateMedia({ reducedMotion: 'reduce' })`: contenido completo e interactivo desde el primer instante, sin animaciones de entrada/revelado (SC-005); con movimiento normal: microinteracciones presentes | `e2e/movimiento-reducido.spec.ts` |
+| E2E movimiento (modo normal) | Playwright | El revelado es **claramente perceptible**: una sección fuera de pantalla nace con opacidad < 1 y desplazamiento, y al entrar en pantalla termina en opacidad 1 / `transform: none` con `transition-duration` en rango (≥ 400 ms y ≤ 900 ms) y distancia ≥ 16 px (suelo anti «casi imperceptible»); componentes hermanos con `transition-delay` escalonado; cabecera gana `data-scrolled` al bajar (superficie con transición, sin cambio de altura); clic en ancla → desplazamiento suave y título del destino visible; la animación **no bloquea**: el contenido pendiente es clicable y un clic durante la animación funciona al instante (US3, SC-014) | `e2e/movimiento.spec.ts` |
+| E2E movimiento reducido | Playwright | `emulateMedia({ reducedMotion: 'reduce' })`: **0** revelados ni transiciones de entrada perceptibles — todos los bloques con opacidad 1 y `transform: none` desde el primer instante, sin `transition-delay`, `scroll-behavior: auto`, cabecera sin transición — y 100 % del contenido y las funciones disponibles, idénticos al modo con movimiento (SC-005); contraste con el modo normal del spec anterior | `e2e/movimiento-reducido.spec.ts` |
 | E2E no-regresión | Playwright | Suites de F3 (`portada-publica`, `portada-accesibilidad`, `portada-panel`, `portada-imagenes`, `portada-patch-null`) y de F2 (`acceso`, `auditoria`, `status`) pasan **sin cambios** (SC-008) | `make e2e` |
-| Manual (QA + humano) | Checklist `quickstart.md` | «Moderno» y fidelidad al Manual (SC-002), 3 propuestas (SC-013), contraste AA por tema y estado (SC-012), selector con «menos espacio» (SC-007), logo sin recolorear, panel sin cambios, zoom 200 % | `quickstart.md` |
+| Manual (QA + humano) | Checklist `quickstart.md` | «Moderno» y fidelidad al Manual (SC-002), 3 propuestas (SC-013), **movimiento marcado/elegante aprobado como perceptible y sin marear** (SC-014), contraste AA por tema y estado (SC-012), selector con «menos espacio» (SC-007), logo sin recolorear, panel sin cambios, zoom 200 % | `quickstart.md` |
 
-**Pruebas que no faltan** (las críticas de la spec): **0 animaciones** con `prefers-reduced-motion`
-(SC-005); **barra fija visible en el 100 % del recorrido** y **0 desplazamientos horizontales** desde
-320 px (SC-004); **persistencia del tema manual** en el 100 % de re-visitas y **sistema** en el 100 %
-de primeras visitas (SC-012); **0 recoloreados del logo** (SC-012); **0 textos sin traducir**
-(SC-010); **0 regresiones** de F2/F3 (SC-008); foco nunca sobre contenido oculto por revelado (edge
-case); contenido visible si una animación falla (edge case).
+**Pruebas que no faltan** (las críticas de la spec): **revelado claramente perceptible en modo normal
+y ausente del todo con `prefers-reduced-motion`** (SC-014/SC-005) — verificado con
+`emulateMedia({ reducedMotion })` y con aserciones de estilos computados (suelo ≥ 400 ms / ≥ 16 px,
+techo ≤ 800 ms) —; **cabecera con transición al bajar sin tapar anclas**; **contenido operable
+durante la animación** (FR-007); **barra fija visible en el 100 % del recorrido** y **0
+desplazamientos horizontales** desde 320 px (SC-004); **persistencia del tema manual** en el 100 % de
+re-visitas y **sistema** en el 100 % de primeras visitas (SC-012); **0 recoloreados del logo**
+(SC-012); **0 textos sin traducir** (SC-010); **0 regresiones** de F2/F3 (SC-008); **0 re-animaciones
+ni rebotes** al cambiar de idioma o de tema (SC-014); foco nunca sobre contenido oculto por revelado
+(edge case); contenido visible si una animación o el observer fallan (edge case + salvavidas).
 
 ## Cobertura de requisitos
 
@@ -289,7 +387,7 @@ case); contenido visible si una animación falla (edge case).
 |---|---|---|
 | FR-001/FR-002/FR-004 (sistema visual sobre el Manual, reglas del logo, legibilidad) | Tokens semánticos + `components/publico/` + secciones rediseñadas; `BrandLogo` intacto | QA visual vs. Manual (`quickstart.md`), `BrandLogo.test.tsx` |
 | FR-003 (componentes base, sin dos estilos por función) | `components/publico/` + reglas de composición documentadas | Revisión visual (SC-001/SC-011) |
-| FR-005…FR-009 (movimiento moderado, reduced-motion, rendimiento, sin repeticiones, nunca dependiente) | P10-4/P10-5 (`motion/`, CSS) | `motion.test.tsx`, e2e movimiento reducido (SC-005/SC-006) |
+| FR-005…FR-009 (movimiento marcado con revelado al scroll, reduced-motion, rendimiento, sin repeticiones, nunca dependiente) | P10-4/P10-5/P10-12 (`motion/`, tokens de movimiento, cabecera `data-scrolled`, CSS) | `motion.test.tsx`, `e2e/movimiento.spec.ts` (perceptibilidad, stagger, cabecera, sin bloqueo) y `e2e/movimiento-reducido.spec.ts` (SC-005/SC-006/SC-014) |
 | FR-010…FR-014 (navegación clara, sin scroll incómodo, escala F4–F9, accesible, barra fija) | P10-6 (`SiteHeader`, `PublicNav`, `scroll-padding-top`) | e2e navegación (SC-003/SC-004) |
 | FR-015…FR-017 (selector compacto, comportamiento F3, sin desplazamientos) | P10-7 (`LanguageSwitcher`) | `i18n.test.tsx` + e2e (SC-007) |
 | FR-018 (aplicación a toda la portada + cimientos para F4–F9) | Todas las secciones + documentación de cimientos en este plan y `ux.md` | Revisión visual (SC-001/SC-011) |
@@ -311,14 +409,20 @@ case); contenido visible si una animación falla (edge case).
 | RG10-6 | Pruebas de F3 que codifican detalles visuales del diseño viejo | Contrato semántico congelado (R10-9); si una prueba exigiera un cambio visual, **escala al humano** (SC-008 prohíbe editarla para «hacerla pasar») |
 | RG10-7 | Fallos de contraste AA en tema oscuro (estados densos, tarjetas, foco) | Tabla de contraste por par de tokens en la fase de diseño; checklist QA por tema y estado; regla: colores derivados solo para contraste (herencia de F3) |
 | RG10-8 | La propuesta visual elegida desborda la mecánica del plan | La mecánica es independiente de la dirección (ver «Frontera con el diseño»); `ux.md` solo fija dirección dentro de ella |
-| RG10-9 | Tirones en dispositivos modestos por demasiadas animaciones | Un `IntersectionObserver` compartido; solo `opacity`/`transform`; nivel moderado; SC-006 en el dispositivo de referencia más modesto |
+| RG10-9 | Tirones o sobrecoste de rendimiento al revelar muchas animaciones en dispositivos modestos (nivel marcado) | Solo `opacity`/`transform` (compositor); un `IntersectionObserver` compartido; sin `filter`/`blur`; `will-change` temporal y medido; objetivo 0 tareas largas > 50 ms en el dispositivo de referencia (checklist `quickstart.md`); si degrada, se reduce o se elimina (FR-007) |
 | RG10-10 | El logotipo se recolorea/deforma en oscuro o en microinteracciones | `BrandLogo` excluido de motion y de temas; prueba existente intacta; checklist QA (SC-012) |
 | RG10-11 | Textos nuevos sin traducir (SC-010) | Catálogo tipado `PublicMessageKey`: falta una traducción → **no compila** (patrón de F3) |
 | RG10-12 | Cambio de idioma re-anima o descoloca la composición | Claves React estables (sin re-montaje); longitudes distintas es/en probadas en e2e (edge case de la spec) |
+| RG10-13 | **Movimiento excesivo, estridente o mareante** (rechazo inverso del cliente: pidió «más animación», pero la spec exige «elegante, nada estridente ni mareante») | Parámetros acotados en tokens (≤ 800 ms por elemento y por secuencia, stagger ≤ 240 ms, distancias ≤ 28 px, sin parallax/scrub/blur, sin curvas elásticas); revisión humana en la aceptación (SC-014: «perceptible y sin molestar»); ajuste fino de los tokens, no de cada componente |
+| RG10-14 | **Volver a un movimiento «casi imperceptible»** por miedo a lo estridente (el error de la primera ronda) | Suelo de perceptibilidad codificado y verificado: revelados ≥ 400 ms y ≥ 16 px (aserciones de estilos computados en `e2e/movimiento.spec.ts`) + checklist de aceptación humana (SC-014) |
+| RG10-15 | Presión por añadir una **librería de animación** nueva («más animación» ≠ más motor) | Evaluada y descartada con datos (R10-4/R10-10: ~20–50 KB, JS por frame, ventajas fuera de alcance); cualquier adición futura exige justificación §II y **aprobación humana explícita** |
+| RG10-16 | Las suites e2e de F3 se vuelven frágiles con el movimiento nuevo (smooth scroll, estados de opacidad) | El estado pendiente usa solo `opacity`/`transform` (Playwright `toBeVisible` no lo ve afectado) y `pointer-events` intactos; el desplazamiento suave nunca roba eventos; si una suite falla por timing del movimiento se corrige **el código**, nunca la prueba (R10-9); en caso dudoso, escala al humano (SC-008) |
 
 ## Complexity Tracking
 
-Sin complejidades que compensar: 0 dependencias nuevas, 0 cambios de contrato, 0 migraciones. Los dos
-puntos con más intrínseca —el anti-FOUC del tema y el revelado progresivo a prueba de fallos— se
-resuelven con mecanismos pequeños y probados (script inline; `IntersectionObserver` + visibilidad por
-defecto), documentados en `research.md` R10-3 y R10-5.
+Sin complejidades que compensar: 0 dependencias nuevas, 0 cambios de contrato, 0 migraciones. Los
+puntos con más intrínseca —el anti-FOUC del tema, el revelado progresivo a prueba de fallos y la
+**calibración del movimiento** para que sea perceptible sin ser estridente (suelo/techo de
+R10-13)— se resuelven con mecanismos pequeños y probados (script inline; `IntersectionObserver` +
+visibilidad por defecto; tokens de movimiento con parámetros fijos y verificados en e2e),
+documentados en `research.md` R10-3, R10-5 y R10-13.
