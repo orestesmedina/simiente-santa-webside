@@ -246,6 +246,37 @@ make ci                  # pipeline completo
 prueba de F3 exigiera un cambio visual que la propuesta aprobada provoca, se escala al humano: no se
 modifica la prueba para hacerla pasar.
 
+### 8.1 Evidencia de no regresión (T1034, SC-008)
+
+Ejecutado al cerrar la implementación de F10 (`2026-10-11`), con el stack real levantado
+(`docker compose up -d --build frontend`) y el frontend reconstruido con el código final:
+
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| Unitarias + pruebas de componentes | `cd frontend && npm test -- --run` | **65 archivos / 402 pruebas en verde** |
+| Estilo y tipos | `npm run lint` · `npm run typecheck` | en verde (0 avisos) |
+| E2E — suites de F2/F3 **sin cambios** | `npx playwright test --config e2e/playwright.config.ts --workers=1 acceso auditoria portada-accesibilidad portada-imagenes portada-panel portada-patch-null portada-publica status` | **8/8 en verde** (31,4 s) |
+| E2E — suites nuevas de F10 | `npx playwright test … --workers=1 diseno-movimiento navegacion-movil tema-oscuro movimiento movimiento-reducido` | **22/22 en verde** (24,0 s) |
+| Suites de F2/F3 **editadas** | `git diff <base-implementación> -- frontend/e2e/*.spec.ts frontend/src/**/*.test.tsx` | **0 líneas eliminadas**; solo adiciones en `homePage.test.tsx` e `i18n.test.tsx` (D12) y las specs nuevas |
+
+Contrato semántico congelado (R10-9) verificado además por inspección de `git diff` sobre
+`app/router.tsx`, `app/layout.tsx`, `features/publico/sections.ts`, `i18n/LanguageProvider.tsx`,
+`i18n/useLanguage.ts` y `components/` (inventario del panel): **sin cambios**. Los anclas
+(`quienes-somos`, `horario`, `whatsapp`, `contacto`, `redes`), las claves congeladas
+(`nav.label` = «Secciones de la portada», `a11y.skip`, `lang.*`, `brand.name`, `footer.welcome`) y
+`localStorage['ss.lang']` siguen intactos; el ciclo de tabulación congelado a 320 px
+(`portada-accesibilidad`, `tabCycle < 30`) pasa sin tocarse.
+
+**Notas de entorno (no son regresiones):**
+
+- En este equipo WSL Chromium no arranca por librerías de sistema ausentes (`libnspr4`/`libnss3`,
+  sin `sudo`); los e2e se ejecutan con la **imagen Docker oficial de Playwright**
+  (`mcr.microsoft.com/playwright:v1.63.0-jammy`) contra el stack real, como en F1–F3.
+- El backend limita `POST /api/v1/auth/login` y `/setup/initialize` a **20 peticiones/min por IP**
+  (`ratelimit.go`; incidencia **M-4** de F2). Con 13 specs, un único run acumula logins suficientes
+  para que alguna spec reciba `429`; por eso la verificación se ejecuta **en dos tandas** (congeladas
+  / nuevas). Ambas tandas son verdes y ninguna prueba se editó.
+
 ## 9. Revisión de aceptación (humano)
 
 - [ ] La propuesta visual elegida —**B «Marea Turquesa»** (aprobada 2026-10-10, FR-026)— se reconoce
