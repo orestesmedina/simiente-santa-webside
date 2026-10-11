@@ -9,6 +9,7 @@ import {
 } from '../../../test/intersectionObserver';
 import { installMatchMedia } from '../../../test/matchMedia';
 import { Reveal } from './Reveal';
+import { RevealGroup } from './RevealGroup';
 import { REVEAL_FALLBACK_MS, resetRevealObserver } from './useReveal';
 import { REDUCED_MOTION_QUERY, usePrefersReducedMotion } from './usePrefersReducedMotion';
 
@@ -157,5 +158,52 @@ describe('Reveal · revelado progresivo al scroll (FR-005/FR-009/SC-014)', () =>
     render(<Reveal>contenido</Reveal>);
 
     expect(document.querySelector('.reveal-block')).toHaveAttribute('data-reveal', 'in');
+  });
+});
+
+describe('RevealGroup · entrada escalonada acotada (FR-005/SC-014)', () => {
+  beforeEach(() => {
+    installMatchMedia();
+    resetRevealObserver();
+    installIntersectionObserver();
+  });
+
+  afterEach(() => {
+    uninstallIntersectionObserver();
+    resetRevealObserver();
+  });
+
+  it('reparte índices 0,1,2,3 con tope: más de 4 hijos no amplía la secuencia', () => {
+    render(
+      <RevealGroup>
+        <Reveal>a</Reveal>
+        <Reveal>b</Reveal>
+        <Reveal>c</Reveal>
+        <Reveal>d</Reveal>
+        <Reveal>e</Reveal>
+        <Reveal>f</Reveal>
+      </RevealGroup>,
+    );
+
+    const blocks = [...document.querySelectorAll('.reveal-block')] as HTMLElement[];
+    expect(blocks.map((block) => block.style.getPropertyValue('--reveal-index'))).toEqual([
+      '0',
+      '1',
+      '2',
+      '3',
+      '3',
+      '3',
+    ]);
+  });
+
+  it('el retardo se acota al token de escalonado (tope ≤ 240 ms)', () => {
+    expect(tokenMs('motion-stagger-step')).toBeGreaterThan(0);
+    expect(tokenMs('motion-stagger-step') * 3).toBeLessThanOrEqual(240);
+    expect(css).toContain('var(--reveal-index, 0) * var(--motion-stagger-step)');
+  });
+
+  it('con movimiento reducido el CSS global anula los retardos', () => {
+    expect(css).toContain('@media (prefers-reduced-motion: reduce)');
+    expect(css).toContain('transition-delay: 0s !important');
   });
 });
