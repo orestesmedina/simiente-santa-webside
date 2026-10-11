@@ -7,6 +7,7 @@ import type { SiteLink } from '../hooks/useSiteLinks';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import { useLanguage } from '../i18n/useLanguage';
 import { useScrolled } from '../motion/useScrolled';
+import { ThemeToggle } from '../theme/ThemeToggle';
 import { BrandLogo } from './BrandLogo';
 import { PublicNav } from './PublicNav';
 
@@ -100,7 +101,7 @@ export function SiteHeader({ identity, links, actions }: SiteHeaderProps) {
 
           <div className="ml-auto flex items-center gap-2">
             <LanguageSwitcher className="text-ink" />
-            {actions}
+            {actions ?? <ThemeToggle />}
           </div>
         </div>
       </header>

@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installMatchMedia } from '../../../test/matchMedia';
 import { ThemeProvider } from './ThemeProvider';
+import { ThemeToggle } from './ThemeToggle';
 import { THEME_STORAGE_KEY, useTheme } from './useTheme';
+import { LanguageProvider } from '../i18n/LanguageProvider';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
@@ -116,6 +118,68 @@ describe('tema del sitio público (US5, FR-023)', () => {
     expect(() => renderTheme()).not.toThrow();
 
     expect(screen.getByTestId('theme')).toHaveTextContent('dark');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+  });
+});
+
+describe('ThemeToggle · control de tema de la cabecera (T1028/FR-023)', () => {
+  function renderToggle() {
+    return render(
+      <LanguageProvider>
+        <ThemeProvider>
+          <ThemeToggle />
+        </ThemeProvider>
+      </LanguageProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    delete document.documentElement.dataset.theme;
+    document.documentElement.style.removeProperty('color-scheme');
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('alterna el tema efectivo, actualiza el estado anunciado y persiste en ss.theme', async () => {
+    installMatchMedia({ [DARK_QUERY]: false });
+    renderToggle();
+
+    const toggle = screen.getByRole('button', { name: 'Cambiar a tema oscuro' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.click(toggle);
+
+    const changed = screen.getByRole('button', { name: 'Cambiar a tema claro' });
+    expect(changed).toHaveAttribute('aria-pressed', 'true');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+  });
+
+  it('con elección guardada manda la manual y el control la refleja', () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    installMatchMedia({ [DARK_QUERY]: false });
+
+    renderToggle();
+
+    expect(screen.getByRole('button', { name: 'Cambiar a tema claro' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('el cambio no mueve el foco y es operable con teclado', async () => {
+    installMatchMedia({ [DARK_QUERY]: false });
+    renderToggle();
+
+    const toggle = screen.getByRole('button', { name: 'Cambiar a tema oscuro' });
+    toggle.focus();
+    await userEvent.keyboard('{Enter}');
+
+    expect(toggle).toHaveFocus();
     expect(document.documentElement.dataset.theme).toBe('dark');
   });
 });

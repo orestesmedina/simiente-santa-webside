@@ -10,6 +10,7 @@ import {
 } from '../../../test/intersectionObserver';
 import type { SiteLink } from '../hooks/useSiteLinks';
 import { LanguageProvider } from '../i18n/LanguageProvider';
+import { ThemeProvider } from '../theme/ThemeProvider';
 import { SiteHeader } from './SiteHeader';
 
 const identity: IdentityPublic = {
@@ -27,7 +28,9 @@ function renderHeader(props: Partial<ComponentProps<typeof SiteHeader>> = {}) {
   return render(
     <MemoryRouter>
       <LanguageProvider>
-        <SiteHeader identity={identity} links={links} {...props} />
+        <ThemeProvider>
+          <SiteHeader identity={identity} links={links} {...props} />
+        </ThemeProvider>
       </LanguageProvider>
     </MemoryRouter>,
   );
@@ -85,6 +88,12 @@ describe('SiteHeader · cabecera fija del sitio público (T1011)', () => {
     renderHeader({ actions: <button type="button">tema</button> });
 
     expect(screen.getByRole('button', { name: 'tema' })).toBeInTheDocument();
+  });
+
+  it('monta el ThemeToggle por defecto en el clúster de controles (T1028)', () => {
+    renderHeader();
+
+    expect(screen.getByRole('button', { name: 'Cambiar a tema oscuro' })).toBeInTheDocument();
   });
 
   it('usa tokens semánticos de superficie (funciona en ambos temas)', () => {
