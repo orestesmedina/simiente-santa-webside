@@ -244,6 +244,40 @@ html.js [data-reveal]:not([data-reveal='in']) .section-heading-accent {
 }
 
 /*
+ * Revelado al scroll (F10 · T1018/FR-005/FR-009): el contenido **nace visible**;
+ * el estado pendiente solo lo pinta `html.js` (marcador de `index.html`) y el
+ * bloque global de `prefers-reduced-motion` (T1004) lo anula. Solo `opacity` y
+ * `transform` (compositor); el escalonado de `RevealGroup` llega por
+ * `--reveal-index` y el retardo explícito por `--reveal-delay`.
+ */
+.reveal-block {
+  transition-property: opacity, transform;
+  transition-duration: var(--motion-duration-reveal);
+  transition-timing-function: var(--motion-ease-out);
+  transition-delay: var(--reveal-delay, calc(var(--reveal-index, 0) * var(--motion-stagger-step)));
+}
+
+html.js .reveal-block[data-reveal='up'] {
+  opacity: 0;
+  transform: translateY(var(--motion-distance));
+}
+
+html.js .reveal-block[data-reveal='left'] {
+  opacity: 0;
+  transform: translateX(calc(-1 * var(--motion-distance)));
+}
+
+html.js .reveal-block[data-reveal='right'] {
+  opacity: 0;
+  transform: translateX(var(--motion-distance));
+}
+
+.reveal-block[data-reveal='in'] {
+  opacity: 1;
+  transform: none;
+}
+
+/*
  * Lista de navegación del sitio público (F10 · T1012/T1013/D15/D16).
  * · Escritorio (≥ 861 px): filas `flex-wrap` compactas, sin scroll lateral.
  * · Móvil (≤ 860 px): colapsada con `display:none` (fuera del orden de
