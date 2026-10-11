@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { observeReveal } from './useReveal';
-import { usePrefersReducedMotion } from './usePrefersReducedMotion';
+import { prefersReducedMotion, usePrefersReducedMotion } from './usePrefersReducedMotion';
 
 /** Dirección de entrada del revelado (en móvil se usa `up` para todo). */
 export type RevealFrom = 'up' | 'left' | 'right';
@@ -40,9 +40,14 @@ export function Reveal({
 }: RevealProps) {
   const prefersReduced = usePrefersReducedMotion();
   const ref = useRef<HTMLDivElement | null>(null);
-  const [observed, setObserved] = useState(false);
-
   const supportsObserver = typeof IntersectionObserver !== 'undefined';
+  // Si el bloque ya nace mostrado (movimiento reducido o sin `IntersectionObserver`)
+  // queda marcado como revelado: apagar `prefers-reduced-motion` en caliente no
+  // debe volver a ocultarlo ni re-animarlo (FR-008).
+  const [observed, setObserved] = useState(
+    () => prefersReducedMotion() || typeof IntersectionObserver === 'undefined',
+  );
+
   const revealed = observed || prefersReduced || !supportsObserver;
 
   useEffect(() => {

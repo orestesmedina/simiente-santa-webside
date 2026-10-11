@@ -188,6 +188,18 @@ describe('Reveal · revelado progresivo al scroll (FR-005/FR-009/SC-014)', () =>
 
     expect(document.querySelector('.reveal-block')).toHaveAttribute('data-reveal', 'in');
   });
+
+  it('apagar prefers-reduced-motion en caliente no vuelve a ocultar el bloque (M2)', () => {
+    const media = installMatchMedia({ [REDUCED_MOTION_QUERY]: true });
+
+    render(<Reveal>contenido</Reveal>);
+    const block = document.querySelector('.reveal-block') as HTMLElement;
+    expect(block).toHaveAttribute('data-reveal', 'in');
+
+    act(() => media.set(REDUCED_MOTION_QUERY, false));
+
+    expect(block, 'sigue revelado tras apagar la preferencia').toHaveAttribute('data-reveal', 'in');
+  });
 });
 
 describe('RevealGroup · entrada escalonada acotada (FR-005/SC-014)', () => {
