@@ -236,7 +236,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     reversa, sin editar ninguna migración previa.
   - **Commit sugerido**: `feat(db): permiso categorias en el catálogo de F2 (000009)`
 
-- [ ] T404 · Consultas sqlc `agenda.sql` + `media.sql` y generar · `[db]`
+- [X] T404 · Consultas sqlc `agenda.sql` + `media.sql` y generar · `[db]`
 
   - **Archivos**: `backend/internal/db/queries/agenda.sql` y `media.sql` (NUEVOS),
     `backend/internal/db/queries/home.sql` (EDITADO: se retira `IsHomeFilePublished`) y
