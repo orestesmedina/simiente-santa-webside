@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 1/9 · Especificar (spec redactada y aclarada; en la puerta 1) |
+| Fase | 2/9 · Planificar (spec aprobada; plan técnico en curso) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | **Puerta 1**: el humano aprueba la spec → pasa a Fase 2 (plan técnico) |
+| Próximo paso | Plan técnico con `arquitecto` (+ `disenador-ux` → `ux.md`); luego **puerta 2** |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
@@ -25,7 +25,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | pendiente | | | |
+| Spec | aprobado | humano | 2026-10-11 | "apruebo la spec" |
 | Plan | pendiente | | | |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
@@ -47,5 +47,6 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-11 — **Puerta 1 superada**: el humano **aprobó la spec** ("apruebo la spec"). Arranca la Fase 2 (plan técnico).
 - 2026-10-11 — **Fase 1 (Especificar)**: `spec.md` redactada por `analista-producto` y **aclarada** (Q1–Q6 resueltas por el humano, todas por la opción recomendada). 6 user stories, FR-001–FR-024, SC-001–SC-013; sin marcas `[NECESITA ACLARACIÓN]`. En la **puerta 1**, pendiente la aprobación humana de la spec. Rama `004-eventos-actividades` creada; roadmap: F4 → **en curso**.
 - 2026-10-11 — Inicio de la funcionalidad F4 (eventos y actividades): rama `004-eventos-actividades` creada, `spec.md` desde plantilla. Fase 1 (especificar).
