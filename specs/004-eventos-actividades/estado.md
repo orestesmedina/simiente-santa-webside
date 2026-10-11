@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 3/9 · Tareas y coherencia |
+| Fase | 4/9 · Implementar (42 tareas; en curso) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Generar `tasks.md` (`arquitecto`) y verificar coherencia (`revisor-codigo` → `analyze.md`); luego Fase 4 (implementar) |
+| Próximo paso | T401 `[db]` Migración `000007_create_agenda_content` → `dev-backend` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
