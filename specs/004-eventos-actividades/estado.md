@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar (spec aprobada; plan técnico en curso) |
+| Fase | 2/9 · Planificar (plan + UX redactados; en la puerta 2 con un cambio de alcance) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Plan técnico con `arquitecto` (+ `disenador-ux` → `ux.md`); luego **puerta 2** |
+| Próximo paso | **Puerta 1 (re-aprobación de la spec por el cambio de alcance) y puerta 2 (plan técnico)**; luego Fase 3 (tareas + coherencia) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
@@ -25,7 +25,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | aprobado | humano | 2026-10-11 | "apruebo la spec" |
+| Spec | pendiente (re-aprobación por cambio de alcance) | humano | 2026-10-11 | v1: "apruebo la spec"; v2 (permiso «categorías») pendiente de re-aprobar |
 | Plan | pendiente | | | |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
@@ -42,11 +42,13 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 - 2026-10-11 — **Arranque de F4 (decisión del humano en sesión).** El humano indicó «continuemos con F4», el siguiente pendiente del roadmap (F1, F2, F3 y F10 ya terminadas). Se arranca el flujo `equipo-feature` en la rama `004-eventos-actividades`.
 - 2026-10-11 — **Aclaraciones de F4 resueltas por el humano** (registradas en `spec.md`, sección «Aclaraciones resueltas (2026-10-11)»; también decisión 16 del roadmap): las 6 preguntas se resolvieron por la opción recomendada — **Q1** fechas concretas + texto de frecuencia; **Q2** hora de inicio/fin opcionales; **Q3** solo lo próximo; **Q4** retiro automático de la vista pública al pasar la fecha; **Q5** una entrada «Eventos y actividades» con dos bloques; **Q6** categoría opcional con catálogo administrable.
+- 2026-10-11 — **Decisiones de la puerta 2 (plan) y cambio de alcance** (registradas en `plan.md` §"Puntos resueltos" y decisión 17 del roadmap): **`APP_TZ = America/Costa_Rica`**; **ruta pública `/eventos`**; **página con aviso sin redirigir** si no hay nada publicado; **permiso nuevo «categorías»** para el catálogo (amplía el catálogo de F2 de 9→10; el humano asumió el impacto: migración que siembra el permiso y actualización de las pruebas de F2 que fijan 9); `endTime` exige `startTime`; borrar categoría en uso → 409; imagen de elemento vencido no se sirve.
 
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-11 — **Fase 2 (Planificar)**: `plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml` y `quickstart.md` redactados por `arquitecto`; `ux.md` por `disenador-ux`. 4 tablas `agenda_*`, 3 migraciones (`000007` contenido, `000008` auditoría, `000009` permiso «categorías»), 0 dependencias nuevas, reutiliza el sistema de F10 y la subida de imágenes de F3. **Cambio de alcance aprobado** en la puerta 2 (permiso «categorías»); spec actualizada → **re-aprobación pendiente**. **Puerta 2 pendiente** de aprobación humana del plan.
 - 2026-10-11 — **Puerta 1 superada**: el humano **aprobó la spec** ("apruebo la spec"). Arranca la Fase 2 (plan técnico).
 - 2026-10-11 — **Fase 1 (Especificar)**: `spec.md` redactada por `analista-producto` y **aclarada** (Q1–Q6 resueltas por el humano, todas por la opción recomendada). 6 user stories, FR-001–FR-024, SC-001–SC-013; sin marcas `[NECESITA ACLARACIÓN]`. En la **puerta 1**, pendiente la aprobación humana de la spec. Rama `004-eventos-actividades` creada; roadmap: F4 → **en curso**.
 - 2026-10-11 — Inicio de la funcionalidad F4 (eventos y actividades): rama `004-eventos-actividades` creada, `spec.md` desde plantilla. Fase 1 (especificar).
