@@ -58,6 +58,12 @@ identidad/portada, «quiénes somos», horario, WhatsApp, contacto, redes, pie):
       se ajustan los tokens, no cada componente).
 - [ ] Zoom al **200 %** y 320 px: sin desbordes ni pérdida de información.
 
+> **Tokens implementados (base de calibración, RG10-22).** La tabla de espaciado por breakpoint
+> (`--space-section`, `--space-section-tight`, `--space-block`, `--pad-panel`…) está en
+> `frontend/src/components/publico/README.md` §2.3. Si la revisión concluye que el resultado «queda
+> vacío» o «apretado», se ajusta **el token** en `frontend/src/index.css` (nunca el padding de cada
+> componente).
+
 ## 3. Validar el tema claro/oscuro (US5, SC-012)
 
 **Tres caminos** (en cada uno: contraste AA, logo con colores originales, mismo contenido y mismas
@@ -131,6 +137,13 @@ prefers-reduced-motion: reduce*, o la opción del sistema; en e2e:
 **Comparación directa (SC-005/SC-014)**: recorrer la portada en ambas configuraciones, una detrás de
 otra: en modo normal el revelado al scroll y las transiciones se **perciben claramente**; con
 movimiento reducido están **por completo ausentes** y todo funciona igual.
+
+> **Tokens implementados (base de calibración, RG10-22).** Los valores vigentes de movimiento
+> (`--motion-duration-reveal` 600 ms, `--motion-distance` 28 px / 20 px en móvil, escalonado 80 ms
+> con tope 240 ms, micro 180 ms, cabecera 220 ms, hero 700 ms; suelo ≥ 400 ms/≥ 16 px y techo
+> ≤ 800 ms) están en `frontend/src/components/publico/README.md` §2.4. Si la revisión pide más o
+> menos intensidad, se ajusta **el token** en `frontend/src/index.css` (nunca cada componente); los
+> e2e miden el mismo techo (≤ 800 ms).
 
 ## 5. Validar la navegación (US2, SC-003/SC-004)
 
