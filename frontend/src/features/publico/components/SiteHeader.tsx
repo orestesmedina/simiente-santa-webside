@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { mediaUrl } from '../../../api/client';
 import type { IdentityPublic } from '../../../api/portada';
@@ -18,6 +19,38 @@ export interface SiteHeaderProps {
 }
 
 /**
+ * Mide la altura real de la cabecera y la publica como `--header-offset` en
+ * `<html>` (T1014/FR-014/RG10-3): el `scroll-padding-top` de `index.css` la usa
+ * para que un ancla nunca quede tapada por la barra fija. Se re-mide con
+ * `ResizeObserver` (sin listener de `scroll`); el panel del menú móvil es un
+ * overlay `position: fixed` y **no** altera la altura de la cabecera, de modo
+ * que el valor es estable con el menú abierto o cerrado.
+ */
+function useHeaderOffset(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    const apply = () => {
+      const height = element.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--header-offset', `${height}px`);
+    };
+    apply();
+
+    if (typeof ResizeObserver === 'undefined') {
+      return () => document.documentElement.style.removeProperty('--header-offset');
+    }
+    const observer = new ResizeObserver(apply);
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty('--header-offset');
+    };
+  }, [ref]);
+}
+
+/**
  * Cabecera fija del sitio público (T1011/FR-010/FR-014/FR-025): fila de marca
  * (logotipo con sus colores originales sobre `--logo-surface` + nombre completo
  * de la identidad como **enlace a `/`**), `<nav aria-label>` de secciones y
@@ -32,9 +65,11 @@ export interface SiteHeaderProps {
 export function SiteHeader({ identity, links, actions }: SiteHeaderProps) {
   const { t } = useLanguage();
   const brandName = identity?.name ?? t('brand.name');
+  const headerRef = useRef<HTMLElement | null>(null);
+  useHeaderOffset(headerRef);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-surface text-ink">
+    <header ref={headerRef} className="sticky top-0 z-50 border-b border-line bg-surface text-ink">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
         <Link
           to="/"

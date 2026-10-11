@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { IdentityPublic } from '../../../api/portada';
 import type { SiteLink } from '../hooks/useSiteLinks';
 import { LanguageProvider } from '../i18n/LanguageProvider';
@@ -89,5 +89,52 @@ describe('SiteHeader · cabecera fija del sitio público (T1011)', () => {
     expect(header.className).toContain('bg-surface');
     expect(header.className).toContain('text-ink');
     expect(header.className).toContain('sticky');
+  });
+
+  it('publica --header-offset con la altura medida y la re-mide al cambiar (T1014)', () => {
+    class ResizeObserverStub {
+      static latest: ResizeObserverStub | null = null;
+      callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+        ResizeObserverStub.latest = this;
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      trigger() {
+        this.callback([], this as unknown as ResizeObserver);
+      }
+    }
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver = ResizeObserverStub;
+
+    let height = 88;
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({
+          height,
+          width: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }) as DOMRect,
+    );
+
+    try {
+      renderHeader();
+      expect(document.documentElement.style.getPropertyValue('--header-offset')).toBe('88px');
+
+      height = 120;
+      act(() => ResizeObserverStub.latest?.trigger());
+      expect(document.documentElement.style.getPropertyValue('--header-offset')).toBe('120px');
+    } finally {
+      rectSpy.mockRestore();
+      delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+      document.documentElement.style.removeProperty('--header-offset');
+    }
   });
 });

@@ -3,6 +3,7 @@ import { useSiteLinks } from '../hooks/useSiteLinks';
 import { usePublicHomeData } from '../hooks/usePublicHomeData';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { useLanguage } from '../i18n/useLanguage';
+import { ThemeProvider } from '../theme/ThemeProvider';
 import { PublicFooter } from './PublicFooter';
 import { SiteHeader } from './SiteHeader';
 
@@ -12,13 +13,15 @@ import { SiteHeader } from './SiteHeader';
  * publicado y selector de idioma) y pie con la frase de marca. La navegación se
  * alimenta de la fuente única `useSiteLinks` (FR-012/FR-027).
  *
- * Provee el `LanguageProvider` de todo el sitio público (T328); el panel no
- * cambia de idioma (FR-016).
+ * Provee el `LanguageProvider` y el `ThemeProvider` de todo el sitio público
+ * (T328/T1014); el panel no cambia de idioma ni de tema (FR-016/P10-11).
  */
 export function PublicLayout() {
   return (
     <LanguageProvider>
-      <PublicChrome />
+      <ThemeProvider>
+        <PublicChrome />
+      </ThemeProvider>
     </LanguageProvider>
   );
 }
