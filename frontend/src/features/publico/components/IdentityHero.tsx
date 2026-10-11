@@ -13,6 +13,11 @@ export interface IdentityHeroProps {
    * WhatsApp **no** se muestra: nunca se pinta un enlace a un destino ausente.
    */
   whatsappHref?: string;
+  /**
+   * Ancla del bloque de horario. Si falta (no hay servicios publicados), el CTA
+   * «Ver horario» **no** se muestra (FR-027/SC-015: 0 enlaces rotos).
+   */
+  scheduleHref?: string;
 }
 
 /**
@@ -30,7 +35,7 @@ export interface IdentityHeroProps {
  * ocurre en la primera carga real (claves React estables, FR-008); con
  * movimiento reducido o sin JS el hero se ve completo al instante.
  */
-export function IdentityHero({ identity, whatsappHref }: IdentityHeroProps) {
+export function IdentityHero({ identity, whatsappHref, scheduleHref }: IdentityHeroProps) {
   const { t } = useLanguage();
   const [coverFailed, setCoverFailed] = useState(false);
   // La API devuelve URLs relativas (`/api/v1/media/…`): se resuelven contra la
@@ -82,7 +87,9 @@ export function IdentityHero({ identity, whatsappHref }: IdentityHeroProps) {
         )}
 
         <div className="flex flex-wrap gap-fluid">
-          <PublicButton href="#horario">{t('hero.cta.schedule')}</PublicButton>
+          {scheduleHref && (
+            <PublicButton href={scheduleHref}>{t('hero.cta.schedule')}</PublicButton>
+          )}
           {whatsappHref && (
             <PublicButton href={whatsappHref} variant="whatsapp">
               {t('hero.cta.whatsapp')}

@@ -15,10 +15,15 @@ const identity: IdentityPublic = {
   coverImageAlt: 'Imagen de la portada',
 };
 
-function renderHero(whatsappHref: string | null = '#whatsapp') {
+function renderHero(options: { whatsappHref?: string | null; scheduleHref?: string | null } = {}) {
+  const { whatsappHref = '#whatsapp', scheduleHref = '#horario' } = options;
   return render(
     <LanguageProvider>
-      <IdentityHero identity={identity} whatsappHref={whatsappHref ?? undefined} />
+      <IdentityHero
+        identity={identity}
+        whatsappHref={whatsappHref ?? undefined}
+        scheduleHref={scheduleHref ?? undefined}
+      />
     </LanguageProvider>,
   );
 }
@@ -57,9 +62,19 @@ describe('IdentityHero · propuesta B (T1021/FR-001/FR-002)', () => {
   });
 
   it('sin canal de WhatsApp publicado no pinta el CTA (0 enlaces rotos)', () => {
-    renderHero(null);
+    renderHero({ whatsappHref: null });
 
     expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull();
+  });
+
+  it('sin horario publicado no pinta el CTA «Ver horario» (0 enlaces rotos, I1)', () => {
+    renderHero({ scheduleHref: null });
+
+    const hero = screen.getByRole('region', { name: 'Iglesia Simiente Santa' });
+    expect(within(hero).queryByRole('link', { name: 'Ver horario' })).toBeNull();
+    expect(within(hero).queryByRole('link', { name: '#horario' })).toBeNull();
+    // El resto del hero y el CTA de WhatsApp siguen ahí.
+    expect(within(hero).getByRole('link', { name: 'Escríbenos por WhatsApp' })).toBeInTheDocument();
   });
 
   it('usa tokens semánticos y la entrada del hero (no colores explícitos de F3)', () => {

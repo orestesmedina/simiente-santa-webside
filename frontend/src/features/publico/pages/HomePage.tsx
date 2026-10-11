@@ -74,6 +74,7 @@ export function HomePage() {
         <IdentityHero
           identity={identity}
           whatsappHref={whatsapp && whatsapp.length > 0 ? '#whatsapp' : undefined}
+          scheduleHref={schedule && schedule.length > 0 ? '#horario' : undefined}
         />
       )}
 

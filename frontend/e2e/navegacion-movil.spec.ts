@@ -238,9 +238,21 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
       await apiSend(adminPage, 'PATCH', `/api/v1/admin/portada/whatsapp/${channel.id}`, {
         publicationState: 'draft',
       });
+      // También el horario: el CTA «Ver horario» del hero debe desaparecer (I1).
+      const scheduleState = (await (
+        await apiSend(adminPage, 'GET', '/api/v1/admin/portada')
+      ).json()) as { schedule: { items: { id: string }[] } };
+      const service = scheduleState.schedule.items[0];
+      await apiSend(adminPage, 'PATCH', `/api/v1/admin/portada/horario/${service.id}`, {
+        publicationState: 'draft',
+      });
 
       await page.reload();
       await expect(page.locator('#whatsapp')).toHaveCount(0);
+      await expect(page.locator('#horario')).toHaveCount(0);
+      // 0 enlaces rotos: ni el CTA del hero ni la nav ni el pie apuntan a lo ausente.
+      await expect(page.locator('a[href="#horario"]')).toHaveCount(0);
+      await expect(page.locator('a[href="#whatsapp"]')).toHaveCount(0);
       await expect(
         page
           .getByRole('navigation', { name: SECTIONS_NAV })
@@ -253,6 +265,9 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
       ).toHaveCount(0);
 
       await apiSend(adminPage, 'PATCH', `/api/v1/admin/portada/whatsapp/${channel.id}`, {
+        publicationState: 'published',
+      });
+      await apiSend(adminPage, 'PATCH', `/api/v1/admin/portada/horario/${service.id}`, {
         publicationState: 'published',
       });
     } finally {
