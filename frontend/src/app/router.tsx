@@ -3,11 +3,14 @@ import { Link, useRoutes, type RouteObject } from 'react-router-dom';
 import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { AuditPage } from '../features/auditoria/pages/AuditPage';
+import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
+import { PublicLayout } from '../features/publico/components/PublicLayout';
+import { HomePage } from '../features/publico/pages/HomePage';
 import { RolesPage } from '../features/roles/pages/RolesPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
 import { UsersPage } from '../features/usuarios/pages/UsersPage';
-import { ADMIN_USERS_ROLES } from '../lib/permissions';
+import { ADMIN_USERS_ROLES, PORTADA } from '../lib/permissions';
 import { RequireAuth, RequirePasswordChange, RequirePermission } from './guards';
 import { AppLayout, PanelLayout } from './layout';
 
@@ -59,6 +62,11 @@ function NotFoundPage() {
 const appRoutes: RouteObject[] = [
   {
     path: '/',
+    element: <PublicLayout />,
+    children: [{ index: true, element: <HomePage /> }],
+  },
+  {
+    path: '/health',
     element: <AppLayout />,
     children: [{ index: true, element: <StatusPage /> }],
   },
@@ -83,6 +91,10 @@ const appRoutes: RouteObject[] = [
                   { path: 'roles', element: <RolesPage /> },
                   { path: 'auditoria', element: <AuditPage /> },
                 ],
+              },
+              {
+                element: <RequirePermission code={PORTADA} />,
+                children: [{ path: 'informacion', element: <InformationPage /> }],
               },
             ],
           },

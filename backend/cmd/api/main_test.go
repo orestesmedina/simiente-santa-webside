@@ -17,6 +17,7 @@ import (
 	"simiente-santa/backend/internal/platform/paginate"
 	"simiente-santa/backend/internal/platform/session"
 	"simiente-santa/backend/internal/platform/testutil"
+	"simiente-santa/backend/internal/portada"
 	"simiente-santa/backend/internal/status"
 	"simiente-santa/backend/internal/usuarios"
 )
@@ -25,6 +26,35 @@ import (
 type fakeRepository struct{ err error }
 
 func (f fakeRepository) Ping(context.Context) error { return f.err }
+
+// stubPortadaRepo satisface portada.Repository para el humo de composición: las
+// lecturas públicas devuelven "sin contenido publicado" y el resto (no
+// ejercitado en el humo) queda como método no implementado del embedding.
+type stubPortadaRepo struct{ portada.Repository }
+
+func (stubPortadaRepo) GetHomeIdentityPublished(context.Context) (portada.Identity, bool, error) {
+	return portada.Identity{}, false, nil
+}
+
+func (stubPortadaRepo) GetHomeAboutPublished(context.Context) (portada.About, bool, error) {
+	return portada.About{}, false, nil
+}
+
+func (stubPortadaRepo) GetHomeContactPublished(context.Context) (portada.Contact, bool, error) {
+	return portada.Contact{}, false, nil
+}
+
+func (stubPortadaRepo) ListHomeServicesPublished(context.Context) ([]portada.Service, error) {
+	return nil, nil
+}
+
+func (stubPortadaRepo) ListHomeWhatsappChannelsPublished(context.Context) ([]portada.WhatsappChannel, error) {
+	return nil, nil
+}
+
+func (stubPortadaRepo) ListHomeSocialLinksPublished(context.Context) ([]portada.SocialLink, error) {
+	return nil, nil
+}
 
 // fakeAuthService guioniza el servicio de acceso para el humo de composición.
 type fakeAuthService struct{}
@@ -125,6 +155,11 @@ func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
 		SetupToken: "token-de-prueba",
 		Logger:     log,
 	})
+	portadaHandler := portada.NewHandler(portada.HandlerDeps{
+		Service:        portada.NewService(portada.ServiceDeps{Repository: stubPortadaRepo{}, Logger: log}),
+		MaxUploadBytes: 1 << 20,
+		Logger:         log,
+	})
 	return apiDeps{
 		statusRepo:  repo,
 		authHandler: handler,
@@ -150,6 +185,15 @@ func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
 				r.Handle(http.MethodGet, "/probe", func(w http.ResponseWriter, _ *http.Request) {
 					w.WriteHeader(http.StatusOK)
 				})
+			},
+		},
+		portadaHandler: portadaHandler,
+		portadaAdmin: portada.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions:   fakeSessionStore{},
+				Resolver:   fakeResolver{},
+				CSRFSecret: "secret",
+				Logger:     log,
 			},
 		},
 	}
@@ -296,6 +340,36 @@ func TestNewRoutesSmoke(t *testing.T) {
 		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/noexiste", "", nil)
 		if resp.Status != http.StatusNotFound {
 			t.Fatalf("status = %d, se esperaba 404 (%s)", resp.Status, resp.Body)
+		}
+	})
+
+	t.Run("portada pública responde 200 sin sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"lang":"es"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+		}
+	})
+
+	t.Run("media con nombre inválido responde 400", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/media/no-file", "", nil)
+		if resp.Status != http.StatusBadRequest {
+			t.Fatalf("status = %d, se esperaba 400 (%s)", resp.Status, resp.Body)
+		}
+	})
+
+	t.Run("grupo de panel de la portada exige sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/portada", "", nil)
+		if resp.Status != http.StatusUnauthorized {
+			t.Fatalf("status = %d, se esperaba 401 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
 		}
 	})
 }

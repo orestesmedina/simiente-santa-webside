@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { SessionWarning } from '../features/auth/components/SessionWarning';
 import { useLogout } from '../features/auth/hooks/useLogout';
 import { useSessionQuery } from '../features/auth/hooks/useSession';
-import { ADMIN_USERS_ROLES, hasPermission } from '../lib/permissions';
+import { ADMIN_USERS_ROLES, PORTADA, hasPermission } from '../lib/permissions';
 
 /**
  * Layout mínimo y semántico de la aplicación pública: encabezado con navegación
@@ -56,6 +56,9 @@ export function PanelLayout() {
   };
 
   const items: NavItem[] = [{ to: '/panel', label: 'Inicio', end: true }];
+  if (hasPermission(session, PORTADA)) {
+    items.push({ to: '/panel/informacion', label: 'Portada e información general' });
+  }
   if (hasPermission(session, ADMIN_USERS_ROLES)) {
     items.push(
       { to: '/panel/usuarios', label: 'Usuarios' },

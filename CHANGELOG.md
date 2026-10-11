@@ -4,6 +4,46 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
+## [0.3.0] — 2026-10-10
+
+Tercera entrega: **F3 — Portada e información general** (rama `003-portada-info-general`). Spec aprobada: [`specs/003-portada-info-general/spec.md`](specs/003-portada-info-general/spec.md). Verificación de cierre en verde ([`cierre.md`](specs/003-portada-info-general/cierre.md): `make ci` EXIT=0, e2e 7/7, cobertura 84,7 % en `internal/portada/service*.go`, sin deriva de generados). Validación del 2026-10-10 en dos ciclos: el primero rechazó un bloqueante (la semántica `null` de los `PATCH`) y el segundo quedó **sin hallazgos bloqueantes** — [QA](specs/003-portada-info-general/revision-2026-10-10-qa-ciclo2.md), [revisión de código](specs/003-portada-info-general/revision-2026-10-10-codigo-ciclo2.md) y [seguridad](specs/003-portada-info-general/revision-2026-10-10-seguridad-ciclo2.md) aprobados, con deuda menor aceptada (ver [`estado.md`](specs/003-portada-info-general/estado.md)).
+
+### Agregado
+
+- **Portada pública bilingüe en `/`** (FR-001…FR-007): la página de inicio del sitio es ahora la portada de la iglesia, visible **sin cuenta ni registro**. Reúne la identidad (nombre oficial, lema/misión/visión, logotipo e imagen de portada), «quiénes somos» (texto plano, ≤ 1.000 caracteres), el horario de servicios (día, hora, nombre y lugar por servicio), los canales de WhatsApp (mensaje directo y/o enlace de grupo, varios canales), las redes sociales (catálogo fijo Facebook, Instagram, YouTube, TikTok y Spotify, un enlace por red) y el contacto (dirección, correo y teléfono). El diseño respeta el Manual de Identidad del cliente (`resources/MANUAL DE MARCA.pdf`), incluidas las reglas de uso del logotipo; la portada se adapta a 320 px en adelante, navega con teclado y lector de pantalla, y todo contenido se trata como dato —nunca como código—.
+- **Idiomas español e inglés** (Decisión 6 y 8): selector visible en la cabecera; el cambio aplica de inmediato y la elección **se recuerda en el dispositivo** (`localStorage`; la primera visita sin preferencia entra en español). Cada contenido puede llevar su versión en inglés, que es **opcional**: lo sin traducir se muestra íntegramente en español (nunca un campo vacío ni traducción automática, FR-009).
+- **Control de publicación por elemento** (Decisión 4): cada pieza de la portada tiene estado **borrador/publicado** y se publica o retira por separado, incluidos los elementos únicos (identidad, «quiénes somos» y contacto); solo lo publicado llega al visitante y **una sección sin elementos publicados se oculta por completo**, sin secciones vacías (SC-012). Editar algo ya publicado y guardarlo lo hace visible de inmediato (FR-014).
+- **Panel `/panel/informacion`** con pestañas **Identidad · Quiénes somos · Horario de servicios · Canales de WhatsApp · Redes sociales · Contacto**, cada elemento con su píldora de estado y sus acciones de publicar/retirar. Todo bajo el permiso **«Portada e información general»** (`portada`), ya reservado por F2 (FR-015 de F2) y ahora activo: verificado en el servidor en cada operación, con la entrada del menú y la ruta protegidas (`RequirePermission`) y la denegación clara «No tienes permiso para acceder a este módulo» (FR-012).
+- **Subida de imágenes** desde el panel (logotipo e imagen de portada): JPEG/PNG/WebP **por firma binaria** (sin SVG/GIF), ≤ 8 MB (`UPLOAD_MAX_BYTES`), nombre generado por el servidor (`img_<uuid>`), texto alternativo obligatorio y descarga `GET /api/v1/media/{fileName}` **solo** para archivos referenciados por contenido publicado, con `nosniff`, `inline` y `no-store`; retirar la identidad deja de servir su imagen sin borrarla (FR-019, `analyze` C4/M6).
+- **Auditoría ampliada al módulo** (FR-017): toda edición, alta, publicación, retirada, subida de imagen, rechazo y denegación queda registrada en el registro de solo lectura de F2 con **15 nuevos códigos `home.*`** y etiquetas «Portada · `<sección>` · `<elemento>`»; el registro es **atómico** con la mutación (si falla el registro, la edición no se aplica).
+- **API y base de datos**: contrato vivo a **0.4.0** ([`backend/api/openapi.yaml`](backend/api/openapi.yaml)) con `GET /api/v1/portada`, `GET /api/v1/media/{fileName}` y el subgrupo `/api/v1/admin/portada/*`; migraciones `000005` (tablas `home_*`, singletons con `upsert` y catálogo de redes) y `000006` (ampliación de `admin_actions`), ambas con `up`/`down`; tipos TypeScript regenerados con `make api-gen`.
+- **Entorno**: volumen Docker `uploads_data` (como `pgdata`, sobrevive a los rebuilds) y variables nuevas documentadas en `.env.example`: `UPLOAD_DIR` (carpeta de imágenes; `/var/lib/simiente/uploads` en el contenedor) y `UPLOAD_MAX_BYTES` (8 MB).
+- **Pruebas**: backend unitarias e integración contra PostgreSQL real (incluida la migración `000006` up→down→up y la atomicidad mutación+auditoría; cobertura 84,7 % en `internal/portada/service*.go`), frontend Vitest + Testing Library + MSW (más de 270 pruebas) y **e2e Playwright 7/7** (`acceso`, `auditoria`, `portada-accesibilidad`, `portada-panel`, `portada-patch-null`, `portada-publica`, `status`), recorriendo publicación, borradores, idioma es/en con fallback, responsividad y denegación con auditoría.
+
+### Cambiado
+
+- **`/` deja de ser la página de estado**: la portada pública pasa a ser la página de inicio (FR-001, decisión del humano del 2026-10-09) y la pantalla «Estado del sistema» de F1 se traslada a **`/health`** (ruta de la SPA, distinta del endpoint `GET /healthz`, que **no cambia**); el e2e de estado de F1 se actualizó a la nueva ruta.
+- **El permiso `portada` de F2 deja de estar reservado**: «Portada e información general» se activa para los roles que lo necesiten; el sello «Disponible más adelante» desaparece de ese módulo del panel.
+- **Auditoría de F2 ampliada**: el enum de acciones de `AdminActionItem` incorpora los códigos `home.*` y el `targetKind` `content`, sin romper los registros existentes.
+
+### Corregido
+
+- **Permisos de escritura del volumen de subidas**: el backend (usuario no-root) no podía escribir en `uploads_data` y toda subida de imagen respondía `500` (fix `a93a233`; defecto hallado al correr los e2e).
+- **Selector de idioma**: cabecera y pie compartían el mismo `name` y los radios no se marcaban entre sí; ahora cada selector usa `useId()`.
+- **Navegación a 320 px**: la `nav` de la portada provocaba desplazamiento horizontal en pantallas estrechas (`min-w-0`), incumpliendo la promesa de responsividad.
+- **`PATCH` con `null` no vaciaba los campos opcionales** (BLOQUEANTE del primer ciclo de validación): los `PATCH` del panel ignoraban `null`; ahora se distingue «vaciar el campo» de «no enviado» con el tipo `Optional[T]` (fix `d5d4610`, con e2e de regresión `portada-patch-null`).
+- **Formato de la hora del horario y área de toque del selector**: el horario se mostraba en formato 24 h (se muestra en a.m./p.m. localizado, con «m.» solo en el mediodía exacto: `fc96185`, `db83a61`) y el área táctil del selector de idioma pasó de 20 px a 44 px (`2b72138`).
+- **Las imágenes de la portada no cargaban**: la API devuelve las URLs de media relativas y la SPA las pedía a su propio origen, donde nginx no proxya `/api/`; ahora el logotipo y la imagen de portada se resuelven contra la URL de la API con `mediaUrl` (fix `ec2ae76`, con e2e de regresión `portada-imagenes`: `b257e0b`).
+
+### No entra en esta versión
+
+- **Sin las demás secciones del sitio público**: eventos, actividades (F4), grupos (F5), ministerios (F6), donaciones (F7), noticias y galería (F8) y medios (F9).
+- **Sin formularios** (contacto, inscripción) ni mapa incrustado: la comunicación es por WhatsApp, redes y los datos publicados; la dirección se muestra como texto.
+- **Sin traducción automática**: el equipo ingresa el inglés a mano, contenido por contenido.
+- **Sin historial de versiones, publicación programada ni verificación de la vigencia de los enlaces** (borrar es borrado físico; para ocultar sin perder se retira el elemento).
+- **Pendientes de validación con personas** (no de código): la prueba de usabilidad SC-010 (≥ 6 personas, protocolo del `analyze` M7) y la parte manual de accesibilidad SC-008 (checklist WCAG 2.1 AA) se cierran en la fase de validación.
+- **Sin despliegue a producción**: la entrega se completa con el merge humano del PR de la rama `003-portada-info-general`.
+
 ## [0.2.0] — 2026-10-05
 
 Segunda entrega: **F2 — Acceso y gestión de usuarios** (rama `002-acceso-gestion-usuarios`). Spec aprobada: [`specs/002-acceso-gestion-usuarios/spec.md`](specs/002-acceso-gestion-usuarios/spec.md). Validación del 2026-10-05 **sin hallazgos bloqueantes**: [QA](specs/002-acceso-gestion-usuarios/revision-2026-10-05-qa.md) (aprobado), [revisión de código](specs/002-acceso-gestion-usuarios/revision-2026-10-05-codigo.md) y [seguridad](specs/002-acceso-gestion-usuarios/revision-2026-10-05-seguridad.md) (aprobados con observaciones).

@@ -99,7 +99,7 @@ async function csrfToken(page: Page): Promise<string> {
  */
 export async function apiSend(
   page: Page,
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   data?: unknown,
 ): Promise<APIResponse> {

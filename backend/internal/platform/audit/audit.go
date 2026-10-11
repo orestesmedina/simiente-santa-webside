@@ -42,10 +42,15 @@ type TargetKind string
 const (
 	TargetUser TargetKind = "user"
 	TargetRole TargetKind = "role"
+	// TargetContent es un elemento de la portada (F3): identidad, «quiénes
+	// somos», contacto, un servicio del horario, un canal de WhatsApp o un
+	// enlace de red. No tiene FK (son seis tablas): ambas FK van en NULL y
+	// TargetLabel identifica el elemento (R3-11).
+	TargetContent TargetKind = "content"
 )
 
 // Códigos de acción administrativa (FR-023). Son la lista cerrada de la tabla
-// admin_actions.
+// admin_actions: los 8 de F2 y los 15 de F3 (`home.*`).
 const (
 	ActionUserCreate        = "user.create"
 	ActionUserUpdate        = "user.update"
@@ -55,6 +60,23 @@ const (
 	ActionRoleCreate        = "role.create"
 	ActionRoleUpdate        = "role.update"
 	ActionRoleDelete        = "role.delete"
+
+	// Códigos de F3 (R3-11.1): quién editó qué elemento de la portada.
+	ActionHomeIdentityUpdate = "home.identity.update"
+	ActionHomeAboutUpdate    = "home.about.update"
+	ActionHomeContactUpdate  = "home.contact.update"
+	ActionHomeScheduleCreate = "home.schedule.create"
+	ActionHomeScheduleUpdate = "home.schedule.update"
+	ActionHomeScheduleDelete = "home.schedule.delete"
+	ActionHomeWhatsappCreate = "home.whatsapp.create"
+	ActionHomeWhatsappUpdate = "home.whatsapp.update"
+	ActionHomeWhatsappDelete = "home.whatsapp.delete"
+	ActionHomeSocialCreate   = "home.social.create"
+	ActionHomeSocialUpdate   = "home.social.update"
+	ActionHomeSocialDelete   = "home.social.delete"
+	ActionHomeImageUpload    = "home.image.upload"
+	ActionHomePublish        = "home.publish"
+	ActionHomeUnpublish      = "home.unpublish"
 )
 
 // ActionCodes es la lista cerrada de códigos válidos de FR-023, en el orden de
@@ -68,15 +90,31 @@ var ActionCodes = []string{
 	ActionRoleCreate,
 	ActionRoleUpdate,
 	ActionRoleDelete,
+	ActionHomeIdentityUpdate,
+	ActionHomeAboutUpdate,
+	ActionHomeContactUpdate,
+	ActionHomeScheduleCreate,
+	ActionHomeScheduleUpdate,
+	ActionHomeScheduleDelete,
+	ActionHomeWhatsappCreate,
+	ActionHomeWhatsappUpdate,
+	ActionHomeWhatsappDelete,
+	ActionHomeSocialCreate,
+	ActionHomeSocialUpdate,
+	ActionHomeSocialDelete,
+	ActionHomeImageUpload,
+	ActionHomePublish,
+	ActionHomeUnpublish,
 }
 
 // Errores de validación de los tipos de plumbing.
 var (
-	ErrUnknownActionCode = errors.New("audit: código de acción desconocido")
-	ErrUnknownTargetKind = errors.New("audit: tipo de objetivo desconocido")
-	ErrInvalidResult     = errors.New("audit: resultado inválido")
-	ErrTargetMismatch    = errors.New("audit: objetivo incoherente con su tipo")
-	ErrMissingIP         = errors.New("audit: falta la IP del intento de acceso")
+	ErrUnknownActionCode  = errors.New("audit: código de acción desconocido")
+	ErrUnknownTargetKind  = errors.New("audit: tipo de objetivo desconocido")
+	ErrInvalidResult      = errors.New("audit: resultado inválido")
+	ErrTargetMismatch     = errors.New("audit: objetivo incoherente con su tipo")
+	ErrMissingTargetLabel = errors.New("audit: falta la etiqueta del objetivo de contenido")
+	ErrMissingIP          = errors.New("audit: falta la IP del intento de acceso")
 )
 
 // Event es un intento de inicio de sesión (FR-022). UserID es nil cuando el
@@ -133,6 +171,15 @@ func (a Action) Validate() error {
 	case TargetRole:
 		if a.TargetUserID != nil {
 			return fmt.Errorf("%w: objetivo rol con target_user_id", ErrTargetMismatch)
+		}
+	case TargetContent:
+		// Un objetivo de contenido no tiene FK (son seis tablas): ambas van en
+		// nil y la etiqueta identifica el elemento (R3-11).
+		if a.TargetUserID != nil || a.TargetRoleID != nil {
+			return fmt.Errorf("%w: objetivo de contenido con una FK de usuario o rol", ErrTargetMismatch)
+		}
+		if a.TargetLabel == "" {
+			return fmt.Errorf("%w", ErrMissingTargetLabel)
 		}
 	default:
 		return fmt.Errorf("%w: %q", ErrUnknownTargetKind, a.TargetKind)

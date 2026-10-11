@@ -21,6 +21,7 @@ func canonicalKeys() []string {
 		envAppEnv, envHTTPPort, envDatabaseURL, envLogLevel, envCORSOrigins,
 		envRedisURL, envSessionSecret, envSessionCookieSecure,
 		envSessionIdleTTLMinutes, envSessionAbsoluteTTLMinutes, envBootstrapToken,
+		envUploadDir, envUploadMaxBytes,
 	}
 }
 
@@ -85,6 +86,14 @@ func TestLoadDefaultsWithoutEnv(t *testing.T) {
 	}
 	if cfg.BootstrapToken != "" {
 		t.Errorf("BootstrapToken = %q, se esperaba vacío (nunca un secreto por defecto)", cfg.BootstrapToken)
+	}
+
+	// Imágenes de la portada (F3).
+	if cfg.UploadDir != defaultUploadDir {
+		t.Errorf("UploadDir = %q, se esperaba %q", cfg.UploadDir, defaultUploadDir)
+	}
+	if cfg.UploadMaxBytes != defaultUploadMaxBytes {
+		t.Errorf("UploadMaxBytes = %d, se esperaba %d", cfg.UploadMaxBytes, defaultUploadMaxBytes)
 	}
 }
 
@@ -215,6 +224,26 @@ func TestLoadEachCanonicalVariable(t *testing.T) {
 				}
 			},
 		},
+		{
+			name:   "UPLOAD_DIR",
+			envKey: envUploadDir,
+			value:  "/var/lib/simiente/uploads",
+			check: func(t *testing.T, cfg Config) {
+				if cfg.UploadDir != "/var/lib/simiente/uploads" {
+					t.Errorf("UploadDir = %q, se esperaba el valor configurado", cfg.UploadDir)
+				}
+			},
+		},
+		{
+			name:   "UPLOAD_MAX_BYTES",
+			envKey: envUploadMaxBytes,
+			value:  "1048576",
+			check: func(t *testing.T, cfg Config) {
+				if cfg.UploadMaxBytes != 1048576 {
+					t.Errorf("UploadMaxBytes = %d, se esperaba 1048576", cfg.UploadMaxBytes)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -254,6 +283,9 @@ func TestLoadInvalidValues(t *testing.T) {
 		{name: "SESSION_IDLE_TTL_MINUTES negativo", envKey: envSessionIdleTTLMinutes, value: "-5"},
 		{name: "SESSION_ABSOLUTE_TTL_MINUTES cero", envKey: envSessionAbsoluteTTLMinutes, value: "0"},
 		{name: "SESSION_ABSOLUTE_TTL_MINUTES negativo", envKey: envSessionAbsoluteTTLMinutes, value: "-1"},
+		{name: "UPLOAD_MAX_BYTES no numérico", envKey: envUploadMaxBytes, value: "ocho-megas"},
+		{name: "UPLOAD_MAX_BYTES cero", envKey: envUploadMaxBytes, value: "0"},
+		{name: "UPLOAD_MAX_BYTES negativo", envKey: envUploadMaxBytes, value: "-1"},
 	}
 
 	for _, tt := range tests {

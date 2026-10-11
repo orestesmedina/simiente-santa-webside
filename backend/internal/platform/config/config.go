@@ -40,6 +40,8 @@ const (
 	envSessionIdleTTLMinutes     = "SESSION_IDLE_TTL_MINUTES"
 	envSessionAbsoluteTTLMinutes = "SESSION_ABSOLUTE_TTL_MINUTES"
 	envBootstrapToken            = "BOOTSTRAP_TOKEN"
+	envUploadDir                 = "UPLOAD_DIR"
+	envUploadMaxBytes            = "UPLOAD_MAX_BYTES"
 )
 
 // Valores por defecto de desarrollo: permiten `make up` en un clon limpio sin
@@ -60,6 +62,10 @@ const (
 	defaultSessionCookieSecure       = false
 	defaultSessionIdleTTLMinutes     = 30
 	defaultSessionAbsoluteTTLMinutes = 60
+	// Imágenes de la portada (F3, R3-8): fuera de Docker `./uploads`; 8 MB de
+	// tope por subida. El compose inyecta el directorio del volumen.
+	defaultUploadDir      = "./uploads"
+	defaultUploadMaxBytes = 8388608
 )
 
 // minSessionSecretLength es la longitud mínima razonable de SESSION_SECRET: la
@@ -98,6 +104,12 @@ type Config struct {
 	// (BOOTSTRAP_TOKEN, cabecera X-Setup-Token). Secreto: sin valor por
 	// defecto en el código (§IV).
 	BootstrapToken string
+	// UploadDir es el directorio donde el backend guarda/lee las imágenes de
+	// la portada (UPLOAD_DIR; por defecto ./uploads fuera de Docker).
+	UploadDir string
+	// UploadMaxBytes es el tope de tamaño por subida (UPLOAD_MAX_BYTES;
+	// por defecto 8388608 = 8 MB).
+	UploadMaxBytes int64
 	// Warnings son avisos de configuración no fatales que el arranque debe
 	// registrar sin impedirlo (p. ej. SESSION_SECRET débil en desarrollo o
 	// BOOTSTRAP_TOKEN vacío). En producción esas mismas debilidades son errores.
@@ -165,6 +177,15 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	cfg.SessionAbsoluteTTL = time.Duration(absoluteMinutes) * time.Minute
+
+	// Imágenes de la portada (F3): directorio y tope de subida. Valores por
+	// defecto usables en local; un valor inválido impide el arranque.
+	cfg.UploadDir = getString(envUploadDir, defaultUploadDir)
+	uploadMaxBytes, err := parsePositiveInt64(envUploadMaxBytes, defaultUploadMaxBytes)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.UploadMaxBytes = uploadMaxBytes
 
 	// R11: en producción la cookie de sesión debe viajar por HTTPS; una cookie
 	// insegura es un fallo de configuración que debe impedir el arranque.
@@ -299,6 +320,20 @@ func parsePositiveMinutes(key string, def int) (int, error) {
 	n, err := strconv.Atoi(raw)
 	if err != nil || n <= 0 {
 		return 0, fmt.Errorf("%s: %q no es un número de minutos válido (entero positivo)", key, raw)
+	}
+	return n, nil
+}
+
+// parsePositiveInt64 lee un entero de 64 bits de key y devuelve def si está
+// ausente o en blanco. Debe ser estrictamente positivo (UPLOAD_MAX_BYTES).
+func parsePositiveInt64(key string, def int64) (int64, error) {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return def, nil
+	}
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("%s: %q no es un número válido (entero positivo)", key, raw)
 	}
 	return n, nil
 }

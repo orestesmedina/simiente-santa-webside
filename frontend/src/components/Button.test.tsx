@@ -24,4 +24,18 @@ describe('Button', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it('la variante accent usa el teal de marca con texto navy (CTAs de la portada)', () => {
+    render(<Button variant="accent">Escribir por WhatsApp</Button>);
+    const boton = screen.getByRole('button', { name: 'Escribir por WhatsApp' });
+    expect(boton.className).toContain('bg-teal');
+    expect(boton.className).toContain('text-navy');
+  });
+
+  it('mantiene intactas las variantes del panel de F2', () => {
+    const { rerender } = render(<Button variant="primary">Guardar</Button>);
+    expect(screen.getByRole('button', { name: 'Guardar' }).className).toContain('bg-slate-900');
+    rerender(<Button variant="danger">Eliminar</Button>);
+    expect(screen.getByRole('button', { name: 'Eliminar' }).className).toContain('bg-red-700');
+  });
 });

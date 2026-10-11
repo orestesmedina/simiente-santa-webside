@@ -431,6 +431,370 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portada": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Portada pública con la información general publicada
+         * @description Devuelve la información general **publicada** (FR-001…FR-007) resuelta al
+         *     idioma pedido (FR-008/FR-009): cada campo traducible usa la versión en
+         *     inglés si existe y, si no, la versión en español (idioma base). **Nunca**
+         *     incluye contenido en borrador (FR-013/SC-002) y **omite por completo**
+         *     las secciones sin elementos publicados (Q10/SC-012): cuando una clave de
+         *     sección está presente, sus arrays nunca son `null` (§8.1.2).
+         *
+         *     Sin autenticación. `Cache-Control: no-store`. Sin paginación: es un
+         *     documento de una sola página (las colecciones están acotadas en el
+         *     servidor: ≤50 servicios y ≤20 canales de WhatsApp).
+         */
+        get: operations["getPortada"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{fileName}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Descarga pública de una imagen subida desde el panel
+         * @description Sirve el archivo de imagen (logo o imagen de portada) cuyo nombre generó
+         *     el servidor en la subida (`img_<uuid>.<ext>`, research R3-8). **Política de
+         *     publicación (FR-013/SC-002, analyze C4)**: solo se sirven archivos
+         *     **referenciados por contenido publicado** — en F3, el logo o la imagen de
+         *     portada de una identidad `published` —. Un archivo que no esté referenciado
+         *     por contenido publicado (elemento retirado a borrador, identidad en
+         *     borrador, subida huérfana o inexistente) responde `404 not_found`, y el
+         *     nombre que no cumple el patrón responde `400 invalid` (analyze M6).
+         *
+         *     El nombre se valida con regex antes de tocar el disco (sin *path
+         *     traversal*); la respuesta lleva `X-Content-Type-Options: nosniff`,
+         *     `Content-Disposition: inline` y **`Cache-Control: no-store`** (trade-off
+         *     de RG3-8: al depender la descarga del estado de publicación, una caché
+         *     `immutable` volvería a mostrar imágenes de elementos ya retirados). Sin
+         *     autenticación: la descarga es pública, pero limitada a lo publicado.
+         */
+        get: operations["getMediaFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Estado completo de la portada para el panel (incluye borradores)
+         * @description Devuelve **todo** el contenido del módulo —identidad, «quiénes somos»,
+         *     contacto, horario, canales de WhatsApp y redes— en **ambos idiomas** y
+         *     con su `publicationState` por elemento (FR-011, US3 esc. 7), incluidos los
+         *     borradores (este es el único lado que los ve; exige el permiso `portada`).
+         *     Los singletons (identidad, quiénes somos, contacto) son `null` hasta el
+         *     primer guardado. Cada colección va en su sobre `{items}` (§8.1.2) acotado
+         *     en el servidor (≤50 servicios, ≤20 canales; redes: 1 por red del catálogo).
+         */
+        get: operations["getPortadaAdmin"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada/identidad": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Guarda la identidad de la iglesia (crea o reemplaza el singleton)
+         * @description Reemplazo completo de la identidad (FR-002/FR-011): nombre oficial,
+         *     lema/misión/visión, logo e imagen de portada con sus textos alternativos
+         *     (FR-019) — versión en español obligatoria y en inglés opcional (FR-008).
+         *     `logoFile`/`coverImageFile` referencian archivos ya subidos con
+         *     `POST /api/v1/admin/portada/imagenes`; un `null` explícito quita la imagen.
+         *     `publicationState` controla la visibilidad del elemento (FR-013); si el
+         *     elemento ya estaba publicado, los cambios guardados son visibles de
+         *     inmediato (FR-014). Auditoría *(analyze M5)*: un cambio de datos registra
+         *     `home.identity.update`; un cambio solo de estado registra
+         *     `home.publish`/`home.unpublish`; un cambio que modifica **datos y estado**
+         *     deja **ambas** filas (FR-017).
+         */
+        put: operations["updateIdentity"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada/quienes-somos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Guarda el texto de «quiénes somos» (crea o reemplaza el singleton)
+         * @description Texto **plano** con límite de 1.000 caracteres por idioma (FR-003):
+         *     `textEs` obligatorio, `textEn` opcional (FR-008). Se guarda íntegro, sin
+         *     interpretar (constitución §IV). Auditoría *(analyze M5)*: un cambio de datos
+         *     registra `home.about.update`; un cambio solo de estado registra
+         *     `home.publish`/`home.unpublish`; un cambio que modifica **datos y estado**
+         *     deja **ambas** filas (FR-017).
+         */
+        put: operations["updateAbout"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada/contacto": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Guarda los datos de contacto (crea o reemplaza el singleton)
+         * @description Dirección física (es obligatoria, en opcional), correo electrónico y
+         *     teléfono (FR-007), todos obligatorios salvo la traducción (FR-015):
+         *     correo con formato de correo y teléfono con el criterio de F2. Auditoría
+         *     *(analyze M5)*: un cambio de datos registra `home.contact.update`; un cambio
+         *     solo de estado registra `home.publish`/`home.unpublish`; un cambio que
+         *     modifica **datos y estado** deja **ambas** filas (FR-017).
+         */
+        put: operations["updateContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada/horario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crea un servicio del horario
+         * @description Un servicio tiene día (0=domingo…6=sábado, **selector localizado por i18n,
+         *     nunca texto libre**), inicio "HH:MM" (24 h) y **fin opcional** `endTime`
+         *     ("HH:MM", posterior al inicio) para rangos tipo «10:00 a. m. − 12:00 m.»;
+         *     nombre/descripción y lugar son traducibles (FR-004/Q3): nombre y lugar en
+         *     español son obligatorios, todo lo demás traducible es opcional (FR-008).
+         *     Nace en `draft` salvo que se envíe `publicationState: published`. Máximo 50
+         *     servicios (constante del servidor). Auditoría *(analyze M5)*: el alta
+         *     registra **siempre** `home.schedule.create`, aunque nazca publicada
+         *     (`home.publish`/`home.unpublish` solo registran cambios de estado, FR-017).
+         */
+        post: operations["createScheduleItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada/horario/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Elimina un servicio del horario
+         * @description Borrado físico (sin historial, Assumptions de la spec). El registro de
+         *     auditoría conserva `targetLabel` del elemento (FR-017/FR-025 de F2).
+         *     Auditoría: `home.schedule.delete`.
+         */
+        delete: operations["deleteScheduleItem"];
+        options?: never;
+        head?: never;
+        /**
+         * Edita un servicio del horario (y/o lo publica o retira)
+         * @description Actualiza los campos presentes (al menos uno). `publicationState` publica
+         *     o retira **este** elemento por separado (FR-013). Sobre un elemento ya
+         *     publicado, los cambios guardados son visibles de inmediato (FR-014).
+         *     Auditoría *(analyze M5)*: un cambio de datos registra `home.schedule.update`;
+         *     un cambio solo de estado registra `home.publish`/`home.unpublish`; un cambio
+         *     que modifica **datos y estado** deja **ambas** filas (FR-017).
+         */
+        patch: operations["updateScheduleItem"];
+        trace?: never;
+    };
+    "/api/v1/admin/portada/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crea un canal de WhatsApp
+         * @description Un canal tiene nombre/propósito (es obligatorio) y **un único destino**
+         *     (FR-005/Q4): `kind=direct` + número de teléfono (se normaliza a dígitos
+         *     con `+` opcional y el visitante abre `https://wa.me/<dígitos>`) o
+         *     `kind=group` + URL `https` de `chat.whatsapp.com`/`wa.me` (FR-015).
+         *     Un canal exactamente igual a otro (mismo `kind`, destino y nombre
+         *     normalizados) se rechaza como duplicado (edge case de la spec). Máximo 20
+         *     canales. Auditoría: `home.whatsapp.create` (FR-017).
+         */
+        post: operations["createWhatsappChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada/whatsapp/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Elimina un canal de WhatsApp
+         * @description Borrado físico. Auditoría: `home.whatsapp.delete` (FR-017).
+         */
+        delete: operations["deleteWhatsappChannel"];
+        options?: never;
+        head?: never;
+        /**
+         * Edita un canal de WhatsApp (y/o lo publica o retira)
+         * @description Igual que `updateScheduleItem` para un canal de WhatsApp (FR-005/FR-013/FR-014).
+         *     Auditoría *(analyze M5)*: un cambio de datos registra `home.whatsapp.update`;
+         *     un cambio solo de estado registra `home.publish`/`home.unpublish`; un cambio
+         *     que modifica **datos y estado** deja **ambas** filas (FR-017).
+         */
+        patch: operations["updateWhatsappChannel"];
+        trace?: never;
+    };
+    "/api/v1/admin/portada/redes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Crea el enlace de una red social
+         * @description Catálogo fijo (FR-006/Q5): `facebook`, `instagram`, `youtube`, `tiktok` o
+         *     `spotify`, con **un solo enlace por red**. Una red fuera del catálogo se
+         *     rechaza (`400`, `details.network`) y un segundo enlace para la misma red
+         *     responde `409`. La URL debe ser `https` del dominio oficial de esa red.
+         *     Auditoría: `home.social.create` (FR-017).
+         */
+        post: operations["createSocialLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/portada/redes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Elimina el enlace de una red social
+         * @description Borrado físico. Auditoría: `home.social.delete` (FR-017).
+         */
+        delete: operations["deleteSocialLink"];
+        options?: never;
+        head?: never;
+        /**
+         * Edita el enlace de una red social (y/o lo publica o retira)
+         * @description Igual que `updateScheduleItem` para un enlace de red (FR-006/FR-013/FR-014).
+         *     Auditoría *(analyze M5)*: un cambio de datos registra `home.social.update`;
+         *     un cambio solo de estado registra `home.publish`/`home.unpublish`; un cambio
+         *     que modifica **datos y estado** deja **ambas** filas (FR-017).
+         */
+        patch: operations["updateSocialLink"];
+        trace?: never;
+    };
+    "/api/v1/admin/portada/imagenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sube el logotipo o la imagen de portada
+         * @description Recibe `multipart/form-data` con el campo `file`. El servidor **genera el
+         *     nombre** (`img_<uuid>.<ext>`), detecta el tipo por **firma binaria** y solo
+         *     admite `image/jpeg`, `image/png` e `image/webp` (sin SVG ni GIF: research
+         *     R3-8), con tope de 8 MB (`UPLOAD_MAX_BYTES`). El resultado se referencia
+         *     desde `PUT /api/v1/admin/portada/identidad` (`logoFile`/`coverImageFile`).
+         *     La subida **no** cambia contenido visible: no aparece en la portada hasta
+         *     que la identidad que la referencia se guarda publicada. Auditoría
+         *     *(analyze I8)*: cada subida deja su fila **`home.image.upload`**
+         *     (`targetLabel` = `Portada · Imagen · <fileName>`) en la misma operación
+         *     (fail-closed: si el registro falla, se aborta la subida y se elimina el
+         *     archivo); la referencia a la identidad se registra aparte con
+         *     `home.identity.update` al guardar. Los archivos huérfanos (subidas sin
+         *     referencia) se eliminan con el reemplazo/borrado best-effort del servicio.
+         */
+        post: operations["uploadPortadaImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -794,25 +1158,39 @@ export interface components {
              *     (FR-007) se registra como `user.create` sin actor: cuenta como
              *     creación de cuenta. El cambio de la propia contraseña (FR-020) **no**
              *     aparece aquí.
+             *
+             *     F3 (FR-017) añade los 15 códigos `home.*` de la portada, con la regla
+             *     exacta de `analyze` M5: el alta usa `home.*.create` aunque el elemento
+             *     nazca publicado; `home.publish`/`home.unpublish` registran **solo**
+             *     cambios de estado (una edición que cambia datos y estado deja dos
+             *     filas); la subida de una imagen se audita con `home.image.upload`
+             *     (`analyze` I8).
              * @enum {string}
              */
-            action: "user.create" | "user.update" | "user.activate" | "user.deactivate" | "user.password_reset" | "role.create" | "role.update" | "role.delete";
+            action: "user.create" | "user.update" | "user.activate" | "user.deactivate" | "user.password_reset" | "role.create" | "role.update" | "role.delete" | "home.identity.update" | "home.about.update" | "home.contact.update" | "home.schedule.create" | "home.schedule.update" | "home.schedule.delete" | "home.whatsapp.create" | "home.whatsapp.update" | "home.whatsapp.delete" | "home.social.create" | "home.social.update" | "home.social.delete" | "home.image.upload" | "home.publish" | "home.unpublish";
             /**
-             * @description Sobre qué se hizo (una cuenta o un rol).
+             * @description Sobre qué se hizo: una cuenta (`user`), un rol (`role`) o un elemento
+             *     de contenido de la portada (`content`, F3). Para `content`,
+             *     `targetId` es `null` (los elementos de la portada no tienen FK en
+             *     `admin_actions`) y `targetLabel` identifica el elemento
+             *     (`Portada · <Sección> · <nombre>`).
              * @enum {string}
              */
-            targetKind: "user" | "role";
+            targetKind: "user" | "role" | "content";
             /**
              * Format: uuid
              * @description Cuenta o rol sobre el que se hizo. `null` cuando no llegó a existir
              *     (p. ej. una creación rechazada por duplicado) o cuando el rol ya fue
              *     eliminado (FR-017): el registro se conserva igualmente (FR-025) y su
-             *     `targetLabel` sigue diciendo sobre qué fue.
+             *     `targetLabel` sigue diciendo sobre qué fue. En las acciones con
+             *     `targetKind: content` (F3) es siempre `null`: el elemento de la
+             *     portada se identifica por su `targetLabel`.
              */
             targetId: string | null;
             /**
-             * @description Etiqueta del objetivo en el momento de la acción (correo de la cuenta
-             *     o nombre del rol). Se conserva aunque después se edite o elimine.
+             * @description Etiqueta del objetivo en el momento de la acción (correo de la cuenta,
+             *     nombre del rol o, en F3, `Portada · <Sección> · <nombre del
+             *     elemento>`). Se conserva aunque después se edite o elimine.
              */
             targetLabel: string | null;
             /**
@@ -835,6 +1213,361 @@ export interface components {
             total: number;
             limit: number;
             offset: number;
+        };
+        /**
+         * @description Estado de publicación **por elemento** (FR-013, Decisión 4): `draft` no es
+         *     visible para el visitante; `published` sí. Se publica al guardar (FR-014).
+         * @enum {string}
+         */
+        PublicationState: "draft" | "published";
+        /**
+         * @description Información general publicada, resuelta a `lang` (fallback `en → es` por
+         *     campo, FR-009). Las claves de sección están presentes **solo** si tienen
+         *     elementos publicados (Q10/SC-012); si están presentes, sus arrays nunca
+         *     son `null`. `identity`, `about` y `contact` son objetos únicos (FR-002,
+         *     FR-003, FR-007).
+         */
+        PortadaPublica: {
+            /**
+             * @description Idioma en el que se resolvieron los contenidos.
+             * @enum {string}
+             */
+            lang: "es" | "en";
+            identity?: components["schemas"]["IdentityPublic"];
+            about?: components["schemas"]["AboutPublic"];
+            schedule?: components["schemas"]["ScheduleItemPublic"][];
+            whatsapp?: components["schemas"]["WhatsappChannelPublic"][];
+            socials?: components["schemas"]["SocialLinkPublic"][];
+            contact?: components["schemas"]["ContactPublic"];
+        };
+        /** @description Identidad publicada (FR-002), ya localizada a `lang`. */
+        IdentityPublic: {
+            /** @description Nombre oficial de la iglesia. */
+            name: string;
+            tagline?: string;
+            mission?: string;
+            vision?: string;
+            /** @description URL relativa al origen de la API (`/api/v1/media/<file>`). */
+            logoUrl?: string;
+            /** @description Texto alternativo del logotipo (FR-019). */
+            logoAlt?: string;
+            /** @description URL relativa al origen de la API (`/api/v1/media/<file>`). */
+            coverImageUrl?: string;
+            coverImageAlt?: string;
+        };
+        /** @description «Quiénes somos» publicado (FR-003), texto plano ya localizado. */
+        AboutPublic: {
+            text: string;
+        };
+        /** @description Servicio del horario publicado (FR-004), ya localizado. */
+        ScheduleItemPublic: {
+            /** Format: uuid */
+            id: string;
+            /** @description 0 = domingo … 6 = sábado. El nombre del día lo localiza el cliente. */
+            dayOfWeek: number;
+            /** @description Hora de inicio ("HH:MM", 24 h). */
+            startTime: string;
+            /**
+             * @description Hora de fin opcional ("HH:MM", 24 h; posterior a `startTime`) para
+             *     rangos tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
+             */
+            endTime?: string | null;
+            name: string;
+            description?: string;
+            place: string;
+        };
+        /**
+         * @description Canal de WhatsApp publicado (FR-005), ya localizado. `url` es el enlace
+         *     listo para abrir el canal: `https://wa.me/<dígitos>` para `direct`, o la
+         *     URL del grupo para `group` (SC-009: se abre con un clic o toque).
+         */
+        WhatsappChannelPublic: {
+            /** Format: uuid */
+            id: string;
+            /** @description Nombre/propósito del canal. */
+            name: string;
+            /** @enum {string} */
+            kind: "direct" | "group";
+            /** Format: uri */
+            url: string;
+        };
+        /** @description Red social publicada (FR-006), un enlace por red del catálogo. */
+        SocialLinkPublic: {
+            /** Format: uuid */
+            id: string;
+            network: components["schemas"]["SocialNetwork"];
+            /** Format: uri */
+            url: string;
+        };
+        /** @description Datos de contacto publicados (FR-007), ya localizados. */
+        ContactPublic: {
+            address: string;
+            /** Format: email */
+            email: string;
+            phone: string;
+        };
+        /**
+         * @description Estado completo del módulo (FR-011), en **ambos idiomas** y con
+         *     `publicationState` por elemento. Los singletons son `null` hasta el primer
+         *     guardado. Cada colección va en su sobre `{items}` (§8.1.2).
+         */
+        PortadaAdmin: {
+            identity: components["schemas"]["IdentityAdmin"] | null;
+            about: components["schemas"]["AboutAdmin"] | null;
+            contact: components["schemas"]["ContactAdmin"] | null;
+            schedule: {
+                items: components["schemas"]["ScheduleItemAdmin"][];
+            };
+            whatsapp: {
+                items: components["schemas"]["WhatsappChannelAdmin"][];
+            };
+            socials: {
+                items: components["schemas"]["SocialLinkAdmin"][];
+            };
+        };
+        /** @description Identidad con sus dos idiomas (es obligatorio, en opcional, FR-008). */
+        IdentityAdmin: {
+            nameEs: string;
+            nameEn?: string | null;
+            taglineEs?: string | null;
+            taglineEn?: string | null;
+            missionEs?: string | null;
+            missionEn?: string | null;
+            visionEs?: string | null;
+            visionEn?: string | null;
+            /** @description Nombre del archivo del logotipo (`img_<uuid>.<ext>`). */
+            logoFile?: string | null;
+            logoAltEs?: string | null;
+            logoAltEn?: string | null;
+            coverImageFile?: string | null;
+            coverImageAltEs?: string | null;
+            coverImageAltEn?: string | null;
+            publicationState: components["schemas"]["PublicationState"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Reemplazo completo (PUT). `nameEs` obligatorio (FR-015); el resto, con
+         *     traducción en inglés opcional (FR-008). Todo campo `*En` acepta `""`/solo
+         *     espacios y se guarda como `null` (analyze I6). `logoFile`/`coverImageFile`
+         *     referencian archivos ya subidos; si hay imagen, `logoAltEs`/
+         *     `coverImageAltEs` son obligatorios (FR-019). `null` explícito quita la
+         *     imagen correspondiente.
+         */
+        IdentityInput: {
+            nameEs: string;
+            nameEn?: string | null;
+            taglineEs?: string | null;
+            taglineEn?: string | null;
+            missionEs?: string | null;
+            missionEn?: string | null;
+            visionEs?: string | null;
+            visionEn?: string | null;
+            logoFile?: string | null;
+            logoAltEs?: string | null;
+            logoAltEn?: string | null;
+            coverImageFile?: string | null;
+            coverImageAltEs?: string | null;
+            coverImageAltEn?: string | null;
+            publicationState: components["schemas"]["PublicationState"];
+        };
+        AboutAdmin: {
+            textEs: string;
+            textEn?: string | null;
+            publicationState: components["schemas"]["PublicationState"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description Texto plano (FR-003); `textEs` obligatorio y ≤1.000 caracteres (FR-015). `textEn` acepta `""`/espacios y se guarda como `null` (analyze I6). */
+        AboutInput: {
+            textEs: string;
+            textEn?: string | null;
+            publicationState: components["schemas"]["PublicationState"];
+        };
+        ContactAdmin: {
+            addressEs: string;
+            addressEn?: string | null;
+            /** Format: email */
+            email: string;
+            /** @description Formato telefónico de F2 (dígitos, separadores habituales, `+` opcional, ≥7 dígitos). */
+            phone: string;
+            publicationState: components["schemas"]["PublicationState"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description Dirección, correo y teléfono son obligatorios (FR-015); `addressEn` opcional (`""`/espacios → `null`, analyze I6). */
+        ContactInput: {
+            addressEs: string;
+            addressEn?: string | null;
+            /** Format: email */
+            email: string;
+            phone: string;
+            publicationState: components["schemas"]["PublicationState"];
+        };
+        ScheduleItemAdmin: {
+            /** Format: uuid */
+            id: string;
+            dayOfWeek: number;
+            startTime: string;
+            /**
+             * @description Hora de fin opcional ("HH:MM", posterior a `startTime`) para rangos
+             *     tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
+             */
+            endTime?: string | null;
+            nameEs: string;
+            nameEn?: string | null;
+            descriptionEs?: string | null;
+            descriptionEn?: string | null;
+            placeEs: string;
+            placeEn?: string | null;
+            publicationState: components["schemas"]["PublicationState"];
+            /** @description Orden de presentación (por defecto 0; se muestra por `sortOrder, id`). */
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Alta de un servicio (FR-004/FR-015): día (0–6, selector localizado, nunca
+         *     texto libre), inicio y nombre/lugar en español obligatorios; **`endTime`
+         *     (fin "HH:MM") es opcional** para rangos (analyze C2), al igual que la
+         *     descripción y las traducciones al inglés (`""`/espacios → `null`, analyze
+         *     I6). Sin `id` (lo genera el servidor) ni `createdAt`/`updatedAt`.
+         */
+        ScheduleItemInput: {
+            dayOfWeek: number;
+            startTime: string;
+            /**
+             * @description Hora de fin opcional ("HH:MM", posterior a `startTime`) para rangos
+             *     tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
+             */
+            endTime?: string | null;
+            nameEs: string;
+            nameEn?: string | null;
+            descriptionEs?: string | null;
+            descriptionEn?: string | null;
+            placeEs: string;
+            placeEn?: string | null;
+            publicationState?: components["schemas"]["PublicationState"];
+            sortOrder?: number;
+        };
+        /**
+         * @description Edición parcial de un servicio: se actualizan los campos presentes (al
+         *     menos uno). Un campo `*En` con `null` o `""`/espacios vacía su traducción
+         *     al inglés (analyze I6); `endTime: null` quita la hora de fin.
+         */
+        ScheduleItemPatch: {
+            dayOfWeek?: number;
+            startTime?: string;
+            /**
+             * @description Hora de fin opcional ("HH:MM", posterior a `startTime`) para rangos
+             *     tipo «10:00 a. m. − 12:00 m.» (analyze C2). `null` = sin hora de fin.
+             */
+            endTime?: string | null;
+            nameEs?: string;
+            nameEn?: string | null;
+            descriptionEs?: string | null;
+            descriptionEn?: string | null;
+            placeEs?: string;
+            placeEn?: string | null;
+            publicationState?: components["schemas"]["PublicationState"];
+            sortOrder?: number;
+        };
+        WhatsappChannelAdmin: {
+            /** Format: uuid */
+            id: string;
+            nameEs: string;
+            nameEn?: string | null;
+            /** @enum {string} */
+            kind: "direct" | "group";
+            /**
+             * @description Destino único del canal (FR-005): teléfono normalizado (`direct`) o
+             *     URL del grupo (`group`).
+             */
+            destination: string;
+            publicationState: components["schemas"]["PublicationState"];
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Alta de un canal (FR-005/FR-015). `kind=direct` exige teléfono con
+         *     formato válido; `kind=group` exige URL `https` de `chat.whatsapp.com` o
+         *     `wa.me`. El duplicado exacto (kind + destino + nombre normalizados) → 409.
+         *     `nameEn` acepta `""`/espacios y se guarda como `null` (analyze I6).
+         */
+        WhatsappChannelInput: {
+            nameEs: string;
+            nameEn?: string | null;
+            /** @enum {string} */
+            kind: "direct" | "group";
+            destination: string;
+            publicationState?: components["schemas"]["PublicationState"];
+            sortOrder?: number;
+        };
+        /** @description Edición parcial de un canal (al menos un campo presente). `nameEn` acepta `""`/espacios y se guarda como `null` (analyze I6). */
+        WhatsappChannelPatch: {
+            nameEs?: string;
+            nameEn?: string | null;
+            /** @enum {string} */
+            kind?: "direct" | "group";
+            destination?: string;
+            publicationState?: components["schemas"]["PublicationState"];
+            sortOrder?: number;
+        };
+        /**
+         * @description Catálogo fijo de redes (FR-006/Q5). Añadir una red equivalente (p. ej. X)
+         *     es un ajuste menor acordado con el humano: migración que extiende el
+         *     `CHECK` + dominio permitido en el service.
+         * @enum {string}
+         */
+        SocialNetwork: "facebook" | "instagram" | "youtube" | "tiktok" | "spotify";
+        SocialLinkAdmin: {
+            /** Format: uuid */
+            id: string;
+            network: components["schemas"]["SocialNetwork"];
+            /** Format: uri */
+            url: string;
+            publicationState: components["schemas"]["PublicationState"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Alta del enlace de una red (FR-006/FR-015): red del catálogo y URL `https`
+         *     del dominio oficial de esa red. Un segundo enlace para la misma red → 409.
+         */
+        SocialLinkInput: {
+            network: components["schemas"]["SocialNetwork"];
+            /** Format: uri */
+            url: string;
+            publicationState?: components["schemas"]["PublicationState"];
+        };
+        /** @description Edición parcial del enlace de una red (al menos un campo presente). */
+        SocialLinkPatch: {
+            network?: components["schemas"]["SocialNetwork"];
+            /** Format: uri */
+            url?: string;
+            publicationState?: components["schemas"]["PublicationState"];
+        };
+        /** @description Resultado de una subida (research R3-8). `url` es relativa al origen de la API. */
+        ImageUploadResult: {
+            fileName: string;
+            /** @description `/api/v1/media/<fileName>` */
+            url: string;
+            /** @enum {string} */
+            mimeType: "image/jpeg" | "image/png" | "image/webp";
+            sizeBytes: number;
         };
     };
     responses: {
@@ -1066,6 +1799,8 @@ export interface components {
          *     día siguiente.
          */
         AuditTo: string;
+        /** @description Identificador (UUID) del elemento de la portada. */
+        PortadaItemId: string;
     };
     requestBodies: never;
     headers: never;
@@ -1661,6 +2396,465 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminActionList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    getPortada: {
+        parameters: {
+            query?: {
+                /** @description Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8). */
+                lang?: "es" | "en";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Información general publicada, localizada a `lang`. */
+            200: {
+                headers: {
+                    /** @description Siempre `no-store` (SC-003: los cambios guardados se ven en la primera carga posterior). */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortadaPublica"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    getMediaFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Nombre del archivo tal como lo devolvió la subida (`fileName` de `ImageUploadResult`). */
+                fileName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binario de imagen (JPEG, PNG o WebP según la firma detectada en la subida). */
+            200: {
+                headers: {
+                    /** @description Siempre `no-store` (la descarga depende del estado de publicación, RG3-8). */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/webp": string;
+                };
+            };
+            400: components["responses"]["Invalid"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    getPortadaAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Estado completo del módulo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortadaAdmin"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    updateIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdentityInput"];
+            };
+        };
+        responses: {
+            /** @description Identidad guardada. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    updateAbout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AboutInput"];
+            };
+        };
+        responses: {
+            /** @description Texto guardado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AboutAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    updateContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContactInput"];
+            };
+        };
+        responses: {
+            /** @description Datos de contacto guardados. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContactAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    createScheduleItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleItemInput"];
+            };
+        };
+        responses: {
+            /** @description Servicio creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleItemAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    deleteScheduleItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de la portada. */
+                id: components["parameters"]["PortadaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Servicio eliminado (sin cuerpo). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    updateScheduleItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de la portada. */
+                id: components["parameters"]["PortadaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleItemPatch"];
+            };
+        };
+        responses: {
+            /** @description Servicio guardado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleItemAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    createWhatsappChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsappChannelInput"];
+            };
+        };
+        responses: {
+            /** @description Canal creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappChannelAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    deleteWhatsappChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de la portada. */
+                id: components["parameters"]["PortadaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canal eliminado (sin cuerpo). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    updateWhatsappChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de la portada. */
+                id: components["parameters"]["PortadaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsappChannelPatch"];
+            };
+        };
+        responses: {
+            /** @description Canal guardado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatsappChannelAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    createSocialLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialLinkInput"];
+            };
+        };
+        responses: {
+            /** @description Enlace creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SocialLinkAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    deleteSocialLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de la portada. */
+                id: components["parameters"]["PortadaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Enlace eliminado (sin cuerpo). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    updateSocialLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del elemento de la portada. */
+                id: components["parameters"]["PortadaItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SocialLinkPatch"];
+            };
+        };
+        responses: {
+            /** @description Enlace guardado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SocialLinkAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+        };
+    };
+    uploadPortadaImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Archivo de imagen (JPEG/PNG/WebP, ≤8 MB).
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Archivo almacenado; `url` es relativa al origen de la API. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageUploadResult"];
                 };
             };
             400: components["responses"]["Invalid"];

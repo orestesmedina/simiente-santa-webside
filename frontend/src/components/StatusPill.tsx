@@ -1,5 +1,13 @@
 export type StatusPillValue =
-  'active' | 'inactive' | 'success' | 'failure' | 'completed' | 'not-completed' | 'denied';
+  | 'active'
+  | 'inactive'
+  | 'draft'
+  | 'published'
+  | 'success'
+  | 'failure'
+  | 'completed'
+  | 'not-completed'
+  | 'denied';
 
 export interface StatusPillProps {
   value: StatusPillValue;
@@ -10,6 +18,8 @@ export interface StatusPillProps {
 const DEFAULT_LABELS: Record<StatusPillValue, string> = {
   active: 'Activo',
   inactive: 'Inactivo',
+  draft: 'Borrador',
+  published: 'Publicado',
   success: 'Exitoso',
   failure: 'Fallido',
   completed: 'Completada',
@@ -20,6 +30,8 @@ const DEFAULT_LABELS: Record<StatusPillValue, string> = {
 const TONE_CLASSES: Record<StatusPillValue, string> = {
   active: 'bg-green-100 text-green-900 border border-green-700',
   inactive: 'bg-slate-100 text-slate-900 border border-slate-400',
+  draft: 'bg-slate-100 text-slate-900 border border-slate-400',
+  published: 'bg-green-100 text-green-900 border border-green-700',
   success: 'bg-green-100 text-green-900 border border-green-700',
   failure: 'bg-red-100 text-red-900 border border-red-700',
   completed: 'bg-green-100 text-green-900 border border-green-700',

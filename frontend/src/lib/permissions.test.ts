@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { ADMIN_USERS_ROLES, hasAnyPermission, hasPermission } from './permissions';
+import { ADMIN_USERS_ROLES, PORTADA, hasAnyPermission, hasPermission } from './permissions';
 
 describe('hasPermission', () => {
   it('devuelve true cuando la sesión tiene el permiso', () => {
     expect(hasPermission({ permissions: [ADMIN_USERS_ROLES] }, ADMIN_USERS_ROLES)).toBe(true);
+  });
+
+  it('devuelve true cuando la sesión tiene el permiso portada (F3)', () => {
+    expect(hasPermission({ permissions: [PORTADA] }, PORTADA)).toBe(true);
+    expect(hasPermission({ permissions: [PORTADA] }, ADMIN_USERS_ROLES)).toBe(false);
   });
 
   it('devuelve false cuando la sesión no tiene el permiso', () => {

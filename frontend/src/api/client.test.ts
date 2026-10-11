@@ -1,7 +1,14 @@
 import { delay, http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '../test/server';
-import { API_BASE_URL, ApiError, apiFetch, readCookie, type ErrorEnvelope } from './client';
+import {
+  API_BASE_URL,
+  ApiError,
+  apiFetch,
+  mediaUrl,
+  readCookie,
+  type ErrorEnvelope,
+} from './client';
 import { getSystemStatus } from './status';
 
 const healthzUrl = `${API_BASE_URL}/healthz`;
@@ -263,5 +270,31 @@ describe('readCookie', () => {
 
   it('devuelve null si la cookie no existe', () => {
     expect(readCookie('csrf_token')).toBeNull();
+  });
+});
+
+describe('mediaUrl', () => {
+  it('resuelve una URL de media relativa contra la base de la API (bug F3)', () => {
+    expect(mediaUrl('/api/v1/media/img_logo.jpg')).toBe(
+      `${API_BASE_URL}/api/v1/media/img_logo.jpg`,
+    );
+  });
+
+  it('deja intacta una URL ya absoluta (http/https/data)', () => {
+    const http = 'http://cdn.example.com/logo.png';
+    const https = 'https://cdn.example.com/logo.png';
+    const data = 'data:image/png;base64,AAAA';
+    expect(mediaUrl(http)).toBe(http);
+    expect(mediaUrl(https)).toBe(https);
+    expect(mediaUrl(data)).toBe(data);
+  });
+
+  it('deja intacta una URL protocolo-relativa (//host)', () => {
+    expect(mediaUrl('//cdn.example.com/logo.png')).toBe('//cdn.example.com/logo.png');
+  });
+
+  it('propaga undefined y cadena vacía sin cambios', () => {
+    expect(mediaUrl(undefined)).toBeUndefined();
+    expect(mediaUrl('')).toBe('');
   });
 });

@@ -179,6 +179,54 @@ func TestPhone(t *testing.T) {
 	}
 }
 
+func TestURL(t *testing.T) {
+	type dto struct {
+		URL string `json:"url" validate:"required,url,max=500"`
+	}
+
+	valid := []string{
+		"https://chat.whatsapp.com/AbCdEf123",
+		"https://www.facebook.com/simiente",
+		"https://ejemplo.com/ruta?x=1#frag",
+	}
+	for _, link := range valid {
+		if err := Struct(dto{URL: link}); err != nil {
+			t.Errorf("Struct(url=%q) = %v, se esperaba nil", link, err)
+		}
+	}
+
+	invalid := []string{
+		"http://ejemplo.com",
+		"javascript:alert(1)",
+		"data:text/html;base64,PHNjcmlwdD4=",
+		"ejemplo.com",
+		"https://",
+		"/ruta/relativa",
+	}
+	for _, link := range invalid {
+		details := invalidDetails(t, Struct(dto{URL: link}))
+		msg, ok := details["url"].(string)
+		if !ok || !strings.Contains(msg, "https") {
+			t.Errorf("details[url] para %q = %v, se esperaba un aviso de enlace https", link, details["url"])
+		}
+	}
+
+	// El límite de longitud del propio tag url (500).
+	long := "https://ejemplo.com/" + strings.Repeat("a", maxURLLength)
+	details := invalidDetails(t, Struct(dto{URL: long}))
+	if msg, _ := details["url"].(string); !strings.Contains(msg, "500") {
+		t.Errorf("details[url] = %v, se esperaba el límite de 500 caracteres", details["url"])
+	}
+
+	// Un valor vacío con omitempty no se valida.
+	type optional struct {
+		URL string `json:"url" validate:"omitempty,url"`
+	}
+	if err := Struct(optional{URL: ""}); err != nil {
+		t.Errorf("omitempty,url con vacío = %v, se esperaba nil", err)
+	}
+}
+
 func TestValidDTOProducesNil(t *testing.T) {
 	type dto struct {
 		FirstName string `json:"firstName" validate:"required,min=1,max=120"`

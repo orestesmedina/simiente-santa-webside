@@ -19,6 +19,8 @@ import (
 	"simiente-santa/backend/internal/platform/logger"
 	"simiente-santa/backend/internal/platform/middleware"
 	"simiente-santa/backend/internal/platform/session"
+	"simiente-santa/backend/internal/platform/storage"
+	"simiente-santa/backend/internal/portada"
 	"simiente-santa/backend/internal/status"
 	"simiente-santa/backend/internal/usuarios"
 )
@@ -107,6 +109,22 @@ func main() {
 		Audit:      auditSvc,
 	})
 
+	// Dominio portada (F3): repositorio sobre el mismo pool, almacén local de
+	// imágenes (UPLOAD_DIR/UPLOAD_MAX_BYTES) y servicio que también es el
+	// audit.Recorder del grupo de panel (T321).
+	portadaRepo := portada.NewRepository(pool)
+	portadaStore := storage.NewLocalStore(cfg.UploadDir, cfg.UploadMaxBytes)
+	portadaSvc := portada.NewService(portada.ServiceDeps{
+		Repository: portadaRepo,
+		Store:      portadaStore,
+		Logger:     appLog,
+	})
+	portadaHandler := portada.NewHandler(portada.HandlerDeps{
+		Service:        portadaSvc,
+		MaxUploadBytes: cfg.UploadMaxBytes,
+		Logger:         appLog,
+	})
+
 	handler := usuarios.NewHandler(usuarios.HandlerDeps{
 		Access:     authSvc,
 		Setup:      initSvc,
@@ -150,6 +168,18 @@ func main() {
 			// (T240) se publican desde este handler.
 			Handler: handler,
 		},
+		portadaHandler: portadaHandler,
+		portadaAdmin: portada.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions: sessions,
+				Resolver: authSvc,
+				// El Recorder del grupo de la portada es el service de F3
+				// (T321): registra las denegaciones del módulo.
+				Recorder:   portadaSvc,
+				CSRFSecret: cfg.SessionSecret,
+				Logger:     appLog,
+			},
+		},
 	}
 
 	srv := httpserver.New(newMux(deps, appLog),
@@ -168,19 +198,24 @@ func main() {
 // struct para que newMux sea puro y las pruebas puedan inyectar dobles sin base
 // de datos ni Redis (FR-011).
 type apiDeps struct {
-	statusRepo  status.Repository
-	authHandler *usuarios.Handler
-	public      usuarios.PublicDeps
-	admin       usuarios.AdminDeps
+	statusRepo     status.Repository
+	authHandler    *usuarios.Handler
+	public         usuarios.PublicDeps
+	admin          usuarios.AdminDeps
+	portadaHandler *portada.Handler
+	portadaAdmin   portada.AdminDeps
 }
 
-// newMux compone el enrutador con las rutas de status y las del dominio usuarios
-// (acceso y grupo de panel). Recibe las dependencias ya construidas.
+// newMux compone el enrutador con las rutas de status y las de los dominios
+// usuarios (acceso y grupo de panel) y portada (superficie pública y panel).
+// Recibe las dependencias ya construidas.
 func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	root := httpserver.NewMuxRegistrar(mux)
 	status.RegisterPublic(root, status.NewHandler(status.NewService(deps.statusRepo), appLog))
 	usuarios.RegisterPublic(root, deps.authHandler, deps.public)
 	usuarios.RegisterAdmin(root, deps.admin)
+	portada.RegisterPublic(root, deps.portadaHandler)
+	portada.RegisterAdmin(root, deps.portadaHandler, deps.portadaAdmin)
 	return mux
 }

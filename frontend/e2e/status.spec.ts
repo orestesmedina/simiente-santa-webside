@@ -10,10 +10,12 @@ import { expect, test } from '@playwright/test';
  * **manualmente** con `quickstart.md` §4 — no se automatizan aquí porque
  * exigirían manipular contenedores.
  */
-test('la página inicial muestra el estado del sistema sin acciones adicionales', async ({
+test('la página de estado (/health) muestra el estado del sistema sin acciones adicionales', async ({
   page,
 }) => {
-  await page.goto('/');
+  // F3 (T331) movió la pantalla de estado de `/` a `/health`: la portada pública
+  // pasa a ser `/`. El endpoint `/healthz` del backend no cambió.
+  await page.goto('/health');
 
   // Sin pulsar nada: la consulta se dispara al montar (ux.md §1).
   // El ping de BD responde en ≤2 s (D8), así que el estado debe estar visible
