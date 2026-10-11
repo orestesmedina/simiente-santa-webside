@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 003-portada-info-general |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (entrega preparada; **PR pendiente de push por el humano**) |
-| Ciclo de corrección | 2/3 (cerrado) |
-| Próximo paso | Empujar la rama y abrir el PR (no hay `gh`/credenciales en este entorno); luego **aprobación humana del merge**. Al aprobar: `make costos CERRAR=1` y roadmap → `terminada`. Pendientes manuales: SC-010 y lector de pantalla de SC-008 |
+| Fase | **Terminada** (F3 fusionada en `main`; PR [#6](https://github.com/orestesmedina/simiente-santa-webside/pull/6) aprobado y mergeado el 2026-10-10) |
+| Ciclo de corrección | 2/3 (cerrado) + 1 flujo de bug (imágenes) |
+| Próximo paso | F3 cerrada y **costo congelado** (263.2 M ≈ $8.67). Siguiente: **F10 — Sistema de diseño y movimiento** (nueva spec con `equipo-feature`), recomendado antes de F4. Pendiente de despliegue a producción (aprobación humana). |
 | Bloqueado por | — (Docker operativo; e2e ejecutables con `LD_LIBRARY_PATH=/tmp/opencode/pwlibs/usr/lib/x86_64-linux-gnu`) |
 | Actualizado | 2026-10-09 |
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-09 | "apruebo la spec" |
 | Plan | aprobado | humano | 2026-10-09 | "si" (respuesta a «¿Apruebas el plan de F3?») |
-| PR / merge | pendiente | | | |
+| PR / merge | aprobado | humano | 2026-10-10 | "ya aprobé el PR y ya hice merge de la rama" (PR [#6](https://github.com/orestesmedina/simiente-santa-webside/pull/6) fusionado en `main`) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -78,3 +78,4 @@ Una línea por sesión o hito, la más reciente arriba.
 - 2026-10-10 — **Validación (Fase 7) y corrección (ciclo 2) cerradas**: ciclo 1 → B1 (bloqueante: `PATCH` `null`), I1 (importante) y A1 (menor) corregidos y **re-validados con APROBADO de los tres roles**; N1 (menor) también corregido. Fase 8 (convergencia): 40/40 tareas, 0 pendientes → **Converged**. Arranca la Fase 9 (entrega).
 - 2026-10-10 — **Fase 9 (entrega) preparada**: `documentador` actualizó `CHANGELOG.md` (0.3.0), `README.md`, `quickstart.md` y creó `docs/entrega/F3-portada-e-informacion-general.md`; `devops` verificó la entrega (sin deriva, compose/`.env.example` ok, `.github/` intacto) y redactó `pr.md`. El push y la apertura del PR quedan pendientes (este entorno no tiene `gh` ni credenciales de GitHub). Roadmap: F3 → **en revisión**.
 - 2026-10-10 — **Bug de imágenes (equipo-bug) corregido y validado**: `qa-tester` lo reprodujo (`b257e0b`), `dev-frontend` lo arregló (`ec2ae76`, `mediaUrl`), se cerró el importante I-1 (`1d60acc`) y los tres roles aprobaron; CHANGELOG actualizado. El rediseño moderno queda como **F10** en el roadmap (pendiente de arrancar).
+- 2026-10-10 — **F3 TERMINADA**: el humano aprobó y fusionó el PR [#6](https://github.com/orestesmedina/simiente-santa-webside/pull/6) en `main`. **Costo cerrado** (`make costos CERRAR=1`): 263.2 M tokens ≈ **$8.67**. Roadmap: F3 → *terminada*. Siguiente: **F10 — Sistema de diseño y movimiento**.
