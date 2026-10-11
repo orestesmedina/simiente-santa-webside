@@ -1,60 +1,64 @@
 import { mediaUrl } from '../../../api/client';
-import type { IdentityPublic, SocialLinkPublic } from '../../../api/portada';
+import type {
+  ContactPublic,
+  IdentityPublic,
+  SocialLinkPublic,
+  WhatsappChannelPublic,
+} from '../../../api/portada';
+import type { SiteLink } from '../hooks/useSiteLinks';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import { useLanguage } from '../i18n/useLanguage';
-import { SOCIAL_NETWORK_LABELS } from '../social';
 import { BrandLogo } from './BrandLogo';
-import { SocialIcon } from './SocialIcon';
+import { FooterSiteMap } from './FooterSiteMap';
 
 export interface PublicFooterProps {
   /** Identidad publicada; si no hay, se usa el respaldo de marca (R3-18). */
   identity?: IdentityPublic;
+  /** Secciones publicadas (misma fuente única que la cabecera). */
+  links: SiteLink[];
+  /** Datos de contacto (grupo Contacto del mapa). */
+  contact?: ContactPublic;
+  /** Redes (grupo Síguenos del mapa). */
   socials?: SocialLinkPublic[];
+  /** Canales de WhatsApp (enlace «Contacto: WhatsApp» del mapa). */
+  whatsapp?: WhatsappChannelPublic[];
 }
 
 /**
- * Pie del sitio público (ux.md §4.1): logo y nombre (identidad publicada o
- * respaldo estático de marca), redes compactas, la frase de voz de marca
- * `footer.welcome` (**cadena de interfaz**, analyze I4: no es contenido
- * editable) y el selector de idioma.
+ * Pie del sitio público con la propuesta B «Marea Turquesa» (T1016/FR-027):
+ * marca + logotipo (con sus colores originales sobre `--logo-surface`),
+ * **mapa del sitio** (`FooterSiteMap`: Explorar / Contacto / Síguenos) y franja
+ * inferior con el lema (`footer.welcome`) y el selector de idioma
+ * (comportamiento F3 intacto, US4 esc. 5).
+ *
+ * El `<footer>`/landmark `contentinfo` de F3 se conserva tal cual (R10-9) y la
+ * **marca del pie es texto, no enlace** (D20/C3): el enlace cuyo texto incluye
+ * «Simiente» lo garantiza la cabecera (`SiteHeader`) y así el pie no añade
+ * paradas al ciclo de tabulación congelado (I3/RG10-21).
  */
-export function PublicFooter({ identity, socials }: PublicFooterProps) {
+export function PublicFooter({ identity, links, contact, socials, whatsapp }: PublicFooterProps) {
   const { t } = useLanguage();
   const brandName = identity?.name ?? t('brand.name');
 
   return (
-    <footer className="bg-navy text-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6">
+    <footer className="bg-surface text-ink">
+      <div className="mx-auto grid w-full max-w-6xl gap-block px-4 py-section-tight sm:px-6 min-[861px]:grid-cols-[1.3fr_2fr]">
         <div className="flex items-center gap-3">
           <BrandLogo
             src={mediaUrl(identity?.logoUrl)}
             alt={identity?.logoAlt ?? t('a11y.logo')}
             size={40}
+            className="rounded-full bg-logo-surface p-0.5"
           />
           <span className="font-display text-2xl">{brandName}</span>
         </div>
 
-        {socials && socials.length > 0 && (
-          <ul className="flex flex-wrap gap-x-6 gap-y-2">
-            {socials.map((link) => (
-              <li key={link.id}>
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  <SocialIcon network={link.network} />
-                  <span>{SOCIAL_NETWORK_LABELS[link.network]}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
+        <FooterSiteMap links={links} contact={contact} socials={socials} whatsapp={whatsapp} />
+      </div>
 
-        <p className="font-emotiva text-xl italic">{t('footer.welcome')}</p>
-
-        <LanguageSwitcher className="text-white" />
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-4 border-t border-line px-4 py-4 sm:px-6">
+        <p className="font-emotiva text-base italic text-muted">{t('footer.welcome')}</p>
+        <LanguageSwitcher className="ml-auto text-ink" />
       </div>
     </footer>
   );

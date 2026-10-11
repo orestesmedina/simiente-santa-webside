@@ -46,7 +46,13 @@ function PublicChrome() {
         <Outlet />
       </main>
 
-      <PublicFooter identity={data?.identity} socials={data?.socials} />
+      <PublicFooter
+        identity={data?.identity}
+        links={links}
+        contact={data?.contact}
+        socials={data?.socials}
+        whatsapp={data?.whatsapp}
+      />
     </div>
   );
 }
