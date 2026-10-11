@@ -1,32 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { contrast, readSystemCss, tokenValues } from '../../test/contrast';
 import { PublicButton } from './PublicButton';
 
 /** Hoja de estilos del sistema: se comprueban los pares de contraste del hover. */
-const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
-
-/** Valores de un token, en orden de aparición (claro y luego oscuro). */
-function tokenValues(name: string): string[] {
-  return [...css.matchAll(new RegExp(`--${name}:\\s*([^;]+);`, 'g'))].map((match) =>
-    match[1].trim(),
-  );
-}
-
-function luminance(hex: string): number {
-  const value = hex.replace('#', '');
-  const [r, g, b] = [0, 2, 4].map((index) => parseInt(value.slice(index, index + 2), 16) / 255);
-  const lin = (channel: number) =>
-    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-
-/** Razón de contraste WCAG 2.1 entre dos colores hex. */
-function contrast(a: string, b: string): number {
-  const [la, lb] = [luminance(a), luminance(b)];
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-}
+const css = readSystemCss();
 
 describe('PublicButton · primitiva de acción (FR-003/FR-008)', () => {
   it('renderiza un botón con objetivo táctil ≥ 44 px', () => {
@@ -98,8 +76,8 @@ describe('PublicButton · primitiva de acción (FR-003/FR-008)', () => {
     expect(className).toContain('hover:text-on-accent-hover');
 
     // El par de hover (fondo/texto) se define por tema y debe superar AA (4,5:1).
-    const backgrounds = tokenValues('accent-hover');
-    const texts = tokenValues('on-accent-hover');
+    const backgrounds = tokenValues(css, 'accent-hover');
+    const texts = tokenValues(css, 'on-accent-hover');
     expect(backgrounds, 'un valor por tema (claro y oscuro)').toHaveLength(2);
     expect(texts, 'un valor por tema (claro y oscuro)').toHaveLength(2);
     expect(contrast(backgrounds[0], texts[0]), 'hover en tema claro').toBeGreaterThanOrEqual(4.5);

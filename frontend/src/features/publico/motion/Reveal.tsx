@@ -41,14 +41,22 @@ export function Reveal({
   const prefersReduced = usePrefersReducedMotion();
   const ref = useRef<HTMLDivElement | null>(null);
   const supportsObserver = typeof IntersectionObserver !== 'undefined';
-  // Si el bloque ya nace mostrado (movimiento reducido o sin `IntersectionObserver`)
-  // queda marcado como revelado: apagar `prefers-reduced-motion` en caliente no
-  // debe volver a ocultarlo ni re-animarlo (FR-008).
-  const [observed, setObserved] = useState(
+  // Latch: si el bloque nace mostrado (movimiento reducido o sin
+  // `IntersectionObserver`) queda marcado como revelado.
+  const [revealed, setRevealed] = useState(
     () => prefersReducedMotion() || typeof IntersectionObserver === 'undefined',
   );
 
-  const revealed = observed || prefersReduced || !supportsObserver;
+  const isRevealed = revealed || prefersReduced || !supportsObserver;
+
+  // «Una vez mostrado, nunca se re-oculta»: si el bloque ya está visible (p. ej.
+  // porque `prefers-reduced-motion` se activó con el sitio abierto), se marca
+  // como revelado para que apagarlo después no lo oculte ni lo re-anime
+  // (FR-008). Ajuste de estado durante el render (patrón de React para estado
+  // derivado): el latch se cierra en la primera pasada y no se repite.
+  if (isRevealed && !revealed) {
+    setRevealed(true);
+  }
 
   useEffect(() => {
     if (prefersReduced || !supportsObserver) {
@@ -58,7 +66,7 @@ export function Reveal({
     if (!element) {
       return;
     }
-    return observeReveal(element, () => setObserved(true));
+    return observeReveal(element, () => setRevealed(true));
   }, [prefersReduced, supportsObserver]);
 
   const style: Record<string, string> = {};
@@ -75,7 +83,7 @@ export function Reveal({
   return (
     <Component
       ref={ref}
-      data-reveal={revealed ? 'in' : from}
+      data-reveal={isRevealed ? 'in' : from}
       className={classes}
       style={style as CSSProperties}
     >

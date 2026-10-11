@@ -79,6 +79,10 @@ export function observeReveal(element: Element, onReveal: RevealCallback): () =>
     target.style.willChange = '';
   };
 
+  // Declarado antes de los callbacks: `seen`/`reveal` lo consultan y un
+  // observador con callback síncrono no debe caer en la zona muerta temporal.
+  let timer: number | undefined = undefined;
+
   const reveal = () => {
     handlers.delete(element);
     io.unobserve(element);
@@ -95,7 +99,7 @@ export function observeReveal(element: Element, onReveal: RevealCallback): () =>
   handlers.set(element, { seen, reveal });
   io.observe(element);
   element.addEventListener('focusin', reveal);
-  const timer = window.setTimeout(reveal, REVEAL_FALLBACK_MS);
+  timer = window.setTimeout(reveal, REVEAL_FALLBACK_MS);
 
   return () => {
     handlers.delete(element);

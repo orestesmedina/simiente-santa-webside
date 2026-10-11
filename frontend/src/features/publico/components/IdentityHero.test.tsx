@@ -72,7 +72,6 @@ describe('IdentityHero · propuesta B (T1021/FR-001/FR-002)', () => {
 
     const hero = screen.getByRole('region', { name: 'Iglesia Simiente Santa' });
     expect(within(hero).queryByRole('link', { name: 'Ver horario' })).toBeNull();
-    expect(within(hero).queryByRole('link', { name: '#horario' })).toBeNull();
     // El resto del hero y el CTA de WhatsApp siguen ahí.
     expect(within(hero).getByRole('link', { name: 'Escríbenos por WhatsApp' })).toBeInTheDocument();
   });

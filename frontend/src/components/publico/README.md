@@ -41,7 +41,7 @@ está ligado al atributo (`@custom-variant dark`), no a `prefers-color-scheme`.
 | `--border` | `rgb(238 243 248 / .16)` | `rgb(238 243 248 / .14)` | `border-line` |
 | `--accent` | `#00c9a7` | `#00c9a7` | `text-accent`, `bg-accent` |
 | `--accent-strong` | `#0e7a66` | `#00c9a7` | `text-accent-strong` |
-| `--accent-hover` | `#0e7a66` | `#00c9a7` | `bg-accent-hover` |
+| `--accent-hover` | `#0e7a66` | `#00b598` | `bg-accent-hover` |
 | `--on-accent-hover` | `#ffffff` | `#1a2b4a` | `text-on-accent-hover` |
 | `--focus` | `#00c9a7` | `#00c9a7` | `outline-focus` |
 | `--shadow` | `0 18px 44px rgb(5 10 20 / .35)` | `0 18px 44px rgb(0 0 0 / .5)` | `shadow-surface` |
@@ -64,7 +64,8 @@ está ligado al atributo (`@custom-variant dark`), no a `prefers-color-scheme`.
 | `--text-muted` sobre `--surface` | ≈ 7,4:1 | ≈ 9,7:1 | ✅ |
 | `--accent` sobre `--surface` | ≈ 6,7:1 | ≈ 8,8:1 | ✅ |
 | `bg-accent` + `text-navy` (PublicButton primary) | ≈ 6,7:1 | ≈ 8,8:1 | ✅ |
-| `bg-accent-hover` + `text-on-accent-hover` (hover del primary) | ≈ 5,3:1 | ≈ 6,7:1 | ✅ |
+| `bg-accent-hover` + `text-on-accent-hover` (hover del primary) | ≈ 5,3:1 | ≈ 5,4:1 | ✅ |
+| `bg-accent` + `text-navy` (opción **activa** del selector de idioma) | ≈ 6,7:1 | ≈ 6,7:1 | ✅ |
 | `bg-leaf` (#217638) + `text-white` (CTA WhatsApp) | ≈ 5,7:1 | ≈ 5,7:1 | ✅ |
 | `bg-coral` (#ff6b3d) + `text-navy` (accent) | ≈ 5,0:1 | ≈ 5,0:1 | ✅ |
 | `--accent-strong` sobre `--surface` | ≈ 2,7:1 | n/a | ❌ **no usar sobre navy** |
