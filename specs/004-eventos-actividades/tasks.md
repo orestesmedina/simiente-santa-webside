@@ -400,7 +400,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 
 ## Fase 5 — Dominios `agenda` y `media`: repository
 
-- [ ] T411 · `agenda`: `model.go` + `repository.go` · `[backend]`
+- [X] T411 · `agenda`: `model.go` + `repository.go` · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/model.go`, `repository.go`, `repository_test.go`
     (NUEVOS).
