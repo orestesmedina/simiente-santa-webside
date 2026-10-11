@@ -286,6 +286,19 @@ html.js .reveal-block[data-reveal='right'] {
 }
 
 /*
+ * El revelado lateral desplaza el bloque hasta `--motion-distance` (28 px) antes
+ * de entrar: mientras está pendiente, su caja sobresale del ancho del documento y
+ * la página ganaría scroll horizontal (FR-011/SC-004). El grupo recorta ese
+ * desborde con `overflow-x: clip` (no crea contenedor de scroll ni afecta a
+ * `position: sticky` ni a elementos `fixed`). No se aplica al bloque individual
+ * (el clip debe ser del ancestro) ni al documento (ocultaría otros desbordes
+ * reales).
+ */
+.reveal-group {
+  overflow-x: clip;
+}
+
+/*
  * Cabecera desplazada (F10 · T1020/FR-014): al bajar, la cabecera transiciona
  * **solo su superficie** —vidrio + borde turquesa + sombra— con el token de
  * cabecera, **sin cambiar su geometría** (misma altura → anclas y
@@ -397,7 +410,15 @@ html[data-theme='dark'] {
  *   tabulación y del árbol de accesibilidad) salvo con el menú abierto
  *   (`data-open='true'`), en cuyo caso se presenta como panel.
  * · Sin JS (`html:not(.js)`): se muestran siempre las filas compactas.
+ *
+ * Con el panel abierto, la página de fondo **no se desplaza** (ni con rueda ni
+ * con teclado): el scroll se bloquea en el elemento raíz mientras
+ * `data-nav-open='true'` (T1013/FR-013).
  */
+html[data-nav-open='true'] {
+  overflow: hidden;
+}
+
 .public-nav-list {
   display: flex;
   flex-wrap: wrap;
@@ -409,7 +430,6 @@ html[data-theme='dark'] {
   .public-nav-list {
     display: none;
   }
-
   .public-nav-list[data-open='true'] {
     display: flex;
     flex-direction: column;

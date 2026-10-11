@@ -1,5 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installMatchMedia } from '../../../test/matchMedia';
 import type { SiteLink } from '../hooks/useSiteLinks';
@@ -170,5 +172,10 @@ describe('MobileMenu · patrón disclosure accesible (T1013/D17)', () => {
     const list = document.querySelector('ul.public-nav-list');
     expect(list).not.toBeNull();
     expect(list).toHaveAttribute('data-open', 'false');
+  });
+
+  it('el bloqueo del scroll de fondo existe en la hoja de estilos (T1013/FR-013)', () => {
+    const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
+    expect(css).toMatch(/html\[data-nav-open='true'\]\s*\{\s*overflow:\s*hidden;/);
   });
 });
