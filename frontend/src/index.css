@@ -150,3 +150,74 @@ html[data-theme='dark'] {
   --spacing-panel: var(--pad-panel);
   --spacing-text: var(--pad-text);
 }
+
+/*
+ * ── Sistema de movimiento (F10 · P10-12/R10-13/D5/D21) ───────────────────────
+ * **Única fuente numérica** de tiempos y distancias (manda esta tabla; los
+ * e2e miden el mismo techo de ≤ 800 ms).
+ *
+ * Reglas duras:
+ *  · Suelo de perceptibilidad: todo revelado/transición de entrada ≥ 400 ms y
+ *    ≥ 16 px (o fade completo 0→1) — «nunca casi imperceptible» (SC-014).
+ *  · Techo: ≤ 800 ms por elemento y por secuencia de bloque.
+ *  · Solo `opacity`/`transform`/colores (compositor): 0 desplazamientos del
+ *    maquetado y 0 bloqueo de lectura (FR-007).
+ */
+:root {
+  --motion-duration-micro: 180ms;
+  --motion-duration-header: 220ms;
+  --motion-duration-reveal: 600ms;
+  --motion-duration-hero: 700ms;
+  --motion-distance: 28px;
+  --motion-stagger-step: 80ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 480px) {
+  :root {
+    --motion-distance: 20px;
+  }
+}
+
+/*
+ * El destino de un ancla nunca queda tapado por la cabecera fija: el
+ * `scroll-padding-top` usa la altura real medida con `ResizeObserver` (T1014).
+ * El desplazamiento suave solo existe si el usuario no pidió movimiento reducido.
+ */
+html {
+  scroll-padding-top: var(--header-offset, 0px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/*
+ * `prefers-reduced-motion` es **incondicional** (FR-006/SC-005/D6): anula todo
+ * el sistema de movimiento (transiciones, animaciones, delays, revelados y
+ * desplazamiento suave). Es la primera de las dos capas; la segunda es el hook
+ * `usePrefersReducedMotion` en vivo (T1017).
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
