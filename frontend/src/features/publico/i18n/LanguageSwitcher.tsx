@@ -28,7 +28,7 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
   return (
     <fieldset
       className={[
-        'inline-flex items-center gap-1 rounded-full border border-line px-1.5 py-0.5',
+        'inline-flex items-center gap-0.5 rounded-full bg-surface-raised px-0.5',
         className,
       ]
         .filter(Boolean)
@@ -41,7 +41,7 @@ export function LanguageSwitcher({ className = '' }: { className?: string }) {
           <label
             key={code}
             className={[
-              'inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full px-2 text-sm',
+              'inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-full px-0.5 text-sm',
               active ? 'bg-accent/15 font-bold text-accent' : 'font-medium text-muted',
             ].join(' ')}
           >

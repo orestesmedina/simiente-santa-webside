@@ -205,7 +205,7 @@ describe('selector de idioma compacto (F10 · T1027/FR-015/FR-016/FR-017)', () =
 
     const fieldset = container.querySelector('fieldset') as HTMLElement;
     expect(fieldset.className).toContain('rounded-full');
-    expect(fieldset.className).toContain('gap-1');
+    expect(fieldset.className).toContain('gap-0.5');
     expect(fieldset.className).not.toContain('gap-3');
 
     const label = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
@@ -230,5 +230,20 @@ describe('selector de idioma compacto (F10 · T1027/FR-015/FR-016/FR-017)', () =
     const fieldset = container.querySelector('fieldset') as HTMLElement;
     expect(fieldset.className).toContain('inline-flex');
     expect(fieldset.className).not.toMatch(/\bw-screen\b|\bmin-w-full\b/);
+  });
+
+  it('no añade cromo que agrande la huella frente a F3 (IMP-1)', () => {
+    const { container } = renderApp();
+
+    // Sin borde ni padding vertical propios: la huella depende solo de las
+    // opciones (que ya eran `min-h-11` en F3) y del espaciado reducido.
+    const fieldset = container.querySelector('fieldset') as HTMLElement;
+    expect(fieldset.className).not.toContain('border');
+    expect(fieldset.className).not.toMatch(/\bpy-\d/);
+    expect(fieldset.className).toContain('px-0.5');
+
+    const label = screen.getByRole('radio', { name: 'Español' }).closest('label') as HTMLElement;
+    expect(label.className).toContain('px-0.5');
+    expect(label.className).not.toContain('px-1');
   });
 });

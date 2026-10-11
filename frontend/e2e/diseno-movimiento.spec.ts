@@ -179,4 +179,28 @@ test.describe('Diseño, navegación fija y selector (F10 · T1029)', () => {
       }
     }
   });
+
+  test('el selector de idioma ocupa menos que el de F3 y sigue legible (IMP-1)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1, name: seed.identityName })).toBeVisible();
+
+    const header = page.locator('header');
+    // Referencia del diseño de F3 (medida por QA en `main`): 159 × 44 px.
+    const F3_WIDTH = 159;
+    const F3_HEIGHT = 44;
+
+    const switcher = header.getByRole('group', { name: 'Idioma' });
+    const switcherBox = await box(switcher);
+    expect(switcherBox.width, `ancho ≤ ${F3_WIDTH} px (F3)`).toBeLessThanOrEqual(F3_WIDTH);
+    expect(switcherBox.height, `alto ≤ ${F3_HEIGHT} px (F3)`).toBeLessThanOrEqual(F3_HEIGHT);
+
+    // Sigue cumpliendo legibilidad y objetivo táctil.
+    const label = header.getByRole('radio', { name: 'Español' }).locator('..');
+    expect((await box(label)).height, 'objetivo táctil ≥ 44 px').toBeGreaterThanOrEqual(44);
+    const fontSize = await label.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(fontSize, 'texto legible ≥ 14 px').toBeGreaterThanOrEqual(14);
+  });
 });
