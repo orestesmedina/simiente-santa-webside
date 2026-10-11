@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 010-sistema-diseno-movimiento |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar (iteración de diseño 2: en la puerta 2) |
+| Fase | 2/9 · Planificar (diseño final B listo; falta confirmar el ajuste de spec) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | **Puerta 2 (iteración 2)**: aprobar el plan de movimiento actualizado y elegir una de las 3 propuestas nuevas (A/B/C); luego Fase 3 (tareas + coherencia) |
+| Próximo paso | Confirmar el ajuste de spec (menú hamburguesa en móvil) y el diseño final B; luego Fase 3 (tareas + coherencia) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-10 |
 
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-10 | "Apruebo la spec" (con ajuste de alcance: F10 = sitio público + modo oscuro con interruptor manual; panel → F10B) |
-| Plan | pendiente | | | |
+| Plan | aprobado | humano | 2026-10-10 | "Apruebo el plan" (con los ajustes de diseño pedidos: más aire entre paneles, mapa del sitio en el pie y menú hamburguesa en móvil) |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
@@ -47,6 +47,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-10 — **Diseño final B aplicado**: `ux.md` reescrito como diseño final de **B «Marea Turquesa»** (más aire entre secciones con tokens de espaciado, **mapa del sitio** en el pie con grupos accesibles, **menú hamburguesa accesible** en móvil ≤ 860 px) y `propuesta-b.html` reescrita; `plan.md`/`research.md`/`quickstart.md` alineados (navegación por dispositivo, componente de mapa del sitio, tokens de espaciado, e2e del menú). Spec actualizada: FR-010 a FR-014 por dispositivo, **FR-027** (mapa del sitio) y **SC-015** nuevos. Pendiente: confirmar el ajuste de spec.
+- 2026-10-10 — **Puerta 2 (iteración 2): plan aprobado y propuesta elegida (B).** El cliente aprobó el plan («Apruebo el plan») y eligió la propuesta **B «Marea Turquesa»** con tres cambios: (1) **más aire entre paneles** (hoy se sienten pegados); (2) **mapa del sitio en el pie** con todas las opciones (referencia Apple/Microsoft); (3) en **móvil, la navegación se oculta en un menú hamburguesa** (en escritorio sigue visible). Mantiene el orden actual de secciones. El punto (3) **cambia FR-010 de la spec** («sin menús ocultos»): se actualiza la spec y se re-confirma con el humano.
 - 2026-10-10 — **Iteración de diseño 2 completada**: `arquitecto` refuerza el plan de movimiento (revelados de **600 ms** con desplazamiento 20–28 px y *stagger* de 80 ms; suelo de perceptibilidad ≥ 400 ms/16 px y techo ≤ 800 ms; cabecera que transiciona al bajar; `scroll-behavior: smooth` solo sin reduced-motion; **0 dependencias nuevas**); `disenador-ux` entrega **3 propuestas nuevas** —A «Bento Vivo», B «Marea Turquesa», C «Huella Tipográfica»— y reescribe `ux.md` y las maquetas con revelado real por scroll. Pendiente: **puerta 2** (iteración 2).
 - 2026-10-10 — **Puerta 2 — iteración de diseño 1 (feedback del cliente).** El cliente **no aprobó el plan** y **rechazó las 3 propuestas** (A/B/C). Pidió **más animación**: transiciones entre componentes y **revelado de las secciones al hacer scroll** (las actuales le parecieron «muy pobres, casi imperceptibles»). Añadió referencias de inspiración: `apple.com`, `microsoft.com/es-cr` y `river-arena.org` (además de `iglesiaoasis.com`). Implica: subir el nivel de animación (de moderado a **marcado/elegante con revelado al hacer scroll**), ajustar el plan de movimiento y **rehacer las 3 propuestas** con una dirección nueva. Sigue vigente: respetar `prefers-reduced-motion`, no bloquear contenido y no regresar F2/F3.
 - 2026-10-10 — **Fase 2 completada**: `plan.md`, `research.md`, `data-model.md` (sin cambios de datos), `contracts/README.md` (sin cambios de API) y `quickstart.md` (`arquitecto`); `ux.md` con **3 propuestas** —A «Raíz Viva», B «Cielo Abierto», C «Luz Serena»— más maquetas HTML navegables en `propuestas/` (`disenador-ux`). Sin dependencias nuevas (movimiento con CSS puro); tema con `data-theme` + variables semánticas. Pendiente: **puerta 2** (aprobar el plan y elegir una propuesta).

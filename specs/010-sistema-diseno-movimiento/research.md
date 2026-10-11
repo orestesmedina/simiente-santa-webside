@@ -1,12 +1,18 @@
 # Research: F10 — Sistema de diseño y movimiento
 
 **Feature**: F10 — Sistema de diseño y movimiento · **Branch**: `010-sistema-diseno-movimiento`
-**Fase**: 0 de `/speckit.plan` (decisiones técnicas; numeración **R10-1…R10-13**, propia de F10)
+**Fase**: 0 de `/speckit.plan` (decisiones técnicas; numeración **R10-1…R10-16**, propia de F10)
 **Fecha**: 2026-10-10 · **Revisión (puerta 2, 2026-10-10)**: el cliente rechazó las 3 propuestas por
 «muy pobres, casi imperceptibles» y elevó el nivel de movimiento a **marcado/elegante con revelado al
 hacer scroll** (FR-005). Se reevaluó la estrategia de movimiento completa —CSS puro / scroll-driven vs.
 librería—: **R10-4** se reescribe, **R10-5** y **R10-10** se actualizan y se añade **R10-13**
 (parámetros, cabecera al bajar, desplazamiento suave y rendimiento).
+**Revisión 2 (cierre del plan, 2026-10-10)**: el humano aprobó la propuesta visual **B «Marea
+Turquesa»** con **3 ajustes** que suman mecánica: navegación responsive con **menú hamburguesa
+accesible en móvil** (sustituye en pantallas estrechas la restricción «sin menús ocultos»),
+**mapa del sitio en el pie** y **espaciado vertical de sección**. Se actualiza **R10-6** (navegación
+responsive) y se añaden **R10-14** (menú hamburguesa accesible), **R10-15** (mapa del sitio del pie) y
+**R10-16** (tokens de espaciado de sección). Sin dependencias nuevas ni cambios de contrato.
 
 F10 es una funcionalidad **100 % de presentación del sitio público** (frontend). No hay trabajo de
 backend, ni datos, ni contratos (ver `data-model.md` y `contracts/README.md`). Las decisiones de
@@ -164,35 +170,51 @@ observer compartido, sin `filter`/`blur`, sin listeners de `scroll` — ver deta
   ya vistas ni hay «rebotes» ni parpadeos (US3 esc. 6, SC-014). La entrada de la portada (hero) solo
   ocurre en el primer montaje de cada carga real.
 
-## R10-6 — Navegación: barra **fija** con `position: sticky` + `scroll-padding-top` medido + filas que envuelven
+## R10-6 — Navegación: **responsive** — barra fija con `position: sticky` + `scroll-padding-top` medido + filas que envuelven (escritorio) / menú hamburguesa accesible (móvil)
+
+> **Actualización 2026-10-10 (cierre del plan)**: el cliente, al aprobar el plan, decidió que en
+> **pantallas estrechas** la navegación se colapse en un **menú hamburguesa accesible** (detalle en
+> R10-14). La restricción «sin menús ocultos» (FR-010/FR-012, del encargo original) queda **solo para
+> escritorio** (≥ 861 px), donde las filas de anclas siempre visibles siguen siendo la solución. La
+> barra fija (FR-014) no cambia en ningún modo.
 
 **Decisión**:
-- **Fijeza**: `position: sticky; top: 0` en el `<header>` del sitio público (se queda en el flujo del
-  documento). Acompaña al visitante al bajar (caso (b) del «scroll incómodo», FR-014) **sin tapar
-  contenido**: al estar en flujo, nunca se superpone al texto.
-- **Destino de anclas visible**: `html { scroll-padding-top: var(--header-offset) }`, donde
-  `--header-offset` se mide con `ResizeObserver` (altura real de la cabecera: cambia con las filas que
-  envuelven, el zoom al 200 % y el texto ampliado). Así, al saltar a una sección, su título queda
-  por debajo de la barra, no debajo de ella (edge case «barra fija no tapa el destino»).
-- **Sin desplazamiento lateral de enlaces (caso (a))**: la lista de anclas pasa de
-  `overflow-x-auto` (la causa actual del problema) a **`flex-wrap` con filas compactas**: todos los
-  enlaces visibles siempre, sin scroll lateral del menú ni de la página. En 320 px la cabecera se
-  organiza en dos filas (fila 1: marca + controles; fila 2: anclas), sin hamburguesa ni desplegables
-  (FR-010/FR-011).
+- **Fijeza (ambos modos)**: `position: sticky; top: 0` en el `<header>` del sitio público (se queda en
+  el flujo del documento). Acompaña al visitante al bajar (caso (b) del «scroll incómodo», FR-014)
+  **sin tapar contenido**: al estar en flujo, nunca se superpone al texto. La transición de superficie
+  al bajar (`data-scrolled`, R10-13) es igual en escritorio y en móvil y no cambia la geometría.
+- **Destino de anclas visible (ambos modos)**: `html { scroll-padding-top: var(--header-offset) }`,
+  donde `--header-offset` se mide con `ResizeObserver` (altura real de la cabecera **con el menú
+  cerrado**: el panel móvil es un overlay y no altera la medida; también cambia con el zoom al 200 %
+  y el texto ampliado). Así, al saltar a una sección, su título queda por debajo de la barra, no
+  debajo de ella (edge case «barra fija no tapa el destino»).
+- **Breakpoint de cambio: 860 px** (móvil **≤ 860 px**; escritorio **≥ 861 px**): el mismo corte de
+  la maqueta aprobada `propuestas/propuesta-b.html` y de `ux.md` (`TransitionHeader`, breakpoint 860)
+  — diseño e implementación sin divergencias. **≥ 861 px (escritorio y tableta apaisada)**: la lista
+  de anclas pasa de `overflow-x-auto` (la causa actual del problema) a **`flex-wrap` con filas
+  compactas**: todos los enlaces visibles siempre, sin scroll lateral del menú ni de la página,
+  objetivos ≥ 44 px. **≤ 860 px (móvil y tableta vertical)**: la cabecera compone fila de marca +
+  controles (idioma, tema) + **botón hamburguesa** que abre el panel con las secciones (R10-14); sin
+  scroll horizontal en ningún caso (FR-011). El corte es **CSS (media queries)**, no JS de resize.
 - **Escala a F4–F9 (FR-012)**: los enlaces siguen siendo datos (`sections.ts` → modelo de navegación
-  reutilizable); con ~8–10 secciones se acomodan en una o varias filas compactas (default revisable de
-  la spec) — sin menús ocultos. Las rutas futuras F4–F9 ya cuelgan de `PublicLayout` (patrón de
+  reutilizable); con ~8–10 secciones se acomodan en una o varias filas compactas en escritorio y en la
+  lista del panel en móvil. Las rutas futuras F4–F9 ya cuelgan de `PublicLayout` (patrón de
   router de F3), así que la cabecera fija, el tema y el selector acompañan a las secciones nuevas sin
   cambios.
 
 **Alternativas descartadas**:
 - `position: fixed` + padding compensatorio en `body`: se superpone al contenido y acentúa los
   problemas de zoom 200 %/320 px (FR-025 exige que nada se tape).
-- Menú hamburguesa / desplegable: **prohibido** por la restricción del encargo (sin menús ocultos ni
-  gestos desconocidos).
+- Menú hamburguesa **en escritorio** (≥ 861 px): innecesaria — caben filas compactas siempre
+  visibles, que son más accesibles para el público del proyecto (FR-010). La hamburguesa **solo en
+  móvil** se adopta por decisión del cliente (R10-14), no se descarta.
+- Filas de anclas también **en móvil**: con 5 enlaces y controles aprietan la cabecera a 320 px y con
+  la previsión F4–F9 (~8–10) invadirían varias filas la pantalla pequeña; el cliente eligió el menú.
 - Carrusel horizontal de enlaces: es exactamente el caso (a) del «scroll incómodo».
 - `scroll-margin-top` por sección: equivalente válido; se centraliza en `scroll-padding-top` (una sola
   fuente de la altura de cabecera).
+- Librerías de menú/mega-menú o de focus-trap: 0 dependencias (R10-10); el patrón *disclosure* cabe
+  en unas pocas líneas de React + CSS.
 
 ## R10-7 — Selector de idioma: solo formato compacto; comportamiento de F3 congelado
 
@@ -356,3 +378,133 @@ F4–F9 hereda), con **suelo de perceptibilidad** y **techo de duración** (FR-0
 altura** al bajar (riesgo de saltos en anclas y de `scroll-padding-top` inestable; la transición de
 superficie ya es claramente perceptible); transiciones de entrada por encima de 800 ms o con
 rebote/curvas elásticas tipo `back.out` («nada estridente ni infantil»).
+
+## R10-14 — Menú hamburguesa accesible en móvil (patrón *disclosure*) — ajuste del cliente 2026-10-10
+
+**Decisión**: en pantallas **≤ 860 px** (breakpoint 860 — ver R10-6, alineado con `ux.md` y la
+maqueta `propuesta-b.html`), la lista de anclas se colapsa tras un **botón hamburguesa** con el
+patrón de **divulgación** de las guías APG (WAI-ARIA Authoring Practices): un *disclosure* con
+contención de foco, **no un diálogo modal** — sin `aria-modal`, sin librerías de *focus-trap*, sin
+gestos.
+
+- **Botón**: `<button>` real (no `div`, no `summary`), **nombre accesible localizado**
+  (`nav.menu.toggle`: «Menú de secciones» / «Section menu»), **`aria-expanded`** sincronizado con el
+  estado y **`aria-controls`** con el id del panel; área de toque **≥ 44 px**; siempre visible en la
+  cabecera (es lo que mantiene FR-014 «alcanzable en todo momento» en móvil: los enlaces están a **un
+  toque**).
+- **Panel**: la lista de secciones **del mismo modelo `sections.ts`** (mismas claves i18n → mismos
+  nombres accesibles que en escritorio; R10-15 comparte la fuente), con superficie sólida por tokens
+  (`--surface`, correcta en claro y oscuro), altura máxima `calc(100dvh - var(--header-offset))` con
+  **scroll interno** si la lista es larga (F4–F9), y **control visible de cierre**.
+- **Gestión de foco** (el punto más delicado; RG10-17 — igual que `ux.md` §2.3/§6): al abrir, el
+  foco **entra en el panel** (primer enlace de la lista; el control visible de cierre está
+  presente); **`Escape`**, el **control visible** de cierre, el **toque/clic fuera** (scrim) y el
+  propio botón lo cierran y **devuelven el foco al botón**; activar una sección cierra el panel y el
+  foco continúa en el destino del ancla; mientras está abierto, `Tab`/`Shift+Tab` quedan
+  **contenidos en el panel y su botón** (el fondo va con scrim y sin scroll: no hay nada operable
+  detrás). El foco nunca queda sobre contenido oculto (coherente con R10-5).
+- **Sin scroll de fondo**: `html[data-nav-open='true'] { overflow: hidden }` mientras el panel está
+  abierto (rueda y teclado); se restaura al cerrar (RG10-19; prueba en iOS/Android en QA).
+- **Sin gestos desconocidos**: solo clic/toque y teclado (`Enter`/`Espacio`); ni swipe ni
+  deslizamientos (hereda la restricción del encargo).
+- **Movimiento**: el panel entra/sale con fade corto (180 ms, solo `opacity`/`transform`, sin animar
+  altura ni layout) y con `prefers-reduced-motion` la apertura/cierre es **instantánea** (FR-006
+  incondicional).
+- **Cruce de breakpoint** (rotar/girar el dispositivo): el panel se cierra solo y `aria-expanded`
+  vuelve a `false`; sin estado residual ni overlays colgados.
+- **Fallback sin JS**: el marcador `js` de `index.html` gobierna el colapso: **sin JS los enlaces se
+  pintan como filas compactas visibles** a cualquier ancho (y el botón no se renderiza/queda oculto):
+  la navegación nunca depende del script (misma filosofía de «contenido visible sin JS» de R10-5).
+  Con JS, el colapso lo resuelve **CSS puro** bajo la media query + `data-nav-open`, sin quitar los
+  enlaces del DOM.
+
+**Compatibilidad con las pruebas congeladas de F3 (R10-9/SC-008)** — restricciones verificadas
+leyendo las suites, que **fijan** el diseño:
+1. `portada-accesibilidad.spec.ts` exige el landmark `navigation` **visible** a 320 px y a 160 px
+   (zoom 200 %) → el `<nav aria-label="Secciones de la portada">` **nunca se oculta**: el botón va
+   dentro del `<nav>` y solo la lista colapsa.
+2. Las unitarias de jsdom (`homePage.test.tsx`) consultan los enlaces del `<nav>` → los enlaces
+   **permanecen en el DOM** y el colapso es CSS (sin `hidden`/`aria-hidden`/`inert` de React; en
+   jsdom no se aplican media queries → las consultas siguen pasando sin cambios).
+3. La travesía por teclado congelada a 320 px exige que el ciclo contenga las 5 etiquetas de sección
+   y cierre en **< 30 pasos** (`tabCycle`) → con el menú cerrado, esas etiquetas las aporta el
+   **mapa del sitio del pie** (mismas claves i18n) y el saldo de paradas de tabulación es mínimo
+   (botón hamburguesa y control de tema se suman; las anclas de cabecera dejan de ser tabulables en
+   móvil) — recuento verificado en implementación (RG10-21).
+4. La auditoría de objetivos ≥ 44 px a 320 px incluye `a[href], button` visibles → botón y panel se
+   diseñan a ese umbral.
+
+**Alternativas descartadas**:
+- `<details>`/`<summary>` nativo: funcionaría sin JS, pero el control de foco/Escape es menos
+  predecible entre navegadores y el estado `aria-expanded` explícito se vuelve opaco; con el fallback
+  `js` se gana lo mismo con menos rarezas.
+- «Checkbox hack» (`:checked`) o `:target`: comportamiento de foco errático y nombres accesibles
+  frágiles.
+- Diálogo modal a pantalla completa (`<dialog>`, focus-trap): más peso del necesario para una lista
+  de 5–10 enlaces; el *disclosure* cumple con menos riesgo (aunque conserva el bloqueo de scroll).
+- Renderizar los enlaces condicionalmente según estado (React): rompería las unitarias congeladas y
+  el fallback sin JS (RG10-18).
+- Librerías de menú o `focus-trap`: 0 dependencias (R10-10).
+
+## R10-15 — Mapa del sitio en el pie — ajuste del cliente 2026-10-10
+
+**Decisión**: nuevo componente **`FooterSiteMap`** en
+`frontend/src/features/publico/components/FooterSiteMap.tsx`, montado dentro de `PublicFooter` (el
+`<footer>`/landmark `contentinfo` de F3 se conserva intacto: el mapa vive **dentro** de él).
+
+- **Fuente única de verdad**: el **mismo modelo de secciones** que la navegación
+  (`features/publico/sections.ts`: `PUBLIC_SECTIONS`, `presentSections(data)`); `PublicLayout` pasa
+  las secciones presentes a `PublicFooter`. Mismas claves i18n (`nav.sections.*`) → **mismos nombres
+  de enlace** que la cabecera: nav y pie nunca divergen (ni en nombres ni en reglas de borrador), y
+  las etiquetas congeladas de la travesía por teclado se cumplen por construcción (ver R10-14).
+- **Contenido**: las secciones de la portada de hoy (`quienes-somos`, `horario`, `whatsapp`,
+  `contacto`, `redes`); opcionalmente un enlace a la portada (`/`) si `ux.md` lo decide.
+- **Regla «sin enlaces rotos»**: **solo se renderizan destinos existentes** — secciones con contenido
+  publicado (mismo criterio borrador/publicado de F3: una sección ausente no deja enlace muerto) y,
+  para **F4–F9**, entradas del modelo con `href` de **ruta ya implementada**. El modelo se extiende
+  entonces con `href` (hoy solo `anchor`) y el componente **no cambia**: nunca se enlaza a rutas
+  futuras inexistentes.
+- **Disposición**: **columnas en escritorio** (grid `auto-fit`/2–3 columnas) y **apilado** en móvil;
+  tokens semánticos y de espaciado (R10-16).
+- **Accesibilidad (FR-013/FR-022)**: landmark `<nav>` con **nombre accesible propio y distinto** del
+  de la cabecera (`footer.sitemap.label`, es/en) — dos landmarks `navigation` con el mismo nombre
+  romperían tanto la accesibilidad como las consultas congeladas —, lista `<ul>` real de enlaces
+  `<a href="#…">`, foco visible, objetivos ≥ 44 px y contraste AA en ambos temas (el e2e de contraste
+  congelado ya audita `footer :is(a,p,span)`).
+
+**Alternativas descartadas**:
+- Pie con menús desplegados/megamenu o «nube de etiquetas»: más oculto y menos familiar para el
+  público del proyecto.
+- Modelo de datos del pie **aparte** (un `footerSections.ts`): duplicaría la fuente de secciones →
+  deriva garantizada (una sección se publica y solo aparece en un sitio).
+- Enlazar ya las rutas F4–F9 previstas: **enlaces rotos** hoy; la regla es «solo destinos
+  existentes».
+- Componente en `frontend/src/components/` (inventario compartido): el pie es del sitio público;
+  tocar el inventario compartido tocaría el panel (R10-8/FR-020).
+
+## R10-16 — Tokens de espaciado vertical de sección — ajuste del cliente 2026-10-10
+
+**Decisión**: el «más aire» entre secciones pedido por el cliente se expresa como **tokens de
+espaciado vertical** en `frontend/src/index.css` (capa aditiva, junto a los semánticos de tema),
+registrados en `@theme inline` para generar utilidades (`py-section`, `py-section-tight`,
+`gap-block`) heredables por F4–F9:
+
+| Token | < 480 px | 480–767 px | 768–1279 px | ≥ 1280 px | Uso |
+|---|---|---|---|---|---|
+| `--space-section` | `3.25rem` | `4rem` | `5.5rem` | `7rem` | padding vertical de cada sección |
+| `--space-section-tight` | `2rem` | `2.5rem` | `3.5rem` | `4.5rem` | secciones densas o encadenadas del mismo bloque |
+| `--space-block` | `1.5rem` | `2rem` | `2.5rem` | `3rem` | separación entre el encabezado de sección y su contenido |
+
+- **Valores por breakpoint** (no `clamp()` continuo): predecibles de verificar y de ajustar en un solo
+  sitio. Son **defaults revisables**: la calibración final se cierra en QA con la propuesta B
+  (checklist `quickstart.md`, SC-002/SC-011); el e2e **no** mide píxeles de espaciado (R10-12).
+- **Regla de composición**: toda sección de la portada y del futuro F4–F9 usa estos tokens; ninguna
+  define su propio padding vertical. El aislamiento del panel se mantiene (R10-2/R10-8).
+
+**Alternativas descartadas**:
+- `padding`/`margin` arbitrarios por componente (`py-16`, `py-24`…): deriva de espaciado imposible de
+  recalibrar de una vez y sin valor heredable.
+- `clamp()` continuo sobre el ancho: elegante, pero dificulta la verificación y el ajuste discreto por
+  breakpoint.
+- Espaciado por márgenes colapsables entre secciones: impredecible con los revelados de R10-4
+  (bordes/transform) — el padding por token es determinista.

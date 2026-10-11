@@ -2,10 +2,12 @@
 
 **Feature**: F10 · **Branch**: `010-sistema-diseno-movimiento`
 
-Cómo **levantar** el sitio público rediseñado y **validar** cada parte del alcance: sistema visual,
-tema claro/oscuro (sistema → interruptor → persistencia), movimiento **marcado/elegante con revelado
-al hacer scroll** y movimiento reducido, navegación fija sin scroll incómodo y selector de idioma
-compacto. Sirve como guía de QA manual (SC-002, SC-007, SC-009, SC-012, SC-014) y de verificación de
+Cómo **levantar** el sitio público rediseñado y **validar** cada parte del alcance: sistema visual
+(con la propuesta aprobada **B «Marea Turquesa»** y los **tokens de espaciado de sección**), tema
+claro/oscuro (sistema → interruptor → persistencia), movimiento **marcado/elegante con revelado al
+hacer scroll** y movimiento reducido, navegación **responsive** (barra fija en escritorio + **menú
+hamburguesa accesible en móvil**), **mapa del sitio en el pie** y selector de idioma compacto. Sirve
+como guía de QA manual (SC-002, SC-007, SC-009, SC-012, SC-014) y de verificación de
 **no-regresión** (SC-008).
 
 > Nota: este documento se escribe en la fase de plan; los comandos y rutas son los del stack
@@ -48,6 +50,12 @@ identidad/portada, «quiénes somos», horario, WhatsApp, contacto, redes, pie):
 - [ ] Contenido real de distinta forma (textos largos, un servicio suelto, contenido solo en español
       navegando en inglés, varias redes): legible, sin huecos ni desbordes.
 - [ ] Todo elemento interactivo se percibe como tal (hover, foco, activo) con contraste AA.
+- [ ] **Aire entre secciones** (tokens `--space-section*`, ajuste del cliente): las secciones se
+      separan con un espaciado vertical **homogéneo y perceptiblemente mayor** que antes («más
+      aire»), que **crece con el ancho** de la pantalla (móvil → escritorio) y **no** resulta en
+      huecos vacíos ni en un scroll interminable; encabezado de sección y contenido quedan bien
+      relacionados (`--space-block`). Calibración final en esta revisión (si «vacía» o «apretada»,
+      se ajustan los tokens, no cada componente).
 - [ ] Zoom al **200 %** y 320 px: sin desbordes ni pérdida de información.
 
 ## 3. Validar el tema claro/oscuro (US5, SC-012)
@@ -117,6 +125,8 @@ prefers-reduced-motion: reduce*, o la opción del sistema; en e2e:
 - [ ] El salto a las anclas es **instantáneo** (sin desplazamiento suave).
 - [ ] **100 % de las funciones y la información** disponibles, idénticas al modo con movimiento.
 - [ ] Activar «reducir movimiento» **con el sitio abierto** surte efecto sin recargar.
+- [ ] El **menú hamburguesa móvil** se abre/cierra **sin animación** (instantáneo) y el **mapa del
+      sitio del pie** no añade transiciones de entrada.
 
 **Comparación directa (SC-005/SC-014)**: recorrer la portada en ambas configuraciones, una detrás de
 otra: en modo normal el revelado al scroll y las transiciones se **perciben claramente**; con
@@ -124,20 +134,60 @@ movimiento reducido están **por completo ausentes** y todo funciona igual.
 
 ## 5. Validar la navegación (US2, SC-003/SC-004)
 
-- [ ] Al abrir la portada, **todos** los enlaces de navegación están **a la vista** (sin menús
-      ocultos, sin hamburguesa, sin desplegables, sin gestos).
-- [ ] **Móvil (320 px)**: se llega a cualquier enlace **sin desplazar los enlaces de lado** y la
-      página **nunca** provoca desplazamiento horizontal (comprobar también con ~8–10 enlaces si se
-      simula la previsión de F4–F9).
+> **Patrón por dispositivo** (decisión del cliente 2026-10-10): **escritorio (≥ 861 px)** — barra
+> fija con **todas** las anclas siempre a la vista (sin menús ocultos); **móvil (≤ 860 px)** — las
+> anclas viven en un **menú hamburguesa accesible** detrás de un botón siempre visible (el corte de
+> 860 px es el de la maqueta aprobada `propuesta-b.html`). En ambos modos: a un clic o toque, sin
+> gestos, sin scroll incómodo.
+
+### 5.1 Escritorio y tableta apaisada (≥ 861 px)
+
+- [ ] **Todos** los enlaces de navegación están **a la vista** (sin menús ocultos, sin hamburguesa,
+      sin desplegables, sin gestos) y caben en filas compactas **sin scroll lateral**.
 - [ ] Al **bajar** por la página, la navegación **permanece visible y accesible** (barra fija), sin
       tapar contenido ni descolocar el maquetado; la cabecera **transiciona su superficie** al bajar
       (estado `data-scrolled`, ver §4) sin cambiar de altura.
 - [ ] Clic en un enlace → la **sección destino y su título quedan visibles** (la barra no los tapa),
       con desplazamiento **suave** (instantáneo con movimiento reducido, ver §4).
-- [ ] Teclado: orden de foco comprensible, **foco visible siempre**, cada enlace indica a qué sección
-      lleva; lector de pantalla: etiquetas correctas.
-- [ ] Una persona con poca experiencia encuentra y usa la navegación con un solo clic o toque
-      (prueba con personas, SC-003).
+- [ ] La página **nunca** provoca desplazamiento horizontal (comprobar a 861 px, 1024 px y 1280 px,
+      y con ~8–10 enlaces si se simula la previsión de F4–F9).
+
+### 5.2 Móvil (≤ 860 px): menú hamburguesa accesible (a 320 px)
+
+- [ ] La cabecera muestra marca, selector de idioma, control de tema y el **botón hamburguesa**
+      (objetivo **≥ 44 px**, con **nombre accesible** claro —lector de pantalla lo anuncia como menú
+      de secciones— y estado anunciado: **`aria-expanded`** / **`aria-controls`** correctos).
+- [ ] **Abrir/cerrar con ratón** (clic) **y con teclado** (`Enter`/`Espacio` sobre el botón): al
+      **abrir, el foco entra en el panel** (primer enlace); **`Escape`**, el **control visible de
+      cierre**, el **toque/clic fuera** (scrim) y el propio botón lo cierran y **devuelven el foco al
+      botón**; con el panel abierto, `Tab` recorre solo el panel y su botón; al elegir una sección,
+      el panel se cierra y el foco sigue en el destino.
+- [ ] Con el panel abierto, la página de fondo **no se desplaza** (ni con rueda ni con teclado) y el
+      panel se adapta a pantallas bajas (scroll interno propio si hace falta).
+- [ ] **Sin gestos**: todo se opera con toques, clics y teclado (ni swipe ni deslizamientos).
+- [ ] Se llega a cualquier enlace **sin desplazar enlaces de lado** y la página **nunca** provoca
+      desplazamiento horizontal a 320 px; todos los enlaces visibles del sitio cumplen **≥ 44 px**.
+- [ ] Al ensanchar la ventana más allá del breakpoint (**860 px**, o al rotar el dispositivo) el panel
+      **se cierra solo** y reaparecen las filas de anclas de escritorio, sin recargas ni restos de
+      estado.
+- [ ] Clic en un enlace del panel → sección destino y título visibles (barra no tapa), desplazamiento
+      suave (instantáneo con movimiento reducido).
+- [ ] Teclado y lector de pantalla: orden comprensible, **foco visible siempre**, estado del menú
+      anunciado, etiquetas correctas; una persona con poca experiencia abre el menú y llega a su
+      sección con un solo toque (SC-003).
+
+### 5.3 Mapa del sitio en el pie (ajuste del cliente)
+
+- [ ] El **pie** lista las secciones del sitio público (las de la portada de hoy) en **columnas en
+      escritorio** y **apilado en móvil**, con el mismo lenguaje y los mismos nombres que la cabecera.
+- [ ] **0 enlaces rotos**: las secciones en borrador/ausentes **no** dejan enlaces (mismo criterio que
+      la cabecera) y **no** se enlazan rutas de F4–F9 que aún no existen (cuando existan, entran al
+      modelo y el pie las muestra sin tocar el componente).
+- [ ] Accesible: landmark `nav` con **nombre accesible propio** (distinto del de la cabecera), lista
+      real de enlaces, foco visible, objetivos ≥ 44 px, contraste AA **en ambos temas** (la auditoría
+      de contraste de los e2e ya incluye el pie).
+- [ ] Clic en un enlace del pie → el título de la sección destino queda visible (la barra fija no lo
+      tapa).
 
 ## 6. Validar el selector de idioma (US4, SC-007)
 
@@ -153,9 +203,12 @@ movimiento reducido están **por completo ausentes** y todo funciona igual.
 ## 7. Validar textos, accesibilidad y fronteras (SC-008/SC-009/SC-010)
 
 - [ ] Cambiar a inglés: **0 textos de interfaz nuevos sin traducir** (incluidos los del control de
-      tema); el contenido sin inglés muestra su fallback en español integrado en el diseño.
+      tema, los del **menú hamburguesa** —nombre del botón y del control de cierre— y los del **mapa
+      del sitio**); el contenido sin inglés muestra su fallback en español integrado en el diseño.
 - [ ] Recorrido completo **por teclado y con lector de pantalla** en **ambos temas**: foco visible,
-      orden comprensible, todo operable (referencia WCAG 2.1 AA; checklist manual de QA).
+      orden comprensible, todo operable (referencia WCAG 2.1 AA; checklist manual de QA). **En móvil
+      (320 px) incluye el menú hamburguesa**: abrir/cerrar con teclado, `Escape`, foco devuelto al
+      botón, estado del menú anunciado, y recorrido del **mapa del sitio del pie**.
 - [ ] **Panel de administración SIN CAMBIOS**: login, `/panel/informacion`, usuarios, roles y
       auditoría lucen y funcionan **exactamente igual que antes de F10** (F10B no existe aún);
       verificación con las suites e2e de panel y una pasada visual.
@@ -165,10 +218,12 @@ movimiento reducido están **por completo ausentes** y todo funciona igual.
 
 ```bash
 cd frontend
-npm test -- --run        # unitarias: tema, movimiento, navegación, selector + TODAS las de F2/F3
+npm test -- --run        # unitarias: tema, movimiento, navegación (menú hamburguesa móvil y mapa del
+                         # sitio del pie), selector + TODAS las de F2/F3
 npm run typecheck
 npm run lint
-make e2e                 # Playwright: diseno-movimiento, tema-oscuro, movimiento, movimiento-reducido
+make e2e                 # Playwright: diseno-movimiento, navegacion-movil, tema-oscuro, movimiento,
+                         #   movimiento-reducido
                          # + portada-publica, portada-accesibilidad, portada-panel, portada-imagenes,
                          #   portada-patch-null, acceso, auditoria, status  (SIN CAMBIOS, SC-008)
 make ci                  # pipeline completo
@@ -180,13 +235,18 @@ modifica la prueba para hacerla pasar.
 
 ## 9. Revisión de aceptación (humano)
 
-- [ ] La propuesta visual elegida (una de las 3 de `ux.md`, FR-026) se reconoce en la implementación
-      y el cliente la califica como **moderna y acorde a su marca** («no parece un diseño típico y
-      común de IA») (SC-002).
+- [ ] La propuesta visual elegida —**B «Marea Turquesa»** (aprobada 2026-10-10, FR-026)— se reconoce
+      en la implementación y el cliente la califica como **moderna y acorde a su marca** («no parece
+      un diseño típico y común de IA») (SC-002).
+- [ ] Los **3 ajustes del cliente** quedan verificados: (1) navegación responsive —barra fija con
+      todas las anclas en escritorio, **menú hamburguesa accesible** en móvil (§5.2)—; (2) **mapa del
+      sitio en el pie** sin enlaces rotos (§5.3); (3) **más aire entre secciones** con tokens de
+      espaciado (§2).
 - [ ] El **movimiento** se percibe como **marcado y elegante**: el cliente confirma que el revelado
       al scroll, el escalonado y las transiciones **se notan de verdad** (nada «casi imperceptible»)
       y que el conjunto **no resulta estridente ni mareante** (SC-014).
 - [ ] 0 elementos copiados de las referencias (`iglesiaoasis.com`, `river-arena.org`, `apple.com`,
       `microsoft.com/es-cr`) (SC-013).
 - [ ] Cimientos para F4–F9 entregados y documentados (`ux.md` + este plan): una sección nueva
-      construida con ellos encaja sin rediseño (SC-011), incluidos los **tokens de movimiento**.
+      construida con ellos encaja sin rediseño (SC-011), incluidos los **tokens de movimiento**, los
+      **tokens de espaciado** y el modelo de secciones que alimenta nav **y** pie.

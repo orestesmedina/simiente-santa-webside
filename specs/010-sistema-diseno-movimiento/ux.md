@@ -1,211 +1,248 @@
-# UX: F10 — Sistema de diseño y movimiento (sitio público + modo oscuro) — **Ronda 2**
+# UX: F10 — Sistema de diseño y movimiento — **Diseño final: Propuesta B «Marea Turquesa»**
 
-> **Ronda 2 de la puerta 2 (2026-10-10):** el cliente rechazó las 3 propuestas de la ronda 1 («Raíz Viva», «Cielo Abierto», «Luz Serena») por resultarle **«muy pobres, casi imperceptibles»** en animación, y pidió explícitamente transición entre componentes y **revelado de las secciones al hacer scroll hacia abajo**. La spec se actualizó: FR-005 exige nivel **marcado/elegante con revelado al hacer scroll**; FR-006/FR-009 siguen siendo incondicionales (`prefers-reduced-motion` suprime TODO; el contenido nunca depende de la animación). Estas 3 propuestas reemplazan por completo a las anteriores; nada de «Raíz Viva» / «Cielo Abierto» / «Luz Serena» sobrevive.
+> **Estado (ronda 3, 2026-10-10, cierre de fase de diseño):** el cliente **eligió la Propuesta B «Marea Turquesa» y aprobó el plan, con tres cambios** que este documento ya integra: (1) **más aire** — nueva escala de espaciado vertical con tokens de sección; (2) **mapa del sitio en el pie** — todas las opciones existentes del sitio público, en columnas/apilado, accesible y sin inventar enlaces; (3) **menú hamburguesa en móvil** (escritorio conserva la barra fija sin hamburguesa). Este documento **reemplaza a las 3 opciones** de la ronda 2 como **documento de diseño final** listo para `dev-frontend`. La maqueta de referencia vigente es `propuestas/propuesta-b.html` (HTML+CSS+JS autocontenido, con movimiento real, tema claro/oscuro, selector de idioma demo, hamburguesa y mapa del sitio).
 >
-> Fuentes: `spec.md` de F10 (US1–US6, esp. US3 y FR-005/006/007/009/026), tokens de F3, Manual de Identidad (`resources/MANUAL DE MARCA.pdf` manda), referencias de inspiración del cliente (apple.com, microsoft.com/es-cr, river-arena.org, iglesiaoasis.com — **inspiración, nunca copia**).
-> Sin panel (F10B fuera). No toca `estado.md` ni el roadmap; no implementa la app.
+> Fuentes: `spec.md` de F10 (US1–US6; FR-005/006/007/009/026), tokens de F3 (`specs/003-portada-info-general/ux.md`), Manual de Identidad (`resources/MANUAL DE MARCA.pdf` manda), referencias de inspiración del cliente (apple.com, microsoft.com — **inspiración, nunca copia**). Sin panel (F10B fuera). No toca `estado.md` ni el roadmap; no implementa la app.
+>
+> ⚠️ **Punto a confirmar para el analista:** `spec.md` FR-012 y US2 esc. 5 aún dicen «sin menús hamburguesa» (decisión ronda 1). El cliente en ronda 3 pidió explícitamente hamburguesa **en móvil**; el diseño final la aplica como **excepción móvil** y mantiene FR-014 (barra fija sin hamburguesa, todos los enlaces visibles) **en escritorio**. Conviene actualizar la redacción de FR-012/US2 antes de implementar.
 
 ---
 
-## 0. Base compartida (heredada, no reinventada)
+## 0. Sistema compartido (base de F3, blanda, no reinventada)
 
-- **Paleta 70/20/10**: `#1a2b4a` navy (70 %), `#F5F2EC` crema/blanco (20 %), `#00c9a7` turquesa + `#ff6b3d` coral + `#217638` verde (10 %). Derivados solo para contraste AA. Turquesa nunca como texto pequeño sobre claro → usar `#0e7a66`; sobre oscuro turquesa puro es texto/acento directo (≈ 8:1).
-- **Tipografías**: Bebas Neue (titulares y usos de impacto), Poppins (cuerpo 18 px, botones), Playfair Display itálica (lema, frases emocionales). Fallbacks de sistema en las maquetas; en producción self-hosted (`@fontsource`).
-- **Logotipo**: sin deformar, sin recolorear, sin girar, sin efectos — en TODOS los estados, incluido hover/foco. En tema oscuro se apoya sobre pastilla/superficie crema o blanca; nunca se invierte.
-- **Compartido por las 3 propuestas (las rechazadas no lo lograron; aquí ya por defecto)**:
-  - **Navegación: barra fija** con transición de cabecera al hacer scroll (la barra se compacta, gana fondo/elevación/sombra: se *ve* la transición) — sin hamburguesa, sin menús ocultos, sin scroll lateral de enlaces (wrap a 2 filas si hace falta); apta para F4–F9 (~8–10 enlaces).
-  - **Revelado al hacer scroll de nivel marcado**: `IntersectionObserver` + CSS; desplazamientos de entrada grandes (28–48 px) o barrido/máscara, duración 0,55–0,8 s con curva de salida expansiva (`cubic-bezier(.16,1,.3,1)`), **stagger real de 80–140 ms** entre componentes de una misma sección. Cada sección reancla; el foco de teclado fuerza visibilidad inmediata; una vez revelado no se repite.
-  - **Desplazamiento suave a anclas** (`scroll-behavior: smooth` + `scroll-margin-top` para que la barra fija jamás tape el título del destino).
-  - **Microinteracciones perceptibles**: hover de tarjetas con elevación y brillo/sheen; botones que escalan ≈ 1,04 al pulsarse; enlaces con indicador que se despliega; todo sin desplazar el maquetado, todo en `transform`/`opacity` (compositor, fluido en dispositivos modestos).
-  - **Selector de idioma compacto**: «Español · English» en 0,82–0,85 rem, texto completo, sin píldoras ni menú; activo en negrita con subrayado turquesa; comportamiento de F3 intacto (memoria entre visitas, primera visita en español, fallback es→en).
-  - **Interruptor de tema + modo oscuro**: botón circular 44 px junto al idioma, `aria-pressed` + `aria-label` dinámico, apli­cado sin recargar, elección recordada (localStorage), primera visita según `prefers-color-scheme`. Paletas oscuras por propuesta, contrastes AA, logo intacto.
-  - **`prefers-reduced-motion` (incondicional)**: en las maquetas y en el sistema, con esa preferencia NO hay revelado, ni desplazamiento suave, ni entradas: el contenido aparece completo de inmediato y todo funciona igual. Implementado con media query CSS que anula `transition/animation` de entrada y un guarda en el JS del observador.
+### 0.1 Paleta y logotipo
+- **70/20/10**: navy `#1a2b4a` domina (el sitio «vive» sobre navy), crema/blanco `#F5F2EC` 20 %, turquesa `#00c9a7` + coral `#ff6b3d` + verde `#217638` 10 %.
+- **Regla de turquesa como texto**: sobre fondo claro usa `#0e7a66`; sobre navy/oscuro el turquesa puro es acento directo (≈ 8:1). Coral solo como detalle gráfico (nunca texto). Verde vive casi solo en el CTA de WhatsApp.
+- **Logotipo**: intacto SIEMPRE (sin deformar, recolorear, girar ni efectos, incluido hover/foco). En cualquier tema se apoya sobre su **pastilla crema**. En las maquetas, monograma placeholder «SS».
 
-**Secciones de portada (orden, igual en las 3, contenido de F3 intacto)**: cabecera fija → hero/identidad → quiénes somos → horario de servicios → WhatsApp → contacto → redes sociales → pie.
+### 0.2 Tipografías
+- **Bebas Neue**: titulares de sección y momentos de impacto (hora del horario, números 01–05).
+- **Poppins**: cuerpo de texto 18 px, botones, navegación.
+- **Playfair Display itálica**: lema y frases emocionales.
+- Producción: self-hosted (`@fontsource`); maqueta: fallbacks de sistema.
 
----
+### 0.3 Escala de espaciado (nueva — cambio 1 del cliente)
+El sitio debe sentirse **amplio y ordenado, con respiración entre bloques**, sin perder la energía de la marea. Tokens (definidos en `frontend/src/index.css` vía `@theme` + variables de tema):
 
-## 1. Propuesta A — «Bento Vivo»
+| Token | Valor | Uso |
+|---|---|---|
+| `--space-section` | `clamp(5rem, 11vw, 8.5rem)` | separación **entre secciones** (padding-top de cada sección; el pie lo hereda como margen) |
+| `--space-block` | `clamp(1.4rem, 3vw, 2.25rem)` | separación **entre bloques** dentro de una sección (título → texto → CTA; paneles de la misma fila) |
+| `--space-fluid` | `clamp(.8rem, 2vw, 1.25rem)` | separación fina (filas de contacto, chips de redes, CTA del hero, grupos del pie) |
+| `--pad-panel` | `clamp(2rem, 5vw, 3.5rem)` | **márgenes internos generosos** de los paneles de vidrio y del pie |
+| `--pad-text` | `clamp(1rem, 2.4vw, 1.6rem)` | aire interno de texto y detalles |
 
-**Diferencia clave en una línea**: la portada como una **cuadrícula bento** de azulejos de colores de la marca que se descargan al hacer scroll con stagger — la más juguetona, estructuralmente novedosa y la referencia mais directa a Microsoft.
+Reglas de respiración: cada sección es un «plato» separado del anterior por `--space-section` (nunca menos de 5rem); dentro del panel, `* + *` respeta `--space-block` — la transición de bloque tiene aire, no es contenido pegado al borde; scrolled de la barra no reduce la respiración del contenido (`scroll-margin-top: 96px` compensa). La densidad se conserva donde es útil (filas del horario), el aire se gana **entre** secciones y bloques.
 
-- **Dirección visual**: movimiento a base de panel ordenado. La página se apoya en crema `#F5F2EC`; los bloques de información viven en tarjetas de distinto tamaño y color (navy, turquesa, naranja, verde, crema-blanca) como una pizarra moderna. Tipografía Bebas gigante como hilo conductor, con las palabras-clave en Playfair itálico turquesa.
-- **Paleta y uso de marca**: 70 % crema/blanco de fondo, navy para bloques de peso y texto; 20 % tarjetas navy/blancas cruzando; 10 % turquesa/coral/verde repartidos por azulejos de detalle (icono, hora, punto de acento). Logo intacto en cabecera, siempre legible.
-- **Composición de portada**: hero = 1 tarjeta-navy grande (texto + CTA) + tarjeta de imagen + azulejos decorativos con iconografía nueva (brotes, campana, reloj — todo SVG propio, `aria-hidden`); luego cada sección es una fila o mosaico bento (horario como tarjeta-reloj con la hora en Bebas; WhatsApp como tarjeta verde con CTA; contacto como 3 azulejos gemelos; redes como fila de píldoras).
-- **Navegación en barra fija**: barra crema translúcida de arranque, al bajar se oscurece a navy sólido con sombra y reduce su altura (transición perceptible de color+altura+elevación). Enlaces con indicador inferior turquesa que se crece de 0 a 100 % en hover/foco. Móvil: línea 1 marca + idioma + tema, línea 2 enlaces wrap — nada lateral.
-- **Selector de idioma**: `Español · English` muy compacto, unidos por un punto medio fino; el activo subrayado turquesa, 0,85 rem.
-- **Modo oscuro**: los azulejos se reparten sobre `#0d1626` (azulejos navy-más-claros `#1d2c4c`, tarjetas turquesa mantienen texto navy), texto claro; la tarjetas crema se mantienen (logo y legibilidad); la barra pasa de oscuro-suave a sólido, pero mantiene el depth de `card shadows`. Turquesa pasa a directo; coral/verde como breaks no-texto.
-- **Sistema de movimiento (lo más marcado de las 3 en sensación «descarga»)**:
-  1. **Sección al entrar en pantalla**: cada bloque mosaico sube desde 48 px con opacity y **scale 0,94→1**, con stagger de 90 ms entre azulejos de la misma fila (hasta ~0,8 s por azulejo).
-  2. **Azulejos decorativos**: rotación leve base que queda tras el reveal (no animación continua).
-  3. **Hover/foco**: elevación 6–8 px + borde turquesa; sheen de luz (pseudo elemento) barriendo la tarjeta en hover; CTA escala 1,04 al pulsarse.
-  4. **Barra fija**: color de fondo, altura y sombra transicionan al cruzar el hero (clase `scrolled`).
-  5. **`prefers-reduced-motion`**: sin reveal, sin sheen, sin desplazamiento suave (todo con HTML estático de inmediato).
-- **Wireframes** (`≤`/`>` = dirección de entrada de la animación; `sX` = segunda entrada staggered):
+### 0.4 Temas (claro/oscuro con interruptor)
+- «Claro» de B = navy `#1a2b4a` (reposo natural de la propuesta); «oscuro» profundiza a `#0b1424`, paneles `rgba(16,27,48,.7)`, blobs más sutiles, turquesa como acento directo AA sobre oscuro.
+- Interruptor circular 44 px en la barra: `aria-pressed` + `aria-label` dinámico; cambio inmediato sin recargar; elección recordada (localStorage); primera visita según `prefers-color-scheme`. Logo intacto en ambos.
 
-```
-[logo SIMIENTE SANTA | Quiénes somos·Horario·WhatsApp·Contacto·Redes | Español · English | 🌙] ← fija (crema→navy al bajar)
-═════════════════════════════════════════════════════════════════
-┌───────────── BENTO HERO ────────────────┐  ┌── imagen ──┐
-│ TÚ CASA EN CRISTO, TU RAÍZ VIVA         │  │            │
-│ «Brotamos para dar vida.»               │  │            │┐
-│ [ Nuestro horario ][ WhatsApp ]         │  └────────────┘
-├── azulejos decorativos (rotación leve) ─┴──┘
-── 01 QUIÉNES SOMOS ── (2 azulejos gemelos, hover sube 6px)
-── 02 HORARIO ── (tarjeta reloj: 10:00 a. m. Bengal. grande turquesa)
-── 03 WHATSAPP ── (tarjeta verde, CTA con tap-response)
-── 04 CONTACTO ── (3 azulejos: dirección / correo / teléfono)
-── 05 REDES ── (tirillas horizontales + hover sheen)
-── PIE navy: logo + lema
-═════════════════════════════════════════════════════════════════
-Móvil: bento pasa a columna; mismo orden; 320 px sin desbordes.
-```
+### 0.5 Navegación (con el cambio 3 del cliente)
+- **Escritorio (> 860 px)**: barra fija siempre visible, enlaces todos a la vista (wrap si hiciera falta), SIN hamburguesa. Al bajar: la barra se vuelve **banda de vidrio** (`rgba(12,22,38,.72)` + blur + borde inferior turquesa de 1 px) y se compacta — transición perceptible.
+- **Móvil (≤ 860 px)**: la barra sigue fija y visible (marca + idioma + tema + botón hamburguesa); los enlaces viven en un **panel de menú accesible** descrito en §2.3 y §6.
+
+### 0.6 Selector de idioma compacto
+«Español / English» en 0,82–0,85 rem, texto completo, en pastilla fina con borde translúcido; activo con fondo turquesa suave y peso 700; sin píldoras de siglas ni menú. Comportamiento de F3 intacto (memoria entre visitas, primera visita en español, fallback es→en). Se muestra en barra y en la franja inferior del pie (como en F3).
+
+### 0.7 `prefers-reduced-motion` (incondicional)
+Con esa preferencia: sin blobs animados, sin revelados, sin suavidad de scroll, sin transiciones de entrada — el contenido aparece completo de inmediato y todo funciona igual. Media query CSS que anula transiciones/animaciones + guarda en el JS del observador. Referencia SC-005.
 
 ---
 
-## 2. Propuesta B — «Marea Turquesa»
+## 1. Flujo de usuario
 
-**Diferencia clave en una línea**: luz y **gradientes turquesa** a base de banda sobre navy profundo con paneles glass que entran alternando desde los lados — cinematografía suave (Apple/oasis vibes) con movimiento «le fluye».
-
-- **Dirección visual**: el sitio respira como una marea cálida: fondo navy (70 %) tocado por **blobs de gradiente turquesa** suaves que se mueven de forma perceptible y elegante y paneles de vidrio (`backdrop-filter`) con contenido. Hero no centrado de todo (diferencia clave con la propuesta rechazada «Cielo Abierto»): texto a la izquierda, imagen con marco de vidrio a la derecha, y blobs animados detrás.
-- **Paleta y uso de marca**: 70 % navy `#1a2b4a` a sangre (hereda solidez del Manual a sin hacerla «oscura»); 20 % paneles/vidrio del propio navy más o menos claro; 10 % turquesa dominante (gradiente, subrayados, horas, foco) con coral solo un punto; el verde lo aporta el CTA de WhatsApp. Logo intacto.
-- **Composición de portada**: hero con blob gradiente Turquesa→navy tras el título; secciones como paneles de vidrio redondeados sobre el fondo navy con blobs por detrás, entrando **alternando desde la izquierda y la derecha** (perceptible en ese eje). Horario con dígitos en Bebas turquesa de 4 rem; WhatsApp con btn verde; contacto como lista de pastillas; redes como ramos de baldosas.
-- **Navegación en barra fija**: al bajar la barra se vuelve banda de vidrio (fondo `rgba(13,22,38,.72)` + blur + borde inferior turquesa de 1 px que aparece con el scroll); enlaces marcan con subrayado turquesa animado; en móvil 2 filas wrap, controllable a 320 px.
-- **Selector de idioma**: pastilla muy fina con borde translúcido: `Español / English`, activo con fondo turquesa suave (la pastilla es la contención, no un menú).
-- **Modo oscuro**: el tema «claro» de esta propuesta ya es el navy `#1a2b4a`; su oscuro profundiza a `#0b1424` con paneles `#101b30` y el mismo lenguaje de blobs, solo más sutil; turquesa como acento directo (AA sobre oscuro); coral solo como detalle gráfico. El logotipo se apoya siempre sobre su pastilla crema.
-- **Sistema de movimiento (el más cinematográfico)**:
-  1. **Revelado de secciones**: paneles entran desde los lados (± 56 px) + opacity, con **ease expansivo 0,75 s** y stagger 110 ms entre sus componentes internos (título → texto → CTA).
-  2. **Blobs gradiente**: deriva lenta y continua (solo si movimiento permitido; a 60 fps no bloquea, `transform only`).
-  3. **Barra fija**: cambio de fondo a vidrio + blur + borde inferior turquesa al hacer scroll (transición perceptible).
-  4. **Hover/foco**: paneles ganan luminosidad del borde; botones elevan y el gradiente de fondo se intensifica; enlaces de red con swipe flecha.
-  5. **`prefers-reduced-motion`**: sin blobs animados, sin reveal, sin desplazamiento suave: páginas estáticas, mismo contenido.
-- **Wireframes**:
-
-```
-[🌱 SIMIENTE SANTA | Quiénes somos · Horario · WhatsApp · Contacto · Redes | Español / English | 🌙] ← fija
-════════════════════════════════════════════════════════════════
-  (navy a sangre, blob Turquesa → navy detrás del titular)
-  BIENVENIDO A TU           ┌─ panel de vidrio ─┐
-  CASA EN CRISTO  (Bebas)   │   imagen portada   │
-  «Brotamos para dar vida.» └────────────────────┘
-  [ Ver horario ]  [ Escribir por WhatsApp ]
-── (paneles de vidrio sobre el manto navy, alternando ← y →) ──
-  ← 01 Quiénes somos   |   02 Horario (10:00 turquesa grande) →
-  ← 03 WhatsApp  |  04 Contacto  |  05 Redes ─ ramos
-── PIE vidrio con logo ──
-════════════════════════════════════════════════════════════════
-Móvil: hero pasa columna; paneles entran desde el lado único arriba;
-nada lateral; 320 px sin desbordes.
-```
+1. **Llegada**: el visitante abre la portada publicada → barra fija arriba (navy; en móvil con botón hamburguesa), hero/identidad revelándose con entrada lateral.
+2. **Recorrido**: al hacer scroll cada sección entra por un lado alternando, con stagger interno → contenido siempre presente («capa visual», nunca bloquea lectura ni acción).
+3. **Navegación — escritorio**: clic en un enlace de la barra → desplazamiento suave a la ancla con `scroll-margin-top` (la barra jamás tapa el título); barra pasa a vidrio.
+4. **Navegación — móvil**: toque en hamburguesa → panel desde el borde superior con bloques de enlaces en stagger, scroll de fondo bloqueado, foco entra al primer enlace → toque en enlace → cierra el panel y salta a la sección; Escape, toque fuera o el propio botón también cierran; al cerrar el foco vuelve al botón.
+5. **Idioma**: clic en «Español» o «English» → cambio inmediato de todos los textos e `lang` del documento; sin repetir animaciones de entrada (FR-008).
+6. **Tema**: clic en el círculo 🌙/☀️ → cambia de inmediato; se recuerda entre visitas.
+7. **Pie de página**: al terminar el recorrido, el visitante encuentra el **mapa del sitio** (grupos con encabezados y enlaces a todo lo existente), datos de contacto y redes, y el selector de idioma.
+8. **Caminos de error/degradación**: ver §3 (estados) — claros: movimiento reducido, contenido en borrador que oculta la sección y actualiza nav/mapa sin enlaces rotos, contenido solo en español navegando en inglés (fallback), 320 px y zoom 200 %. F10 no agrega operaciones que fallen.
 
 ---
 
-## 3. Propuesta C — «Huella Tipográfica»
+## 2. Pantallas
 
-**Diferencia clave en una línea**: **la tipografía ES la animación** — titulares Bebas gigantes que se despliegan línea a línea con máscara al hacer scroll, bandas cremanas y navy que se alternan con barrido, la más editorial-kinética (Apple }}
+### 2.1 Portada (única pantalla del sitio hoy; orden de F3 intacto)
 
-- **Dirección visual**: revolución tipográfica (revista 2026). Mucho aire, tipografía a escala «póster»; cada titular se despliega con máscara (línea a línea) al llegar al scroll, como si la página se imprimiera. Una base crema con **bandas navy a sangre completa para alternar el ritmo**
-- **Paleta y uso de marca**: 70 % crema/blanco con mucho aire; 20 % bandas navy completas (una sección y el pie); 10 % turquesa en subrayados que se despliegan y punto rojo coral. El color vive DENTRO de la tipografía (palabra en turquesa/navy en medio de un titular), no en cajas.
-- **Composición de portada**: hero tipográfico apilado en 3 líneas Bebas de hasta 5 rem con la 2ª línea en Playfair itálica turquesa («TÚ CASA / *en Cristo,* / TU RAÍZ VIVA»), imagen en rectángulo grande; cada sección abre con numeración gigante (01–05) en outline que se rellena al entrar; horario como tabla de Bebas; contacto en filas; redes en fila de enlaces-texto; pie banda navy con logo.
-- **Navegación en barra fija**: la más ligera: la barra crema se compacta al bajar (menor altura, fondo blanco con hairline y sombra) y la marca se reduce con una transición suave; el subrayado turquesa de los enlaces se despliega de izquierda a derecha al hover/foco.
-- **Selector de idioma**: `Español / English` en 0,82 rem; activo negrita y subrayado turquesa desplegado.
-- **Modo oscuro**: «tinta que se vuelce papel»: fondo `#101a2c`, texto crema; las bandas navy se vuelven bandas crema (invertida elegancia) con texto navy dentro; turquesa puro disponible como acento; el logo sigue con sus colores (sobre pasilla crema/panel navy). La barra también cambia.
-- **Sistema de movimiento (el más «poblado por la marca»; tipografía-kinética)**:
-  1. **Titulares**: despliegue línea a línea dentro de máscara (`overflow:hidden` + `translateY(110%)→0`), 0,6 s por línea, **stagger 120 ms entre líneas** — el efecto Apple-keynote que la iteración pide.
-  2. **Secciones**: bloque entero con desplazamiento de 32 px + opacity 0,7 s; los **números de sección (01–05)** llegan primero, con 120 ms de adelanto respecto al resto de la sección (se percibe que la numeración abre el paso).
-  3. **Bandas navy**: barrido horizontal (scaleX 0→1 en 0,5 s) cuando la banda entra y el contenido revela después.
-  4. **Hover/foco**: subrayados que se despliegan; filas de horario/contacto se tiñen turquesa 6–8 %; botones que se hunden levemente al activar (scale 0,97).
-  5. **Barra fija**: shrink de altura + sombra + estilo compacto con el scroll.
-  6. **`prefers-reduced-motion`**: titulares ya visibles completos; sin despliegues ni barridos ni suave; páginas sin anim, mismas funciones.
-- **Wireframes**:
+Barra fija → hero/identidad → 01 Quiénes somos → 02 Horario → 03 WhatsApp → 04 Contacto → 05 Redes → pie con mapa del sitio.
 
 ```
-[logo SIMIENTE SANTA | Quiénes somos·Horario·WhatsApp·Contacto·Redes | Español / English | 🌙] ← fija (se compacta al bajar)
-════════════════════════════════════════════════════════════════
-  TÚ CASA          ← línea 1 (máscara despliega)
-  en Cristo,       ← línea 2 Playfair itálica turquesa
-  TU RAÍZ VIVA     ← línea 3
-  [imagen grande del hero]
-── 01 QUIÉNES SOMOS: texto editorial con subrayados desplegados
-── banda navy ▨ a sangre: 02 HORARIO (filas Bebas
-      DOMINGO       10:00 a. m. — Culto
-      MIÉRCOLES      7:00 p. m. — Estudio)
-── 03 WHATSAPP (botones fila)
-── 04 CONTACTO / 05 REDES (filas + flechas)
-── PIE banda navy con logo + lema Playfair
-════════════════════════════════════════════════════════════════
-Móvil: tipografía escala con clamp(); máscaras iguales; 320 px ok.
+DESKTOP
+[🌱 SIMIENTE SANTA | Quiénes somos·Horario·WhatsApp·Contacto·Redes | Español / English | 🌙]  ← fija; al bajar: vidrio + blur + borde turquesa
+══════════════════════════════════════════════════════════════════
+        (navy; blob turquesa→navy detrás del titular)
+  BIENVENIDO A TU            ┌─ panel de vidrio ─┐
+  CASA EN CRISTO  (Bebas)    │  imagen portada    │      ← hero, texto izq / imagen der
+  «Brotamos para dar vida.»  └────────────────────┘
+  [ Ver horario ] [ Escribir por WhatsApp ]
+        ┐ aire = --space-section (≥ 5rem, clamp responsive)
+  ← 01 QUIÉNES SOMOS   (panel de vidrio, padding generoso)
+        ┐
+  → 02 HORARIO  (dígitos Bebas turquesa grandes)
+        ┐
+  ← 03 WHATSAPP  (CTA verde)
+        ┐
+  → 04 CONTACTO (filas-pastilla: dirección/correo/teléfono)
+        ┐
+  ← 05 REDES    (chips con hover elevado)
+        ┐
+  PIE · MAPA DEL SITIO (columnas):
+  | marca+lema | Explorar          | Contacto              | Síguenos      |
+  |             | Inicio            | Dirección · Correo    | FB · IG · YT  |
+  |             | Quiénes somos     | Teléfono · WhatsApp   |               |
+  |             | Horario·WhatsApp  |                       |               |
+  |             | Contacto·Redes    |                       |               |
+  ─ franja inferior: lema ············ [ Español / English ]
+══════════════════════════════════════════════════════════════════
 ```
+
+### 2.2 Portada — MÓVIL (menú cerrado)
+```
+MOBILE (≤ 860 px), menú CERRADO
+[ SS SIMIENTE SANTA        Español/English  🌙  ☰ ]  ← fija, 1 fila, sin wrap
+──────────────────────────────────────────────
+  BIENVENIDO A TU CASA EN CRISTO
+  «Brotamos para dar vida.»
+  [ imagen portada en columna ]
+  [ Ver horario ] [ WhatsApp ]
+        ┐ sección por sección, mismas separaciones (clamp responsivo)
+  … 01→05 igual, llegando desde arriba en un solo eje …
+  PIE apilado: marca+lema abajo ▸ Explorar ▸ Contacto ▸ Síguenos ▸ franja idioma
+```
+En pantallas < 480 px la palabra de la marca se oculta (queda el monograma) para que idioma + tema + hamburguesa quepan en 320 px sin overflow; objetivos táctiles ≥ 44 px (botón de tema 44, hamburguesa 44, y el chip de idioma compensa con padding hasta 44).
+
+### 2.3 Portada — MÓVIL (menú ABIERTO)
+```
+MOBILE (≤ 860 px), menú ABIERTO                  foco → «Inicio»
+┌─ barra fija (sigue visible) ─────────────────────┐
+│  SS SIMIENTE…      Español/English   🌙   ✕      │  ← ☰ pasa a ✕
+├──────────────────────────────────────────────────┤
+│   ▓▓ vidrio: rgba(13,22,38,.92) + blur ▓▓        │
+│                                                  │
+│   Inicio                              ›          │  ← stagger 60 ms por bloques
+│   Quiénes somos                       ›          │
+│   Horario                             ›          │
+│   WhatsApp                            ›          │
+│   Contacto                            ›          │
+│   Redes                               ›          │
+│                                                  │        ← resto: scrim oscuro
+└──────────────────────────────────────────────────┘  (scroll de fondo bloqueado)
+```
+- Botón: 44×44 px, icono 3 barras que se cruzan a ✕, `aria-expanded` + `aria-controls` + nombre accesible dinámico («Abrir/Cerrar menú de secciones»).
+- Panel: cubre desde debajo de la barra, de vidrio con blur, con scrim oscuro detrás; enlaces a ancho completo, min-height 56 px cada uno.
+- Gestión del foco: al abrir va al primer enlace; Tab/Shift+Tab cicla solo entre botón y panel; Escape cierra y **devuelve el foco al botón**; clic en un enlace o en el scrim también cierra; sin gestos desconocidos (nada de swipe); al agrandar la ventana a escritorio el menú se cierra solo.
+- El scroll de la página se bloquea mientras está abierto; el tema oscuro de la barra se mantiene.
+
+### 2.4 Pie — mapa del sitio (detalle)
+- `nav aria-label="Mapa del sitio"` con 3 grupos, cada uno con **encabezado de grupo** (h2 en versalitas turquesa) y lista de enlaces reales ≥ 44 px de alto:
+  - **Explorar**: Inicio, Quiénes somos, Horario de servicios, WhatsApp, Contacto, Redes sociales (anclas de la portada — todo lo que hoy existe).
+  - **Contacto**: Dirección del templo, Correo, Teléfono, WhatsApp (mismos datos del bloque 04).
+  - **Síguenos**: Facebook, Instagram, YouTube (mismos enlaces del bloque 05).
+- **Preparado para F4–F9**: el patrón es «una columna = un grupo»; para una sección futura se AÑADE una columna SOLO cuando la sección exista y esté publicada (p. ej. «Eventos» → F4); no se inventan enlaces. La navegación de la cabecera y el mapa comparten la misma lista de origen (un único array `links` en front, para que cabecera y pie jamás se desincronicen).
+- Franja inferior: lema a la izquierda y selector de idioma a la derecha (comportamiento de F3).
+- Escritorio: 4 columnas en grilla (marca 1,3fr + 3 grupos). Móvil: **apilado**, orden marca → Explorar → Contacto → Síguenos → franja de idioma.
 
 ---
 
-## 4. Tabla comparativa (ronda 2)
+## 3. Estados (por vista con datos)
 
-| Criterio | A — «Bento Vivo» | B — «Marea Turquesa» | C — «Huella Tipográfica» |
-|---|---|---|---|
-| Dirección visual | Cuadrícula bento de azulejos de marca | Gradientes turquesa y vidrio sobre navy | Editorial kinético, tipografía a escala póster |
-| Sensación del movimiento | «Descarga ordenada»: los azulejos caen en fila | «Fluye»: paneles llegan alternando desde los lados | «Prensa viva»: las palabras se despliegan con máscara |
-| Movimiento más llamativo | Reveal con scale + stagger por azulejos; sheen hover | Blobs de gradiente continuos + entrada lateral alterna | Despliegue titular línea a línea + barrido de bandas |
-| Protagonismo del color | Crema con mosaico de marca (70/20/10 visible) | Navy dominante con turquesa como luz | Crema con bandas navy rítmicas; color dentro del texto |
-| Primera impresión | Moderna, viva, contemporánea | Cinematográfica, elegante e inmersiva | Sorprendente, editorial, «no típica de IA» |
-| Riesgo de «plantilla IA» | Bajo (el bento es tendencia muy conocida; la se diferencia con la paleta, la iconografía propia y las ilustraciones de la marca) | Medio (gradiente + vidrio es un terreno visitado; la marea turquesa en navy de marca lo separa) | Muy bajo (tipografía kinética casi no se ve en webs de iglesia) |
-| Legibilidad para todas las edades | Muy alta (todo en tarjetas con cuerpo Poppins 18 px) | Alta (mucho texto claro sobre navy; contraste verificado) | Muy alta (contraste máximo; sin cajas; tamaños grandes) |
-| Mejor en modo oscuro | Muy buena (mosaico sobre azul noche) | Muy buena (ya vive en la temperatura; el oscuro solo profundiza) | Muy buena (tinta↔papel, cambio notable) |
-| Escalabilidad F4–F9 (navegación) | Muy buena (2 filas wrap) | Buena (pastilla de enlaces wrap) | Muy buena (la nav más mínima) |
-| Riesgo con `prefers-reduced-motion` | Bajo (reveal simple, fácil de anular) | Medio (blobs continuos que hay que silenciar del todo) | Bajo (despliegues lineales, fáciles de anular) |
-| Peso/rendimiento | Bajo (reveals + sheen; `transform`/`opacity` puros) | Medio (gradientes animados + blur: moderar en dispositivos modestos) | Bajo (máscaras y scaleX; sin blur salvo nada) |
-| Esfuerzo de implementación | Medio | Medio-alto | Medio |
+F10 no cambia datos ni estados de publicación de F3 — presenta con el sistema. Vista por vista:
 
-## 5. Recomendación
-
-**Recomiendo A — «Bento Vivo»**, con **C — «Huella Tipográfica» como primera alternativa**.
-
-- El pedido duro del cliente era «más animación, que se sienta»: las 3 lo entregan, pero **A es la que mejor equilibra animación marcada + acogida para todas las edades** — los azulejos con stagger de 90 ms y revelado grande se sienten de inmediato, y el patrón bento escala de forma natural a F4–F9 (cada sección futura entra como un nuevo conjunto de azulejos sin inventar estilo). El riesgo de «plantilla IA» se neutraliza con la paleta de la marca, la ilustración propia y la palabra-clave en Playfair turquesa.
-- **C** es la más innovadora y probablemente la que más sorprende al cliente, pero su lenguaje editorial-kinético exige textos de bienvenida cuidados y quizá más afinación por sección; es la apuesta fuerte si el cliente quiere «nada típico» por encima de todo.
-- **B** es la más impresionante visualmente pero con más costo de rendimiento (blur y gradientes animados) y más riesgo de marear a personas mayores respecto a `prefers-reduced-motion` e inteligibilidad con todo ese fondo.
-
-**Propuesta aprobada por el humano**: ☐ A «Bento Vivo» ☐ B «Marea Turquesa» ☐ C «Huella Tipográfica» — (marcar antes de implementar; FR-026 / SC-013).
-
-## 6. Componentes React (para dev-frontend)
-
-### 6.1 Reutilizados de `frontend/src/components/`
-- `Button` — añadir variantes con feedback táctil (`active:scale`), nunca sobre el logo.
-
-### 6.2 De `frontend/src/features/publico/` (reutilizar/estender, comportamiento intacto)
-| Componente | Extensión |
+| Vista/estado | Qué muestra |
 |---|---|
-| `PublicLayout` | Header fija con transición de scroll (compactado/vidrio/sólido), slots para idioma+tema, pie según propuesta. |
-| `LanguageSwitcher` | Formato compacto (0,82–0,85 rem, texto completo) según propuesta; comportamiento F3 intacto. |
-| `HomePage`, `IdentityHero` (hoy `Hero`/`WhoWeAreSection`), `ScheduleSection`, `WhatsAppSection`, `ContactSection`, `SocialSection`, `PublicFooter`, `SectionSkeleton`, `SocialIcon` | Maquetado nuevo según la propuesta aprobada; flujos de datos, fallback y publicación intactos. Cada bloque se envuelve en `Reveal` con stagger. |
+| **Cargando** (fetch de portada en curso) | `SectionSkeleton` re-pensada para B: paneles de vidrio fantasmas con las mismas medidas y separaciones de la sección destino, pulso sutil (solo si hay movimiento). La barra y el hero estructural ya visibles → nada «brinca» al cargar. |
+| **Éxito** | Secciones publicadas con estilo final (fotos en el marco de vidrio del hero; hora en Bebas turquesa en horario; filas-pastilla en contacto; chips en redes). |
+| **Error (falla la carga del contenido)** | Igual que F3: mensaje claro bilingüe en un panel de vidrio con acción de reintento; el maquetado no se rompe; el contenido nunca depende de una animación cargada (FR-009). |
+| **Vacío / sección en borrador** | La sección NO se dibuja; la navegación y el mapa del sitio se actualizan del mismo array de enlaces → 0 enlaces rotos o huérfanos (edge case de F3). |
+| **Solo español navegando en inglés (fallback)** | Las piezas en español se integran con el mismo aspecto; sin huecos ni recolocaciones por la flexibilidad del espaciado. |
+| **`prefers-reduced-motion`** | Todo el contenido visible al instante; sin blobs, revelados, suavidad ni transiciones; el menú móvil funciona sin animación; selector de idioma e idioma y tema intactos. SC-005. |
+| **Sin permisos** | N/A en el sitio público; el panel está fuera (F10B). |
+| **320 px / zoom 200 % / lento** | Sin desbordes horizontales ni overflow; fila única de barra con monograma; objetivos ≥ 44 px; movimiento siempre en `transform/opacity` (nunca bloquea la lectura). |
 
-### 6.3 Nuevos (cimientos para F4–F9)
-| Componente / hook | Responsabilidad |
-|---|---|
-| `Reveal` + hook `useReveal` | Envoltorio de revelado: `IntersectionObserver` con umbral 0,15, variante de entrada (`up` / `left` / `right` / `lines` / `scale`), delay de stagger, DISPARA UNA VEZ; al recibir foco se hace visible de inmediato (regla de edge case); con `prefers-reduced-motion` no observa y muestra de inmediato. |
-| `TransitionHeader` | Barra fija con clase `scrolled` (sombra + fondo + altura) al cruzar el umbral del scroll. |
-| `ThemeToggle` + `useTheme` + `ThemeScript` | Interruptor 44 px con `aria-pressed`/`aria-label` dinámico; persistencia de la elección; script inline pre-render anti-destello; observación en vivo de `prefers-color-scheme` si no hay elección manual. |
-| Tokens de movimiento en `frontend/src/index.css` (`@theme`) + variables de tema oscuro | Duraciones (‑‑dur‑reveal: 0,7 s; ‑‑dur‑micro: 0,25 s; ‑‑stagger: 90 ms), curvas; documentadas para F4–F9. |
-| `features/publico/messages.ts` | Cadenas nuevas es/en: `theme.toDark`, `theme.toLight`, `theme.state.*`, `a11y.revealNote` si se necesita. |
+---
 
-## 7. Accesibilidad (WCAG 2.1 AA, en ambos temas)
+## 4. Componentes React (para `dev-frontend`)
 
-- **Teclado**: skip link → logo → enlaces de nav → selector de idioma → tema → contenido. Sin trampas; el foco de teclado nunca queda sobre algo sin revelar (los componentes `Reveal` se visibilizan si reciben foco antes de su revelado).
-- **Foco visible**: anillo 2 px turquesa (o alternante según fondo) sobre claro y sobre oscuro, incluido el estado `scrolled` de la barra.
-- **Contraste AA**: Revisión (script) prevista de las combinaciones del sistema en ambos temas: texto ≥ 4,5:1, grande/avalo ≥ 3:1, incluidos hover/foco/activo y fuentes “derived” (turquesa pequeño sobre claro solo con #0e7a66).
-- **Objetivos ≥ 44 px**: botón tema, enlaces de nav, selector de idioma (opciones de etiqueta completadas con padding), filas de redes u contactos, CTAs.
-- **Orden y semántica**: `<nav aria-label="Secciones del sitio">`, grupo de idioma con `role="group" aria-label="Idioma"`, `aria-pressed` en tema; `lang` en `<html>` cambia es/en como en F3.
-- **Movimiento**: nunca bloquea lectura ni acción (FC-007); mover solo `transform`/`opacity`; el scroll nunca es condición para ver contenido (con lector de pantalla todo se anuncia igual); con `prefers-reduced-motion` cero revelados, cero suave, cero blobs — check igual en la maqueta (usar emulador DevTools o forzando la media query).
-- **320 px y zoom 200 %**: la barra de las 3 propuestas conserva un tamaño objetivo, sin overflows ni superpositions.
+### 4.1 Reutilizados (F3 — comportamiento intacto)
+- `PublicLayout`, `LanguageSwitcher`, `HomePage`, `IdentityHero` (hoy `Hero`/`WhoWeAreSection`), `ScheduleSection`, `WhatsAppSection`, `ContactSection`, `SocialSection`, `SectionSkeleton`, `SocialIcon`, `Button` (se le añaden variantes con feedback táctil `active:scale`).
+- Ninguno cambia su contrato de datos ni su lógica; solo se les aplica la maqueta B nueva.
 
-## 8. Textos de interfaz nuevos (es/en, FR-019)
+### 4.2 Nuevos (cimientos del sistema)
+
+| Componente / hook | Props principales | Responsabilidad |
+|---|---|---|
+| `Reveal` + `useReveal` | `as`, `from: 'left'|'right'|'up'|'in'`, `delay?: ms`, `once: true` | Envoltorio de revelado (IntersectionObserver umbral .15, rootMargin -8%); dispara UNA VEZ; si un elemento aun no revelado recibe foco se hace visible de inmediato; con `prefers-reduced-motion` no observa y muestra de inmediato. Nunca oculta foco ni bloquea lectura. |
+| `TransitionHeader` | `links: {id,label}[]`, `breakpoint?: 860`, slots `lang`, `theme`, `menu` (móvil) | Barra fija: clase `scrolled` al bajar (vidrio+blur+borde turquesa+altura compacta). En escritorio renderiza nav en línea; en móvil oculta la nav y muestra el botón hamburguesa que controla `MobileMenu`. Cumple FR-014 (fija) y FR-025 (320 px). |
+| `MobileMenu` ⭐new | `open: boolean`, `onClose?: () => void`, `links: {id,label}[]`, `labels: {open, close}` | Panel de menú para pantallas estrechas: `<nav>` con los enlaces de `links`; `.open` anima entrada 0,35 s con stagger 60 ms por ítem; maneja foco (entra al abrir, Escape cierra y devuelve foco, Tab encapsula), scrim opcional (`onScrimClick`), bloqueo de scroll de fondo, cierre automático si el breakpoint crece a escritorio. Componente **controlado**: no decide abrirse por sí mismo. |
+| `useMobileMenu` | — | Hook con la lógica del menú (open/close, `aria-expanded`, etiqueta dinámica). Opcional si `MobileMenu` controlado basta. |
+| `SiteMapFooter` ⭐new | `groups: {heading: string, label: string, items: {href, label}[]}[]`, `brand`, `lema`, `contact`, `social?`, `langSlot?: ReactNode`, `columnsDesktop: 1.3fr 1fr 1.1fr 1.1fr` | Pie con mapa del sitio: recibe ya los grupos de enlaces existentes (array fuente compartido con la nav) y los pinta en columnas (desktop) / apilado (móvil); franja inferior con lema + slot para el selector de idioma. `<nav aria-label="Mapa del sitio">` con encabezados de grupo visibles. Para F4–F9 basta añadir un grupo más; no inventa enlaces. |
+| `ThemeToggle` + `useTheme` + `ThemeScript` | — | Interruptor 44 px con `aria-pressed`/`aria-label` dinámicos; persistencia; script inline anti-destello; observación en vivo de `prefers-color-scheme` si no hay elección manual. |
+| `tokens` en `frontend/src/index.css` (`@theme`) + vars de tema oscuro | — | Espaciado (`--space-section/block/fluid`, `--pad-panel/text`), duraciones (`--dur-reveal: .75s`, `--dur-micro: .3s`, `--ease`, stagger 60–140 ms), paleta y temas; documentados para F4–F9. |
+| `features/publico/messages.ts` | — | Cadenas nuevas es/en (ver §7). |
+
+### 4.3 Flujo de datos del nav/mapa
+Una única fuente `useSiteLinks()` (o equivalente) devuelve los enlaces visibles según el contenido publicado (las secciones en borrador se excluyen). De ella se alimentan `TransitionHeader` (escritorio y móvil vía `MobileMenu`) y `SiteMapFooter` — la cabecera y el pie nunca se desincronizan y actualizar la fuente es suficiente para ambas.
+
+---
+
+## 5. Sistema de movimiento (nivel marcado/elegante con revelado al scroll — FR-005)
+
+1. **Revelado de secciones**: cada panel entra desde un lado alternado (± 56–60 px) + `opacity`, `0,7–0,8 s`, curva expansiva `cubic-bezier(.16,1,.3,1)`; **stagger 110 ms** entre componentes internos (kicker → título → texto → CTA); en móvil todo entra desde un solo eje (arriba).
+2. **Blobs de gradiente**: 2 blobs en deriva continua al fondo, solo `transform` a 60 fps (26/32 s, alternos). Solo si hay movimiento; en dispositivos modestos el blur se modera (es el mayor costo de B — se vigila el framerate en las pruebas).
+3. **Transición de cabecera**: al bajar, fondo pasa a vidrio (`rgba(12,22,38,.72)` + `backdrop-filter: blur(12px)`), altura compacta y borde inferior turquesa de 1 px que aparece — perceptible, no un «brinco».
+4. **Microinteracciones**: hover de paneles = elevación 6 px + borde turquesa; botones escalan 1,02–1,04 al activarse; filas de contacto se desplazan 6 px a la derecha; chips de redes suben y se rellenan levemente; subrayado turquesa se despliega en la nav. Todo en `transform/opacity`, sin desplazar el maquetado.
+5. **Menú móvil**: panel entra con `translateY(-14px) → 0` + fade 0,35 s; ítems con stagger 60 ms; icono ☰ → ✕ (cruce de barras). Con movimiento reducido: apertura/cierre instantáneos.
+6. **`prefers-reduced-motion`** (FR-006, incondicional): sin blobs, revelado, suavidad ni transiciones de entrada — contenido completo al instante; el sitio funciona igual para teclado y lector de pantalla. Media query CSS global + guarda en JS.
+7. **Nunca**: bloqueo de lectura o acción (FR-007), repetición molesta al cambiar idioma/tema o al revisitar una sección (FR-008); el contenido y las funciones jamás dependen de ver una animación (FR-009).
+
+---
+
+## 6. Accesibilidad (WCAG 2.1 AA, ambos temas)
+
+- **Orden de teclado**: skip link → logo → enlaces de nav (móvil: primero hamburguesa) → selector de idioma → interruptor de tema → contenido → … → mapa del sitio → idioma del pie.
+- **Menú móvil (patrón accesible completo)**: botón 44 px con nombre accesible dinámico y `aria-expanded`; `aria-controls` apuntando al panel (con `role="dialog"` ligero); foco entra al abrir (`primer enlace`), Tab/Shift+Tab encapsula (botón↔panel), Escape cierra y devuelve foco al botón, cierre «explícito» desde el propio control; scrim con clic cierra; scroll de fondo bloqueado; sin gestos desconocidos; `aria-modal="false"` (la página sigue operable por lector de pantalla en la barra).
+- **Tema**: botón 44 px, `aria-pressed` dinámica + `aria-label` "Cambiar a tema claro/oscuro"; cambio de tema sin perder foco.
+- **Foco visible**: anillo turquesa 2 px; contraste del outline verificado sobre navy claro/oscuro y sobre vidrio en estado `scrolled` y menú.
+- **Contraste AA en ambos temas**: revisión con script (llamada prevista en implementación): texto ≥ 4,5:1, grande ≥ 3:1, incluidos `hover/focus/active` y turquesa pequeño solo `#0e7a66` sobre claro. Blobs: son decorativos (`aria-hidden`), nunca tras texto esencial con contraste insuficiente.
+- **Objetivos ≥ 44 px**: navegación, selector de idioma, tema, hamburguesa, CTAs, filas de contacto, chips de redes, enlaces del pie, ítems del menú móvil.
+- **Semántica**: `<nav aria-label="Secciones del sitio">`; `role="group" aria-label="Idioma"`; `<nav aria-label="Mapa del sitio">` con encabezados de grupo (h2) y listas; `lang` en `<html>` según idioma (comportamiento F3). Landmarks limpios: banner (header), main, contentinfo (footer).
+- **Movimiento**: nunca condición para ver ni usar contenido (FR-009); esc. de foco temprano resuelto (elemento a revelar se visibiliza si recibe foco).
+- **320 px y zoom 200 %**: sin overflow, sin tapar nada, sin scroll lateral (FR-025, heredado F3).
+
+## 7. Textos de interfaz nuevos (es/en, FR-019)
 
 | Clave | Español | English |
 |---|---|---|
+| `menu.open` | Abrir menú de secciones | Open sections menu |
+| `menu.close` | Cerrar menú de secciones | Close sections menu |
+| `menu.groupLabel` | Menú de secciones | Sections menu |
+| `map.groupLabel` | Mapa del sitio | Site map |
+| `map.explore` | Explorar | Explore |
+| `map.contact` | Contacto | Contact |
+| `map.social` | Síguenos | Follow us |
+| `nav.groupLabel` | Secciones del sitio | Site sections |
 | `theme.label` | Tema | Theme |
 | `theme.toDark` | Cambiar a tema oscuro | Switch to dark theme |
 | `theme.toLight` | Cambiar a tema claro | Switch to light theme |
 | `lang.groupLabel` | Idioma | Language |
-| `nav.groupLabel` | Secciones del sitio | Site sections |
 | `skipToContent` | Ir al contenido | Skip to content |
+| `content.error.*` / `content.retry` | (de F3, conservados y vestidos con B) | |
 
-El resto de rótulos ya existe en F3 y no cambia de texto ni de clave; las maquetas contienen demo bilingüe interactivo (clic en «Español/English») solo para que el cliente lo sienta: en el sitio real esa lógica sigue siendo la de F3.
+Los rótulos de contenido ya existen en F3 y no cambian de texto ni de clave. La maqueta demo bilingüe es solo para percibir el resultado.
+
+## 8. Preparado para F4–F9 (sin inventar enlaces)
+
+- **Nav**: nuevo enlace = nuevo ítem en la única fuente de enlaces; escritorio wrap/dos filas; móvil entra automáticamente al panel; el mapa del sitio recibe un nuevo grupo o ítem **solo cuando la sección exista**.
+- **Secciones nuevas** heredan: `Reveal` (variante lateral), `.glass` + tokens `--space-block/--pad-panel`, botones existentes, headings del sistema, sin rediseño.
+- No se muestran enlaces de secciones futuras en ninguna superficie (nada muerto, nada «pronto»).
+
+## 9. Puntos a confirmar
+
+1. **spec.md**: FR-012 («sin menús hamburguesa») y US2 esc. 5 quedan sustituidos en móvil por la decisión de ronda 3 del cliente (hamburguesa en móvil; escritorio sin hamburguesa, barra fija). Aprobar la redacción de esta excepción con el analista antes de implementar (este documento no edita `spec.md`).
+2. **Grupos del mapa del sitio**: se propuso «Explorar / Contacto / Síguenos» (con «Inicio»). Ajustar rotulación si el cliente quiere otros nombres.
+3. **Selector de idioma del pie**: se conserva (F3 lo tenía) en la franja inferior. Confirmar si además debe mostrarse dentro del panel del menú móvil (hoy en la maqueta solo queda en la barra).
+4. **Rendimiento de blobs+blur**: en dispositivos muy modestos los gradientes animados y el `backdrop-filter` son el mayor costo de B; si degradan la fluidez se moderan o se reducen antes que entorpecer la lectura (FR-007). Se resuelve en implementación.
+5. **Orden de los grupos del pie en móvil**: confirmar que se apilan en este orden: marca → Explorar → Contacto → Síguenos → franja de idioma (así está en la maqueta).
