@@ -35,6 +35,7 @@ type fakeRepository struct {
 	// Guionización de errores y de la detección de duplicados.
 	recordErr   error
 	mutationErr error
+	listErr     error
 	duplicate   bool
 
 	// Observaciones de las consultas.
@@ -269,6 +270,9 @@ func (f *fakeRepository) CountEvents(_ context.Context, state *PublicationState)
 func (f *fakeRepository) ListUpcomingEvents(_ context.Context, today, nowTime string, limit int) ([]Event, error) {
 	f.cutoffs = append(f.cutoffs, cutoffCall{today: today, nowTime: nowTime})
 	f.blockLimits = append(f.blockLimits, limit)
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
 
 	out := make([]Event, 0, len(f.events))
 	for _, event := range f.events {

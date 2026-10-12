@@ -657,7 +657,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 
 ## Fase 7 — Handlers, rutas y cableado
 
-- [ ] T423 · `handler_public.go` — `GET /api/v1/proximamente` · `[backend]`
+- [X] T423 · `handler_public.go` — `GET /api/v1/proximamente` · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/handler.go`, `handler_public.go`,
     `handler_public_test.go` (NUEVOS).
