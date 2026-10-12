@@ -35,6 +35,11 @@ func RegisterPublic(root httpserver.Registrar, h *Handler) {
 	}
 	// «Lo que viene»: los próximos eventos y las próximas actividades (FR-001…FR-009).
 	root.Handle(http.MethodGet, "/api/v1/proximamente", h.GetProximamente)
+	// Extracto del bloque «Lo que viene» de la portada (US7/FR-025…FR-027, Q8).
+	// El segmento `portada` es el agregado de F3, pero el recurso es de la agenda
+	// (Complexity 8 del plan): así el contrato no toca ninguna operación de F3 y
+	// la portada no se rediseña (FR-027).
+	root.Handle(http.MethodGet, "/api/v1/portada/proximamente", h.GetPortadaProximamente)
 }
 
 // AdminDeps reúne la configuración de los grupos de panel de la agenda.

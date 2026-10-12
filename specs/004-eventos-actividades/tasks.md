@@ -1192,7 +1192,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
     intacta.
   - **Commit sugerido**: `feat(agenda): extracto de lo que viene para la portada`
 
-- [ ] T446 · `handler_public.go` + `routes.go` — `GET /api/v1/portada/proximamente` · `[backend]`
+- [X] T446 · `handler_public.go` + `routes.go` — `GET /api/v1/portada/proximamente` · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/handler_public.go`, `handler_public_test.go`,
     `routes.go`, `routes_test.go` (EDITADOS) y `backend/cmd/api/main_test.go` (EDITADO: humo).

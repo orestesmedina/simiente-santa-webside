@@ -51,6 +51,9 @@ type AgendaService interface {
 	// GetProximamente devuelve «lo que viene» publicado y próximo, resuelto a
 	// `lang` (FR-001…FR-008).
 	GetProximamente(ctx context.Context, lang string) (PublicProximamente, error)
+	// GetPortadaProximamente devuelve el extracto del bloque «Lo que viene» de
+	// la portada (US7/FR-025…FR-027), resuelto a `lang`.
+	GetPortadaProximamente(ctx context.Context, lang string) (PortadaProximamente, error)
 
 	// Eventos (FR-010): gestión del panel.
 	CreateEvento(ctx context.Context, actorID uuid.UUID, in EventoInput) (EventoAdmin, error)

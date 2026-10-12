@@ -409,3 +409,137 @@ func statePtr(state PublicationState) *PublicationState { return &state }
 func apperrConflictForTest() error {
 	return apperr.Conflict("Ya existe un evento con esos datos")
 }
+
+// --- Extracto de la portada (US7/FR-025, T446) ---
+
+// doGetPortadaProximamente lanza el handler del extracto.
+func doGetPortadaProximamente(t *testing.T, h *Handler, target string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	rec := httptest.NewRecorder()
+	h.GetPortadaProximamente(rec, req)
+	return rec
+}
+
+// TestGetPortadaProximamenteHandlerOK fija el sobre de éxito, la cabecera
+// no-store y el contenido del extracto (solo publicado y próximo, con su tope).
+func TestGetPortadaProximamenteHandlerOK(t *testing.T) {
+	repo := newFakeRepository()
+	event := samplePublicEvent("Noche de aposentos", "2026-10-12")
+	event.ImageFile = ptrOf("img_11111111-1111-1111-1111-111111111111.jpg")
+	event.ImageAltEs = ptrOf("Foto del evento")
+	repo.events = []Event{event}
+	repo.eventDates[event.ID] = []EventDate{{Date: "2026-10-12", StartTime: ptrOf("19:00")}}
+	repo.activities = []Activity{samplePublicActivity("Repartir comida", "2026-10-13")}
+
+	h := newTestHandler(t, repo)
+
+	rec := doGetPortadaProximamente(t, h, "/api/v1/portada/proximamente")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+	}
+
+	var got PortadaProximamente
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es PortadaProximamente: %v (%s)", err, rec.Body)
+	}
+	if got.Lang != LangES {
+		t.Errorf("lang = %q, se esperaba es (por defecto)", got.Lang)
+	}
+	if len(got.Items) != 2 {
+		t.Fatalf("items = %+v, se esperaban 2", got.Items)
+	}
+	if got.Items[0].Kind != "event" || got.Items[0].Title != "Noche de aposentos" {
+		t.Errorf("items[0] = %+v", got.Items[0])
+	}
+	if got.Items[0].StartTime == nil || *got.Items[0].StartTime != "19:00" {
+		t.Errorf("startTime = %v", got.Items[0].StartTime)
+	}
+	if got.Items[0].Image == nil || got.Items[0].Image.Alt != "Foto del evento" {
+		t.Errorf("imagen = %+v", got.Items[0].Image)
+	}
+	if got.Items[1].Kind != "activity" || got.Items[1].Title != "Repartir comida" {
+		t.Errorf("items[1] = %+v", got.Items[1])
+	}
+	// El extracto no lleva detalle, categoría ni lista de fechas.
+	for _, forbidden := range []string{"detail", "category", "dates", "publicationState"} {
+		if strings.Contains(rec.Body.String(), forbidden) {
+			t.Errorf("el extracto no debe llevar %q: %s", forbidden, rec.Body)
+		}
+	}
+}
+
+// TestGetPortadaProximamenteHandlerOmitsEmptyItems fija FR-026 en el sobre: sin
+// ítems la respuesta solo lleva `lang` (clave `items` omitida, nunca null).
+func TestGetPortadaProximamenteHandlerOmitsEmptyItems(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := doGetPortadaProximamente(t, h, "/api/v1/portada/proximamente")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != `{"lang":"es"}` {
+		t.Fatalf("cuerpo = %s, se esperaba solo lang", body)
+	}
+	if strings.Contains(rec.Body.String(), "null") {
+		t.Errorf("items nunca debe ser null: %s", rec.Body)
+	}
+}
+
+// TestGetPortadaProximamenteHandlerLang fija la resolución de idioma del handler
+// y el 400 de un idioma desconocido.
+func TestGetPortadaProximamenteHandlerLang(t *testing.T) {
+	repo := newFakeRepository()
+	event := samplePublicEvent("Noche de aposentos", "2026-10-12")
+	event.TitleEn = ptrOf("Dormitory night")
+	repo.events = []Event{event}
+	repo.eventDates[event.ID] = []EventDate{{Date: "2026-10-12"}}
+	h := newTestHandler(t, repo)
+
+	rec := doGetPortadaProximamente(t, h, "/api/v1/portada/proximamente?lang=EN")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got PortadaProximamente
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo inesperado: %v", err)
+	}
+	if got.Lang != LangEN || got.Items[0].Title != "Dormitory night" {
+		t.Errorf("respuesta = %+v", got)
+	}
+
+	rec = doGetPortadaProximamente(t, h, "/api/v1/portada/proximamente?lang=fr")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("lang=fr: status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"invalid"`) || !strings.Contains(rec.Body.String(), `"lang"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+}
+
+// TestGetPortadaProximamenteHandlerServiceError fija el sobre de error genérico
+// sin filtrar la causa interna, y el 500 si el servicio no está cableado.
+func TestGetPortadaProximamenteHandlerServiceError(t *testing.T) {
+	repo := newFakeRepository()
+	repo.listErr = errors.New("boom")
+	h := newTestHandler(t, repo)
+
+	rec := doGetPortadaProximamente(t, h, "/api/v1/portada/proximamente")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"internal"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "boom") {
+		t.Errorf("la respuesta filtra la causa interna: %s", rec.Body)
+	}
+
+	rec = doGetPortadaProximamente(t, NewHandler(HandlerDeps{}), "/api/v1/portada/proximamente")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("sin servicio: status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+	}
+}

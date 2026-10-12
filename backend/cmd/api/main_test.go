@@ -110,6 +110,12 @@ func (stubAgendaRepo) CountActivities(context.Context, *agenda.PublicationState)
 
 func (stubAgendaRepo) ListCategories(context.Context) ([]agenda.Category, error) { return nil, nil }
 
+// ListNextUpcomingItems satisface el extracto de la portada del humo: sin ítems
+// (la respuesta es solo `lang`).
+func (stubAgendaRepo) ListNextUpcomingItems(context.Context, string, string, string, int) ([]agenda.NextItem, error) {
+	return nil, nil
+}
+
 // liveSessionStore tiene una sesión viva para cualquier token: permite probar
 // los permisos de los grupos de panel sin Redis.
 type liveSessionStore struct{ userID uuid.UUID }
@@ -701,4 +707,72 @@ func TestAgendaPermissionsSmoke(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestPortadaProximamenteSmoke comprueba el humo de composición del extracto del
+// bloque «Lo que viene» de la portada (US7/FR-025, T446): la ruta pública
+// responde sin sesión, con su sobre y sin caché, y una ruta inexistente del
+// segmento sigue dando el 404 con sobre (§8.1.9).
+func TestPortadaProximamenteSmoke(t *testing.T) {
+	logger, _ := testutil.NewLogger()
+	srv := httptest.NewServer(httpserver.NewHandler(
+		newMux(testDeps(fakeRepository{}, logger), logger),
+		logger,
+		middleware.Chain(logger, []string{"http://localhost:5173"})...,
+	))
+	t.Cleanup(srv.Close)
+
+	t.Run("el extracto responde 200 sin sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada/proximamente", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		// Sin ítems: la clave `items` se omite (la portada muestra su mensaje).
+		if body := strings.TrimSpace(string(resp.Body)); body != `{"lang":"es"}` {
+			t.Errorf("cuerpo = %s, se esperaba solo lang", body)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+		}
+	})
+
+	t.Run("con lang=EN resuelve el idioma", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada/proximamente?lang=EN", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"lang":"en"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("lang inválido responde 400", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada/proximamente?lang=fr", "", nil)
+		if resp.Status != http.StatusBadRequest {
+			t.Fatalf("status = %d, se esperaba 400 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"invalid"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("la portada de F3 sigue intacta", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"lang":"es"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("subruta inexistente responde 404 con sobre", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada/desconocido", "", nil)
+		if resp.Status != http.StatusNotFound {
+			t.Fatalf("status = %d, se esperaba 404 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"not_found"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
 }
