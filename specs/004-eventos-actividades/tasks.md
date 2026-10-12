@@ -997,7 +997,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     independientes.
   - **Commit sugerido**: `test(e2e): gestion de agenda en el panel y permisos cruzados`
 
-- [ ] T442 · E2E Playwright `agenda-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
+- [X] T442 · E2E Playwright `agenda-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
 
   > *Tarea añadida al cerrar los hallazgos de `analyze.md` (M2: el "e2e de teclado" que prometían
   > plan y tabla de cobertura no tenía dueño). Se numera al final para no renumerar T440/T441.*
