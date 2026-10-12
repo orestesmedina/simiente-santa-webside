@@ -598,7 +598,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: US2 y FR-010/FR-015/FR-017 cubiertos en el service.
   - **Commit sugerido**: `feat(agenda): gestion de eventos con fechas, validacion y auditoria`
 
-- [ ] T420 · `agenda`: `service_admin.go` — actividades · `[backend]`
+- [X] T420 · `agenda`: `service_admin.go` — actividades · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/service_admin.go` (EDITADO) y `service_admin_test.go`
     (AMPLIADO).

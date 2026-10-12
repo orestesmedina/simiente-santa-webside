@@ -703,3 +703,406 @@ func TestUploadEventoImageAuditsAndIsFailClosed(t *testing.T) {
 		}
 	})
 }
+
+// --- Actividades (T420) ---
+
+// validActividadInput devuelve un alta de actividad válida.
+func validActividadInput() ActividadInput {
+	return ActividadInput{
+		TitleEs:   "Repartir comida",
+		DetailEs:  "Repartimos comida en el barrio.",
+		PlaceEs:   "Salón comunal",
+		Date:      "2026-10-12",
+		StartTime: "10:00",
+		EndTime:   "13:00",
+	}
+}
+
+// TestCreateActividadValidatesEveryField fija FR-015 sobre el modelo de fecha
+// única: cada dato inválido responde 400 con `details` y sin guardar nada.
+func TestCreateActividadValidatesEveryField(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*ActividadInput)
+		field  string
+	}{
+		{name: "título vacío", mutate: func(in *ActividadInput) { in.TitleEs = " " }, field: "titleEs"},
+		{name: "detalle vacío", mutate: func(in *ActividadInput) { in.DetailEs = "" }, field: "detailEs"},
+		{name: "detalle largo", mutate: func(in *ActividadInput) { in.DetailEs = strings.Repeat("a", 2001) }, field: "detailEs"},
+		{name: "lugar vacío", mutate: func(in *ActividadInput) { in.PlaceEs = "  " }, field: "placeEs"},
+		{name: "enlace inválido", mutate: func(in *ActividadInput) { in.MapURL = "ftp://x.example" }, field: "mapUrl"},
+		{name: "sin fecha", mutate: func(in *ActividadInput) { in.Date = "" }, field: "date"},
+		{name: "fecha inexistente", mutate: func(in *ActividadInput) { in.Date = "2026-02-30" }, field: "date"},
+		{name: "fin sin inicio", mutate: func(in *ActividadInput) { in.StartTime = "" }, field: "endTime"},
+		{name: "fin anterior", mutate: func(in *ActividadInput) { in.EndTime = "09:00" }, field: "endTime"},
+		{name: "hora mal formada", mutate: func(in *ActividadInput) { in.StartTime = "25:00" }, field: "startTime"},
+		{name: "imagen sin alt", mutate: func(in *ActividadInput) {
+			in.ImageFile = "img_11111111-1111-1111-1111-111111111111.png"
+		}, field: "imageAltEs"},
+		{name: "categoría inexistente", mutate: func(in *ActividadInput) { in.CategoryID = uuid.New().String() }, field: "categoryId"},
+		{name: "estado inválido", mutate: func(in *ActividadInput) { in.PublicationState = "archived" }, field: "publicationState"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepository()
+			svc := newAdminService(t, repo)
+
+			in := validActividadInput()
+			tt.mutate(&in)
+
+			_, err := svc.CreateActividad(context.Background(), uuid.New(), in)
+			if errorKind(err) != apperr.KindInvalid {
+				t.Fatalf("error = %v, se esperaba invalid", err)
+			}
+			if _, ok := detailsOf(t, err)[tt.field]; !ok {
+				t.Errorf("sin details.%s: %v", tt.field, err)
+			}
+			if len(repo.activities) != 0 || len(repo.committed) != 0 {
+				t.Errorf("un rechazo guardó algo: %+v / %+v", repo.activities, repo.committed)
+			}
+			if len(repo.recorded) != 1 || repo.recorded[0].Result != audit.ResultFailure {
+				t.Errorf("registro del rechazo = %+v", repo.recorded)
+			}
+		})
+	}
+}
+
+// TestCreateActividadStoresNormalizedContent fija el alta completa (FR-011):
+// normalización analyze I6, `activity.create` aunque nazca publicada (R4-10) y
+// el DTO del panel con su fecha y su marca de pasado.
+func TestCreateActividadStoresNormalizedContent(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	actor := uuid.New()
+
+	in := validActividadInput()
+	in.TitleEs = "  Repartir   comida ¡ya! 🍲 "
+	in.DetailEn = "   " // sin traducción → NULL
+	in.PublicationState = "published"
+
+	out, err := svc.CreateActividad(context.Background(), actor, in)
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+
+	stored := repo.activities[0]
+	if stored.TitleEs != "Repartir comida ¡ya! 🍲" {
+		t.Errorf("título = %q", stored.TitleEs)
+	}
+	if stored.DetailEn != nil {
+		t.Errorf("DetailEn = %v, se esperaba NULL", stored.DetailEn)
+	}
+	if stored.Date != "2026-10-12" || stored.StartTime == nil || *stored.StartTime != "10:00" {
+		t.Errorf("fecha/horario = %+v", stored)
+	}
+
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionActivityCreate {
+		t.Fatalf("auditoría = %+v, se esperaba activity.create", repo.committed)
+	}
+	if repo.committed[0].TargetLabel != "Actividades · Repartir comida ¡ya! 🍲" {
+		t.Errorf("targetLabel = %q", repo.committed[0].TargetLabel)
+	}
+
+	if out.PublicationState != "published" || out.IsPast {
+		t.Errorf("DTO = %+v", out)
+	}
+	if out.Date != "2026-10-12" {
+		t.Errorf("date = %q", out.Date)
+	}
+}
+
+// TestCreateActividadDuplicateIsConflict fija R4-9 en el módulo de actividades:
+// el duplicado exacto (título + fecha + lugar) es 409 y un EVENTO idéntico no
+// cuenta como duplicado (Decisión 3).
+func TestCreateActividadDuplicateIsConflict(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	if _, err := svc.CreateActividad(ctx, uuid.New(), validActividadInput()); err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	repo.committed = nil
+	repo.recorded = nil
+
+	_, err := svc.CreateActividad(ctx, uuid.New(), validActividadInput())
+	if errorKind(err) != apperr.KindConflict {
+		t.Fatalf("duplicado = %v, se esperaba conflict", err)
+	}
+	if len(repo.activities) != 1 {
+		t.Errorf("actividades = %d, se esperaba 1", len(repo.activities))
+	}
+	if len(repo.recorded) != 1 || repo.recorded[0].Result != audit.ResultFailure {
+		t.Errorf("registro del rechazo = %+v", repo.recorded)
+	}
+
+	// Un evento con los mismos datos se guarda sin conflicto (Decisión 3).
+	in := validEventoInput()
+	in.TitleEs = validActividadInput().TitleEs
+	in.PlaceEs = validActividadInput().PlaceEs
+	in.Dates = []FechaInput{{Date: validActividadInput().Date}}
+	if _, err := svc.CreateEvento(ctx, uuid.New(), in); err != nil {
+		t.Fatalf("CreateEvento(idéntico a una actividad): %v", err)
+	}
+}
+
+// TestActividadPastDateIsNotPublic fija el edge case: la fecha pasada se guarda
+// (marcada `isPast`) y la actividad no aparece en público, sin cambiar su estado
+// (FR-006/Q4).
+func TestActividadPastDateIsNotPublic(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	in := validActividadInput()
+	in.Date = "2026-10-01"
+	in.PublicationState = "published"
+	out, err := svc.CreateActividad(ctx, uuid.New(), in)
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	if !out.IsPast {
+		t.Errorf("isPast = false, se esperaba true")
+	}
+
+	public, err := svc.GetProximamente(ctx, LangES)
+	if err != nil {
+		t.Fatalf("GetProximamente: %v", err)
+	}
+	if len(public.Activities) != 0 {
+		t.Errorf("una actividad vencida no debe ser pública: %+v", public.Activities)
+	}
+
+	stored := repo.activities[0]
+	if stored.PublicationState != StatePublished {
+		t.Errorf("el estado de la vencida cambió: %q", stored.PublicationState)
+	}
+}
+
+// TestUpdateActividadKeepsModulesApart fija la independencia de los módulos y la
+// regla de códigos (R4-10): publicar o retirar una actividad deja UNA fila
+// `activity.*` y no toca a los eventos.
+func TestUpdateActividadKeepsModulesApart(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	eventIn := validEventoInput()
+	eventIn.PublicationState = "published"
+	event, err := svc.CreateEvento(ctx, uuid.New(), eventIn)
+	if err != nil {
+		t.Fatalf("CreateEvento: %v", err)
+	}
+	activity, err := svc.CreateActividad(ctx, uuid.New(), validActividadInput())
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	repo.committed = nil
+
+	published := "published"
+	updated, err := svc.UpdateActividad(ctx, uuid.New(), uuid.MustParse(activity.ID), ActividadPatch{PublicationState: &published})
+	if err != nil {
+		t.Fatalf("UpdateActividad: %v", err)
+	}
+	if updated.PublicationState != "published" {
+		t.Errorf("estado = %q", updated.PublicationState)
+	}
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionActivityPublish {
+		t.Fatalf("auditoría = %+v, se esperaba solo activity.publish", repo.committed)
+	}
+
+	// El evento no se tocó.
+	storedEvent, _, err := repo.GetEventByID(ctx, uuid.MustParse(event.ID))
+	if err != nil {
+		t.Fatalf("GetEventByID: %v", err)
+	}
+	if storedEvent.PublicationState != StatePublished {
+		t.Errorf("el evento cambió de estado: %q", storedEvent.PublicationState)
+	}
+
+	// Datos + estado → dos filas.
+	repo.committed = nil
+	title := "Repartir comida (editada)"
+	draft := "draft"
+	if _, err := svc.UpdateActividad(ctx, uuid.New(), uuid.MustParse(activity.ID), ActividadPatch{
+		TitleEs:          &title,
+		PublicationState: &draft,
+	}); err != nil {
+		t.Fatalf("UpdateActividad(editar): %v", err)
+	}
+	if len(repo.committed) != 2 {
+		t.Fatalf("auditoría = %+v, se esperaban 2 filas", repo.committed)
+	}
+	if repo.committed[0].Code != audit.ActionActivityUpdate || repo.committed[1].Code != audit.ActionActivityUnpublish {
+		t.Errorf("códigos = %q/%q", repo.committed[0].Code, repo.committed[1].Code)
+	}
+}
+
+// TestUpdateActividadValidatesAndFinds cubre los rechazos de la edición de
+// actividades (incluido el horario resultante) y el 404.
+func TestUpdateActividadValidatesAndFinds(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	created, err := svc.CreateActividad(ctx, uuid.New(), validActividadInput())
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	id := uuid.MustParse(created.ID)
+
+	t.Run("sin cambios", func(t *testing.T) {
+		if _, err := svc.UpdateActividad(ctx, uuid.New(), id, ActividadPatch{}); errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+	})
+
+	t.Run("id inexistente", func(t *testing.T) {
+		title := "X"
+		if _, err := svc.UpdateActividad(ctx, uuid.New(), uuid.New(), ActividadPatch{TitleEs: &title}); errorKind(err) != apperr.KindNotFound {
+			t.Fatalf("error = %v, se esperaba not_found", err)
+		}
+	})
+
+	t.Run("título vacío", func(t *testing.T) {
+		empty := "  "
+		if _, err := svc.UpdateActividad(ctx, uuid.New(), id, ActividadPatch{TitleEs: &empty}); errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+	})
+
+	t.Run("fin sin inicio al editar el horario", func(t *testing.T) {
+		_, err := svc.UpdateActividad(ctx, uuid.New(), id, ActividadPatch{StartTime: nullOptional()})
+		if errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+		if _, ok := detailsOf(t, err)["endTime"]; !ok {
+			t.Errorf("sin details.endTime: %v", err)
+		}
+	})
+
+	t.Run("fecha inexistente", func(t *testing.T) {
+		bad := "2026-13-32"
+		if _, err := svc.UpdateActividad(ctx, uuid.New(), id, ActividadPatch{Date: &bad}); errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+	})
+
+	t.Run("imagen sin alt", func(t *testing.T) {
+		file := "img_11111111-1111-1111-1111-111111111111.png"
+		_, err := svc.UpdateActividad(ctx, uuid.New(), id, ActividadPatch{ImageFile: OptionalOf(file)})
+		if errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+		if _, ok := detailsOf(t, err)["imageAltEs"]; !ok {
+			t.Errorf("sin details.imageAltEs: %v", err)
+		}
+	})
+}
+
+// TestUpdateActividadClearsOptionalFieldsWithNull fija el contrato del PATCH.
+func TestUpdateActividadClearsOptionalFieldsWithNull(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+
+	in := validActividadInput()
+	in.OrganizerEs = "Equipo"
+	in.TitleEn = "Food distribution"
+	created, err := svc.CreateActividad(context.Background(), uuid.New(), in)
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+
+	updated, err := svc.UpdateActividad(context.Background(), uuid.New(), uuid.MustParse(created.ID), ActividadPatch{
+		OrganizerEs: OptionalOf(""),
+		TitleEn:     nullOptional(),
+	})
+	if err != nil {
+		t.Fatalf("UpdateActividad: %v", err)
+	}
+	if updated.OrganizerEs != nil || updated.TitleEn != nil {
+		t.Errorf("los opcionales no se limpiaron: %+v", updated)
+	}
+	if updated.StartTime == nil || *updated.StartTime != "10:00" {
+		t.Errorf("el horario no debía tocarse: %+v", updated.StartTime)
+	}
+}
+
+// TestDeleteGetAndListActividades cubre el borrado, la ficha y el listado del
+// panel con su filtro y paginación.
+func TestDeleteGetAndListActividades(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	published := validActividadInput()
+	published.PublicationState = "published"
+	first, err := svc.CreateActividad(ctx, uuid.New(), published)
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	draftIn := validActividadInput()
+	draftIn.TitleEs = "Actividad en borrador"
+	draftIn.PlaceEs = "Otro salón"
+	if _, err := svc.CreateActividad(ctx, uuid.New(), draftIn); err != nil {
+		t.Fatalf("CreateActividad(borrador): %v", err)
+	}
+	repo.committed = nil
+
+	list, err := svc.ListActividades(ctx, nil, paginate.Params{Limit: 20})
+	if err != nil {
+		t.Fatalf("ListActividades: %v", err)
+	}
+	if list.Total != 2 || len(list.Items) != 2 {
+		t.Errorf("listado = %+v", list)
+	}
+	state := StatePublished
+	filtered, err := svc.ListActividades(ctx, &state, paginate.Params{Limit: 20})
+	if err != nil {
+		t.Fatalf("ListActividades(publicadas): %v", err)
+	}
+	if filtered.Total != 1 {
+		t.Errorf("publicadas = %+v", filtered)
+	}
+	page, err := svc.ListActividades(ctx, nil, paginate.Params{Limit: 1, Offset: 1})
+	if err != nil || len(page.Items) != 1 {
+		t.Fatalf("página = %+v (%v)", page, err)
+	}
+
+	got, err := svc.GetActividad(ctx, uuid.MustParse(first.ID))
+	if err != nil || got.ID != first.ID {
+		t.Fatalf("GetActividad = %+v (%v)", got, err)
+	}
+	if _, err := svc.GetActividad(ctx, uuid.New()); errorKind(err) != apperr.KindNotFound {
+		t.Errorf("ficha inexistente = %v, se esperaba not_found", err)
+	}
+
+	if err := svc.DeleteActividad(ctx, uuid.New(), uuid.MustParse(first.ID)); err != nil {
+		t.Fatalf("DeleteActividad: %v", err)
+	}
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionActivityDelete {
+		t.Errorf("auditoría = %+v, se esperaba activity.delete", repo.committed)
+	}
+	if err := svc.DeleteActividad(ctx, uuid.New(), uuid.New()); errorKind(err) != apperr.KindNotFound {
+		t.Errorf("borrado inexistente = %v, se esperaba not_found", err)
+	}
+}
+
+// TestUploadActividadImageAudits fija la subida del módulo de actividades
+// (R4-10: `activity.image.upload`).
+func TestUploadActividadImageAudits(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+
+	out, err := svc.UploadActividadImage(context.Background(), uuid.New(), []byte("PNG"))
+	if err != nil {
+		t.Fatalf("UploadActividadImage: %v", err)
+	}
+	if len(repo.recorded) != 1 || repo.recorded[0].Code != audit.ActionActivityImageUpload {
+		t.Fatalf("auditoría = %+v, se esperaba activity.image.upload", repo.recorded)
+	}
+	if repo.recorded[0].TargetLabel != "Actividades · Imagen · "+out.FileName {
+		t.Errorf("targetLabel = %q", repo.recorded[0].TargetLabel)
+	}
+}

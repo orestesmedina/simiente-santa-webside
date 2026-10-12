@@ -481,6 +481,15 @@ func (s *service) recordContentFailure(ctx context.Context, actorID uuid.UUID, c
 	})
 }
 
+// isConflict indica si el error es un conflicto de dominio (409). Se usa para
+// registrar el rechazo best-effort cuando lo detecta la BASE (el duplicado de
+// actividades lo garantiza `UNIQUE (title_es, activity_date, place_es)`, R4-9):
+// los intentos fallidos también quedan en la auditoría (FR-017/R4-10).
+func isConflict(err error) bool {
+	var domainErr *apperr.Error
+	return errors.As(err, &domainErr) && domainErr.Kind == apperr.KindConflict
+}
+
 // logError registra un fallo best-effort con el logger de la petición (que lleva
 // el request_id) o, si no hay, con el logger base del service.
 func (s *service) logError(ctx context.Context, message string, err error) {

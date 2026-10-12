@@ -620,3 +620,435 @@ func datesStrings(dates []EventDate) []string {
 type urlRule struct {
 	URL string `validate:"required,url,max=500"`
 }
+
+// --- Actividades (FR-011, T420) ---
+
+// ActividadAdmin es la actividad completa del panel: ambos idiomas, su fecha
+// única con horario opcional, su estado de publicación y su marca de pasado
+// (FR-011/Q4). No tiene `nextDate`: la actividad es de fecha única (Decisión 3).
+type ActividadAdmin struct {
+	ID               string    `json:"id"`
+	TitleEs          string    `json:"titleEs"`
+	TitleEn          *string   `json:"titleEn"`
+	DetailEs         string    `json:"detailEs"`
+	DetailEn         *string   `json:"detailEn"`
+	PlaceEs          string    `json:"placeEs"`
+	PlaceEn          *string   `json:"placeEn"`
+	MapURL           *string   `json:"mapUrl"`
+	OrganizerEs      *string   `json:"organizerEs"`
+	OrganizerEn      *string   `json:"organizerEn"`
+	CategoryID       *string   `json:"categoryId"`
+	ImageFile        *string   `json:"imageFile"`
+	ImageAltEs       *string   `json:"imageAltEs"`
+	ImageAltEn       *string   `json:"imageAltEn"`
+	Date             string    `json:"date"`
+	StartTime        *string   `json:"startTime,omitempty"`
+	EndTime          *string   `json:"endTime,omitempty"`
+	PublicationState string    `json:"publicationState"`
+	IsPast           bool      `json:"isPast"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+}
+
+// ActividadAdminList es el listado paginado de actividades (§8.1.2/§8.1.3).
+type ActividadAdminList struct {
+	Items  []ActividadAdmin `json:"items"`
+	Total  int64            `json:"total"`
+	Limit  int              `json:"limit"`
+	Offset int              `json:"offset"`
+}
+
+// ActividadPatch es el cuerpo de PATCH /api/v1/admin/actividades/{id}: solo los
+// campos presentes se tocan (con `null` explícito para vaciar los opcionales).
+type ActividadPatch struct {
+	TitleEs          *string          `json:"titleEs,omitempty"`
+	TitleEn          Optional[string] `json:"titleEn"`
+	DetailEs         *string          `json:"detailEs,omitempty"`
+	DetailEn         Optional[string] `json:"detailEn"`
+	PlaceEs          *string          `json:"placeEs,omitempty"`
+	PlaceEn          Optional[string] `json:"placeEn"`
+	MapURL           Optional[string] `json:"mapUrl"`
+	OrganizerEs      Optional[string] `json:"organizerEs"`
+	OrganizerEn      Optional[string] `json:"organizerEn"`
+	CategoryID       Optional[string] `json:"categoryId"`
+	ImageFile        Optional[string] `json:"imageFile"`
+	ImageAltEs       Optional[string] `json:"imageAltEs"`
+	ImageAltEn       Optional[string] `json:"imageAltEn"`
+	Date             *string          `json:"date,omitempty"`
+	StartTime        Optional[string] `json:"startTime"`
+	EndTime          Optional[string] `json:"endTime"`
+	PublicationState *string          `json:"publicationState,omitempty"`
+}
+
+// hasChanges indica si el PATCH trae al menos un campo.
+func (p ActividadPatch) hasChanges() bool {
+	return p.TitleEs != nil || p.TitleEn.Set() || p.DetailEs != nil || p.DetailEn.Set() ||
+		p.PlaceEs != nil || p.PlaceEn.Set() || p.MapURL.Set() || p.OrganizerEs.Set() ||
+		p.OrganizerEn.Set() || p.CategoryID.Set() || p.ImageFile.Set() || p.ImageAltEs.Set() ||
+		p.ImageAltEn.Set() || p.Date != nil || p.StartTime.Set() || p.EndTime.Set() ||
+		p.PublicationState != nil
+}
+
+// CreateActividad da de alta una actividad puntual (FR-011/FR-019): una única
+// fecha con horario opcional, validación FR-015, normalización analyze I6 y
+// registro `activity.create` —aunque nazca publicada (R4-10)— en la misma
+// transacción. El duplicado exacto del módulo → 409 (R4-9); un EVENTO con los
+// mismos datos nunca es duplicado (Decisión 3).
+func (s *service) CreateActividad(ctx context.Context, actorID uuid.UUID, in ActividadInput) (ActividadAdmin, error) {
+	fail := func(err error) (ActividadAdmin, error) {
+		s.recordContentFailure(ctx, actorID, ModuleActivities.CreateCode(), contentLabel(ModuleActivities, ""))
+		return ActividadAdmin{}, err
+	}
+
+	if err := validate.Struct(in); err != nil {
+		return fail(err)
+	}
+	date, start, end, err := normalizeActivityDate(in.Date, in.StartTime, in.EndTime)
+	if err != nil {
+		return fail(err)
+	}
+	if err := validateImage(in.ImageFile, in.ImageAltEs); err != nil {
+		return fail(err)
+	}
+	categoryID, err := s.resolveCategoryID(ctx, in.CategoryID)
+	if err != nil {
+		return fail(err)
+	}
+
+	activity := Activity{
+		TitleEs:          normalizeText(in.TitleEs),
+		TitleEn:          normalizeOptional(in.TitleEn),
+		DetailEs:         normalizeText(in.DetailEs),
+		DetailEn:         normalizeOptional(in.DetailEn),
+		PlaceEs:          normalizeText(in.PlaceEs),
+		PlaceEn:          normalizeOptional(in.PlaceEn),
+		MapURL:           normalizeOptional(in.MapURL),
+		OrganizerEs:      normalizeOptional(in.OrganizerEs),
+		OrganizerEn:      normalizeOptional(in.OrganizerEn),
+		CategoryID:       categoryID,
+		ImageFile:        normalizeOptional(in.ImageFile),
+		ImageAltEs:       normalizeOptional(in.ImageAltEs),
+		ImageAltEn:       normalizeOptional(in.ImageAltEn),
+		Date:             date,
+		StartTime:        start,
+		EndTime:          end,
+		PublicationState: publicationStateOr(in.PublicationState),
+	}
+
+	label := contentLabel(ModuleActivities, activity.TitleEs)
+	actions := []audit.Action{contentAction(actorID, ModuleActivities.CreateCode(), label)}
+	saved, err := s.repository.InsertActivity(ctx, activity, actions...)
+	if err != nil {
+		// El duplicado exacto del módulo lo detecta la base (UNIQUE): su rechazo
+		// también queda en la auditoría (FR-017/R4-10).
+		if isConflict(err) {
+			s.recordContentFailure(ctx, actorID, ModuleActivities.CreateCode(), label)
+		}
+		return ActividadAdmin{}, fmt.Errorf("crear la actividad: %w", err)
+	}
+	return s.actividadAdmin(ctx, saved)
+}
+
+// UpdateActividad edita parcialmente una actividad (FR-011) con la misma regla
+// de publicación que los eventos (FR-013/FR-014) y la regla de códigos de
+// R4-10 (`activity.update` y/o `activity.publish`/`activity.unpublish`).
+func (s *service) UpdateActividad(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch ActividadPatch) (ActividadAdmin, error) {
+	fail := func(err error) (ActividadAdmin, error) {
+		s.recordContentFailure(ctx, actorID, ModuleActivities.UpdateCode(), contentLabel(ModuleActivities, id.String()))
+		return ActividadAdmin{}, err
+	}
+
+	if !patch.hasChanges() {
+		return fail(apperr.Invalid("No hay cambios que guardar"))
+	}
+
+	current, found, err := s.repository.GetActivityByID(ctx, id)
+	if err != nil {
+		return ActividadAdmin{}, fmt.Errorf("leer la actividad: %w", err)
+	}
+	if !found {
+		return fail(apperr.NotFound("La actividad no existe"))
+	}
+
+	updated, dataChanged, stateChanged, err := s.mergeActividad(ctx, current, patch)
+	if err != nil {
+		return fail(err)
+	}
+	if !dataChanged && !stateChanged {
+		return s.actividadAdmin(ctx, current)
+	}
+
+	label := contentLabel(ModuleActivities, updated.TitleEs)
+	actions := make([]audit.Action, 0, 2)
+	if dataChanged {
+		actions = append(actions, contentAction(actorID, ModuleActivities.UpdateCode(), label))
+	}
+	if stateChanged {
+		actions = append(actions, contentAction(actorID, ModuleActivities.StateCode(updated.PublicationState), label))
+	}
+
+	saved, err := s.repository.UpdateActivity(ctx, updated, actions...)
+	if err != nil {
+		if isConflict(err) {
+			s.recordContentFailure(ctx, actorID, ModuleActivities.UpdateCode(), label)
+		}
+		return ActividadAdmin{}, fmt.Errorf("editar la actividad: %w", err)
+	}
+	return s.actividadAdmin(ctx, saved)
+}
+
+// DeleteActividad elimina físicamente una actividad y registra `activity.delete`
+// con su `targetLabel` conservado (R4-10). Un id inexistente → 404.
+func (s *service) DeleteActividad(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error {
+	current, found, err := s.repository.GetActivityByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("leer la actividad: %w", err)
+	}
+	if !found {
+		return apperr.NotFound("La actividad no existe")
+	}
+	actions := []audit.Action{contentAction(actorID, ModuleActivities.DeleteCode(), contentLabel(ModuleActivities, current.TitleEs))}
+	deleted, err := s.repository.DeleteActivity(ctx, id, actions...)
+	if err != nil {
+		return fmt.Errorf("eliminar la actividad: %w", err)
+	}
+	if !deleted {
+		return apperr.NotFound("La actividad no existe")
+	}
+	return nil
+}
+
+// GetActividad devuelve la ficha completa de una actividad (FR-011).
+func (s *service) GetActividad(ctx context.Context, id uuid.UUID) (ActividadAdmin, error) {
+	activity, found, err := s.repository.GetActivityByID(ctx, id)
+	if err != nil {
+		return ActividadAdmin{}, fmt.Errorf("leer la actividad: %w", err)
+	}
+	if !found {
+		return ActividadAdmin{}, apperr.NotFound("La actividad no existe")
+	}
+	return s.actividadAdmin(ctx, activity)
+}
+
+// ListActividades devuelve el listado paginado del panel (FR-011): todas las
+// actividades (borradoras y pasadas incluidas), ordenadas por
+// `created_at DESC, id DESC`, con filtro opcional por estado.
+func (s *service) ListActividades(ctx context.Context, state *PublicationState, params paginate.Params) (ActividadAdminList, error) {
+	total, err := s.repository.CountActivities(ctx, state)
+	if err != nil {
+		return ActividadAdminList{}, fmt.Errorf("contar las actividades: %w", err)
+	}
+	activities, err := s.repository.ListActivities(ctx, state, params)
+	if err != nil {
+		return ActividadAdminList{}, fmt.Errorf("listar las actividades: %w", err)
+	}
+
+	items := make([]ActividadAdmin, 0, len(activities))
+	for _, activity := range activities {
+		admin, err := s.actividadAdmin(ctx, activity)
+		if err != nil {
+			return ActividadAdminList{}, err
+		}
+		items = append(items, admin)
+	}
+	return ActividadAdminList{Items: items, Total: total, Limit: params.Limit, Offset: params.Offset}, nil
+}
+
+// UploadActividadImage guarda una imagen subida para el módulo de actividades
+// (FR-020) y la audita con `activity.image.upload` (fail-closed, R4-10).
+func (s *service) UploadActividadImage(ctx context.Context, actorID uuid.UUID, data []byte) (ImageUploadResult, error) {
+	return s.uploadImage(ctx, actorID, ModuleActivities, data)
+}
+
+// actividadAdmin arma la ficha del panel de una actividad con su marca de
+// pasado (sin tocar su estado, FR-006/Q4).
+func (s *service) actividadAdmin(ctx context.Context, activity Activity) (ActividadAdmin, error) {
+	today, nowTime, err := s.cutoff()
+	if err != nil {
+		return ActividadAdmin{}, err
+	}
+	return actividadAdminFrom(activity, today, nowTime), nil
+}
+
+// actividadAdminFrom traduce la actividad al DTO del panel.
+func actividadAdminFrom(activity Activity, today, nowTime string) ActividadAdmin {
+	admin := ActividadAdmin{
+		ID:               activity.ID.String(),
+		TitleEs:          activity.TitleEs,
+		TitleEn:          activity.TitleEn,
+		DetailEs:         activity.DetailEs,
+		DetailEn:         activity.DetailEn,
+		PlaceEs:          activity.PlaceEs,
+		PlaceEn:          activity.PlaceEn,
+		MapURL:           activity.MapURL,
+		OrganizerEs:      activity.OrganizerEs,
+		OrganizerEn:      activity.OrganizerEn,
+		ImageFile:        activity.ImageFile,
+		ImageAltEs:       activity.ImageAltEs,
+		ImageAltEn:       activity.ImageAltEn,
+		Date:             activity.Date,
+		StartTime:        activity.StartTime,
+		EndTime:          activity.EndTime,
+		PublicationState: string(activity.PublicationState),
+		IsPast:           !isUpcoming(activity.Date, today, nowTime, activity.EndTime),
+		CreatedAt:        activity.CreatedAt,
+		UpdatedAt:        activity.UpdatedAt,
+	}
+	if activity.CategoryID != nil {
+		id := activity.CategoryID.String()
+		admin.CategoryID = &id
+	}
+	return admin
+}
+
+// normalizeActivityDate valida la fecha única de la actividad y su horario
+// opcional (FR-015/Q2).
+func normalizeActivityDate(dateRaw, startRaw, endRaw string) (string, *string, *string, error) {
+	date, err := parseDate(dateRaw)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	start, end, err := normalizeRange(startRaw, endRaw)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	return date, start, end, nil
+}
+
+// mergeActividad combina la actividad actual con los campos presentes del PATCH
+// y valida el resultado (FR-015).
+func (s *service) mergeActividad(ctx context.Context, current Activity, patch ActividadPatch) (Activity, bool, bool, error) {
+	updated := current
+	dataChanged := false
+	invalid := func(field, message string) error {
+		return apperr.Invalid("Revisa los datos del formulario", apperr.WithDetails(map[string]any{field: message}))
+	}
+
+	if patch.TitleEs != nil {
+		title := normalizeText(*patch.TitleEs)
+		if title == "" {
+			return Activity{}, false, false, invalid("titleEs", "Este campo es obligatorio.")
+		}
+		if len([]rune(title)) > MaxTitleLength {
+			return Activity{}, false, false, invalid("titleEs", fmt.Sprintf("No puede tener más de %d caracteres.", MaxTitleLength))
+		}
+		updated.TitleEs = title
+		dataChanged = true
+	}
+	if patch.TitleEn.Set() {
+		updated.TitleEn = normalizeOptional(patch.TitleEn.Value())
+		dataChanged = true
+	}
+	if patch.DetailEs != nil {
+		detail := normalizeText(*patch.DetailEs)
+		if detail == "" {
+			return Activity{}, false, false, invalid("detailEs", "Este campo es obligatorio.")
+		}
+		if len([]rune(detail)) > MaxDetailLength {
+			return Activity{}, false, false, invalid("detailEs", fmt.Sprintf("No puede tener más de %d caracteres.", MaxDetailLength))
+		}
+		updated.DetailEs = detail
+		dataChanged = true
+	}
+	if patch.DetailEn.Set() {
+		updated.DetailEn = normalizeOptional(patch.DetailEn.Value())
+		dataChanged = true
+	}
+	if patch.PlaceEs != nil {
+		place := normalizeText(*patch.PlaceEs)
+		if place == "" {
+			return Activity{}, false, false, invalid("placeEs", "Este campo es obligatorio.")
+		}
+		if len([]rune(place)) > MaxPlaceLength {
+			return Activity{}, false, false, invalid("placeEs", fmt.Sprintf("No puede tener más de %d caracteres.", MaxPlaceLength))
+		}
+		updated.PlaceEs = place
+		dataChanged = true
+	}
+	if patch.PlaceEn.Set() {
+		updated.PlaceEn = normalizeOptional(patch.PlaceEn.Value())
+		dataChanged = true
+	}
+	if patch.MapURL.Set() {
+		mapURL := normalizeOptional(patch.MapURL.Value())
+		if mapURL != nil {
+			if err := validate.Struct(urlRule{URL: *mapURL}); err != nil {
+				return Activity{}, false, false, apperr.Invalid(
+					"El enlace del mapa no es válido",
+					apperr.WithDetails(map[string]any{"mapUrl": "usa un enlace https"}),
+				)
+			}
+		}
+		updated.MapURL = mapURL
+		dataChanged = true
+	}
+	if patch.OrganizerEs.Set() {
+		updated.OrganizerEs = normalizeOptional(patch.OrganizerEs.Value())
+		dataChanged = true
+	}
+	if patch.OrganizerEn.Set() {
+		updated.OrganizerEn = normalizeOptional(patch.OrganizerEn.Value())
+		dataChanged = true
+	}
+	if patch.CategoryID.Set() {
+		categoryID, err := s.resolveCategoryID(ctx, patch.CategoryID.Value())
+		if err != nil {
+			return Activity{}, false, false, err
+		}
+		updated.CategoryID = categoryID
+		dataChanged = true
+	}
+	if patch.ImageFile.Set() {
+		updated.ImageFile = normalizeOptional(patch.ImageFile.Value())
+		dataChanged = true
+	}
+	if patch.ImageAltEs.Set() {
+		updated.ImageAltEs = normalizeOptional(patch.ImageAltEs.Value())
+		dataChanged = true
+	}
+	if patch.ImageAltEn.Set() {
+		updated.ImageAltEn = normalizeOptional(patch.ImageAltEn.Value())
+		dataChanged = true
+	}
+
+	// Fecha y horario: se revalidan juntos con los valores resultantes (una
+	// fecha nueva sin horario es válida; un fin sin inicio no lo es).
+	dateRaw := updated.Date
+	if patch.Date != nil {
+		dateRaw = *patch.Date
+	}
+	startRaw, endRaw := "", ""
+	if patch.StartTime.Set() {
+		startRaw = patch.StartTime.Value()
+	} else if updated.StartTime != nil {
+		startRaw = *updated.StartTime
+	}
+	if patch.EndTime.Set() {
+		endRaw = patch.EndTime.Value()
+	} else if updated.EndTime != nil {
+		endRaw = *updated.EndTime
+	}
+	if patch.Date != nil || patch.StartTime.Set() || patch.EndTime.Set() {
+		date, start, end, err := normalizeActivityDate(dateRaw, startRaw, endRaw)
+		if err != nil {
+			return Activity{}, false, false, err
+		}
+		updated.Date, updated.StartTime, updated.EndTime = date, start, end
+		dataChanged = true
+	}
+
+	if err := validateImage(derefString(updated.ImageFile), derefString(updated.ImageAltEs)); err != nil {
+		return Activity{}, false, false, err
+	}
+
+	stateChanged := false
+	if patch.PublicationState != nil {
+		state := PublicationState(*patch.PublicationState)
+		if !state.Valid() {
+			return Activity{}, false, false, invalid("publicationState", "solo se admite draft o published")
+		}
+		updated.PublicationState = state
+		stateChanged = state != current.PublicationState
+	}
+	return updated, dataChanged, stateChanged, nil
+}
