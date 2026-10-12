@@ -456,7 +456,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: persistencia real de actividades con sus invariantes.
   - **Commit sugerido**: `feat(agenda): persistencia de actividades`
 
-- [ ] T414 · `agenda`: repository de categorías · `[backend]` `[P]` (P2)
+- [X] T414 · `agenda`: repository de categorías · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/agenda/repository_categorias.go` y
     `repository_categorias_integration_test.go` (NUEVOS).
