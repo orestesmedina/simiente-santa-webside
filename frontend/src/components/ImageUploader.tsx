@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Field } from '../../../components/Field';
-import { ENGLISH_HELP } from '../messages';
-import { validateImage } from '../imageValidation';
+import { Field } from './Field';
+import { ENGLISH_HELP } from '../features/informacion/messages';
+import { validateImage } from '../features/informacion/imageValidation';
 
 export interface ImageUploaderProps {
   label: string;
@@ -29,6 +29,10 @@ export interface ImageUploaderProps {
  * inmediata con `FileReader` y validación de tipo/tamaño **antes** de enviar;
  * textos alternativos es (obligatorio) / en (opcional). La previsualización es
  * local y no pasa por `/api/v1/media` (analyze C4).
+ *
+ * Vive en el **inventario único** (`src/components/`, regla de F2/T242): lo usan
+ * la portada de F3 y los elementos de agenda de F4 (promoción T431, sin cambios
+ * de props ni de textos).
  */
 export function ImageUploader({
   label,

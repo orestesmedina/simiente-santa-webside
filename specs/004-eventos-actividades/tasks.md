@@ -823,7 +823,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     para los 15 códigos de F4 (`ux.md` §4.9).
   - **Commit sugerido**: `feat(frontend): permisos categorias, rutas y accesos del panel`
 
-- [ ] T431 · Promoción de `ImageUploader`/`PublishControls` al inventario único · `[frontend]` `[P]` (P3)
+- [X] T431 · Promoción de `ImageUploader`/`PublishControls` al inventario único · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/components/ImageUploader.tsx`, `PublishControls.tsx` y sus tests
     (MOVIDOS desde `frontend/src/features/informacion/components/`); imports ajustados en

@@ -33,7 +33,7 @@ import {
   socialSavedMessage,
 } from '../messages';
 import { isHttpsUrl } from '../validation';
-import { PublishControls } from './PublishControls';
+import { PublishControls } from '../../../components/PublishControls';
 
 interface SocialRow {
   network: SocialNetwork;

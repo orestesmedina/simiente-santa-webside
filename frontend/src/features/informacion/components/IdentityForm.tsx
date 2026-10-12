@@ -23,8 +23,8 @@ import {
   SYSTEM_ERROR,
   UNPUBLISHED,
 } from '../messages';
-import { ImageUploader } from './ImageUploader';
-import { PublishControls } from './PublishControls';
+import { ImageUploader } from '../../../components/ImageUploader';
+import { PublishControls } from '../../../components/PublishControls';
 import { TextArea } from './TextArea';
 
 interface IdentityFields {

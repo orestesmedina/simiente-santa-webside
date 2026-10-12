@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 4/9 · Implementar (29/42 tareas; backend y datos completos; frontend en curso T429–T437) |
+| Fase | 4/9 · Implementar (30/42 tareas; backend y datos completos; frontend en curso T429–T437) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | T430 `[frontend]` permisos, rutas y accesos del panel → `dev-frontend` |
+| Próximo paso | T432 `[frontend]` `formatoFechas.ts` + claves i18n (tras T430) → `dev-frontend` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
@@ -48,7 +48,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
-- 2026-10-11 — **Fase 8 (Frontend) en curso** (`dev-frontend`): **T429** completada (`api/agenda.ts` + hooks de eventos, actividades, categorías, subida de imagen y consulta pública `proximamente`; 27 pruebas nuevas, lint/typecheck/tests en verde). Siguen T430–T437.
+- 2026-10-11 — **Fase 8 (Frontend) en curso** (`dev-frontend`): **T429** completada (`api/agenda.ts` + hooks de eventos, actividades, categorías, subida de imagen y consulta pública `proximamente`; 27 pruebas nuevas) y **T431** completada (promoción de `ImageUploader`/`PublishControls` al inventario único `src/components/`, sin cambios de comportamiento). Siguen T430, T432–T437.
 - 2026-10-11 — **Puertas 1 (re-aprobación) y 2 superadas**: el humano **re-aprobó la spec** ("Re-apruebo la spec") y **aprobó el plan** ("Apruebo el plan"). Arranca la Fase 3 (tareas + coherencia).
 - 2026-10-11 — **Fase 2 (Planificar)**: `plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml` y `quickstart.md` redactados por `arquitecto`; `ux.md` por `disenador-ux`. 4 tablas `agenda_*`, 3 migraciones (`000007` contenido, `000008` auditoría, `000009` permiso «categorías»), 0 dependencias nuevas, reutiliza el sistema de F10 y la subida de imágenes de F3. **Cambio de alcance aprobado** en la puerta 2 (permiso «categorías»); spec actualizada → **re-aprobación pendiente**. **Puerta 2 pendiente** de aprobación humana del plan.
 - 2026-10-11 — **Puerta 1 superada**: el humano **aprobó la spec** ("apruebo la spec"). Arranca la Fase 2 (plan técnico).

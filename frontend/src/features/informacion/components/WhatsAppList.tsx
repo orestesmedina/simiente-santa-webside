@@ -24,7 +24,7 @@ import {
   WHATSAPP_GROUP_LABEL,
   deleteConfirmDescription,
 } from '../messages';
-import { PublishControls } from './PublishControls';
+import { PublishControls } from '../../../components/PublishControls';
 import { WhatsAppForm } from './WhatsAppForm';
 
 interface Feedback {

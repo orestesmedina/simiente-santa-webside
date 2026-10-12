@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import type { PublicationState } from '../../../api/portada';
-import { Button } from '../../../components/Button';
-import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import type { PublicationState } from '../api/portada';
+import { Button } from './Button';
+import { ConfirmDialog } from './ConfirmDialog';
 import {
   UNPUBLISH_CANCEL,
   UNPUBLISH_CONFIRM_ACTION,
   UNPUBLISH_CONFIRM_TITLE,
   unpublishConfirmDescription,
-} from '../messages';
+} from '../features/informacion/messages';
 
 export interface PublishControlsProps {
   /** Nombre legible del elemento o sección, para la confirmación de retiro. */
@@ -23,6 +23,10 @@ export interface PublishControlsProps {
  * acción directa, sin confirmación; **retirar** pide una confirmación que
  * explica que los datos se conservan. Se usa por sección (singletons) y por
  * elemento (listados), nunca agrupando varias secciones.
+ *
+ * Vive en el **inventario único** (`src/components/`, regla de F2/T242): lo usan
+ * la portada de F3 y los elementos de agenda de F4 (promoción T431, sin cambios
+ * de props ni de textos por defecto).
  */
 export function PublishControls({
   name,
