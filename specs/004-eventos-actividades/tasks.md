@@ -1122,7 +1122,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 > repository/service (T445) → handler/rutas (T446) → cliente/hook (T447) → bloque (T448) → e2e
 > (T449) → re-ejecución del cierre (T440/T441).
 
-- [ ] T443 · Fusionar la enmienda del contrato (0.5.0 → 0.6.0) · `[backend]` `[P]` (P6)
+- [X] T443 · Fusionar la enmienda del contrato (0.5.0 → 0.6.0) · `[backend]` `[P]` (P6)
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO: fusión aditiva del delta ya enmendado en
     `specs/004-eventos-actividades/contracts/openapi.yaml`) y generados por `make api-gen`.
@@ -1139,7 +1139,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
     resto intacto (diff revisable de un vistazo).
   - **Commit sugerido**: `feat(api): contrato 0.6.0 del extracto de la portada`
 
-- [ ] T444 · Consulta sqlc `ListNextUpcomingItems` y generar · `[db]` `[P]` (P6)
+- [X] T444 · Consulta sqlc `ListNextUpcomingItems` y generar · `[db]` `[P]` (P6)
 
   - **Archivos**: `backend/internal/db/queries/agenda.sql` (EDITADO) y `backend/internal/db/*.go`
     (GENERADOS y commiteados: `make sqlc`).
