@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -94,15 +95,9 @@ type PublicImage struct {
 // elementos vencidos: todas las lecturas usan las consultas `…Upcoming` con el
 // corte de la regla R4-2.
 func (s *service) GetProximamente(ctx context.Context, lang string) (PublicProximamente, error) {
-	lang = strings.ToLower(strings.TrimSpace(lang))
-	if lang == "" {
-		lang = LangES
-	}
-	if !validLang(lang) {
-		return PublicProximamente{}, apperr.Invalid(
-			"El idioma solicitado no es válido",
-			apperr.WithDetails(map[string]any{"lang": "solo se admite es o en"}),
-		)
+	lang, err := normalizeLang(lang)
+	if err != nil {
+		return PublicProximamente{}, err
 	}
 
 	today, nowTime, err := s.cutoff()
@@ -363,4 +358,127 @@ func sortActivities(activities []PublicActivity) {
 		}
 		return activities[i].ID < activities[j].ID
 	})
+}
+
+// --- Extracto «Lo que viene» de la portada (US7/FR-025…FR-027, Q8) ---
+
+// Constantes del bloque de la portada (P4-18/R4-16). Son **decisiones firmes**
+// del humano del 2026-10-12: no son parámetros de la API ni defaults
+// configurables.
+const (
+	// maxPortadaItems es el tope del bloque «Lo que viene» (FR-025): nunca se
+	// muestran más de 5 ítems y el bloque no se pagina.
+	maxPortadaItems = 5
+	// portadaWindowMonths es la ventana temporal del bloque (FR-025): mandan los
+	// ítems de los próximos 2 meses de calendario; si dentro de ella no hay
+	// ninguno, entra el respaldo (los siguientes próximos).
+	portadaWindowMonths = 2
+)
+
+// PortadaProximamente es el extracto del bloque «Lo que viene» de la portada
+// (contrato homónimo): `items` está presente **solo** si hay ítems (clave
+// omitida cuando no hay nada publicado y próximo: la portada muestra entonces su
+// mensaje, FR-026) y nunca es `null` (§8.1.2).
+type PortadaProximamente struct {
+	Lang  string               `json:"lang"`
+	Items []ItemProximoPortada `json:"items,omitempty"`
+}
+
+// ItemProximoPortada es un ítem del bloque: solo lo que la tarjeta compacta
+// muestra (FR-025) — concepto, título, próxima fecha con horario opcional, lugar
+// e imagen con su texto alternativo—, ya resuelto a `lang` (FR-008).
+type ItemProximoPortada struct {
+	Kind      string       `json:"kind"`
+	ID        string       `json:"id"`
+	Title     string       `json:"title"`
+	Date      string       `json:"date"`
+	StartTime *string      `json:"startTime,omitempty"`
+	EndTime   *string      `json:"endTime,omitempty"`
+	Place     string       `json:"place"`
+	Image     *PublicImage `json:"image,omitempty"`
+}
+
+// GetPortadaProximamente devuelve el extracto del bloque «Lo que viene» de la
+// portada (US7/FR-025…FR-027): hasta `maxPortadaItems` ítems —eventos y
+// actividades mezclados por cercanía— de lo publicado y próximo (misma regla
+// R4-2 que el resto del público), preferentemente de los próximos
+// `portadaWindowMonths` meses y con respaldo a los siguientes próximos cuando la
+// ventana está vacía (nunca se mezclan). Sin ítems devuelve la respuesta con
+// `lang` y sin `items` (la portada muestra el bloque con su mensaje, FR-026).
+// Un idioma fuera de `es|en` es `400 invalid` (details.lang).
+func (s *service) GetPortadaProximamente(ctx context.Context, lang string) (PortadaProximamente, error) {
+	lang, err := normalizeLang(lang)
+	if err != nil {
+		return PortadaProximamente{}, err
+	}
+
+	// El corte de "hoy"/"ahora" y el final de la ventana se calculan en la zona
+	// del lugar (APP_TZ) y viajan parametrizados al SQL (R4-2/R4-16).
+	today, nowTime, err := s.cutoff()
+	if err != nil {
+		return PortadaProximamente{}, err
+	}
+	windowEnd, err := portadaWindowEnd(today, portadaWindowMonths)
+	if err != nil {
+		return PortadaProximamente{}, err
+	}
+
+	items, err := s.repository.ListNextUpcomingItems(ctx, today, nowTime, windowEnd, maxPortadaItems)
+	if err != nil {
+		return PortadaProximamente{}, fmt.Errorf("leer el extracto de la portada: %w", err)
+	}
+
+	out := PortadaProximamente{Lang: lang}
+	if len(items) > 0 {
+		out.Items = make([]ItemProximoPortada, 0, len(items))
+		for _, item := range items {
+			out.Items = append(out.Items, localizeNextItem(item, lang))
+		}
+	}
+	return out, nil
+}
+
+// portadaWindowEnd suma meses de CALENDARIO al corte (p. ej. `2026-10-12` → con
+// 2 meses → `2026-12-12`; no son 60 días) y devuelve la fecha de cierre de la
+// ventana del bloque. El corte lo genera `cutoff` en `APP_TZ`, así que la
+// aritmética es la del calendario del lugar.
+func portadaWindowEnd(today string, months int) (string, error) {
+	parsed, err := time.Parse(DateFormat, today)
+	if err != nil {
+		return "", apperr.Internal(fmt.Errorf("fecha de corte inválida %q: %w", today, err))
+	}
+	return parsed.AddDate(0, months, 0).Format(DateFormat), nil
+}
+
+// localizeNextItem resuelve el ítem del extracto al idioma pedido con fallback
+// `en → es` por campo (FR-008) y compone su imagen (`/api/v1/media/<file>`) con
+// el texto alternativo resuelto (FR-020).
+func localizeNextItem(item NextItem, lang string) ItemProximoPortada {
+	return ItemProximoPortada{
+		Kind:      string(item.Kind),
+		ID:        item.ID.String(),
+		Title:     pickString(item.TitleEs, item.TitleEn, lang),
+		Date:      item.Date,
+		StartTime: item.StartTime,
+		EndTime:   item.EndTime,
+		Place:     pickString(item.PlaceEs, item.PlaceEn, lang),
+		Image:     localizeImage(item.ImageFile, item.ImageAltEs, item.ImageAltEn, lang),
+	}
+}
+
+// normalizeLang normaliza y valida el idioma pedido por la superficie pública:
+// vacío es el idioma base (`es`) y cualquier otro valor fuera de `es|en` es un
+// `400 invalid` con `details.lang`.
+func normalizeLang(lang string) (string, error) {
+	lang = strings.ToLower(strings.TrimSpace(lang))
+	if lang == "" {
+		lang = LangES
+	}
+	if !validLang(lang) {
+		return "", apperr.Invalid(
+			"El idioma solicitado no es válido",
+			apperr.WithDetails(map[string]any{"lang": "solo se admite es o en"}),
+		)
+	}
+	return lang, nil
 }

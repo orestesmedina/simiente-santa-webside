@@ -50,6 +50,9 @@ type fakeRepository struct {
 	// catálogo (el tope `MaxCategories` debe usar el conteo, no el listado).
 	listCategoriesCalls  int
 	countCategoriesCalls int
+	// nextItemsCalls recuerda las llamadas al extracto de la portada con sus
+	// parámetros (corte, ventana y tope).
+	nextItemsCalls []nextItemsCall
 }
 
 // cutoffCall es una llamada al repositorio con el corte "hoy"/"ahora".
@@ -451,6 +454,113 @@ func (f *fakeRepository) ListUpcomingActivities(_ context.Context, today, nowTim
 		out = append(out, activity)
 	}
 	return out, nil
+}
+
+// --- Extracto de la portada (US7/FR-025, Q8) ---
+
+// nextItemsCall es una llamada al extracto de la portada con sus parámetros.
+type nextItemsCall struct {
+	today     string
+	nowTime   string
+	windowEnd string
+	limit     int
+}
+
+// ListNextUpcomingItems arma el extracto aplicando la MISMA regla de la consulta
+// real (ventana de 2 meses con respaldo, nunca mezcladas) sobre el almacén en
+// memoria, y recuerda los parámetros con los que se le llamó: las pruebas del
+// service comprueban así el corte, la ventana y el tope.
+func (f *fakeRepository) ListNextUpcomingItems(_ context.Context, today, nowTime, windowEnd string, limit int) ([]NextItem, error) {
+	f.nextItemsCalls = append(f.nextItemsCalls, nextItemsCall{today: today, nowTime: nowTime, windowEnd: windowEnd, limit: limit})
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+
+	type candidate struct {
+		item     NextItem
+		inWindow bool
+	}
+	all := make([]candidate, 0, len(f.events)+len(f.activities))
+
+	for _, event := range f.events {
+		if event.PublicationState != StatePublished {
+			continue
+		}
+		dates := f.upcomingDates(event.ID, today, nowTime)
+		if len(dates) == 0 {
+			continue
+		}
+		sort.SliceStable(dates, func(i, j int) bool {
+			if dates[i].Date != dates[j].Date {
+				return dates[i].Date < dates[j].Date
+			}
+			return clockValue(dates[i].StartTime) < clockValue(dates[j].StartTime)
+		})
+		next := dates[0]
+		all = append(all, candidate{
+			inWindow: next.Date <= windowEnd,
+			item: NextItem{
+				Kind: NextItemEvent, ID: event.ID,
+				TitleEs: event.TitleEs, TitleEn: event.TitleEn,
+				Date: next.Date, StartTime: next.StartTime, EndTime: next.EndTime,
+				PlaceEs: event.PlaceEs, PlaceEn: event.PlaceEn,
+				ImageFile: event.ImageFile, ImageAltEs: event.ImageAltEs, ImageAltEn: event.ImageAltEn,
+			},
+		})
+	}
+
+	for _, activity := range f.activities {
+		if activity.PublicationState != StatePublished {
+			continue
+		}
+		if !isUpcoming(activity.Date, today, nowTime, activity.EndTime) {
+			continue
+		}
+		all = append(all, candidate{
+			inWindow: activity.Date <= windowEnd,
+			item: NextItem{
+				Kind: NextItemActivity, ID: activity.ID,
+				TitleEs: activity.TitleEs, TitleEn: activity.TitleEn,
+				Date: activity.Date, StartTime: activity.StartTime, EndTime: activity.EndTime,
+				PlaceEs: activity.PlaceEs, PlaceEn: activity.PlaceEn,
+				ImageFile: activity.ImageFile, ImageAltEs: activity.ImageAltEs, ImageAltEn: activity.ImageAltEn,
+			},
+		})
+	}
+
+	// La ventana manda si tiene algún ítem; si está vacía, entra el respaldo.
+	// Las dos ramas nunca se mezclan (como el predicado de la consulta).
+	hasWindow := false
+	for _, c := range all {
+		if c.inWindow {
+			hasWindow = true
+			break
+		}
+	}
+	chosen := make([]NextItem, 0, len(all))
+	for _, c := range all {
+		if c.inWindow != hasWindow {
+			continue
+		}
+		chosen = append(chosen, c.item)
+	}
+	sort.SliceStable(chosen, func(i, j int) bool {
+		if chosen[i].Date != chosen[j].Date {
+			return chosen[i].Date < chosen[j].Date
+		}
+		left, right := clockValue(chosen[i].StartTime), clockValue(chosen[j].StartTime)
+		if left != right {
+			return left < right
+		}
+		if chosen[i].TitleEs != chosen[j].TitleEs {
+			return chosen[i].TitleEs < chosen[j].TitleEs
+		}
+		return chosen[i].ID.String() < chosen[j].ID.String()
+	})
+	if len(chosen) > limit {
+		chosen = chosen[:limit]
+	}
+	return chosen, nil
 }
 
 // paginateSlice aplica limit/offset a una lista ya ordenada (§8.1.3).

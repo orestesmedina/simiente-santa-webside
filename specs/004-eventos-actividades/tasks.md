@@ -1162,7 +1162,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
     y el orden por cercanía.
   - **Commit sugerido**: `feat(db): consulta del extracto mezclado de la portada`
 
-- [ ] T445 · `agenda`: repository + service `GetPortadaProximamente` · `[backend]`
+- [X] T445 · `agenda`: repository + service `GetPortadaProximamente` · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/repository_public.go` y
     `repository_public_integration_test.go` (NUEVOS; `//go:build integration`),

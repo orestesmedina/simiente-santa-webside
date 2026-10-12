@@ -118,6 +118,38 @@ type Activity struct {
 	UpdatedAt        time.Time
 }
 
+// --- Extracto de la portada (US7/FR-025, enmienda Q8) ---
+
+// NextItemKind identifica el concepto de un ítem del extracto «Lo que viene» de
+// la portada (Decisión 3): un evento o una actividad.
+type NextItemKind string
+
+const (
+	// NextItemEvent es un evento (encuentro periódico).
+	NextItemEvent NextItemKind = "event"
+	// NextItemActivity es una actividad (acción puntual).
+	NextItemActivity NextItemKind = "activity"
+)
+
+// NextItem es un ítem del extracto de la portada (US7/FR-025): solo lo que la
+// tarjeta compacta muestra —concepto, título, la PRÓXIMA fecha con su horario
+// opcional, lugar e imagen con su texto alternativo—, ya sin detalle, categoría
+// ni lista de fechas (esos datos viven en la sección `/eventos`).
+type NextItem struct {
+	Kind       NextItemKind
+	ID         uuid.UUID
+	TitleEs    string
+	TitleEn    *string
+	Date       string
+	StartTime  *string
+	EndTime    *string
+	PlaceEs    string
+	PlaceEn    *string
+	ImageFile  *string
+	ImageAltEs *string
+	ImageAltEn *string
+}
+
 // --- DTOs de entrada del contrato (etiquetas `validate`) ---
 //
 // Los campos `*En` son `string` con `omitempty`: `""`/espacios significa "sin

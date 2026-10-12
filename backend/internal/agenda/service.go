@@ -170,6 +170,11 @@ type Repository interface {
 	// RecordAction persiste una acción de auditoría best-effort (denegaciones y
 	// rechazos): fuera de transacción y sin cambiar la respuesta (R4-10).
 	RecordAction(ctx context.Context, action audit.Action) error
+
+	// ListNextUpcomingItems es el extracto público de la portada (US7/FR-025):
+	// eventos y actividades publicados y próximos, mezclados por cercanía, con
+	// la ventana `[today, windowEnd]` y su respaldo (R4-16).
+	ListNextUpcomingItems(ctx context.Context, today, nowTime, windowEnd string, limit int) ([]NextItem, error)
 }
 
 // ServiceDeps agrupa las dependencias del service.
