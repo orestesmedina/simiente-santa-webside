@@ -242,9 +242,11 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     `backend/internal/db/queries/home.sql` (EDITADO: se retira `IsHomeFilePublished`) y
     `backend/internal/db/*.go` (GENERADOS y commiteados: `make sqlc`).
   - **Qué hace**: escribe las consultas nombradas de `data-model.md`: `ListCategories`,
-    `GetCategoryByID`, `Insert/Update/DeleteCategory`, `CountCategoryUsage`; `Insert/Update/Delete/
+    `GetCategoryByID`, `Insert/Update/DeleteCategory`, `CountCategoryUsage` y `CountCategories`
+    (tope del catálogo por conteo, M2); `Insert/Update/Delete/
     GetEventByID`, `ReplaceEventDates` (`DELETE` + `INSERT` de la lista completa, R4-11),
-    `ListEventDates`/`ListUpcomingEventDates`, `ExistsEventDuplicate`, `List/CountEvents`,
+    `ListEventDates`/`ListEventDatesForEvents`/`ListUpcomingEventDatesForEvents` (las dos
+    últimas por lote, `event_id = ANY(...)`), `ExistsEventDuplicate`, `List/CountEvents`,
     `ListUpcomingEvents`; `Insert/Update/Delete/GetActivityByID`, `List/CountActivities`,
     `ListUpcomingActivities`; y en `media.sql` **`IsFilePublished`** (sustituye a
     `IsHomeFilePublished` de F3: `TRUE` solo si el nombre lo referencia contenido **publicado y
@@ -423,7 +425,8 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     `repository_eventos_integration_test.go` (NUEVOS; `//go:build integration`).
   - **Qué hace**: `InsertEvent`/`UpdateEvent`/`DeleteEvent`/`GetEventByID`,
     `ReplaceEventDates` (reemplazo **completo** de la lista en la transacción del guardado, R4-11),
-    `ListEventDates`/`ListUpcomingEventDates` (las públicas solo próximas, R4-2),
+    `ListEventDates`/`ListEventDatesForEvents`/`ListUpcomingEventDatesForEvents` (las dos
+    últimas por lote, `event_id = ANY(...)`; las públicas solo próximas, R4-2),
     `ExistsEventDuplicate` (título+lugar normalizados + fecha en común, R4-9), `List/CountEvents`
     (panel paginado, `ORDER BY created_at DESC, id DESC`) y `ListUpcomingEvents` (`published` **y**
     `EXISTS` una fecha próxima; orden por la primera fecha próxima con desempate
@@ -461,7 +464,8 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Archivos**: `backend/internal/agenda/repository_categorias.go` y
     `repository_categorias_integration_test.go` (NUEVOS).
   - **Qué hace**: `ListCategories`/`GetCategoryByID` (`ORDER BY sort_order, id`), `InsertCategory`,
-    `UpdateCategory`, `DeleteCategory` y `CountCategoryUsage`. El `DELETE` falla con
+    `UpdateCategory`, `DeleteCategory`, `CountCategoryUsage` y `CountCategories` (tope del catálogo
+    por conteo, M2). El `DELETE` falla con
     `FK RESTRICT` si está en uso → error traducido a **`conflict`** (con el recuento para el mensaje
     "está en uso por N elementos", R4-5/P4-6: borrado restringido, decisión firme); `UNIQUE
     (name_es)` → `conflict` en el duplicado. *Cubre FR-012/FR-018/FR-019* (categoría opcional del

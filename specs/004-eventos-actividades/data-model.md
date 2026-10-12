@@ -324,9 +324,10 @@ Listas con `ORDER BY` explícito y determinista (§8.1.7). Sin `SELECT *`. Todo 
 | `ListCategories` / `GetCategoryByID` | Catálogo para el panel (`ORDER BY sort_order, id`) y validación de `categoryId` |
 | `InsertCategory` / `UpdateCategory` / `DeleteCategory` | CRUD del catálogo (el `DELETE` falla con `FK RESTRICT` si está en uso → `409`) |
 | `CountCategoryUsage` | Mensaje del `409` de borrado ("está en uso por N elementos") |
+| `CountCategories` | Tope del catálogo en el alta de categoría (1 conteo, sin listar el catálogo; `MaxCategories`, tope blando — M2) |
 | `InsertEvent`, `UpdateEvent`, `DeleteEvent`, `GetEventByID` | Gestión del evento |
 | `ReplaceEventDates` (`DELETE` + `INSERT` de la lista, en la transacción del guardado) | Reemplazo completo de fechas (R4-11) |
-| `ListEventDates` / `ListUpcomingEventDates` | Panel (todas, con `isPast` calculado en el service) / público (solo próximas) |
+| `ListEventDates` (por evento) / `ListEventDatesForEvents` y `ListUpcomingEventDatesForEvents` (por lote, `event_id = ANY(...)`) | Fechas de los eventos: caminos de un solo elemento (`ListEventDates`), panel por página (`ListEventDatesForEvents`, todas, con `isPast` calculado en el service) / público (`ListUpcomingEventDatesForEvents`, solo próximas, R4-2) |
 | `ExistsEventDuplicate` | Duplicado del módulo (título+lugar normalizados + fecha en común, R4-9) |
 | `ListEvents` / `CountEvents` | Panel paginado (`ORDER BY created_at DESC, id DESC`, filtro opcional `publication_state`) |
 | `ListUpcomingEvents` | Público: `publication_state='published'` **y** `EXISTS` una fecha próxima (R4-2); `ORDER BY` por la primera fecha próxima, `title_es, id` de desempate (orden estable, edge case) |

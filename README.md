@@ -1,6 +1,6 @@
 # Simiente Santa
 
-Sitio web de la Iglesia Simiente Santa: sitio público (desde F3 la portada con la información general de la iglesia; desde F10 con el sistema visual y de movimiento moderno; eventos, grupos, ministerios y donaciones por llegar) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
+Sitio web de la Iglesia Simiente Santa: sitio público (desde F3 la portada con la información general de la iglesia; desde F10 con el sistema visual y de movimiento moderno; desde F4 la sección de eventos y actividades; grupos, ministerios y donaciones por llegar) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
 
 ## Qué es la F1 (Estructura base)
 
@@ -51,6 +51,18 @@ La funcionalidad **F10** es el rediseño moderno del sitio público (propuesta v
 
 Rama: `010-sistema-diseno-movimiento`. Spec, plan, UX y quickstart en [`specs/010-sistema-diseno-movimiento/`](specs/010-sistema-diseno-movimiento/).
 
+## Qué es F4 (Eventos y actividades)
+
+La funcionalidad **F4** es la primera sección de contenido dinámico del sitio: **lo que viene**, visible sin cuenta, y los tres módulos del panel con los que el equipo lo mantiene al día.
+
+- **Sección pública en <http://localhost:5173/eventos>**: dos bloques separados, **Próximos eventos** (encuentros periódicos con fechas concretas y texto opcional de frecuencia) y **Próximas actividades** (acciones puntuales con fecha única y hora de inicio/fin opcional), con título, fecha, hora, lugar, detalle e imagen opcional, en **orden cronológico**. Entrada de navegación propia («Eventos y actividades») en la barra, el menú móvil y el mapa del pie, **oculta** mientras no haya nada publicado y próximo; sin contenido, la página muestra un aviso **sin redirigir**.
+- **Bilingüe (español/inglés)** con el mismo patrón de F3: el inglés es opcional contenido por contenido (fallback `en → es`, nunca campos vacíos) y las fechas/horas se localizan por idioma sin alterar el valor.
+- **Solo lo publicado y lo próximo** (retiro automático al pasar la fecha): la regla se aplica como filtro de lectura en el servidor, en la zona horaria **`APP_TZ`** (`America/Costa_Rica`), sin cron y sin cambiar estados; en el panel el elemento sigue publicado y se marca como pasado.
+- **Panel con tres rutas y tres permisos independientes**: `/panel/eventos`, `/panel/actividades` y `/panel/categorias` —permisos «Eventos», «Actividades» y **«Categorías de agenda»** (el nuevo `categorias`, **10.º del catálogo de F2**, sembrado por la migración `000009`)—, cada elemento con estado **Borrador/Publicado** (se publica al guardar), subida de imagen, catálogo de categorías opcional (borrar una categoría en uso → `409`) y todo registrado en `/panel/auditoria` con **15 códigos nuevos** `event.*`/`activity.*`/`category.*`.
+- **API y datos**: `GET /api/v1/proximamente?lang=es|en` (`no-store`) y el subgrupo `/api/v1/admin/{eventos,actividades,categorias}`; contrato vivo a **0.5.0**; migraciones `000007`–`000009`; sin dependencias nuevas.
+
+Rama: `004-eventos-actividades`. Spec, plan, UX y quickstart en [`specs/004-eventos-actividades/`](specs/004-eventos-actividades/).
+
 ## Prerrequisito
 
 **Docker** (con Docker Compose v2) en ejecución. Es el único requisito (FR-001 de la spec de F1): el clon limpio levanta **sin `.env`** y sin tener Go ni Node instalados.
@@ -77,7 +89,7 @@ docker compose ps                      # db y redis (healthy), backend y fronten
 curl -i http://localhost:8080/healthz  # 200 → {"status":"ok","database":"connected"}
 ```
 
-Abrir <http://localhost:5173>: desde F3 esa es la **portada pública** de la iglesia; con la base recién migrada se muestra sin secciones, porque no hay contenido publicado todavía (el equipo lo carga desde el panel). Desde F10 esa portada se navega con **barra fija en escritorio** y con el **botón «Menú» en móvil**, y trae el **selector de idioma compacto**, el **interruptor de tema claro/oscuro** y el **mapa del sitio en el pie**. La pantalla «Estado del sistema» de F1, que antes ocupaba el inicio, está ahora en <http://localhost:5173/health>. El **panel de administración** está en <http://localhost:5173/login> y todavía no tiene cuentas: hay que inicializarlo (siguiente sección).
+Abrir <http://localhost:5173>: desde F3 esa es la **portada pública** de la iglesia; con la base recién migrada se muestra sin secciones, porque no hay contenido publicado todavía (el equipo lo carga desde el panel). Desde F10 esa portada se navega con **barra fija en escritorio** y con el **botón «Menú» en móvil**, y trae el **selector de idioma compacto**, el **interruptor de tema claro/oscuro** y el **mapa del sitio en el pie**. Desde F4 existe además la sección **<http://localhost:5173/eventos>** —«Eventos y actividades»—, que también aparece en la barra, en el menú y en el pie **solo cuando hay contenido publicado y próximo**; sin nada publicado muestra un aviso sin salir de la página (y la entrada queda oculta). La pantalla «Estado del sistema» de F1, que antes ocupaba el inicio, está ahora en <http://localhost:5173/health>. El **panel de administración** está en <http://localhost:5173/login> y todavía no tiene cuentas: hay que inicializarlo (siguiente sección).
 
 Detener: `make down` (los datos se conservan en el volumen `pgdata`; `make down && make up` es repetible).
 
@@ -101,7 +113,7 @@ El primer administrador se crea con una **inicialización única** por API: solo
      -d '{"firstName":"Ana","lastName":"Responsable","email":"ana@ejemplo.com","phone":"+34 612 345 678","password":"Semilla.2026"}'
    ```
 
-   Esperado: `201` con la cuenta creada (rol «Administrador», los 9 permisos). Repetirlo → `409` «La inicialización ya se hizo y no puede repetirse»; sin la cabecera o con el token equivocado → `401`/`403`. **Sin `BOOTSTRAP_TOKEN` la inicialización queda desactivada** (siempre `401`/`403`).
+   Esperado: `201` con la cuenta creada (rol «Administrador», los **10** permisos del catálogo —desde F4 se añade «Categorías de agenda»—). Repetirlo → `409` «La inicialización ya se hizo y no puede repetirse»; sin la cabecera o con el token equivocado → `401`/`403`. **Sin `BOOTSTRAP_TOKEN` la inicialización queda desactivada** (siempre `401`/`403`).
 
 3. Entra en <http://localhost:5173/login> con ese correo y contraseña. La validación paso a paso está en [`specs/002-acceso-gestion-usuarios/quickstart.md`](specs/002-acceso-gestion-usuarios/quickstart.md) §1–§3.
 
@@ -160,6 +172,7 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 | `BOOTSTRAP_TOKEN` | backend: cabecera `X-Setup-Token` de `POST /api/v1/setup/initialize` (inicialización única) | vacío → la inicialización queda desactivada (la ruta siempre responde `401`/`403` y el backend avisa al arrancar) |
 | `UPLOAD_DIR` | backend (carpeta donde guarda y lee las imágenes de la portada: logotipo e imagen); compose la fija a `/var/lib/simiente/uploads` con el volumen `uploads_data` | `./uploads` (fuera de Docker) |
 | `UPLOAD_MAX_BYTES` | backend (tope de tamaño de cada imagen subida, comprobado en stream) | `8388608` (**8 MB**) |
+| `APP_TZ` | backend (`platform/config`): zona horaria del lugar con la que el servidor calcula el corte «hoy» de la vista pública (regla «publicado **y** próximo» de `/eventos` y de las imágenes); se valida como zona IANA al arrancar y un valor inválido detiene el arranque | `America/Costa_Rica` |
 
 ## Comandos
 
@@ -171,7 +184,7 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 | `make lint` | `gofmt` + `go vet` + `golangci-lint` (backend) y ESLint + `tsc` (frontend) |
 | `make security` | `govulncheck ./...` (Go) y `npm audit --audit-level=high` (frontend) |
 | `make ci` | `lint` + `test` + `security`: lo mismo que corre el CI |
-| `make db-migrate` | Aplica las migraciones de `backend/migrations` con `golang-migrate` (F2 añadió `000002`–`000004`; F3, `000005`–`000006`; F10 no añade ninguna) |
+| `make db-migrate` | Aplica las migraciones de `backend/migrations` con `golang-migrate` (F2 añadió `000002`–`000004`; F3, `000005`–`000006`; F10 no añade ninguna; F4, `000007`–`000009`) |
 | `make doctor` | Verifica que el entorno tenga todo lo necesario (Docker, Go, Node, hooks, kit…) |
 | `make e2e` | Pruebas end-to-end con Playwright (requiere `make up` levantado) |
 | `make api-gen` | Regenera `frontend/src/api/schema.d.ts` desde `backend/api/openapi.yaml` |
@@ -186,7 +199,7 @@ Todas las variables tienen valor por defecto de desarrollo; ninguna es obligator
 Notas:
 
 - **`make db-migrate` usa `$DATABASE_URL` del shell** (no lee `.env` por sí mismo). Con `.env`: `set -a; source .env; set +a` antes de llamarlo; sin `.env`: `DATABASE_URL='postgres://app:app_dev_password@localhost:5432/app?sslmode=disable' make db-migrate`.
-- **`make sqlc-verify` comprueba que no hay deriva** entre `backend/internal/db/queries/` y el código generado: F2 añadió las consultas `users`, `roles`, `permissions` y `audit`, y F3 las del dominio `portada` (`home.sql`) (en F1 estaba vacío y el comando terminaba en verde sin comprobar nada).
+- **`make sqlc-verify` comprueba que no hay deriva** entre `backend/internal/db/queries/` y el código generado: F2 añadió las consultas `users`, `roles`, `permissions` y `audit`, F3 las del dominio `portada` (`home.sql`) y F4 las de `agenda` y `media` (`agenda.sql`, `media.sql`) (en F1 estaba vacío y el comando terminaba en verde sin comprobar nada).
 
 ## Herramientas de desarrollo (opcionales)
 
@@ -235,18 +248,20 @@ Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda
 
 - **`VITE_API_URL` se hornea en el build** (plan R6): la URL de la API queda dentro del bundle del frontend. Por defecto `http://localhost:8080` y compose la deriva de `HTTP_PORT`. Por eso **cambiar puertos exige `docker compose up -d --build`** (o borrar la imagen del frontend), y al cambiar `WEB_PORT` hay que ajustar también `CORS_ALLOWED_ORIGINS`.
 - **Artefactos generados (se commitean)**: `frontend/src/api/schema.d.ts` se regenera con `make api-gen` cuando cambia `backend/api/openapi.yaml`; el código de sqlc con `make sqlc-gen` cuando cambian `backend/migrations/` o `backend/internal/db/queries/`. Regla de revisión (plan R4): un PR que toca migraciones o consultas debe regenerar `internal/db/`, y uno que toca el contrato debe regenerar `schema.d.ts`. `make sqlc-verify` comprueba que no hay deriva.
-- **E2E**: `make e2e` necesita el stack levantado (`make up`) y el navegador de Playwright instalado (arriba). El CI del kit **no** corre e2e. Notas de F2/F3: si en tu entorno faltan las librerías de sistema de Chromium (`libnspr4`, `libnss3`, `libasound2`) y no puedes instalarlas, las suites se pueden correr con la imagen oficial de Playwright (`mcr.microsoft.com/playwright:v1.63.0-jammy`) contra el stack levantado; y conviene ejecutarlas **en serie** (`--workers=1`), porque en paralelo saturan el rate-limit de 20 peticiones/min por IP a `/api/v1/auth/login` y producen `429` espurios. Así se validaron F2 (**3/3**) y F3 (**7/7**: `acceso`, `auditoria`, `portada-accesibilidad`, `portada-panel`, `portada-patch-null`, `portada-publica` y `status`). En F10 (2026-10-11) se corrieron en **dos tandas** —las suites congeladas de F2/F3 (**8/8**, incluida `portada-imagenes`) y las nuevas de F10 (**25/25**: `diseno-movimiento`, `navegacion-movil`, `tema-oscuro`, `movimiento`, `movimiento-reducido` y `qa-medidas-f10`)—.
+- **E2E**: `make e2e` necesita el stack levantado (`make up`) y el navegador de Playwright instalado (arriba). El CI del kit **no** corre e2e. Notas de F2/F3: si en tu entorno faltan las librerías de sistema de Chromium (`libnspr4`, `libnss3`, `libasound2`) y no puedes instalarlas, las suites se pueden correr con la imagen oficial de Playwright (`mcr.microsoft.com/playwright:v1.63.0-jammy`) contra el stack levantado; y conviene ejecutarlas **en serie** (`--workers=1`), porque en paralelo saturan el rate-limit de 20 peticiones/min por IP a `/api/v1/auth/login` y producen `429` espurios. Así se validaron F2 (**3/3**) y F3 (**7/7**: `acceso`, `auditoria`, `portada-accesibilidad`, `portada-panel`, `portada-patch-null`, `portada-publica` y `status`). En F10 (2026-10-11) se corrieron en **dos tandas** —las suites congeladas de F2/F3 (**8/8**, incluida `portada-imagenes`) y las nuevas de F10 (**25/25**: `diseno-movimiento`, `navegacion-movil`, `tema-oscuro`, `movimiento`, `movimiento-reducido` y `qa-medidas-f10`)—. En F4 (2026-10-11) se corrieron en **tres tandas** —F2 (**2/2**: `acceso`, `auditoria`), F4 (**5/5**: `agenda-publica`, `agenda-panel`, `agenda-accesibilidad`) y F3/F10 (**31/31**: `portada-`, `diseno-`, `movimiento`, `navegacion-`, `tema-`, `qa-` y `status`)—, porque el rate-limit de login también afecta a estas suites; la imagen Docker de Playwright sigue siendo válida donde falten las librerías del navegador.
 
 ## Documentación relacionada
 
-- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1, la 0.2.0 a F2, la 0.3.0 a F3 y la 0.4.0 a F10.
+- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1, la 0.2.0 a F2, la 0.3.0 a F3, la 0.4.0 a F10 y la 0.5.0 a F4.
 - [`docs/entrega/F1-estructura-base.md`](docs/entrega/F1-estructura-base.md) — notas de entrega de F1 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F2-acceso-y-gestion-de-usuarios.md`](docs/entrega/F2-acceso-y-gestion-de-usuarios.md) — notas de entrega de F2 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F3-portada-e-informacion-general.md`](docs/entrega/F3-portada-e-informacion-general.md) — notas de entrega de F3 para el cliente (lenguaje no técnico).
+- [`docs/entrega/F4-eventos-y-actividades.md`](docs/entrega/F4-eventos-y-actividades.md) — notas de entrega de F4 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F10-sistema-de-diseno-y-movimiento.md`](docs/entrega/F10-sistema-de-diseno-y-movimiento.md) — notas de entrega de F10 para el cliente (lenguaje no técnico).
 - [`specs/001-estructura-base/quickstart.md`](specs/001-estructura-base/quickstart.md) — validación ejecutable de F1 de punta a punta (qué se espera en cada escenario).
 - [`specs/002-acceso-gestion-usuarios/quickstart.md`](specs/002-acceso-gestion-usuarios/quickstart.md) — validación ejecutable de F2 (inicialización, sesión, usuarios, roles y auditoría).
 - [`specs/003-portada-info-general/quickstart.md`](specs/003-portada-info-general/quickstart.md) — validación ejecutable de F3 (portada pública, edición desde el panel, publicación por elemento, imágenes, idioma y auditoría).
+- [`specs/004-eventos-actividades/quickstart.md`](specs/004-eventos-actividades/quickstart.md) — validación ejecutable de F4 (sección `/eventos`, permisos, panel de eventos/actividades/categorías, retiro automático, idioma y auditoría).
 - [`specs/010-sistema-diseno-movimiento/quickstart.md`](specs/010-sistema-diseno-movimiento/quickstart.md) — validación ejecutable de F10 (sistema visual, tema claro/oscuro, movimiento y movimiento reducido, navegación por dispositivo, mapa del sitio e idioma compacto, con checklist de aceptación en §9).
 - [`docs/tecnico/arquitectura.md`](docs/tecnico/arquitectura.md) — arquitectura del sistema; **§8 es la receta** de 10 pasos para agregar un área de negocio nueva.
 - [`docs/tecnico/decisiones.md`](docs/tecnico/decisiones.md) — decisiones de arquitectura y su justificación.
