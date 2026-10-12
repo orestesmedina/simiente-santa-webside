@@ -724,3 +724,199 @@ func TestGetUpdateDeleteActividadHandler(t *testing.T) {
 		}
 	})
 }
+
+// --- Catálogo de categorías (T426) ---
+
+// TestCategoriaHandlers fija las operaciones del catálogo: catálogo 200 con su
+// orden, alta 201, edición 200, borrado 204, 400 con details, 404 del id
+// inexistente, 409 del nombre duplicado y 409 del borrado en uso con su mensaje
+// (decisión firme de la puerta 2).
+func TestCategoriaHandlers(t *testing.T) {
+	repo := newFakeRepository()
+	h := newAdminHandler(t, repo)
+	ctx := contextWithIdentity()
+	actor := adminIdentityForTest().UserID
+
+	// Alta inicial.
+	rec := httptest.NewRecorder()
+	h.CreateCategoria(rec, adminRequest(http.MethodPost, "/api/v1/admin/categorias", `{"nameEs":"Acción social","sortOrder":10}`, true))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("alta: status = %d, se esperaba 201 (%s)", rec.Code, rec.Body)
+	}
+	var created CategoriaAdmin
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("cuerpo no es CategoriaAdmin: %v (%s)", err, rec.Body)
+	}
+	if created.NameEs != "Acción social" || created.SortOrder != 10 {
+		t.Errorf("categoría = %+v", created)
+	}
+
+	t.Run("catálogo", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.ListCategorias(rec, adminRequest(http.MethodGet, "/api/v1/admin/categorias", "", true))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+		var got CategoriaAdminList
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo no es CategoriaAdminList: %v (%s)", err, rec.Body)
+		}
+		if len(got.Items) != 1 || got.Items[0].ID != created.ID {
+			t.Errorf("catálogo = %+v", got)
+		}
+		if strings.Contains(rec.Body.String(), "publicationState") {
+			t.Errorf("el catálogo no tiene estado de publicación: %s", rec.Body)
+		}
+	})
+
+	t.Run("nombre vacío", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.CreateCategoria(rec, adminRequest(http.MethodPost, "/api/v1/admin/categorias", `{"nameEs":"   "}`, true))
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "nameEs") {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("nombre duplicado", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.CreateCategoria(rec, adminRequest(http.MethodPost, "/api/v1/admin/categorias", `{"nameEs":"Acción social"}`, true))
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("status = %d, se esperaba 409 (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("edición", func(t *testing.T) {
+		body := `{"nameEs":"Acción social y comunitaria","nameEn":"Social action","sortOrder":5}`
+		req := withPathValue(adminRequest(http.MethodPatch, "/api/v1/admin/categorias/"+created.ID, body, true), created.ID)
+		rec := httptest.NewRecorder()
+		h.UpdateCategoria(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+		var got CategoriaAdmin
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo inesperado: %v", err)
+		}
+		if got.NameEs != "Acción social y comunitaria" || got.NameEn == nil || got.SortOrder != 5 {
+			t.Errorf("categoría = %+v", got)
+		}
+	})
+
+	t.Run("edición con PATCH vacío", func(t *testing.T) {
+		req := withPathValue(adminRequest(http.MethodPatch, "/api/v1/admin/categorias/"+created.ID, `{}`, true), created.ID)
+		rec := httptest.NewRecorder()
+		h.UpdateCategoria(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("edición con id no uuid", func(t *testing.T) {
+		req := withPathValue(adminRequest(http.MethodPatch, "/api/v1/admin/categorias/nope", `{"nameEs":"X"}`, true), "nope")
+		rec := httptest.NewRecorder()
+		h.UpdateCategoria(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("edición inexistente", func(t *testing.T) {
+		missing := uuid.New().String()
+		req := withPathValue(adminRequest(http.MethodPatch, "/api/v1/admin/categorias/"+missing, `{"nameEs":"X"}`, true), missing)
+		rec := httptest.NewRecorder()
+		h.UpdateCategoria(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("borrado en uso", func(t *testing.T) {
+		// Un evento usa la categoría.
+		if _, err := h.service.CreateEvento(ctx, actor, EventoInput{
+			TitleEs: "Evento con categoría", DetailEs: "D", PlaceEs: "P",
+			CategoryID: created.ID, Dates: []FechaInput{{Date: "2026-10-12"}},
+		}); err != nil {
+			t.Fatalf("CreateEvento: %v", err)
+		}
+
+		req := withPathValue(adminRequest(http.MethodDelete, "/api/v1/admin/categorias/"+created.ID, "", true), created.ID)
+		rec := httptest.NewRecorder()
+		h.DeleteCategoria(rec, req)
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("status = %d, se esperaba 409 (%s)", rec.Code, rec.Body)
+		}
+		if !strings.Contains(rec.Body.String(), "está en uso por 1 elemento") {
+			t.Errorf("mensaje inesperado: %s", rec.Body)
+		}
+		if len(repo.categories) != 1 {
+			t.Errorf("la categoría en uso desapareció: %+v", repo.categories)
+		}
+	})
+
+	t.Run("borrado sin uso", func(t *testing.T) {
+		// El evento deja de usar la categoría.
+		stored := repo.events[0]
+		stored.CategoryID = nil
+		if _, err := repo.UpdateEvent(ctx, stored, nil); err != nil {
+			t.Fatalf("UpdateEvent: %v", err)
+		}
+
+		req := withPathValue(adminRequest(http.MethodDelete, "/api/v1/admin/categorias/"+created.ID, "", true), created.ID)
+		rec := httptest.NewRecorder()
+		h.DeleteCategoria(rec, req)
+		if rec.Code != http.StatusNoContent || rec.Body.Len() != 0 {
+			t.Fatalf("status = %d, cuerpo = %q", rec.Code, rec.Body)
+		}
+		if len(repo.categories) != 0 {
+			t.Errorf("el catálogo no se vació: %+v", repo.categories)
+		}
+	})
+
+	t.Run("borrado inexistente", func(t *testing.T) {
+		missing := uuid.New().String()
+		req := withPathValue(adminRequest(http.MethodDelete, "/api/v1/admin/categorias/"+missing, "", true), missing)
+		rec := httptest.NewRecorder()
+		h.DeleteCategoria(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+}
+
+// TestCategoriaHandlersRequireSession fija el 401 de red de seguridad de las
+// cuatro operaciones del catálogo.
+func TestCategoriaHandlersRequireSession(t *testing.T) {
+	h := newAdminHandler(t, newFakeRepository())
+	id := uuid.New().String()
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		call   func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request)
+	}{
+		{name: "catálogo", method: http.MethodGet, path: "/api/v1/admin/categorias", call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.ListCategorias(rec, req)
+		}},
+		{name: "alta", method: http.MethodPost, path: "/api/v1/admin/categorias", call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.CreateCategoria(rec, req)
+		}},
+		{name: "edición", method: http.MethodPatch, path: "/api/v1/admin/categorias/" + id, call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.UpdateCategoria(rec, req)
+		}},
+		{name: "borrado", method: http.MethodDelete, path: "/api/v1/admin/categorias/" + id, call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.DeleteCategoria(rec, req)
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := withPathValue(adminRequest(tt.method, tt.path, "{}", false), id)
+			rec := httptest.NewRecorder()
+			tt.call(h, rec, req)
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, se esperaba 401 (%s)", rec.Code, rec.Body)
+			}
+		})
+	}
+}

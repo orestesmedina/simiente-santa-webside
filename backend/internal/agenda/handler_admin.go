@@ -223,3 +223,82 @@ func (h *Handler) DeleteActividad(w http.ResponseWriter, r *http.Request) {
 		return h.service.DeleteActividad(ctx, actorID, id)
 	})
 }
+
+// --- Catálogo de categorías (Q6/Q7, T426) ---
+
+// ListCategorias responde GET /api/v1/admin/categorias (Q6): el catálogo
+// completo —acotado en el servidor a ≤100 y ordenado por `sortOrder, id`— para
+// los selectores de los formularios. Sin paginación: es un catálogo pequeño
+// (§8.1.3, misma excepción documentada que las colecciones de F3). El catálogo
+// no tiene estado de publicación (son etiquetas, no contenido).
+// Códigos: 200 con CategoriaAdminList; sin sesión → 401; sin el permiso
+// `categorias` → 403 (cadena).
+func (h *Handler) ListCategorias(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if _, ok := h.adminIdentity(ctx, w); !ok {
+		return
+	}
+	if !h.serviceConfigured(ctx, w) {
+		return
+	}
+
+	out, err := h.service.ListCategorias(ctx)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	httpserver.WriteJSON(w, http.StatusOK, out)
+}
+
+// CreateCategoria responde POST /api/v1/admin/categorias (Q6): alta en el
+// catálogo compartido por eventos y actividades. Exige el permiso `categorias`
+// (verificado en el servidor por la cadena; **no** basta `eventos` ni
+// `actividades`, FR-012).
+// Códigos: 201 con CategoriaAdmin; DTO inválido → 400 con details por campo;
+// nombre duplicado → 409; sin permiso → 403.
+func (h *Handler) CreateCategoria(w http.ResponseWriter, r *http.Request) {
+	h.createItem(w, r, func(ctx context.Context, actorID uuid.UUID) (any, error) {
+		var in CategoriaInput
+		if !h.decodeAndValidate(w, r, &in) {
+			return nil, errAlreadyHandled
+		}
+		return h.service.CreateCategoria(ctx, actorID, in)
+	})
+}
+
+// UpdateCategoria responde PATCH /api/v1/admin/categorias/{id} (Q6): edición
+// parcial; renombrar está permitido y el cambio se ve de inmediato en lo
+// publicado. Exige el permiso `categorias`.
+// Códigos: 200 con CategoriaAdmin; id no UUID, PATCH vacío o datos inválidos →
+// 400; inexistente → 404; nombre duplicado → 409.
+func (h *Handler) UpdateCategoria(w http.ResponseWriter, r *http.Request) {
+	id, err := agendaItemIDFromRequest(r)
+	if err != nil {
+		httpserver.WriteError(r.Context(), w, h.logger, err)
+		return
+	}
+	h.updateItem(w, r, func(ctx context.Context, actorID uuid.UUID) (any, error) {
+		var patch CategoriaPatch
+		if !h.decodeAndValidate(w, r, &patch) {
+			return nil, errAlreadyHandled
+		}
+		return h.service.UpdateCategoria(ctx, actorID, id, patch)
+	})
+}
+
+// DeleteCategoria responde DELETE /api/v1/admin/categorias/{id} (Q6/Q7): borrado
+// físico del catálogo. Si algún evento o actividad la usa responde `409
+// conflict` con el recuento ("está en uso por N elementos", decisión firme de la
+// puerta 2): hay que quitarla primero de esos elementos, no se desliga sola.
+// Exige el permiso `categorias`.
+// Códigos: 204 sin cuerpo; id no UUID → 400; inexistente → 404; en uso → 409.
+func (h *Handler) DeleteCategoria(w http.ResponseWriter, r *http.Request) {
+	id, err := agendaItemIDFromRequest(r)
+	if err != nil {
+		httpserver.WriteError(r.Context(), w, h.logger, err)
+		return
+	}
+	h.deleteItem(w, r, func(ctx context.Context, actorID uuid.UUID) error {
+		return h.service.DeleteCategoria(ctx, actorID, id)
+	})
+}
