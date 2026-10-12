@@ -3,7 +3,7 @@
 **Fecha**: 2026-10-11 · **Spec**: [spec.md](./spec.md) · **Plan**: [plan.md](./plan.md) ·
 **Contrato**: [contracts/openapi.yaml](./contracts/openapi.yaml)
 
-Recorrido manual de las US1–US6 y sus criterios de aceptación, con `curl` para la API y pasos de
+Recorrido manual de las US1–US7 y sus criterios de aceptación (US7: bloque de la portada, §15), con `curl` para la API y pasos de
 navegador para lo visual. Mismo estilo que el quickstart de F3. Al final, §13 ejecuta las pruebas
 automatizadas y §14 mapea cada criterio a su sección.
 
@@ -375,7 +375,7 @@ go test ./... -cover                   # ≥80 % en internal/agenda/service*.go 
 cd ../frontend
 npm run lint && npm run typecheck
 npm test -- --run                      # Vitest + MSW (página pública, panel, i18n)
-npx playwright test e2e/agenda-publica.spec.ts e2e/agenda-panel.spec.ts e2e/agenda-accesibilidad.spec.ts   # e2e (local)
+npx playwright test e2e/agenda-publica.spec.ts e2e/agenda-panel.spec.ts e2e/agenda-accesibilidad.spec.ts e2e/portada-proximamente.spec.ts   # e2e (local; el último es el bloque de la portada, US7)
 
 make ci                                # lint + test + security (govulncheck, npm audit)
 ```
@@ -399,8 +399,46 @@ make ci                                # lint + test + security (govulncheck, np
 | SC-010 (personas de distintas edades) | §10.7 (protocolo de usabilidad; informe `pruebas-usabilidad-SC-010.md`) |
 | SC-012 (0 secciones vacías; navegación sin enlaces rotos) | §1, §7 |
 | SC-013 (operaciones registradas; registro de solo lectura) | §12, §13 |
+| SC-014 (bloque de la portada: exactamente los 3 más cercanos, 0 vacíos ni huecos) *(enmienda Q8)* | §15, §13 (e2e de portada) |
+| SC-015 (ítems y enlace general llevan a la sección; qué viene, cuándo y dónde desde la portada) *(enmienda Q8)* | §15, §10.7 (tarea de la portada en el protocolo de usabilidad) |
 | FR-015 (validación de entradas) | §3, §4 (tablas de errores) |
 | FR-018 / FR-019 (contenido de cada concepto) | §3, §4, §5 |
 | FR-020 (imagen opcional con alt) | §6 |
 | FR-021 / FR-022 (ubicación en el sitio y ocultación) | §1, §7 |
 | FR-023 / FR-024 (responsividad y accesibilidad) | §10 |
+| FR-025 / FR-026 / FR-027 (bloque «Lo que viene» de la portada) *(enmienda Q8)* | §15, §13 (e2e `portada-proximamente.spec.ts`) |
+
+## 15. Bloque «Lo que viene» de la portada (US7, FR-025…FR-027, SC-014, SC-015)
+
+> Enmienda de alcance del 2026-10-12 (Q8): la portada de F3 incluye un bloque con **hasta 3 ítems**
+> próximos —eventos y actividades **juntos**, los más cercanos por fecha—. La portada no se
+> rediseña: el bloque es un añadido (P4-19 del plan).
+
+```bash
+# Extracto que sirve el bloque (tope 3 FIRME; sin parámetro de límite)
+curl -s "$API/api/v1/portada/proximamente?lang=es" | jq
+# → {"lang":"es","items":[{"kind":"event","id":"…","title":"…","date":"2026-10-17",
+#    "startTime":"19:00","place":"…"}, {"kind":"activity", …}, …]}  (máximo 3)
+```
+
+- **Solo publicado y próximo** (misma regla que la sección): con solo borradores o vencidos la
+  respuesta es `{"lang":"es"}` — la clave `items` **se omite** — y en el navegador **el bloque no se
+  muestra** (sin huecos ni espacios vacíos, FR-026). `Cache-Control: no-store`.
+- **Los 3 más cercanos mezclados**: con 5 ítems próximos (eventos y actividades) salen exactamente
+  los 3 de fecha más cercana, cada uno etiquetado como **Evento** o **Actividad** (Decisión 3) con
+  título, fecha/hora y lugar; con 1 o 2 ítems salen exactos, sin rellenar (SC-014).
+- Un ítem cuya fecha ya pasó (o un evento sin fecha futura) **no aparece**; si hay otro próximo,
+  ocupa su lugar (Q3/Q4, FR-025).
+
+En el navegador (**`$WEB/`**, la portada):
+
+1. El bloque «Lo que viene» aparece **tras el hero de identidad**; el resto de la portada (quiénes
+   somos, horario, WhatsApp, contacto, redes) sigue **exactamente igual** (FR-027: sin rediseño).
+2. Cada ítem lleva al bloque correspondiente de la sección completa (`/eventos#eventos` /
+   `/eventos#actividades`) y el enlace general «Ver todo lo que viene» a `/eventos` — en un solo
+   paso (SC-015).
+3. **Sin ítems** el bloque desaparece y la portada queda coherente; a la vez la entrada
+   «Eventos y actividades» de la navegación y del pie sigue **oculta** (coherencia con SC-012).
+4. En **inglés** los ítems traducidos se ven en inglés y los demás en español (fallback, FR-008).
+5. Revisión rápida: en 320 px sin desplazamiento horizontal (SC-007) y recorrido por **teclado**
+   con foco visible en cada ítem y enlace (SC-008).

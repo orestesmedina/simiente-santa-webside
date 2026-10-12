@@ -10,7 +10,7 @@
 > borrado de categoría en uso → `409`, imagen de elemento vencido no servida).
 
 Este documento resuelve las decisiones técnicas abiertas de F4 con alternativas y motivos. La
-numeración es **R4-1…R4-15**, propia de esta funcionalidad, para no colisionar con R3-1…R3-18 de F3,
+numeración es **R4-1…R4-16**, propia de esta funcionalidad, para no colisionar con R3-1…R3-18 de F3,
 R1–R23 de F2 ni D1–D23/D-A1…D-A9 de `docs/tecnico/decisiones.md`. Donde se reutiliza una decisión
 ya tomada se cita (R3-x, P3-x) y **no se reabre**.
 
@@ -517,7 +517,64 @@ lista cronológica, no un calendario — fuera de alcance).
 
 ---
 
-## Resumen de decisiones (puerta 2: las 7 consultas quedaron **resueltas** el 2026-10-11)
+## R4-16. Bloque «Lo que viene» de la portada: endpoint propio con tope 3 *(enmienda de alcance del 2026-10-12, Q8)*
+
+**Contexto.** El humano decidió el 2026-10-12 (Q8) que la **portada** incluya un bloque «Lo que
+viene» con **hasta 3 ítems** próximos —eventos y actividades **juntos**, los más cercanos por
+fecha— (US7, FR-025…FR-027, SC-014/SC-015). La portada es de F3 y **no se rediseña**: el bloque es
+un añadido. Había que decidir cómo se sirven esos 3 ítems.
+
+**Decisión.** Endpoint público propio **`GET /api/v1/portada/proximamente?lang=es|en`**, registrado
+por el dominio `agenda` (lectura pública, sin middlewares, `Cache-Control: no-store`), con:
+
+- **Tope 3 firme en el servidor** (FR-025): una sola consulta `UNION ALL` de
+  `agenda_events`+`agenda_event_dates` y `agenda_activities` con la regla R4-2 ("publicado y
+  próximo", mismos `today`/`now_time` parametrizados de `APP_TZ`), `ORDER BY date, start_time NULLS
+  FIRST, title_es, id` y `LIMIT 3` (constante `maxPortadaItems = 3` del service). **Sin parámetro de
+  límite**: el 3 es decisión firme del humano, no un default configurable.
+- **DTO mínimo** (`PortadaProximamente` con `ItemProximoPortada`): `kind` (`event`/`activity`),
+  `id`, `title`, la **próxima** `date` con `startTime`/`endTime` opcionales y `place` — ya
+  resueltos a `lang` con fallback `en → es`. Sin `detail`, imagen, categoría ni lista de fechas:
+  esos datos viven en `GET /api/v1/proximamente` y en `/eventos` (la portada no paga lo que no
+  muestra).
+- **`items` omitido cuando está vacío** (patrón SC-012 del público de F4): sin ítems publicados y
+  próximos la respuesta es `{"lang": "…"}` y el cliente **no renderiza** el bloque (FR-026: sin
+  huecos ni marcadores; con 1–2 ítems se muestran exactos).
+
+**Alternativas descartadas.**
+
+1. **Reutilizar `GET /api/v1/proximamente` con un límite** (`?limit=3`): cambiaría el contrato y el
+   significado de una operación pública ya validada (hoy expresa "la sección completa, sin
+   filtros"), y aun así devolvería DTOs completos (detalle de ≤2.000 caracteres, imagen, todas las
+   fechas): "traer de más" para 3 tarjetas. Además la forma de **dos bloques separados** no expresa
+   la mezcla ordenada de eventos y actividades por cercanía (FR-025) sin recalcularla en el cliente.
+2. **Derivar el top-3 en el cliente** desde la consulta compartida `['proximamente', lang]` (la que
+   ya alimenta la navegación, D-23): cero peticiones nuevas, pero la regla de FR-025 quedaría
+   implementada en el navegador — contra el principio ya aplicado en F4 ("el cliente no filtra ni
+   reimplementa") y contra RG4-2 (una sola fuente para la regla "próximo") — y la portada seguiría
+   descargando el documento completo (hasta 200 ítems por bloque) para pintar 3.
+3. **Añadir el bloque al `GET /api/v1/portada` de F3**: toca el contrato cerrado de F3, mezcla los
+   dominios `portada` y `agenda` en una misma respuesta y obligaría a re-validar F3 entero; la
+   portada **no se rediseña** (FR-027).
+
+**Impacto.** Contrato: **aditivo**, `info.version` 0.5.0 → **0.6.0** (T443); operaciones existentes
+intactas. Datos: **sin migración nueva** (solo la consulta `ListNextUpcomingItems` en
+`queries/agenda.sql` + código sqlc generado). Backend: `repository_public.go`,
+`GetPortadaProximamente` en `service_public.go`, handler público y una ruta más en
+`RegisterPublic`. Frontend: `usePortadaProximamente`, `ProximamenteBlock` insertado tras el
+`IdentityHero` de `HomePage` (una inserción; el resto de la portada de F3 intacta), claves i18n
+nuevas y e2e propio. **Dependencias nuevas: 0** (R4-15 se mantiene).
+
+**Coherencia con la ocultación (SC-012/SC-014).** El bloque, la entrada de navegación y la sección
+`/eventos` comparten el mismo predicado "publicado y próximo" (R4-2, una sola función Go de
+`today`/`now_time`): si el bloque tiene ítems, la sección tiene contenido y la navegación muestra la
+entrada; si no, el bloque se omite y la navegación oculta la entrada. Riesgos registrados en
+`plan.md` como **RG4-11…RG4-13** (petición adicional en la portada, incoherencia de ocultación y
+`ux.md` sin descripción del bloque).
+
+---
+
+## Resumen de decisiones (puerta 2: las 7 consultas quedaron **resueltas** el 2026-10-11; R4-16 es de la enmienda del 2026-10-12)
 
 | # | Decisión | Un vistazo |
 |---|---|---|
@@ -536,12 +593,19 @@ lista cronológica, no un calendario — fuera de alcance).
 | R4-13 | Página pública vacía | **Aviso de sección vacía en `/eventos`, sin redirigir** (firme); el ítem sigue oculto en barra, menú móvil y mapa del sitio |
 | R4-14 | Frontend | F10 aplicado sin cambios; **`/eventos`** con dos bloques (`features/publico/eventos/` de `ux.md`); `SiteLink` con ruta; panel en `features/eventos/` con `RequirePermission` (EVENTOS/ACTIVIDADES/**CATEGORIAS**); `ImageUploader`/`PublishControls` al inventario |
 | R4-15 | Dependencias | Ninguna nueva en backend ni frontend |
+| R4-16 | Bloque «Lo que viene» de la portada *(enmienda 2026-10-12, Q8)* | Endpoint propio `GET /api/v1/portada/proximamente` con **tope 3 firme** (`UNION` + `LIMIT 3`), DTO mínimo (`kind`/`title`/`date`/`place`), misma regla R4-2, `items` omitido si vacío y contrato 0.5.0 → 0.6.0; la portada de F3 no se rediseña |
 
 **Riesgo nuevo del cambio de alcance (RG4-10 en `plan.md`)**: F4 **edita pruebas de F2 (funcionalidad
 cerrada)** — el catálogo pasa de 9 a 10 permisos — y amplía la spec de F2 (catálogo "fijo"). Es una
 decisión de producto autorizada; se documenta como excepción aprobada y se limita a las aserciones
 de recuento (3 fijadas por el humano + 2 detectadas en revisión), la fixture `sampleCatalog()` y
 comentarios; el resto de F2 lee el catálogo dinámicamente.
+
+**Riesgos del segundo cambio de alcance (Q8, 2026-10-12 → RG4-11…RG4-13 en `plan.md`)**: petición
+adicional en la portada (mitigada con un endpoint mínimo en paralelo y sin bloquear el pintado),
+incoherencia entre el bloque y la ocultación de la navegación (mitigada con un único predicado
+"publicado y próximo" y `items` omitido) y `ux.md` sin descripción del bloque (la composición la
+fija P4-19; ajustes posteriores del `disenador-ux` solo en la UI).
 
 **Pendiente menor (no bloquea)**: la copia literal del aviso de R4-13 (el humano: «Por ahora no hay
 eventos ni actividades»; `ux.md` D-13: «Ahora mismo no hay nada publicado en esta sección. Vuelve

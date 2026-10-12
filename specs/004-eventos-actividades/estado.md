@@ -13,11 +13,11 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (documentación lista; PR pendiente de abrir por el humano) |
-| Ciclo de corrección | 1/3 (cerrado: los tres roles aprobaron en el ciclo 2) |
-| Próximo paso | **El humano** hace `git push` y abre el PR (el entorno no tiene `gh`); al aprobarlo, `make costos CERRAR=1` y merge |
+| Fase | 9/9 · Entregar — en curso: 3 bugs (`equipo-bug`) + cambio de alcance Q8 (bloque en la portada) antes del PR |
+| Ciclo de corrección | 1/3 (validación de F4 cerrada; pendiente re-validar bugs + bloque) |
+| Próximo paso | Re-aprobar spec v3 (Q8) y plan; corregir los 3 bugs; implementar el bloque; re-validar |
 | Bloqueado por | — |
-| Actualizado | 2026-10-11 |
+| Actualizado | 2026-10-12 |
 
 ## Aprobaciones
 
@@ -25,8 +25,8 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | aprobado | humano | 2026-10-11 | v1: "apruebo la spec"; v2 (permiso «categorías»): "Re-apruebo la spec" |
-| Plan | aprobado | humano | 2026-10-11 | "Apruebo el plan" (con las decisiones firmes: APP_TZ=America/Costa_Rica, ruta /eventos, aviso sin redirigir, permiso «categorías», endTime exige startTime, borrado de categoría en uso 409) |
+| Spec | aprobado | humano | 2026-10-11 | v1: "apruebo la spec"; v2 (permiso «categorías»): "Re-apruebo la spec"; **v3 (Q8, bloque en la portada) pendiente de re-aprobar (2026-10-12)** |
+| Plan | aprobado | humano | 2026-10-11 | "Apruebo el plan" (decisiones firmes: APP_TZ=America/Costa_Rica, ruta /eventos, aviso sin redirigir, permiso «categorías», endTime exige startTime, borrado de categoría en uso 409); **actualización por Q8 pendiente de aprobar** |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
@@ -34,8 +34,13 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-11-ciclo2.md`).
 
-- **(ninguno)** — los bloqueantes del ciclo 1 (I1, M1–M3) están corregidos y re-validados; los **tres roles APROBARON** en el ciclo 2.
-- **Deuda aceptada (no bloquea)**: deriva documental **S1** (se corrige en convergencia), **S2** (falta una prueba de la rama de conflicto de `UpdateEvento`), **S3** (estilo); seguridad **B1/B2/B3**; revisor **M5** (`Optional[T]`); **QA**: SC-010 y lector de pantalla quedan como verificación **manual** con el humano.
+- **(validación de F4: ninguno)** — los bloqueantes del ciclo 1 (I1, M1–M3) están corregidos y re-validados; los **tres roles APROBARON** en el ciclo 2.
+- **Bugs reportados por el usuario (2026-10-12)** — flujo `equipo-bug`, diagnóstico hecho, pendientes de arreglo y re-validación:
+  - **Bug 1** — desde `/eventos` el menú no navega a las secciones de la portada: `useSiteLinks.ts:62` construye `href` relativos (`#whatsapp`) en vez de `/#whatsapp` (regresión exhibida por F4).
+  - **Bug 2** — el menú no tiene hover ni estado actual: `PublicNav.tsx:45` sin `hover:` ni `aria-current` (hueco de F10, FR-008/T1012).
+  - **Bug 3** — el modal de crear evento es pequeño y con doble scroll: `Dialog.tsx:87` `max-w-lg` + `overflow-y-auto`; el `DatesEditor` desborda (hueco de F2, expuesto por F4).
+- **Cambio de alcance Q8 (2026-10-12)** — bloque «Lo que viene» en la portada (hasta 3 ítems próximos, eventos y actividades juntos): spec/plan/ux/tasks actualizados; **pendiente re-aprobar** e implementar.
+- **Deuda aceptada (no bloquea)**: deriva documental **S1** (corregida), **S2**, **S3**; seguridad **B1/B2/B3**; revisor **M5** (`Optional[T]`); **QA**: SC-010 y lector de pantalla quedan como verificación **manual** con el humano.
 
 ## Decisiones y aclaraciones
 

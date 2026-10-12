@@ -1,8 +1,8 @@
 # UX: F4 — Eventos y actividades
 
-> Documento de diseño para `disenador-ux`. Fuentes: `spec.md` de F4 (aclaraciones Q1–Q6 resueltas el 2026-10-11), `ux.md` de F3 (modelo de formato, textos y patrones de panel), `ux.md` de F10 (sistema de diseño y movimiento **ya entregado**: «Marea Turquesa»), el Manual de Identidad (`resources/MANUAL DE MARCA.pdf`) y el código actual de `frontend/src/` (React 19 + Tailwind 4; componentes de F2/F3/F10 ya construidos).
+> Documento de diseño para `disenador-ux`. Fuentes: `spec.md` de F4 (aclaraciones Q1–Q6 resueltas el 2026-10-11 y **Q8 resuelta el 2026-10-12: bloque «Lo que viene» en la portada**, FR-025–FR-027, US7), `ux.md` de F3 (modelo de formato, textos y patrones de panel **y la portada**), `ux.md` de F10 (sistema de diseño y movimiento **ya entregado**: «Marea Turquesa»), el Manual de Identidad (`resources/MANUAL DE MARCA.pdf`) y el código actual de `frontend/src/` (React 19 + Tailwind 4; componentes de F2/F3/F10 ya construidos).
 > No es código: lo implementa el `dev-frontend`. Rutas y contratos los fija el `arquitecto`; aquí se proponen.
-> **Decisiones de UX a revisar por el humano**: ver §9 (resumen). Cada una lleva su marca ⟲; las marcadas ✅ quedaron **resueltas por el humano el 2026-10-11** (D-1: ruta `/eventos` · D-6: permiso nuevo `categorias` · D-13: aviso sin redirección) **o cerradas por decisión firme realineada el 2026-10-11** (D-16: 409 categoría en uso · D-22: fechas sin conversión de zona).
+> **Decisiones de UX a revisar por el humano**: ver §9 (resumen). Cada una lleva su marca ⟲; las marcadas ✅ quedaron **resueltas por el humano el 2026-10-11** (D-1: ruta `/eventos` · D-6: permiso nuevo `categorias` · D-13: aviso sin redirección) **o cerradas por decisión firme realineada el 2026-10-11** (D-16: 409 categoría en uso · D-22: fechas sin conversión de zona). Las decisiones del **cambio de alcance del 2026-10-12 (Q8)** van marcadas ⟲ en §9 (D-24, D-25, D-26: endpoint propio del bloque de portada).
 > F4 **aplica** el sistema de F10 y los patrones de F2/F3; **no redefine** tokens, navegación, selector de idioma, modo oscuro ni el rediseño del panel (F10B).
 
 ---
@@ -40,7 +40,7 @@
 
 ### 2.1 Visitante: descubre lo que viene (US1, camino feliz)
 
-1. Abre el sitio (`/`, idioma según su preferencia guardada; primera visita: español). Ve la barra de F10 con la lista de secciones de la portada… **y una entrada nueva: «Eventos y actividades»** — se dibuja solo si hay al menos un evento o actividad publicados con fecha desde hoy (FR-022; con secciones de portada vacías el pie/menú no dejan huérfanos).
+1. Abre el sitio (`/`, idioma según su preferencia guardada; primera visita: español). Ve la barra de F10 con la lista de secciones de la portada… **y una entrada nueva: «Eventos y actividades»** — se dibuja solo si hay al menos un evento o actividad publicados con fecha desde hoy (FR-022; con secciones de portada vacías el pie/menú no dejan huérfanos). **Y en la propia portada ya lo ve sin navegar**: el bloque **«Lo que viene»** (§4.10, US7) le muestra hasta 3 ítems próximos —eventos y actividades juntos— con enlace a la sección completa (FR-025 a FR-027).
 2. Toca «Eventos y actividades» (barra en escritorio; item del panel del menú móvil con el mismo nombre) → desplazamiento a **`/eventos`**: página de contenido real con **H1 «Eventos y actividades»** y dos bloques: **«Próximos eventos»** y **«Próximas actividades»**.
 3. En **Próximos eventos** ve cada periodicidad: título, la **próxima fecha** grande y escrita, el texto de frecuencia si existe («todos los viernes»), horario del día, lugar con enlace **«Ver ubicación»** (abre el mapa en la app o en la web, solo si el equipo cargó enlace), categoría (si hay) y detalle.
 4. En **Próximas actividades** ve cada acción puntual: título, fecha y horario exactos, lugar, categoría (si hay), imagen (si hay) y detalle.
@@ -103,6 +103,14 @@ El listado del panel muestra SIEMPRE el estado real al público hoy:
 - Sin permiso «eventos»: no existe el acceso «Gestión de eventos» (ni en `AccesosRapidos` ni en navegación del panel); si fuerza la URL `/panel/eventos`: `RequirePermission` → `/sin-permiso` (F2, texto intacto).
 - Tener «eventos» NO da la gestión de «actividades» ni al revés (FR-012, Decisión 5; confirmado por prueba cruzada en US2 esc. 8 y US3 esc. 7). Tener «eventos» o «actividades» tampoco da el acceso a «Categorías»: ese catálogo se autoriza con el permiso propio `categorias` (✅ D-6).
 - La banda de ayuda nos recuerda «Solo lo publicado es visible al público» (coherente con F3 §4.3).
+
+### 2.8 Visitante: descubre lo que viene desde la portada (US7, camino feliz — Q8)
+
+1. Abre el sitio (`/`) y, **sin navegar**, ve en la portada el bloque **«Lo que viene»** (se coloca después de «Horario de servicios», §4.10): hasta **3 ítems próximos** —eventos y actividades juntos, los más cercanos por fecha—, cada uno con su etiqueta de concepto («Evento»/«Actividad»), título, fecha escrita y lugar.
+2. Toca el **título de un ítem** → llega a `/eventos` (sección completa, con el bloque de su concepto en primer plano) en un solo paso (FR-026).
+3. Quiere ver más → toca el **enlace general del bloque** («Ir a Eventos y actividades») → misma sección (FR-026). Sin paginar, sin «ver más» local ni ítems 4+ (FR-025: decisión firme del humano).
+4. Con 1 o 2 ítems próximos: se muestran exactos, **sin huecos ni marcadores vacíos** (FR-026). Con **ninguno** (todo borrador o pasado): el bloque **no se muestra** y la portada queda coherente (FR-026; el ancla y el ítem de nav «Eventos y actividades» se rigen por la regla general de FR-022).
+5. En inglés: interfaz y fechas en inglés; el contenido sin inglés cae al español con fallback del servidor, sin marcas (FR-027).
 
 ---
 
@@ -289,6 +297,41 @@ Simétrico a §4.3 con ActividadForm:
 - **Auditoría de F2** registra cada operación con los textos «Creó/Modificó/Publicó/Retiró/Eliminó el {evento/actividad} "{título}"» + resultado; el módulo de auditoría NO cambia su UI (FR-017). El `qa-tester` verifica las entradas para cada operación.
 - El registro es solo lectura, como en F2 (0 ediciones/borrados; SC-013).
 
+### 4.10 Portada — bloque «Lo que viene» (`/`; US7, FR-025 a FR-027, Q8)
+
+> **Cambio de alcance del 2026-10-12 (Q8)**: único contenido de F4 en la portada de F3 (FR-021). Aplica el sistema de F10 y los patrones de §4.1 sin rediseñar el resto de la portada (Out of Scope de la spec). El bloque es un **extracto de la misma agenda**, no un modelo nuevo: se sirve con un **endpoint propio del `arquitecto` — `GET /api/v1/portada/proximamente?lang=es|en` —, tope 3 en servidor y DTO mínimo**, vía el hook `usePortadaProximamente` (⟲ D-26): **una sola petición para el bloque**, independiente de la consulta de `/eventos`, con respuesta `no-store`.
+
+**Propósito**: quien entra al sitio ve de inmediato lo que viene, y de ahí puede abrir la sección completa en un solo paso (SC-015).
+
+**Ubicación (⟲ D-24)**: entre **«Horario de servicios»** (paso 5 de F3 §4.1) y **«Canales de WhatsApp»** (paso 6). Razón: el horario responde «cuándo nos reunimos regularmente» y «lo que viene» es su continuación natural («… y además, próximamente»), frente a contacto/redes que son utilidades. No reordena ni altera ninguna otra sección, ancla ni estilo de F3.
+
+| Estado | Qué ve el visitante (portada) |
+|---|---|
+| Con 3+ ítems próximos | `SectionHeading` (título «Lo que viene») + 3 ítems compactos, los más cercanos por fecha (próxima fecha, Q1/Q3), eventos y actividades **mezclados pero identificados**: cada ítem lleva su etiqueta de concepto («Evento»/«Actividad» — diseño ⟲ D-25 —, porque en la portada NO hay bloques separados por concepto). |
+| Con 1 o 2 ítems | Exactamente esos ítems; sin huecos ni marcadores vacíos (FR-026). |
+| Sin ítems (0 publicados y próximos) | El bloque **no se renderiza**: ni título, ni rótulo, ni espacio huérfano; la portada queda coherente (FR-026, patrón de F3 «solo lo publicado existe»). Los ítems con fecha ya pasada o borrador jamás aparecen (SC-009/SC-002). |
+| Carga (primera) | Nada: el bloque se reserva **solo cuando el dato dice que hay ítems** (respuesta propia de `usePortadaProximamente`, D-26). Si la portada aún carga, el bloque no adelanta un esqueleto visible mientras se desconoce si existirá; cuando la respuesta llega con contenido, aparece con el `Reveal` de F10 (micro-transición, 0 brincos de layout: el esqueleto de la portada de F3 ya cubrió la altura). |
+| Error con ítems en caché | Se muestra el último contenido válido con el aviso discreto del patrón de F3 («No pudimos actualizar…»). |
+| Error sin nada en caché | El bloque no se dibuja (la portada tiene su propio estado de error de F3 intacto); no se inventa una caja de error nueva fuera del bloque. |
+| Fallback es→en / en→es | Interfaz en el idioma elegido (`home.upcoming.*` del §7.2); contenido del ítem según FR-008 con fallback del servidor, sin marcas. |
+| `prefers-reduced-motion` | Sin `Reveal`: los ítems visibles de inmediato. |
+
+**Composición de un ítem (variante compacta `UpcomingItem`, ⟲ D-25)** — reutiliza al máximo de §4.1, comprimido a una fila (móvil) o dos columnas (tablet+):
+
+- **Etiqueta de concepto**: chip pequeño fijo «Evento» o «Actividad» (texto, no color semántico; coherente con D-2: la categoría ya NO lleva chip en esta variante — se omite para no duplicar pilas de etiquetas en un extracto tan corto; ⟲ decisión a confirmar).
+- **Título** (Poppins 600 1.125rem): **es el enlace** del ítem a `/eventos` (texto-only, nombre accesible completo: «Evento: {título}» / «{título}» en el `aria-label` del §7.2) — la tarjeta no es clicable en bloque (misma regla de §4.1: solo lo interactivo explícito es clicable) y así un lector de pantalla no descubre un bloque entero plegable. ⟲ D-25.
+- **Fecha**: `DateBadge` compacta (≤ una línea): «viernes 17 de oct., 7:00 p. m.»; mismas reglas de §8.2 (partes del dato, sin conversión de zona, D-22).
+- **Lugar**: texto con icono, una línea; si no cabe: **se recorta con elipsis el texto visual** pero el nombre completo queda para el lector (sin datos rotos). La imagen del elemento **no se muestra** en esta variante (extracto; ⟲ D-25).
+- **Enlace general**, última línea del bloque: `PublicButton` secundario/text-link con icono + texto «Ir a Eventos y actividades» (44 px en móvil). No se usa «Ver más» (FR-025 lo prohibe como expansión; este es un enlace de navegación a la sección completa, FR-026).
+
+**Responsivo**: móvil en **columna única, ítems apilados a todo ancho** (cada uno una tarjeta compacta, separación `--space-block`); tableta/desktop **3 columnas** (3 ítems, uno por columna) con tarjetas del sistema `Card solid`; 320 px sin desplazamiento horizontal (SC-007); título y enlace a todo ancho. Modo claro y oscuro por los mismos tokens (sin colores nuevos).
+
+**Accesibilidad** (FR-027, nivel igual al de la sección):
+- **Jerarquía**: el bloque usa `h2` «Lo que viene» (mismo nivel que los títulos de sección de la portada de F3 — verificado en integración contra su `h*` real: el `h2` no debe quedar al mismo nivel de what el H1 del hero, ni colgando de un `h3`); los ítems usan `h3`.
+- **Teclado**: mismo orden de lectura que el DOM (título → ítems → enlace general); el título-enlace y el enlace general reciben el anillo de foco de F10; hit targets ≥44 px; el orden es el cronológico con empate estable (D-14).
+- **Semántica**: la lista de ítems es `<ul>` con `li`; cada fecha con `<time datetime>`; el bloque es un `section` con `aria-labelledby` al `h2`; se lee como texto en el idioma activo.
+- **No compite con la portada**: sin animación prolija (única entrada por bloque con `RevealGroup` y stagger mínimo, igual que la sección /eventos); sin imágenes que acaparen la atención; altura acotada (3 ítems máx, FR-025); la voz es agenda (principio 4), no emocional.
+
 ---
 
 ## 5. Estados por vista con datos (panel)
@@ -369,9 +412,12 @@ Simétrico a §4.3 con ActividadForm:
 | `ActivityCard` | Tarjeta de una actividad: Imagen opcional, chip, título, `DateBadge` (una fecha), lugar + `MapLink`, detalle. |
 | `CategoryChip` | Etiqueta de categoría (⟲ D-2). |
 | `DateBadge` | Fecha + horario **localizados** con `<time datetime>` (formato por idioma con `Intl`; única implementación compartida; no inventa formatos a mano). |
+| `UpcomingPreview` | Bloque «Lo que viene» de la portada (`/`; US7): fila de hasta 3 `UpcomingItem` a partir de `usePortadaProximamente` (endpoint propio, tope 3 en servidor, D-26); decide visibilidad (nada → no se dibuja), encabezado `SectionHeading` y enlace general. |
+| `UpcomingItem` | Variante compacta de `EventCard`/`ActivityCard` para el extracto: etiqueta de concepto, título-enlace a `/eventos`, `DateBadge` compacta y lugar (sin imagen ni chip de categoría; D-25). |
 | `MapLink` | Enlace exterior (`target="_blank" rel="noopener"`) con texto «Ver ubicación» (icono + texto) y `aria-label` completo (D-20). |
 | `HiddenNotice` | Aviso de sección oculta (H1 + mensaje de interfaz, sin datos; D-13). |
 | `useUpcomingEvents` | TanStack Query: consulta pública de eventos+actividades próximos (contrato del `arquitecto`); alimenta la página y la presencia en `useSiteLinks`. |
+| `usePortadaProximamente` | TanStack Query para el bloque de la portada (US7): `GET /api/v1/portada/proximamente?lang=es|en` (endpoint propio del `arquitecto`, D-26); DTO mínimo, tope 3 en servidor, `no-store`; alimenta solo `UpcomingPreview` (los ítems de portada nunca consumen `useUpcomingEvents`). |
 | `features/publico/eventos/formatoFechas.ts` | Escribir en palabras las fechas (`Intl.DateTimeFormat` por idioma): «viernes 17 de octubre, 7:00 p. m.» / «Friday, October 17, 7:00 PM»; horarios en 12 h según el locale. **Construye la fecha desde sus partes (`YYYY-MM-DD` + `HH:MM`), sin conversión de zona horaria** (nunca `new Date(string)`; D-22). |
 
 ### 6.4 Nuevos del panel (`frontend/src/features/eventos/`)
@@ -450,6 +496,12 @@ Simétrico a §4.3 con ActividadForm:
 | `events.error.retry` | Volver a intentar | Try again |
 | `events.error.partial` | No pudimos actualizar; ves la última versión disponible. | We couldn't refresh; you're seeing the latest available version. |
 | `a11y.events.heading` | Eventos y actividades de la iglesia | Church events and activities |
+| `home.upcoming.title` | Lo que viene | What's coming |
+| `home.upcoming.subtitle` | Lo más próximo de nuestra agenda | The next dates in our agenda |
+| `home.upcoming.seeAll` | Ir a Eventos y actividades | Go to Events & activities |
+| `home.upcoming.badge.event` | Evento | Event |
+| `home.upcoming.badge.activity` | Actividad | Activity |
+| `a11y.home.upcoming.heading` | Lo que viene: próximos eventos y actividades de la iglesia | What's coming: upcoming church events and activities |
 
 > El `alt` de las imágenes es obligatorio en el panel (español, inglés opcional): no existe una cadena de fallback automática en el sitio público.
 
@@ -509,13 +561,17 @@ Fechas: **se escriben desde el dato**, no desde el diccionario (`formatoFechas.t
 | D-20 ⟲ | El enlace «Ver ubicación» lleva `aria-label` completo («Ver ubicación de {título}» / «See location for {title}»). | Texto a solas con contexto del h3 cercano. |
 | D-21 ⟲ | **Contenido en fallback dentro de página en inglés** con `lang="es"` en su envoltorio. | Sin marca de idioma en el nodo (menos correcto para lectores de pantalla). |
 | D-22 ✅ | **RESUELTA (alineada con decisión firme, R4-3/contrato, 2026-10-11):** las fechas se presentan **sin conversión de zona horaria**: el helper construye la fecha desde sus partes (`YYYY-MM-DD` + `HH:MM`); el dato es el local del lugar; nada de `new Date("YYYY-MM-DD")` (los parsea como UTC y desplaza un día en zonas UTC−x). | Formatear con la zona del navegador vía `lib/format.ts` (superado: era una trampa de desplazamiento de día). Fijar zona de la iglesia (cambio de contrato; fuera de F4). |
-| D-23 ⟲ | La **presencia de la sección en la navegación** se deduce de la respuesta pública de eventos compartida por queryClient (una sola petición alimenta página, barra y pie). | Consulta separada solo para saber si la sección existe (doble carga). |
+| D-23 ⟲ | La **presencia de la sección en la navegación** se deduce de la respuesta pública de eventos compartida por queryClient (una sola petición alimenta página, barra y pie). **Solo se refiere a `/eventos`**: el bloque «Lo que viene» de la portada usa su **endpoint propio** (D-26, fijado por el `arquitecto` el 2026-10-12). | Consulta separada solo para saber si la sección existe (doble carga). |
+| D-24 ⟲ | (Q8, 2026-10-12) El bloque **«Lo que viene»** en la portada se coloca **entre «Horario de servicios» y «Canales de WhatsApp»**: el horario dice «cuándo nos reunimos» y el bloque añade «lo próximo»; sin reordenar ni alterar ninguna otra sección de F3. | Al final (antes del pie: se pierde el «lo próximo» junto al horario) o tras el hero (aplasta la identidad cuando apenas llega). |
+| D-25 ⟲ | (Q8) Variante **compacta** «`UpcomingItem`» para el extracto: etiqueta de concepto «Evento»/«Actividad» (los conceptos van mezclados, sin bloques separados en portada), **título como enlace** a `/eventos` (la tarjeta no es clicable, regla de §4.1), fecha `DateBadge` + lugar; **sin imagen ni chip de categoría** en el extracto; enlace general «Ir a Eventos y actividades» y no «Ver más» (frase prohibida en portada, FR-025; el enlace es el que exige FR-026). El **dato** lo sirve el endpoint propio de D-26; la composición no cambia. | Reusar `EventCard`/`ActivityCard` completas (imágenes y chips de categoría compiten con la portada, altura variable) o tarjeta íntegra clicable (peor para el lector de pantalla). Consumir `useUpcomingEvents` desde la portada (descartado: el `arquitecto` fijó endpoint propio, 2026-10-12). |
+| D-26 ⟲ | (2026-10-12, fijado por el `arquitecto`) El bloque «Lo que viene» se sirve con **endpoint propio** `GET /api/v1/portada/proximamente?lang=es|en` vía `usePortadaProximamente`: **tope 3 en servidor**, DTO mínimo, una sola petición para el bloque, respuesta `no-store` (coherente con SC-002/SC-003); nunca reutiliza la consulta de `/eventos`. | Alimentar el bloque de la caché de `useUpcomingEvents` (superado por decisión del `arquitecto`). |
 
 ---
 
 ## 10. Notas para el `dev-frontend` / `qa-tester`
 
 - **La lógica con pruebas**: filtro «desde hoy en adelante» + orden cronológico por próxima fecha (empate estable, D-14), cálculo de «pasado» (evento con todas sus fechas pasadas no se muestra, y el panel lo marca), bloques según disponibilidad (D-5), formato de fecha por idioma sin alterar el dato (con `<time>` intacto), fallback es→en del contenido (resuelto por el servidor), validaciones del `DatesEditor` (≥1 fila, formato y fin > inicio por fila), español obligatorio, límites (2.000 detalle), enlace de mapa con formato válido, duplicado dentro del módulo, ciclo publicar/retirar/eliminar con auditoría, permisos cruzados eventos/actividades/categorías, y presencia de la nav/mapa **solo con contenido publicado**.
+- **El bloque «Lo que viene» de la portada (US7)** usa **su propio hook/endpoint** (`usePortadaProximamente` → `GET /api/v1/portada/proximamente?lang=es|en`, D-26): tope 3 en servidor, DTO mínimo, `no-store`; del lado cliente solo añade los mismos filtros (publicado + desde hoy, ya aplicados por el servidor) y orden (cercanía, empate D-14): las pruebas contadas de SC-014/SC-015 (1, 2, 3 y 0 ítems — con 0 el bloque no se dibuja y la portada queda coherente, FR-026) y de superficie (SC-009: 0 pasados/borradores en portada). QA verifica la portada SIN tocar el resto de sus secciones (FR-021/Out of Scope).
 - **SC-002**: `qa-tester` verifica por cualquier vía que un borrador no se filtre (HTML, JSON público, URL de imagen → 404 si el contenido que la usa no está publicado, patrón de F3 §10), y que no se exponen datos de elementos pasados.
 - **El diseño no cambia el sistema de F10**: usa `Card`, `SectionHeading`, `Reveal`, `useSiteLinks`, i18n, temas y tokens tal cual; la página nueva es «otra sección» y no una marca visual propia (0 nuevos tokens).
 - **La única lista de enlaces** se extiende con el ítem de ruta; NO se duplica dentro de `PublicNav` ni `MobileMenu` (prueba congelada de F10 sobre la `MobileMenu` exige la MISMA lista). Los enlaces de anclas de portada construidos fuera de `/` van con la base `/#ancla`.
@@ -538,5 +594,6 @@ Fechas: **se escriben desde el dato**, no desde el diccionario (`formatoFechas.t
 | US5 · FR-007 · FR-008 · FR-009 | LanguageSwitcher (F10), contenido con/es EN, `formatoFechas.ts` (fecha escrita por idioma) | §2.2, §4.1, §7.2, §8.2 |
 | US6 · FR-020 · FR-021 · FR-023 · FR-024 | Página con sistema F10, `Card` (imagen opcional + alt), teclado/lector, 320 px, 200 %, `prefers-reduced-motion` | §4.1, §8.1 |
 | Q4 (pasado) | Marca «Pasado» en panel + retiro automático del público (sin cambios de estado) | §4.3, §9 D-8 |
+| **US7 · FR-025 · FR-026 · FR-027 (Q8)** | Bloque «Lo que viene» en la portada (`UpcomingPreview` con `UpcomingItem` vía `usePortadaProximamente` → `GET /api/v1/portada/proximamente`, D-26), enlace a `/eventos` | §2.8, §4.10, §9 D-24/D-25/D-26 |
 | Q6 (categorías) | `CategoryChip` (público), `/panel/categorias` (catálogo es/en, inicial sembrado) | §4.1, §4.6, §9 D-6/D-15/D-16 |
 | Auditoría (FR-017) | Módulo Auditoría de F2 intacto; no añade UI nueva | §4.9 |

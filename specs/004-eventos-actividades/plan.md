@@ -1,11 +1,15 @@
 # Implementation Plan: Eventos y actividades (F4)
 
-**Branch**: `004-eventos-actividades` | **Date**: 2026-10-11 | **Spec**: [spec.md](./spec.md)
+**Branch**: `004-eventos-actividades` | **Date**: 2026-10-11 · **enmienda de alcance 2026-10-12**
+| **Spec**: [spec.md](./spec.md)
 (aprobada por el humano; Q1–Q6 resueltas el 2026-10-11 y **puerta 2 con las 7 decisiones firmes
 aplicadas el 2026-10-11**: `APP_TZ = America/Costa_Rica`, ruta `/eventos`, permiso nuevo
 `categorias`, aviso sin redirección, `endTime` exige `startTime`, borrado de categoría en uso →
 `409` y imagen de vencido no servida; el cambio de alcance lo recoge `analista-producto` en
-`spec.md` en paralelo)
+`spec.md` en paralelo). **Enmienda del 2026-10-12 (Q8)**: la portada incluye el bloque **«Lo que
+viene»** con hasta **3 ítems** próximos (US7, FR-025…FR-027, SC-014/SC-015) — recogida aquí en
+**P4-18…P4-20**, `research.md` **R4-16** y `tasks.md` **T443–T449**; las decisiones Q1–Q7 siguen
+intactas.
 
 **Input**: `specs/004-eventos-actividades/spec.md` (fuente de verdad) · `.specify/memory/constitution.md`
 · `docs/tecnico/arquitectura.md` (reglas R1–R8 y convenciones §8.1) y `docs/tecnico/decisiones.md` ·
@@ -45,7 +49,12 @@ las imágenes de F4–F9 se sirvan con la misma regla de F3 ("solo contenido pub
 "y próximo"). El frontend publica **`/eventos`** con los dos bloques dentro del sistema de F10,
 oculta la entrada de navegación cuando no hay nada publicado (y la ruta directa muestra un **aviso
 de sección vacía sin redirigir**, R4-13) y añade los módulos de panel `/panel/eventos`,
-`/panel/actividades` y `/panel/categorias`.
+`/panel/actividades` y `/panel/categorias`. El **cambio de alcance del 2026-10-12 (Q8)** añade
+además a la **portada de F3** el bloque **«Lo que viene»** —hasta **3 ítems** próximos, eventos y
+actividades juntos y por cercanía— servido por un endpoint público propio y mínimo,
+`GET /api/v1/portada/proximamente` (P4-18, tope 3 firme en el servidor), montado como **una
+sección aditiva más** de `HomePage` **sin rediseñar la portada** (P4-19) y con el mismo predicado
+"publicado y próximo" que la sección y la navegación (P4-20).
 
 **Ninguna dependencia nueva** ni en backend ni en frontend.
 
@@ -78,7 +87,9 @@ entorno **`APP_TZ`** con el valor firme **`America/Costa_Rica`** (zona horaria d
 corte de "hoy"; P4-3/R4-2). Sin despliegue a producción (fuera de alcance de F4).
 
 **Performance Goals**: `GET /api/v1/proximamente` < 500 ms con BD sana (dos consultas + fechas;
-JSON pequeño, `no-store`) · listados de panel paginados (`limit`/`offset`, §8.1.3) · subida de
+JSON pequeño, `no-store`) · `GET /api/v1/portada/proximamente` < 500 ms y **payload mínimo**
+(≤3 ítems con `kind`/`title`/`date`/`place`, `LIMIT 3` en SQL; sin detalle ni imagen; `no-store`) ·
+listados de panel paginados (`limit`/`offset`, §8.1.3) · subida de
 imagen ≤ 8 MB validada en streaming (reglas de F3 sin cambios) · descarga de imágenes con la misma
 política `no-store` de F3.
 
@@ -90,16 +101,20 @@ servidor (§IV, CWE-862) · dependencias minimizadas (0 nuevas) · archivos del 
 (regla 10) · **la spec no se reabre**: los huecos (permisos del catálogo, `endTime` sin `startTime`,
 borrado de categoría en uso, imagen de elemento vencido, página pública vacía) **quedaron cerrados
 como decisiones firmes del humano en la puerta 2** (2026-10-11), documentadas en
-[research.md](./research.md); el único cambio de alcance —permiso nuevo `categorias`— está
-autorizado y se documenta con su impacto en F2 (RG4-10).
+[research.md](./research.md); los dos cambios de alcance —el permiso nuevo `categorias` y el bloque
+**«Lo que viene»** de la portada (Q8, 2026-10-12)— están
+autorizados y se documentan con su impacto (RG4-10 y RG4-11…RG4-13).
 
-**Scale/Scope**: 17 operaciones REST (1 pública · 16 de panel) sobre 4 tablas nuevas + la ampliación
+**Scale/Scope**: 18 operaciones REST (**2 públicas** · 16 de panel) sobre 4 tablas nuevas + la ampliación
 del `CHECK` de `admin_actions` + la fila nueva del permiso `categorias` en `permissions` (F2); 1
 dominio backend nuevo (`agenda`) + 1 dominio promovido (`media`), **`platform/middleware` sin
 cambios** (el permiso propio de categorías reutiliza `AdminChain`); 3 migraciones (`000007`,
-`000008`, `000009`); frontend: página pública nueva en `/eventos` + feature de panel `eventos` +
+`000008`, `000009`) — **sin migración nueva** para la enmienda del 2026-10-12 (solo una consulta
+sqlc nueva); frontend: página pública nueva en `/eventos` + **bloque «Lo que viene» en la portada
+(`HomePage`, enmienda Q8)** + feature de panel `eventos` +
 ajustes de router/navegación/permisos/i18n. Sin puertas de aprobación abiertas más allá de **este
-plan** (regla 1 de AGENTS.md); las 7 consultas de la puerta 2 ya están **resueltas**.
+plan** (regla 1 de AGENTS.md); las 7 consultas de la puerta 2 ya están **resueltas** y el cambio de
+alcance Q8 se acota a T443–T449.
 
 ## Constitution Check
 
@@ -107,7 +122,7 @@ plan** (regla 1 de AGENTS.md); las 7 consultas de la puerta 2 ya están **resuel
 
 | Principio | Evaluación | Resultado |
 |---|---|---|
-| §I La spec manda | El plan implementa FR-001…FR-024 e US1–US6 sin interpretarlos; cada uno tiene fila en "Cobertura de requisitos". Los huecos se cerraron como **decisiones firmes del humano** (puerta 2, 2026-10-11) en `research.md` (R4-4 permiso `categorias`, R4-5 borrado de categoría `409`, R4-8 `endTime` exige `startTime`, R4-6 imagen de elemento vencido, R4-13 aviso sin redirección). No se construye nada de Out of Scope (sin inscripciones, recordatorios, calendarios, recurrencia calculada, bloque en la portada, traducción automática, historial, verificación de enlaces, bilingüe del panel ni rediseño F10B). | ✅ |
+| §I La spec manda | El plan implementa FR-001…FR-027 e US1–US7 sin interpretarlos; cada uno tiene fila en "Cobertura de requisitos". Los huecos se cerraron como **decisiones firmes del humano** (puerta 2, 2026-10-11) en `research.md` (R4-4 permiso `categorias`, R4-5 borrado de categoría `409`, R4-8 `endTime` exige `startTime`, R4-6 imagen de elemento vencido, R4-13 aviso sin redirección). El **cambio de alcance Q8 (2026-10-12)** —bloque «Lo que viene» de la portada, US7/FR-025…FR-027— está autorizado por el humano y se implementa **solo** como se especifica (hasta 3 ítems, solo publicado y próximo, bloque omitido sin ítems, enlace a la sección); nada más de Out of Scope se construye (sin inscripciones, recordatorios, calendarios, recurrencia calculada, traducción automática, historial, verificación de enlaces, bilingüe del panel ni rediseño F10B) y el **resto de la portada de F3 no se toca** (FR-027). | ✅ |
 | §II Arquitectura | Monorepo; capas `handler → service → repository` sobre `internal/platform/` (R1–R8); API REST JSON documentada en `backend/api/openapi.yaml` con el delta redactado **antes** que el código (`contracts/openapi.yaml`, §8.1.5); **0 dependencias nuevas** (R4-15). | ✅ |
 | §III Pruebas | Toda tarea llevará sus pruebas (se exigirá en `tasks.md`); cobertura ≥80 % en `service/`; repository contra PostgreSQL real (`//go:build integration`), incluida la migración `000008`/`000009` (up/down/up), la regla de "próximo" con fechas fijas y la atomicidad mutación+auditoría; frontend con Vitest + Testing Library + MSW; flujos críticos con Playwright (página pública, retiro automático, publicar/retirar, permisos cruzados). **Excepción aprobada**: 3 pruebas de F2 (9 → 10 permisos) + 2 aserciones y fixture detectadas en revisión, actualizadas deliberadamente en F4 (RG4-10). | ✅ |
 | §IV Seguridad | SQL solo parametrizado vía sqlc (CWE-89); validación de toda entrada en backend (CWE-20); texto plano sin ejecución (CWE-79: sin `dangerouslySetInnerHTML`); imágenes con firma binaria, tipos cerrados, sin SVG, nombre generado y descarga solo de contenido publicado y próximo (CWE-79/434, R4-6); operaciones de panel con sesión + guard + CSRF + permiso **del módulo** verificados en servidor (CWE-862; `eventos`, `actividades` y `categorias` independientes —SC-005/SC-011—); secretos: ninguno nuevo (`APP_TZ` no es secreto); `govulncheck`/`npm audit` en el CI del kit. Borradores y vencidos **nunca** hacia el público: consultas `…Upcoming` separadas (FR-013/SC-002/SC-009). | ✅ |
@@ -121,8 +136,9 @@ convenciones internas (naming, excepción de paginación y el mapeo de auditorí
 
 ## Decisiones técnicas (resumen; análisis completo en `research.md`)
 
-Numeración **P4-1…P4-17**, propia de este plan (no confundir con P3-1…P3-19 de F3, P1–P23 de F2,
-R4-1…R4-15 de `research.md` ni RG4-1… de "Riesgos").
+Numeración **P4-1…P4-20**, propia de este plan (no confundir con P3-1…P3-19 de F3, P1–P23 de F2,
+R4-1…R4-16 de `research.md` ni RG4-1… de "Riesgos"). **P4-18…P4-20** son de la enmienda de alcance
+del 2026-10-12 (Q8) y no alteran ninguna decisión previa.
 
 | # | Decisión | Por qué (una línea) | Alternativa descartada |
 |---|---|---|---|
@@ -143,6 +159,9 @@ R4-1…R4-15 de `research.md` ni RG4-1… de "Riesgos").
 | **P4-15** | **Frontend de panel**: feature `features/eventos/` (inventario de `ux.md` §6.4) con `EventsPage`, `ActivitiesPage`, `CategoriesPage` bajo `RequirePermission` (**EVENTOS/ACTIVIDADES/CATEGORIAS**, uno por ruta); `ImageUploader` y `PublishControls` **se promueven al inventario único** `src/components/`; `AccesosRapidos` de `InicioPage` crece con las tres tarjetas filtradas por permiso («Gestión de eventos»/«Gestión de actividades»/«Categorías», `ux.md` §4.2) y `ACTION_LABELS` etiqueta los 15 códigos de auditoría (`ux.md` §4.9) | Tres módulos con permisos distintos e independientes; la regla de F2/T242 manda promover lo compartido en lugar de copiarlo; el guard `RequirePermission` existente basta (sin `RequireAnyPermission`); el camino feliz de US2 empieza en los accesos del inicio y el registro de auditoría debe leerse sin códigos crudos | Copiar los componentes de F3 (duplicado); una sola página de panel para los permisos (mezclaría módulos independientes); `RequireAnyPermission` (era para el catálogo con "cualquiera de los dos": sobra con permiso propio); dejar las tarjetas de `InicioPage` fuera de alcance (rompe `ux.md` §2.3) |
 | **P4-16** | **Contrato**: delta en `specs/004-eventos-actividades/contracts/openapi.yaml` → fusión aditiva en `backend/api/openapi.yaml` con `info.version` **0.4.0 → 0.5.0**; el registro de `error.code` **no cambia**; en la fusión se actualiza la prosa de `/api/v1/media/{fileName}` y la del catálogo de permisos (`GET /api/v1/admin/permisos` e init: 9 → **10** permisos con `categorias`) | Contrato antes que el código (§II) sin dos copias vivas ni códigos de error ad-hoc | Prefijo nuevo de rutas; `error.code` para "fecha pasada" (no es un error: simplemente no se publica); enum de permisos en el contrato (el catálogo vive en la BD y se lee dinámico) |
 | **P4-17** | **Dependencias: 0 nuevas** (backend y frontend) | §II: minimizadas; la stdlib cubre todo (fechas localizadas con `Intl`) | Librería de recurrencia (prohibida por Q1), `date-fns`/`dayjs`, `react-big-calendar` (la UX es lista cronológica) |
+| **P4-18** *(enmienda 2026-10-12, Q8)* | **Endpoint propio del extracto de la portada**: `GET /api/v1/portada/proximamente?lang=es\|en` con tope **3 firme en el servidor** (una consulta `UNION` de eventos y actividades + `LIMIT 3`, constante `maxPortadaItems = 3` del service) y DTO mínimo (`kind`, `title`, `date`/horario, `place`); contrato → `info.version` **0.6.0** | La portada solo necesita 3 tarjetas: el documento de `/api/v1/proximamente` está pensado para la sección entera (hasta 200 por bloque con `detail`, imagen y todas las fechas) y el tope 3 mezclado por cercanía es una regla del **servidor**, no del navegador. El límite **no** es un parámetro (FR-025: firme, no configurable) | Reutilizar `GET /api/v1/proximamente?limit=3` (cambiaría el contrato y el significado de una operación pública ya validada, y aun así devolvería DTOs completos: la mezcla ordenada de dos bloques no cabe en su forma); derivar el top-3 en el cliente desde la consulta compartida `['proximamente']` (0 peticiones, pero FR-025 quedaría implementada en el navegador — contra el principio "el cliente no filtra ni reimplementa" — y la portada seguiría descargando el documento completo); añadir el bloque a `GET /api/v1/portada` de F3 (toca el contrato cerrado de F3 y mezcla dominios) |
+| **P4-19** *(enmienda 2026-10-12, Q8)* | **Bloque = una sección aditiva más de `HomePage`**: `ProximamenteBlock` en `features/publico/eventos/` (reutiliza `DateBadge`/`ItemCardParts`), insertado **tras el `IdentityHero`** como primera pieza del `RevealGroup`; cada ítem etiqueta `kind` («Evento»/«Actividad») y enlaza a `/eventos#eventos` / `/eventos#actividades` (anclas ya existentes en `EventsSection`/`ActivitiesSection`) y el bloque lleva el enlace general a `/eventos`; claves i18n nuevas | US7 pide "enterarme nada más entrar": bajo el hero se ve sin desplazar en la mayoría de pantallas; es **una inserción** sin mover ni reescribir ninguna sección de F3 (FR-027: la portada no se rediseña) y reutiliza el inventario de F4 sin componentes nuevos duplicados | Bloque al final de la portada (bajo el pliegue: contradice "nada más entrar"); dentro de `IdentityHero` (rediseña F3); tarjetas completas de `EventCard`/`ActivityCard` (traería y mostraría más de lo que FR-025 pide: título, fecha y lugar) |
+| **P4-20** *(enmienda 2026-10-12, Q8)* | **Coherencia de visibilidad**: bloque, entrada de navegación y sección `/eventos` comparten el **mismo predicado** "publicado y próximo" (R4-2: una sola función Go de `today`/`now_time`) y el cliente oculta el bloque cuando la respuesta **omite `items`** (SC-012); con menos de 3 ítems se muestran exactos, sin rellenar | SC-014/FR-026: cero bloques vacíos, cero huecos y cero divergencia entre "hay bloque" y "hay entrada de navegación"; el patrón de claves omitidas ya es el del público de F4 | Estado propio del cliente para el bloque (podría divergir de la navegación y mostrar huecos); bloque vacío con marcadores de relleno (prohibido por FR-026); reglas de visibilidad distintas por superficie (rompe SC-012) |
 
 ## Project Structure
 
@@ -151,7 +170,7 @@ R4-1…R4-15 de `research.md` ni RG4-1… de "Riesgos").
 ```text
 specs/004-eventos-actividades/
 ├── plan.md              # EDITABLE (este archivo, /speckit.plan)
-├── research.md          # EDITABLE (fase 0: R4-1…R4-15)
+├── research.md          # EDITABLE (fase 0: R4-1…R4-16)
 ├── data-model.md        # EDITABLE (fase 1: tablas, migraciones 000007–000009, consultas)
 ├── quickstart.md        # EDITABLE (fase 1: cómo probar F4 en local)
 ├── spec.md              # APROBADA — no se edita
@@ -176,7 +195,9 @@ backend/
 │   ├── db/
 │   │   ├── queries/
 │   │   │   ├── agenda.sql           # NUEVO: consultas de agenda_* (CRUD, fechas, duplicados,
-│   │   │                            #   variantes …Upcoming para el público)
+│   │   │                            #   variantes …Upcoming para el público) + enmienda Q8:
+│   │   │                            #   ListNextUpcomingItems (extracto mezclado de la portada,
+│   │   │                            #   UNION eventos+actividades con LIMIT 3)
 │   │   │   ├── media.sql            # NUEVO: IsFilePublished (home_* + agenda_*; sustituye a
 │   │   │                            #   IsHomeFilePublished de home.sql)
 │   │   │   ├── home.sql             # EDITADO: se retira IsHomeFilePublished (pasa a media.sql)
@@ -190,21 +211,26 @@ backend/
 │   │   ├── repository_eventos.go    # eventos + fechas (ReplaceEventDates, ExistsEventDuplicate)
 │   │   ├── repository_actividades.go# actividades
 │   │   ├── repository_categorias.go # catálogo + CountCategoryUsage
+│   │   ├── repository_public.go     # NUEVO (enmienda Q8): ListNextUpcomingItems (lectura
+│   │   │                            #   pública que cruza eventos y actividades)
 │   │   ├── service.go               # tipos comunes, invariantes, constantes (límites, ≤50 fechas),
 │   │   │                            #   cálculo de today/now_time con APP_TZ=America/Costa_Rica y
 │   │   │                            #   regla "próximo"
 │   │   ├── service_public.go        # "lo que viene": solo published+próximo, resolución de idioma,
-│   │   │                            #   orden cronológico, claves omitidas si vacías
+│   │   │                            #   orden cronológico, claves omitidas si vacías; enmienda Q8:
+│   │   │                            #   GetPortadaProximamente (extracto tope 3, maxPortadaItems)
 │   │   ├── service_admin.go         # CRUD de eventos/actividades/categorías, validaciones de
 │   │   │                            #   dominio (fechas, horas, duplicados, imagen+alt), publicar/
 │   │   │                            #   retirar y auditoría transaccional
 │   │   ├── service_audit.go         # audit.Recorder del dominio: método+ruta → acción
 │   │   │                            #   event.*/activity.*/category.* (denegaciones)
 │   │   ├── handler.go               # constructor + helpers HTTP (decodificar/validar/responder)
-│   │   ├── handler_public.go        # GET /api/v1/proximamente
+│   │   ├── handler_public.go        # GET /api/v1/proximamente y (enmienda Q8)
+│   │   │                            #   GET /api/v1/portada/proximamente
 │   │   ├── handler_admin.go         # CRUD de /api/v1/admin/{eventos,actividades,categorias}
 │   │   ├── handler_images.go        # POST /api/v1/admin/{eventos,actividades}/imagenes (multipart)
-│   │   ├── routes.go                # RegisterPublic (proximamente) y RegisterAdmin (3 grupos:
+│   │   ├── routes.go                # RegisterPublic (proximamente + enmienda Q8:
+│   │   │                            #   /api/v1/portada/proximamente) y RegisterAdmin (3 grupos:
 │   │   │                            #   AdminChain("eventos"), AdminChain("actividades"),
 │   │   │                            #   AdminChain("categorias"))
 │   │   └── *_test.go                # service con fakes · handler con httptest · repository integration
@@ -245,8 +271,8 @@ backend/
 frontend/src/
 ├── api/
 │   ├── agenda.ts                    # NUEVO: getProximamente(lang) + panel (list/create/update/delete,
-│   │                                #   categorías) + uploadImage
-│   └── schema.d.ts                  # REGENERADO (npm run api-gen)
+│   │                                #   categorías) + uploadImage; enmienda Q8: getPortadaProximamente(lang)
+│   └── schema.d.ts                  # REGENERADO (npm run api-gen; contrato 0.6.0)
 ├── app/
 │   ├── router.tsx                   # EDITADO: '/eventos' (pública) y '/panel/eventos',
 │   │                                #   '/panel/actividades', '/panel/categorias', cada una con
@@ -261,12 +287,21 @@ frontend/src/
 │   │   │                            #   SIN redirigir, R4-13)
 │   │   │   ├── EventsSection.tsx / ActivitiesSection.tsx / EventCard.tsx / ActivityCard.tsx
 │   │   │   ├── CategoryChip.tsx / DateBadge.tsx (<time datetime>, Intl) / MapLink.tsx
+│   │   │   ├── ProximamenteBlock.tsx #  NUEVO (enmienda Q8): bloque «Lo que viene» de la portada
+│   │   │                            #   (hasta 3 ítems, kind + título + fecha + lugar, enlaces a
+│   │   │                            #   /eventos#eventos|/eventos#actividades y enlace general)
 │   │   │   ├── HiddenNotice.tsx     #   aviso de sección vacía (página mínima, sin datos)
 │   │   │   ├── hooks/useUpcomingEvents.ts # TanStack Query ['proximamente', lang]
+│   │   │   ├── hooks/usePortadaProximamente.ts # NUEVO (enmienda Q8): ['portada-proximamente', lang]
 │   │   │   └── formatoFechas.ts     #   fecha/hora localizada por idioma (Intl)
 │   │   ├── hooks/useSiteLinks.ts    # EDITADO: SiteLink con href de ruta; entrada
 │   │   │                            #   «Eventos y actividades» (href /eventos) solo si hay bloque
+│   │   ├── pages/HomePage.tsx       # EDITADO (enmienda Q8): + <ProximamenteBlock> tras
+│   │   │                            #   IdentityHero (una inserción; el resto de la portada de F3
+│   │   │                            #   no se toca — FR-027)
 │   │   ├── i18n/{messages,es,en}.ts # EDITADO: claves tipadas nuevas (nav, bloques, fechas, estados)
+│   │   │                            #   + enmienda Q8 (título del bloque, etiquetas
+│   │   │                            #   «Evento»/«Actividad», enlace «Ver todo lo que viene»)
 │   │   └── schedule.ts / format     # EDITADO: formatLongDate(lang) + reutiliza formatTimeRange
 │   ├── eventos/                     # NUEVO: gestión en el panel (en español, FR-016; ux.md §6.4)
 │   │   ├── pages/EventsPage.tsx / ActivitiesPage.tsx / CategoriesPage.tsx
@@ -300,7 +335,8 @@ frontend/src/
 frontend/e2e/
 ├── agenda-publica.spec.ts           # NUEVO: visitante (US1, US5, US6)
 ├── agenda-panel.spec.ts             # NUEVO: gestión y permisos (US2, US3, US4)
-└── agenda-accesibilidad.spec.ts     # NUEVO: recorrido por teclado y foco (SC-008, FR-024)
+├── agenda-accesibilidad.spec.ts     # NUEVO: recorrido por teclado y foco (SC-008, FR-024)
+└── portada-proximamente.spec.ts     # NUEVO (enmienda Q8): bloque de la portada (US7, SC-014, SC-015)
 
 # Raíz
 .env.example                         # EDITADO: + APP_TZ=America/Costa_Rica (documentada)
@@ -325,6 +361,7 @@ sistema de F10 (`Card`, `SectionHeading`, `PublicButton`, `Reveal`, `PublicLayou
 ```text
 Global:   request-id → recover → logging → CORS(con credenciales) → handler
           /api/v1/proximamente              → (sin middlewares)  → handler    ← público, solo lectura
+          /api/v1/portada/proximamente      → (sin middlewares)  → handler    ← público, solo lectura (enmienda Q8; lo registra `agenda.RegisterPublic`, aunque el segmento `portada` sea el agregado de F3)
           /api/v1/media/{fileName}          → (sin middlewares)  → handler    ← público, solo lectura
           /api/v1/admin/eventos             → authn → guard de cambio de contraseña → authz("eventos") → CSRF → handler
           /api/v1/admin/actividades         → authn → guard de cambio de contraseña → authz("actividades") → CSRF → handler
@@ -354,6 +391,12 @@ Igual que F1/F2/F3 (reglas §8.1.5 y §8.1.10):
    sube `info.version` a **0.5.0**; luego `make api-gen`.
 3. **Consumo**: el frontend genera tipos solo desde `backend/api/openapi.yaml`.
 4. El snapshot de `specs/` no se vuelve a editar.
+5. **Enmienda del 2026-10-12 (Q8)**: por única vez el delta vuelve a tocarse — un cambio de alcance
+   **aprobado por el humano** posterior a la aprobación del plan — y añade
+   `GET /api/v1/portada/proximamente` + `PortadaProximamente`/`ItemProximoPortada`. La fusión
+   (T443) sube `info.version` de **0.5.0 a 0.6.0** sobre el contrato vivo, de forma **aditiva** (no
+   cambia ninguna operación existente ni el registro de `error.code`). A partir de aquí el delta
+   vuelve a quedar inmutable.
 
 ## Estrategia de pruebas
 
@@ -364,15 +407,16 @@ Cobertura exigida: **80 % en `service/`** (§III). Comandos: `go test ./...` ·
 |---|---|---|---|
 | `platform/config` | Unitaria | `APP_TZ = America/Costa_Rica` → `today`/`now_time` del corte de "hoy"; zona IANA inválida → error claro al arrancar (fail-closed) | `internal/platform/config/*_test.go` |
 | `platform/audit` | Unitaria | Los 15 códigos nuevos en el registro cerrado (incluidos los 3 `category.*`); objetivo `content` con `targetLabel` | `internal/platform/audit/*_test.go` |
-| `service` (dominio `agenda`) | Unitaria con **fakes** | **Público**: solo `published` **y próximo** (tres casos de la regla R4-2: futuro, hoy sin fin, hoy con fin ya terminado), orden cronológico con desempate estable, `dates` sin pasadas, evento sin fecha próxima no aparece, claves omitidas si vacías, **tope de 200 elementos por bloque (RG4-8)**, fallback `en → es` por campo (nunca huecos), `lang` inválido → `invalid`. **Panel**: validación completa de FR-015 (obligatorios, español presente, 2.000 caracteres, fechas reales, `HH:MM`, `endTime > startTime`, `endTime` exige `startTime`, ≥1 fecha y ≤50, fechas repetidas, URL de mapa, categoryId desconocido, alt obligatorio con imagen, normalización `""` → `NULL`), duplicados → `conflict`, publicar/retirar por elemento, "se publica al guardar" (FR-014), categoría en uso → `conflict` al borrar, señal de "falta la próxima fecha" (`nextDate: null` **siempre presente** en el DTO). **Auditoría**: cada mutación registra su acción con el código y `targetLabel` correctos en la misma transacción (fail-closed); denegaciones y rechazos registrados best-effort | `internal/agenda/service_*_test.go` |
-| `handler` | Unitaria con `httptest` + service falso | Cada operación: decodificación, `details` por campo en 400, códigos 200/201/204/400/401/403/404/409, sobres uniformes, **el DTO público nunca contiene `publicationState` ni fechas pasadas**; multipart: sin archivo, archivo gigante (400 con `details.file`), extensión no permitida | `internal/agenda/handler_*_test.go` |
-| `repository` | **Integración** (PostgreSQL real, `//go:build integration`) | SQL real: `UNIQUE (event_id, event_date)`, `CHECK` de horas/longitudes/estado, `UNIQUE (title_es, activity_date, place_es)`, `ExistsEventDuplicate`, `FK RESTRICT` de categoría → error traducido a `conflict`, `ReplaceEventDates` (reemplazo completo), lecturas `…Upcoming` sin borradores ni vencidos (fechas fijas), `IsFilePublished` (publicado **y** próximo; al pasar la fecha → `FALSE` sin borrar), **mutación + `admin_actions` atómicas** (y rollback si falla el registro), migración `000008`/`000009` up→down→up | `internal/agenda/repository_*_test.go`, `internal/media/*_test.go` |
+| `service` (dominio `agenda`) | Unitaria con **fakes** | **Público**: solo `published` **y próximo** (tres casos de la regla R4-2: futuro, hoy sin fin, hoy con fin ya terminado), orden cronológico con desempate estable, `dates` sin pasadas, evento sin fecha próxima no aparece, claves omitidas si vacías, **tope de 200 elementos por bloque (RG4-8)**, fallback `en → es` por campo (nunca huecos), `lang` inválido → `invalid`. **Extracto de la portada (enmienda Q8)**: exactamente los **3 más cercanos** mezclando eventos y actividades (con 5 próximos salen 3; con 1 o 2, exactos), identificados con `kind`, sin `detail`/imagen, **clave `items` omitida** sin ítems y con el tope `maxPortadaItems = 3` fijado por prueba. **Panel**: validación completa de FR-015 (obligatorios, español presente, 2.000 caracteres, fechas reales, `HH:MM`, `endTime > startTime`, `endTime` exige `startTime`, ≥1 fecha y ≤50, fechas repetidas, URL de mapa, categoryId desconocido, alt obligatorio con imagen, normalización `""` → `NULL`), duplicados → `conflict`, publicar/retirar por elemento, "se publica al guardar" (FR-014), categoría en uso → `conflict` al borrar, señal de "falta la próxima fecha" (`nextDate: null` **siempre presente** en el DTO). **Auditoría**: cada mutación registra su acción con el código y `targetLabel` correctos en la misma transacción (fail-closed); denegaciones y rechazos registrados best-effort | `internal/agenda/service_*_test.go` |
+| `handler` | Unitaria con `httptest` + service falso | Cada operación: decodificación, `details` por campo en 400, códigos 200/201/204/400/401/403/404/409, sobres uniformes, **el DTO público nunca contiene `publicationState` ni fechas pasadas**; **`GET /api/v1/portada/proximamente` (enmienda Q8)**: `200` con `no-store`, `items` omitido cuando el service no devuelve ítems y `400` con `details.lang` en `lang` inválido; multipart: sin archivo, archivo gigante (400 con `details.file`), extensión no permitida | `internal/agenda/handler_*_test.go` |
+| `repository` | **Integración** (PostgreSQL real, `//go:build integration`) | SQL real: `UNIQUE (event_id, event_date)`, `CHECK` de horas/longitudes/estado, `UNIQUE (title_es, activity_date, place_es)`, `ExistsEventDuplicate`, `FK RESTRICT` de categoría → error traducido a `conflict`, `ReplaceEventDates` (reemplazo completo), lecturas `…Upcoming` sin borradores ni vencidos (fechas fijas), **`ListNextUpcomingItems` (enmienda Q8): mezcla eventos+actividades solo publicado y próximo, orden por cercanía y `LIMIT 3`**, `IsFilePublished` (publicado **y** próximo; al pasar la fecha → `FALSE` sin borrar), **mutación + `admin_actions` atómicas** (y rollback si falla el registro), migración `000008`/`000009` up→down→up | `internal/agenda/repository_*_test.go`, `internal/media/*_test.go` |
 | `cmd/api` | Humo de composición | Rutas nuevas con su sobre y permiso, `/healthz` intacto y `404` `not_found` en rutas inexistentes (§8.1.9) | `cmd/api/main_test.go` |
-| Frontend | Unitaria (Vitest + MSW) | Pública: dos bloques, orden cronológico, fechas/horas localizadas por idioma (`<time>`), fallback en→es visible, bloque/entrada de navegación ocultos sin contenido, **aviso de sección vacía (`HiddenNotice`) sin redirigir**, `alt` en imágenes, enlace de mapa. Panel: formularios con errores por campo (incluidos `endTime` y fechas), editor de fechas del evento, publicar/retirar por elemento, sello "Disponible más adelante" retirado de `eventos`/`actividades`/`categorias` (y sus tests de F2 actualizados), entradas y rutas filtradas por permiso (`RequirePermission(CATEGORIAS)` en categorías), **accesos rápidos de `InicioPage` (`AccesosRapidos`) filtrados por permiso**, **`ACTION_LABELS` con etiqueta humana para los 15 códigos de auditoría**, subida de imagen con error de tipo/tamaño | `frontend/src/features/*/*.test.tsx` |
+| Frontend | Unitaria (Vitest + MSW) | Pública: dos bloques, orden cronológico, fechas/horas localizadas por idioma (`<time>`), fallback en→es visible, bloque/entrada de navegación ocultos sin contenido, **aviso de sección vacía (`HiddenNotice`) sin redirigir**, `alt` en imágenes, enlace de mapa. **Bloque de la portada (enmienda Q8)**: hasta 3 ítems mezclados con etiqueta «Evento»/«Actividad», orden por cercanía, enlaces de ítem a `/eventos#eventos`/`#actividades` y enlace general a `/eventos`, **bloque ausente sin ítems** (sin huecos ni marcadores) y la portada de F3 sin cambios en el resto de secciones. Panel: formularios con errores por campo (incluidos `endTime` y fechas), editor de fechas del evento, publicar/retirar por elemento, sello "Disponible más adelante" retirado de `eventos`/`actividades`/`categorias` (y sus tests de F2 actualizados), entradas y rutas filtradas por permiso (`RequirePermission(CATEGORIAS)` en categorías), **accesos rápidos de `InicioPage` (`AccesosRapidos`) filtrados por permiso**, **`ACTION_LABELS` con etiqueta humana para los 15 códigos de auditoría**, subida de imagen con error de tipo/tamaño | `frontend/src/features/*/*.test.tsx` |
 | `usuarios` (F2 — **excepción aprobada**, RG4-10) | Unitaria + integración | El catálogo devuelve **10** permisos (actualización deliberada de las aserciones que fijaban 9: las 3 señaladas por el humano + `service_roles_integration_test.go:69` y `service_roles_test.go:464`, más la fixture `sampleCatalog()`); el init sigue creando el rol «Administrador» con **todo** el catálogo (ahora incluye `categorias`) | `backend/internal/usuarios/*_test.go` |
 | E2E pública | Playwright (local) | Recorrido de `quickstart.md`: visitante sin sesión ve lo próximo con categoría y detalle, en orden cronológico; un elemento con fecha de ayer **no** aparece; sin contenido, `/eventos` muestra el **aviso** (sin redirigir); cambia a inglés (interfaz + contenidos con fallback) y vuelve; 3 anchos de pantalla (SC-001, SC-002, SC-006, SC-007, SC-009, SC-012) | `frontend/e2e/agenda-publica.spec.ts` |
 | E2E panel | Playwright (local) | Recorrido de `quickstart.md`: login con permiso, crear+publicar un evento con fechas y una actividad en <2 min, editar y ver el cambio en público desde la primera carga (SC-003/SC-004), retirar, eliminar con confirmación, denegación cruzada (cuenta solo `eventos` frente a actividades: SC-005/SC-011) y registro de todo en auditoría (SC-013) | `frontend/e2e/agenda-panel.spec.ts` |
 | E2E accesibilidad | Playwright (local) | Recorrido por **teclado** de `/eventos` con foco visible en cada paso (primer Tab = enlace de salto, tarjetas/enlaces/`MapLink` activables con `Enter`, selector de idioma operable, sin trampas de foco), en claro y oscuro (SC-008, FR-024; precedente F3 `portada-accesibilidad.spec.ts`) | `frontend/e2e/agenda-accesibilidad.spec.ts` |
+| E2E portada «Lo que viene» (enmienda Q8) | Playwright (local) | Bloque en `/`: exactamente los 3 más cercanos mezclados y etiquetados (con 5 próximos), exactos con 1–2, **ausente sin ítems** (y coherente con la entrada de navegación oculta), vencidos fuera y el siguiente ocupa su lugar, enlaces de ítem y enlace general a `/eventos`, inglés con fallback, 320 px y teclado (US7, SC-014, SC-015, FR-025…FR-027) | `frontend/e2e/portada-proximamente.spec.ts` |
 
 **Pruebas que no faltan** (las que la spec hace críticas): **0 borradores ni vencidos expuestos** por
 ninguna respuesta pública ni por la descarga de imágenes (SC-002/SC-009); **retiro automático**
@@ -381,11 +425,12 @@ observado sin intervención (SC-009: fixtures con fecha pasada y con fin de hora
 guardado visible en la primera carga** (SC-003); **fallback en→es sin campos vacíos** (SC-006);
 **permisos independientes verificados en servidor**, incluido el cruce `eventos`↔`actividades`
 (SC-005/SC-011); **toda operación queda registrada** —éxito, fallo y denegación— y el registro sigue
-siendo de solo lectura (SC-013); **texto con tildes, `ñ`, `¿¡` y emojis intacto** (edge case);
+siendo de solo lectura (SC-013); **el bloque de la portada muestra exactamente los 3 más cercanos y
+nunca se renderiza vacío ni con huecos** (SC-014; enmienda Q8); **texto con tildes, `ñ`, `¿¡` y emojis intacto** (edge case);
 **archivo inválido no rompe la sección** (edge case de imágenes); **dos elementos en la misma fecha**
 en orden estable y reproducible (edge case).
 
-## Cobertura de requisitos (US1–US6 y FR-001…FR-024)
+## Cobertura de requisitos (US1–US7 y FR-001…FR-027)
 
 | Historia | Dónde se cubre | Verificación |
 |---|---|---|
@@ -395,6 +440,7 @@ en orden estable y reproducible (edge case).
 | **US4** — Controlar la publicación (P2) | `publicationState` + consultas `…Upcoming` (P4-10/P4-3) + `PublishControls` (promovido) | quickstart §7 · e2e panel (SC-002, SC-003, SC-012) |
 | **US5** — Ver en inglés (P2) | `?lang=` con fallback en el servidor (P4-4) + i18n tipado + fechas/horas localizadas (R4-3) | quickstart §8 · e2e pública (SC-006) |
 | **US6** — Cualquier dispositivo y accesible (P2) | Sistema de F10 aplicado (P4-14) + reglas de accesibilidad de la skill `react-frontend` + `alt` obligatorio | quickstart §10 (checklist) · e2e en 3 anchos (SC-007) · e2e de teclado (SC-008) |
+| **US7** — Ver lo que viene desde la portada (P1, **cambio de alcance 2026-10-12/Q8**) | `GET /api/v1/portada/proximamente` con tope 3 (P4-18) + `ProximamenteBlock` en `HomePage` tras el hero (P4-19) + visibilidad coherente (P4-20) | quickstart §15 · e2e `portada-proximamente.spec.ts` (SC-014, SC-015) |
 
 | FR | Dónde se resuelve en este plan | Verificación |
 |---|---|---|
@@ -422,6 +468,9 @@ en orden estable y reproducible (edge case).
 | FR-022 | P4-14 (`useSiteLinks`: entrada solo con contenido; barra, hamburguesa y pie a la vez) | quickstart §9 · e2e (SC-012) |
 | FR-023 | Sistema de F10 + reglas `react-frontend` (toc-targets ≥44 px, títulos claros) | quickstart §10 · e2e en 320/768/1280 (SC-007) |
 | FR-024 | Accesibilidad: teclado, semántica, foco, contraste claro/oscuro, zoom 200 %, `alt` obligatorio (P4-7/P4-14), fechas legibles (R4-3) | quickstart §10 (checklist WCAG 2.1 AA) · e2e de teclado (`agenda-accesibilidad.spec.ts`, SC-008) |
+| FR-025 | P4-18 (tope **3 firme** en el servidor: `LIMIT 3`, mezcla de eventos y actividades por cercanía, solo publicado y próximo, `kind` en cada ítem) | quickstart §15 · pruebas del service/repository (SC-014) · e2e de portada |
+| FR-026 | P4-19 (cada ítem y el enlace general llevan a `/eventos`) + P4-20 (`items` omitido → bloque no renderizado, sin huecos) | quickstart §15 · e2e de portada (SC-014, SC-015) |
+| FR-027 | P4-4 (bilingüe con fallback) + P4-19 (sistema de F10 aplicado al bloque, portada de F3 intacta) + reglas `react-frontend` (responsive/accesible) | quickstart §8/§10/§15 · e2e de portada en 320 px y por teclado (SC-006, SC-007, SC-008) |
 
 ## Métricas del plan (coherentes con los SC de la spec)
 
@@ -433,18 +482,20 @@ en orden estable y reproducible (edge case).
 | SC-004 | Crear y publicar un evento o actividad en <2 min desde el panel | e2e/observación (quickstart §3–§6) | < 2 min |
 | SC-005 | Toda operación verifica el permiso del módulo, **incluido el cruce** (`eventos`/`actividades`/`categorias`) | Pruebas de handler por operación (403) + e2e con cuenta solo `eventos` frente a actividades y frente al catálogo de categorías | 0 operaciones sin permiso |
 | SC-006 | Con `lang=en`: 100 % de la interfaz traducida y 0 campos vacíos (fallback a es) | Pruebas de i18n (claves tipadas) + tabla de casos de fallback + e2e en inglés | 100 % / 0 |
-| SC-007 | Usable en teléfono, tableta y computadora sin desplazamiento horizontal (320 px mínimo) | e2e en 3 anchos (320/768/1280) + checklist manual (quickstart §10) | 0 pérdida / 0 scroll |
-| SC-008 | Accesibilidad: 0 hallazgos críticos (referencia WCAG 2.1 AA, claro y oscuro) | Checklist manual de quickstart §10 (teclado, lector, contraste, zoom) revisada por QA | 0 críticos |
+| SC-007 | Usable en teléfono, tableta y computadora sin desplazamiento horizontal (320 px mínimo) — **la sección y el bloque «Lo que viene» de la portada** | e2e en 3 anchos (320/768/1280) + e2e de portada en 320 px + checklist manual (quickstart §10/§15) | 0 pérdida / 0 scroll |
+| SC-008 | Accesibilidad: 0 hallazgos críticos (referencia WCAG 2.1 AA, claro y oscuro) — **la sección y el bloque de la portada** | Checklist manual de quickstart §10 (teclado, lector, contraste, zoom) revisada por QA + e2e de teclado del bloque (quickstart §15) | 0 críticos |
 | SC-009 | 0 elementos con fecha pasada entre "lo que viene"; retiro automático en el 100 % de los casos | Pruebas de la regla R4-2 (3 casos por elemento) + e2e con fixtures vencidos + evento sin fecha próxima nunca vacío | 0 / 100 % |
 | SC-010 | ≥90 % de personas de distintas edades identifican qué viene, cuándo y dónde sin ayuda | Prueba manual con personas (protocolo en `quickstart.md` §10, estilo F3/M7): ≥6 personas (2 por franja 18–35/36–59/60+), guion de 3 tareas, informe `pruebas-usabilidad-SC-010.md` | ≥ 90 % |
 | SC-011 | Sin el permiso del módulo no se ve ni modifica nada (100 % de intentos) | e2e con cuenta sin permiso (UI oculta + API forzada 403) + cruce de permisos | 100 % denegados |
 | SC-012 | 0 secciones vacías ni campos en blanco; navegación sin enlaces rotos | Bloques/entrada omitidos sin contenido (pruebas de contrato y de `buildSiteLinks`) + e2e + la URL escrita a mano muestra el **aviso de sección vacía** (sin redirigir, R4-13) | 0 |
 | SC-013 | 100 % de operaciones registradas (quién, qué, sobre qué, cuándo); 0 registros editables/borrables | quickstart §12 + pruebas transaccionales + contrato sin escritura sobre el registro | 100 % / 0 |
+| SC-014 | El bloque «Lo que viene» de la portada muestra exactamente los ítems publicados y próximos más cercanos (hasta 3, mezclados): 0 borradores, 0 vencidos, 0 bloques vacíos ni con huecos | Pruebas del service/repository (tope 3, orden por cercanía, `items` omitido) + e2e `portada-proximamente.spec.ts` (quickstart §15) | 100 % / 0 |
+| SC-015 | Ítems del bloque y su enlace general llevan a la sección completa en un solo paso; ≥90 % de personas de distintas edades identifican qué viene, cuándo y dónde desde la portada | e2e de enlaces (quickstart §15) + prueba manual con personas (protocolo de SC-010 ampliado con la tarea "entrar y decir qué viene") | 100 % / ≥ 90 % |
 
 ## Riesgos
 
-> Numeración **RG4-1…RG4-10**, propia de este plan (para no colisionar con RG3-1…RG3-12 de F3 ni
-> R4-1…R4-15 de `research.md`).
+> Numeración **RG4-1…RG4-13**, propia de este plan (para no colisionar con RG3-1…RG3-12 de F3 ni
+> R4-1…R4-16 de `research.md`). **RG4-11…RG4-13** son de la enmienda de alcance del 2026-10-12 (Q8).
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
@@ -458,6 +509,9 @@ en orden estable y reproducible (edge case).
 | **RG4-8 — Muchos elementos próximos** (sin límite artificial, default revisable) | Respuestas grandes en móvil | El service acota con una constante de seguridad **`maxBlockItems = 200` por bloque** — constante revisable del service (T417, con su prueba), aplicada en `GetProximamente` (T418) y **documentada en el contrato** (`getProximamente`/`ProximamentePublica`, T406) — y ordena cronológicamente; si el volumen real lo exige, "ver más"/paginación es el ajuste menor que la propia spec deja acordado con el humano |
 | **RG4-9 — Accesibilidad y usabilidad (SC-008/SC-010) no cubiertas por automatización** | Hallazgos críticos en la revisión manual | Checklist explícita en `quickstart.md` §10 ejecutada por `qa-tester`; componentes semánticos de F10 (ya auditados en F10); `alt` obligatorio en la BD; protocolo de usabilidad con personas (SC-010) como en F3 |
 | **RG4-10 — F4 edita pruebas de F2 (funcionalidad cerrada) y amplía el catálogo de la spec de F2** (9 → 10 permisos con `categorias`) | Regresión inadvertida en F2, o lectura como "debilitamiento" de pruebas; la spec de F2 queda ampliada por un cambio de producto | Cambio **autorizado por el humano** (puerta 2) y registrado como **excepción aprobada**: la tarea es explícita y acotada (las 3 pruebas fijadas por el humano + 2 aserciones detectadas en revisión + fixture `sampleCatalog()` + comentarios "los 9 permisos"); solo cambia el **recuento** del catálogo (ninguna aserción de comportamiento se relaja); la hace `dev-backend` con sus pruebas y la validan `revisor-codigo`/`seguridad`; el resto de F2 lee el catálogo **dinámicamente** (init, `ListPermissions`, formulario de roles) y no se toca; `000002` nunca se edita (el permiso se siembra en `000009`) |
+| **RG4-11 — Petición adicional en la portada** *(enmienda Q8)*: el bloque se sirve de un endpoint propio y la portada de F3 ya consulta `GET /api/v1/portada` (doble consulta en la página más visitada, con público de conexión básica) | La portada se siente más lenta o el bloque retrasa el pintado (US7 pierde su propósito) | El endpoint es **mínimo** (≤3 ítems sin detalle ni imagen, `LIMIT 3` en SQL; payload de cientos de bytes) y corre **en paralelo** a la petición de F3: el bloque se monta al llegar y **nunca bloquea** el resto de la portada; caché compartida de TanStack Query (`['portada-proximamente', lang]`, `keepPreviousData`) y `no-store` coherente con el resto del público; si la petición falla, la portada se pinta igual y el bloque se omite (sin hueco, patrón de error parcial de F3); medido en quickstart §15 |
+| **RG4-12 — Incoherencia entre el bloque y la ocultación de secciones** *(enmienda Q8)*: bloque visible con la entrada de navegación oculta (o al revés), o bloque vacío con huecos | SC-012/SC-014 fallan y la portada queda incoherente con `/eventos` | Un **mismo predicado** "publicado y próximo" (R4-2: una sola función Go de `today`/`now_time`) alimenta bloque, navegación y sección; el cliente oculta el bloque cuando la respuesta **omite `items`** (mismo patrón de claves omitidas del público) y con 1–2 ítems muestra exactos (sin relleno); pruebas unitarias con los mismos fixtures que la sección y e2e que comprueba bloque oculto ⇔ entrada de navegación oculta |
+| **RG4-13 — `ux.md` no describe el bloque de la portada** *(enmienda Q8: es posterior a su redacción)* | Tareas de frontend que componen el bloque a su manera, fuera de la voz y el sistema de F10 | La composición la fija este plan (P4-19: tarjeta con `kind`, título, fecha/hora y lugar, enlaces a `/eventos`, sistema de F10 aplicado) sobre los componentes **ya existentes** (`DateBadge`, `ItemCardParts`, `Card`/`SectionHeading`); si el `disenador-ux` propone ajustes de copia o disposición se aplican en las tareas `[frontend]` **sin** tocar la API, el tope 3 ni la portada de F3 (mismo encaje que los "Pendientes menores" ya abiertos) |
 
 ## Complexity Tracking
 
@@ -494,6 +548,16 @@ en orden estable y reproducible (edge case).
    `useUpcomingEvents`, `HiddenNotice`…). Es la alineación de nomenclatura que este plan dejaba
    abierta (punto 7 de aprobación): rutas `/eventos` y `/panel/{eventos,actividades,categorias}`
    fijadas por el humano; dominios backend `agenda`/`media` y tablas `agenda_*` sin cambios.
+8. **`GET /api/v1/portada/proximamente` lo registra el dominio `agenda`** *(enmienda Q8, P4-18)*:
+   el segmento `portada` pertenece al agregado de F3 pero el recurso es de agenda (extracto de la
+   agenda para la portada). Desviación menor de "cada dominio publica su propio espacio de nombres":
+   la ruta se registra en `agenda.RegisterPublic` y queda anotada en la cadena de rutas y en el
+   contrato; alternativas descartadas en P4-18 (meter el bloque en `GET /api/v1/portada` mezclaría
+   dominios y tocaría el contrato cerrado de F3).
+9. **El snapshot del contrato se edita una vez más** *(enmienda Q8)*: `contracts/openapi.yaml` era
+   inmutable tras la aprobación del plan (punto 4 de "Contrato OpenAPI"); un cambio de alcance
+   **aprobado por el humano** lo reabre para añadir la operación del extracto (0.5.0 → 0.6.0). Queda
+   registrado como enmienda fechada y el delta vuelve a ser inmutable.
 
 ## Propuesta de tareas (insumo para `/speckit.tasks`; **no** es `tasks.md`)
 
@@ -541,6 +605,13 @@ reparten `[db]`/`[backend]` → `dev-backend`; `[frontend]` → `dev-frontend`; 
     `agenda-panel.spec.ts` (incluye el cruce con el permiso `categorias`) y
     `agenda-accesibilidad.spec.ts` (recorrido por teclado, SC-008) + checklist de quickstart.
 19. `[…]` Validación (qa/revisor/seguridad), documentación (documentador) y PR.
+20. *(Enmienda 2026-10-12, Q8)* `[backend]` Fusión de la enmienda del contrato (0.5.0 → **0.6.0**)
+    + consulta `ListNextUpcomingItems` (`UNION` + `LIMIT 3`) + repository/service
+    `GetPortadaProximamente` + handler/rutas (`T443–T446`).
+21. *(Enmienda 2026-10-12, Q8)* `[frontend]` Cliente + `usePortadaProximamente` + `ProximamenteBlock`
+    en `HomePage` + i18n (`T447–T448`).
+22. *(Enmienda 2026-10-12, Q8)* `[…]` e2e `portada-proximamente.spec.ts` (US7, SC-014, SC-015) y
+    re-ejecución del cierre (quickstart §15) (`T449` + T440/T441).
 
 ## Puntos que necesitaban aprobación humana — **RESUELTOS en la puerta 2 (2026-10-11)**
 
@@ -564,9 +635,19 @@ Los 7 puntos quedaron cerrados por el humano; se implementan tal cual y **no se 
    humano) y panel `/panel/{eventos,actividades,categorias}`; nombres de pieza de UI según `ux.md`;
    dominios `internal/agenda/`/`internal/media/` y tablas `agenda_*` según la pauta de F3.
 
-**Pendiente menor (no bloquea el plan)**: dos detalles de interfaz en los que `ux.md` y la puerta 2
+**Cambio de alcance posterior (2026-10-12, Q8)**: el bloque **«Lo que viene»** de la portada entra
+en F4 (US7, FR-025…FR-027, SC-014/SC-015; hasta 3 ítems próximos, eventos y actividades juntos, los
+más cercanos). Lo recogen **P4-18…P4-20**, `research.md` **R4-16** y `tasks.md` **T443–T449**; las
+decisiones de la puerta 2 (los 7 puntos de arriba) **no se tocan** y el resto de la portada de F3
+queda igual de fuera de alcance que antes (solo se inserta el bloque).
+
+**Pendiente menor (no bloquea el plan)**: tres detalles de interfaz (el (c) lo añade la enmienda Q8)
+en los que `ux.md`, la puerta 2 y el humano
 dicen cosas ligeramente distintos, a alinear en las tareas `[frontend]` (sin efecto en la API ni en
 los datos): (a) la **copia literal del aviso** (humano: «Por ahora no hay eventos ni actividades» ·
 `ux.md` D-13: «Ahora mismo no hay nada publicado en esta sección. Vuelve pronto.»); (b) el **modal
 de borrado de categoría** de `ux.md` D-16, que describe desligar la categoría de los elementos — la
-decisión firme es `409`, así que la UI debe indicar "quítala primero".
+decisión firme es `409`, así que la UI debe indicar "quítala primero"; (c) *(enmienda Q8,
+RG4-13)* la **composición del bloque «Lo que viene» de la portada** no está en `ux.md` (el cambio
+de alcance es posterior a su redacción): se construye según P4-19 con los componentes existentes y
+cualquier ajuste de copia/disposición del `disenador-ux` se aplica en T448 sin tocar la API.

@@ -334,6 +334,7 @@ Listas con `ORDER BY` explícito y determinista (§8.1.7). Sin `SELECT *`. Todo 
 | `InsertActivity`, `UpdateActivity`, `DeleteActivity`, `GetActivityByID` | Gestión de la actividad |
 | `ListActivities` / `CountActivities` | Panel paginado (`ORDER BY created_at DESC, id DESC`) |
 | `ListUpcomingActivities` | Público: `published` **y** fecha próxima; `ORDER BY activity_date, start_time NULLS FIRST, title_es, id` |
+| `ListNextUpcomingItems` | Extracto de la portada (`GET /api/v1/portada/proximamente`, enmienda Q8 del 2026-10-12): `UNION ALL` de eventos (con su primera fecha próxima) y actividades, solo `published` **y** próximas (misma regla R4-2 con `today`/`now_time` parametrizados), `ORDER BY date, start_time NULLS FIRST, title_es, id` y `LIMIT 3` (`maxPortadaItems`, tope firme) |
 
 ### `backend/internal/db/queries/media.sql` (dominio `media`, nuevo — R4-6)
 
