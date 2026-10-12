@@ -382,7 +382,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     con `.env.example` (T410) y con `quickstart.md` §0.
   - **Commit sugerido**: `feat(config): APP_TZ=America/Costa_Rica para el corte de hoy`
 
-- [ ] T410 · `.env.example`: `APP_TZ` · `[infra]` `[P]` (P1)
+- [X] T410 · `.env.example`: `APP_TZ` · `[infra]` `[P]` (P1)
 
   - **Archivos**: `.env.example` (EDITABLE). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit.
@@ -1022,7 +1022,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 
 ## Fase 10 — Cierre
 
-- [ ] T440 · Verificación de cierre · `[infra]`
+- [X] T440 · Verificación de cierre · `[infra]`
 
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit.
