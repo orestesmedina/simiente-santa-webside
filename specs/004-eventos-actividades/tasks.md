@@ -718,7 +718,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: `quickstart.md` §5 ejecutable vía API con la cuenta `categorias`.
   - **Commit sugerido**: `feat(agenda): endpoints del catalogo de categorias`
 
-- [ ] T427 · `handler_images.go` — subida por módulo · `[backend]`
+- [X] T427 · `handler_images.go` — subida por módulo · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/handler_images.go` y `handler_images_test.go` (NUEVOS).
   - **Qué hace**: `POST /api/v1/admin/eventos/imagenes` y `POST /api/v1/admin/actividades/imagenes`
