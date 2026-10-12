@@ -20,10 +20,35 @@ import { resetAgenda, seedAgenda, type AgendaSeed } from './agendaSeed';
  *   · con la sección **vacía**, el aviso de `HiddenNotice` sigue siendo
  *     alcanzable por teclado y **sin redirigir** (⟲ D-13).
  *
- * Cómo se ejecuta: igual que los otros specs de la agenda, en la misma tanda con
- * `--workers=1` (comparten la siembra y la limpieza de la agenda):
+ * Cómo se ejecutan (la base, el rate-limit de login y el navegador son
+ * compartidos por toda la suite):
  *
- *   cd frontend && npx playwright test --config e2e/playwright.config.ts --workers=1
+ *   # Tanda 2 — agenda (F4): los tres specs comparten la siembra/limpieza de la
+ *   # agenda, así que van juntos y con un solo worker.
+ *   npx playwright test --config e2e/playwright.config.ts agenda- --workers=1
+ *
+ * La suite completa se reparte en **tres tandas** porque `POST /api/v1/auth/login`
+ * limita a 20 intentos por minuto y por IP: con todo en una sola corrida, los
+ * últimos specs reciben `429` y no llegan a entrar.
+ *
+ *   # Tanda 1 — F2 (acceso y auditoría: la que más inicios de sesión hace)
+ *   npx playwright test --config e2e/playwright.config.ts acceso auditoria --workers=1
+ *   # Tanda 2 — F4 (agenda)
+ *   npx playwright test --config e2e/playwright.config.ts agenda- --workers=1
+ *   # Tanda 3 — F3 y F10 (portada, sistema de diseño, tema y estado)
+ *   npx playwright test --config e2e/playwright.config.ts portada- diseno- movimiento navegacion- tema- qa- status --workers=1
+ *
+ * `--workers=1` es obligatorio en las tres (singletons compartidos y agenda
+ * sembrada por spec). En este entorno el navegador no arranca desde el host
+ * —faltan las librerías del sistema (`libnspr4`)—, así que los comandos se
+ * ejecutan dentro de la imagen oficial de Playwright, con red del host para
+ * llegar al stack de `make up`:
+ *
+ *   docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp \
+ *     -v "$PWD/..":/work -w /work/frontend mcr.microsoft.com/playwright:v1.63.0-jammy \
+ *     npx playwright test --config e2e/playwright.config.ts agenda- --workers=1
+ *
+ * (El stack debe estar reconstruido con F4: `docker compose up -d --build`.)
  */
 
 /**
