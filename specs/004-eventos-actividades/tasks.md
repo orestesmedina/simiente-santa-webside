@@ -3,7 +3,8 @@
 **Branch**: `004-eventos-actividades` | **Date**: 2026-10-11 · **enmienda de alcance 2026-10-12**
 | **Spec**: [spec.md](./spec.md)
 (APROBADA v2, US1–US6 / FR-001…FR-024 —línea base aprobada—; Q1–Q7 resueltas el 2026-10-11) · **enmienda Q8 del
-2026-10-12**: US7 / FR-025…FR-027 / SC-014–SC-015 (bloque «Lo que viene» de la portada, T443–T449)
+2026-10-12 (refinada el mismo día: tope 5, ventana de 2 meses con respaldo, mensaje sin ítems, botón
+«Ver más eventos», tarjetas con imagen)**: US7 / FR-025…FR-027 / SC-014–SC-015 (bloque «Lo que viene» de la portada, T443–T449)
 · **Plan**: [plan.md](./plan.md)
 (P4-1…P4-20 —P4-18…P4-20 de la enmienda Q8—, puerta 2 aplicada) · **UX**: [ux.md](./ux.md)
 (D-1/D-6/D-13 confirmadas por el humano; sin sección del bloque de la portada — RG4-13)
@@ -65,15 +66,20 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
   al guardar". **P4-16**: el delta de `contracts/openapi.yaml` se fusiona aditivamente en
   `backend/api/openapi.yaml` (`info.version` 0.4.0 → **0.5.0**); el snapshot de `specs/` no se edita.
 - **P4-17 — dependencias nuevas: 0** (backend y frontend).
-- **P4-18/P4-19/P4-20 + R4-16 — bloque «Lo que viene» de la portada (enmienda Q8 del 2026-10-12,
-  US7/FR-025…FR-027)**: endpoint propio `GET /api/v1/portada/proximamente?lang=es|en` con **tope 3
-  firme en el servidor** (`UNION` eventos+actividades + `LIMIT 3`; sin parámetro de límite), DTO
-  mínimo (`kind`, `title`, `date`/horario, `place`), `items` **omitido** si no hay ítems (el bloque
-  no se renderiza, sin huecos) y `no-store`; bloque insertado **tras el `IdentityHero`** de
-  `HomePage` sin rediseñar el resto de la portada de F3; cada ítem enlaza a `/eventos#eventos` o
-  `/eventos#actividades` (anclas existentes) y el bloque lleva enlace general a `/eventos`. El
+- **P4-18/P4-19/P4-20 + R4-16 — bloque «Lo que viene» de la portada (enmienda Q8 del 2026-10-12 —
+  **refinada el mismo día** —, US7/FR-025…FR-027)**: endpoint propio
+  `GET /api/v1/portada/proximamente?lang=es|en` con **tope 5 firme en el servidor** (`UNION`
+  eventos+actividades + `LIMIT 5`; sin parámetro de límite) y **ventana temporal de 2 meses con
+  respaldo** (`window_end = today + 2 meses calendario` en `APP_TZ`: si la ventana tiene ítems solo
+  se devuelven de la ventana; si está vacía, los siguientes próximos; nunca se mezclan), DTO acotado
+  (`kind`, `title`, `date`/horario, `place`, `image`+`alt`), `items` **vacía/omitida** sin ítems y
+  `no-store`; bloque insertado **tras el `IdentityHero`** de `HomePage` sin rediseñar el resto de la
+  portada de F3, en **fila horizontal de tarjetas compactas con imagen** (composición visual según
+  `ux.md`); cada ítem enlaza a `/eventos#eventos` o `/eventos#actividades` (anclas existentes), el
+  **botón «Ver más eventos»** lleva a `/eventos` (solo con ítems) y sin ítems el bloque muestra el
+  **mensaje** «Por el momento no hay eventos ni actividades». El
   contrato se enmienda de forma **aditiva** (0.5.0 → **0.6.0**; única reapertura del snapshot,
-  Complexity 9).
+  Complexity 9; el refinamiento entra en la misma versión porque aún no se ha fusionado).
 
 ## Alineación de nomenclatura (decidida en la puerta 2 / `ux.md`; no se reabre)
 
@@ -163,11 +169,11 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 | T440 | Verificación de cierre: `make ci`, `make e2e`, quickstart §0–§15, SC-010 | `[infra]` | 10 | — | todas |
 | T441 | Documentación y PR (documentador + devops) | `[infra]` | 10 | — | T440 |
 | T443 | Fusionar la enmienda del contrato (0.5.0 → 0.6.0): `GET /api/v1/portada/proximamente` | `[backend]` | 11 | P6 | — |
-| T444 | Consulta sqlc `ListNextUpcomingItems` (extracto mezclado, `LIMIT 3`) y generar | `[db]` | 11 | P6 | — |
+| T444 | Consulta sqlc `ListNextUpcomingItems` (extracto mezclado, ventana de 2 meses con respaldo, `LIMIT 5`) y generar | `[db]` | 11 | P6 | — |
 | T445 | `agenda`: repository `repository_public.go` + service `GetPortadaProximamente` | `[backend]` | 11 | — | T444 |
 | T446 | `handler_public.go` + `routes.go`: `GET /api/v1/portada/proximamente` + humo | `[backend]` | 11 | — | T445 |
 | T447 | `api/agenda.ts` + hook `usePortadaProximamente` (tipos 0.6.0) | `[frontend]` | 11 | — | T443 |
-| T448 | Bloque «Lo que viene» en la portada: `ProximamenteBlock` + `HomePage` + i18n | `[frontend]` | 11 | — | T447 |
+| T448 | Bloque «Lo que viene» en la portada: `ProximamenteBlock` (fila de tarjetas con imagen, botón «Ver más eventos», mensaje sin ítems) + `HomePage` + i18n | `[frontend]` | 11 | — | T447 |
 | T449 | E2E Playwright `portada-proximamente.spec.ts` (US7, SC-014, SC-015) | `[frontend]` | 11 | — | T448 |
 
 **Total: 49 tareas** — 25 `[backend]` · 16 `[frontend]` · 5 `[db]` · 3 `[infra]` · 16 marcadas `[P]`.
@@ -1106,9 +1112,12 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 
 ## Fase 11 — Cambio de alcance del 2026-10-12 (Q8): bloque «Lo que viene» de la portada (US7)
 
-> Enmienda aprobada por el humano el 2026-10-12: la portada incluye un bloque con **hasta 3 ítems**
-> próximos (eventos y actividades juntos, los más cercanos). Decisiones **P4-18/P4-19/P4-20** y
-> research **R4-16**; riesgos **RG4-11…RG4-13**. La portada de F3 **no se rediseña** (FR-027): el
+> Enmienda aprobada por el humano el 2026-10-12 y **refinada el mismo día**: la portada incluye un
+> bloque con **hasta 5 ítems** próximos (eventos y actividades juntos, los más cercanos, **ventana
+> de 2 meses con respaldo**), **tarjetas compactas con imagen** en fila horizontal (composición
+> visual según `ux.md`), **botón «Ver más eventos»** a `/eventos` y **mensaje** «Por el momento no
+> hay eventos ni actividades» cuando no hay ítems. Decisiones **P4-18/P4-19/P4-20** y
+> research **R4-16**; riesgos **RG4-11…RG4-14**. La portada de F3 **no se rediseña** (FR-027): el
 > bloque es una inserción. Sin migraciones nuevas. Orden: contrato (T443) ∥ consulta (T444) →
 > repository/service (T445) → handler/rutas (T446) → cliente/hook (T447) → bloque (T448) → e2e
 > (T449) → re-ejecución del cierre (T440/T441).
@@ -1117,13 +1126,15 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO: fusión aditiva del delta ya enmendado en
     `specs/004-eventos-actividades/contracts/openapi.yaml`) y generados por `make api-gen`.
-  - **Qué hace**: funde en el contrato vivo `GET /api/v1/portada/proximamente` (extracto con tope 3
-    firme, `items` omitido si vacío) y los esquemas `PortadaProximamente`/`ItemProximoPortada`, y
+  - **Qué hace**: funde en el contrato vivo `GET /api/v1/portada/proximamente` (extracto con tope 5
+    firme, **ventana de 2 meses con respaldo**, `items` vacía/omitida cuando no hay ítems) y los
+    esquemas `PortadaProximamente`/`ItemProximoPortada` (**con `image`+`alt`** para las tarjetas), y
     sube `info.version` de **0.5.0 a 0.6.0**. **Aditivo**: ninguna operación existente cambia ni el
     registro de `error.code`. Luego `make api-gen`. *Cubre FR-025…FR-027 a nivel de contrato.*
   - **Pruebas incluidas** (§III): — (contrato; su verificación es la generación y los consumidores).
     **Cómo se verifica**: `make api-gen` sin errores y sin deriva; `make api-gen`-verify si existe;
-    el contrato vivo documenta el tope 3, la mezcla de conceptos y la omisión de `items`.
+    el contrato vivo documenta el tope 5, la ventana con respaldo, la mezcla de conceptos, la imagen
+    y el mensaje del estado vacío.
   - **Criterio de terminado**: `backend/api/openapi.yaml` en **0.6.0** con la operación nueva y el
     resto intacto (diff revisable de un vistazo).
   - **Commit sugerido**: `feat(api): contrato 0.6.0 del extracto de la portada`
@@ -1134,15 +1145,21 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
     (GENERADOS y commiteados: `make sqlc`).
   - **Qué hace**: escribe `ListNextUpcomingItems :many` — `UNION ALL` de eventos (con su **primera
     fecha próxima**) y actividades, **solo publicado y próximo** (misma regla R4-2 con
-    `today`/`now_time` **parametrizados**, corte en `APP_TZ`), `ORDER BY date, start_time NULLS
-    FIRST, title_es, id` y `LIMIT` del tope (`maxPortadaItems = 3`, P4-18: el 3 es firme, no un
-    parámetro). Devuelve solo `kind` (`event`/`activity`), `id`, `title_es`/`title_en`, `date`,
-    `start_time`, `end_time`, `place_es`/`place_en` — **sin** detalle, imagen, categoría ni lista de
-    fechas. Sin `SELECT *`, todo parametrizado (§IV, CWE-89). *Cubre FR-025 a nivel de datos.*
+    `today`/`now_time` **parametrizados**, corte en `APP_TZ`), **ventana de 2 meses con respaldo**
+    (`window_end = today + 2 meses calendario` en `APP_TZ`, parametrizado: la rama de ventana
+    (`date ≤ window_end`) aporta los ítems cercanos y la rama de respaldo solo aporta filas cuando
+    la ventana está vacía —`WHERE NOT EXISTS (SELECT 1 FROM ventana)`—; nunca se mezclan),
+    `ORDER BY date, start_time NULLS FIRST, title_es, id` y `LIMIT` del tope
+    (`maxPortadaItems = 5`, P4-18: el 5 es firme, no un parámetro). Devuelve `kind`
+    (`event`/`activity`), `id`, `title_es`/`title_en`, `date`, `start_time`, `end_time`,
+    `place_es`/`place_en` e `image_file`/`image_alt_es`/`image_alt_en` (imagen de la tarjeta) —
+    **sin** detalle, categoría ni lista de fechas. Sin `SELECT *`, todo parametrizado (§IV, CWE-89).
+    *Cubre FR-025 a nivel de datos.*
   - **Pruebas incluidas** (§III): — (SQL anotado; su ejecución es T445). **Cómo se verifica**:
     `make sqlc` genera sin errores y `make sqlc-verify` no detecta deriva; los tipos generados
     quedan commiteados.
-  - **Criterio de terminado**: la capa generada compila y refleja el tope 3 y el orden por cercanía.
+  - **Criterio de terminado**: la capa generada compila y refleja el tope 5, la ventana con respaldo
+    y el orden por cercanía.
   - **Commit sugerido**: `feat(db): consulta del extracto mezclado de la portada`
 
 - [ ] T445 · `agenda`: repository + service `GetPortadaProximamente` · `[backend]`
@@ -1153,18 +1170,24 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
     `service_public_test.go` (AMPLIADOS).
   - **Qué hace**: método `ListNextUpcomingItems` del repository (lectura pública que cruza eventos y
     actividades) y `GetPortadaProximamente(lang)` del service: valida `lang`, resuelve los textos
-    con fallback `en → es` (FR-008), reutiliza la **misma** función de `today`/`now_time` de R4-2 y
-    devuelve `items` (máximo `maxPortadaItems = 3`) o la **clave omitida** cuando no hay ítems
-    (FR-026/SC-012). El cliente no filtra ni reimplementa nada. *Cubre FR-025, FR-026 (omisión),
-    FR-002/FR-006/FR-013.*
+    con fallback `en → es` (FR-008), reutiliza la **misma** función de `today`/`now_time` de R4-2,
+    calcula `window_end = today + 2 meses calendario` en `APP_TZ` (constante
+    `portadaWindowMonths = 2`) y aplica la **ventana con respaldo** (si la ventana tiene ítems solo
+    se devuelven de la ventana; si está vacía, los siguientes próximos; nunca se mezclan) devolviendo
+    `items` (máximo `maxPortadaItems = 5`, con `image`/`alt` resueltos) o la **clave vacía/omitida**
+    cuando no hay ítems (FR-026: la portada muestra el mensaje). El cliente no filtra ni
+    reimplementa nada. *Cubre FR-025, FR-026 (mensaje), FR-002/FR-006/FR-013.*
   - **Pruebas incluidas** (§III): unitarias con fake + **integración contra PostgreSQL real**.
     **Cómo se verifica**: `go test ./internal/agenda/` y
-    `go test -tags=integration ./internal/agenda/` en verde: con 5 ítems próximos salen **exactamente
-    los 3 más cercanos mezclados** (evento y actividad alternándose por fecha); con 1 o 2, exactos;
-    sin ítems → clave `items` **omitida**; borradores, vencidos y evento sin fecha próxima **fuera**
+    `go test -tags=integration ./internal/agenda/` en verde: con 8 ítems próximos salen **exactamente
+    los 5 más cercanos mezclados** (evento y actividad alternándose por fecha); con menos, exactos;
+    **ventana**: con ítems dentro de 2 meses **no sale ninguno lejano**; con la ventana vacía salen
+    los **siguientes próximos** (respaldo) y **nunca** se mezclan ambos casos; sin ítems → `items`
+    **vacía/omitida**; borradores, vencidos y evento sin fecha próxima **fuera**
     (3 casos de R4-2: futuro, «hoy en curso» incluido, «hoy terminado» excluido); desempate estable
-    en la misma fecha; fallback `en → es` por campo; `lang` inválido → `invalid`; el tope 3 queda
-    fijado por prueba (no crece con el contenido).
+    en la misma fecha; `image`/`alt` presentes solo cuando el elemento tiene imagen; fallback
+    `en → es` por campo; `lang` inválido → `invalid`; el tope 5 y los 2 meses quedan fijados por
+    prueba (constantes, no crecen con el contenido).
   - **Criterio de terminado**: US7 resuelta a nivel de dominio y cobertura de `service*` ≥ 80 %
     intacta.
   - **Commit sugerido**: `feat(agenda): extracto de lo que viene para la portada`
@@ -1177,11 +1200,13 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
     `es`), llama a `GetPortadaProximamente` (T445) y responde `200` con `PortadaProximamente` y
     **`Cache-Control: no-store`**; la ruta va en `RegisterPublic` **sin middlewares** (pública, solo
     lectura) — anotando que el segmento `portada` es el agregado de F3 pero el recurso lo sirve
-    `agenda` (Complexity 8). El DTO nunca contiene `publicationState`, detalle ni imagen. *Cubre
+    `agenda` (Complexity 8). El DTO nunca contiene `publicationState`, detalle ni lista de fechas
+    (solo `kind`/`title`/`date`/horario/`place`/`image`). *Cubre
     FR-025…FR-027.*
   - **Pruebas incluidas** (§III): `httptest` con service falso + humo. **Cómo se verifica**:
-    `go test ./internal/agenda/` en verde: `200` con el sobre correcto y `no-store`; `items` omitido
-    cuando el service no devuelve ítems (nunca array vacío ni `null`); `lang=fr` → `400 invalid` con
+    `go test ./internal/agenda/` en verde: `200` con el sobre correcto y `no-store`; `items`
+    vacía/omitida cuando el service no devuelve ítems (nunca `null`; la portada muestra el mensaje);
+    `lang=fr` → `400 invalid` con
     `details.lang`; error del service → sobre `ErrorEnvelope` genérico; `main_test.go` confirma la
     ruta registrada y el `404` `not_found` en rutas inexistentes (§8.1.9).
   - **Criterio de terminado**: `quickstart.md` §15 es ejecutable tal cual por API (US7).
@@ -1208,21 +1233,28 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
   - **Archivos**: `frontend/src/features/publico/eventos/ProximamenteBlock.tsx` (NUEVO) y su test,
     `frontend/src/features/publico/pages/HomePage.tsx` (EDITADO: **una inserción** tras
     `IdentityHero`), `frontend/src/features/publico/i18n/{messages,es,en}.ts` (EDITADOS: título del
-    bloque, etiquetas «Evento»/«Actividad», enlace «Ver todo lo que viene») y
+    bloque, etiquetas «Evento»/«Actividad», botón «Ver más eventos» y mensaje «Por el momento no
+    hay eventos ni actividades») y
     `homePage.test.tsx` (AMPLIADO).
-  - **Qué hace**: bloque con **hasta 3 tarjetas** mezcladas por cercanía (P4-19): etiqueta del
+  - **Qué hace**: bloque con **hasta 5 tarjetas** mezcladas por cercanía (P4-19), en **una sola
+    fila horizontal de tarjetas compactas con imagen** (la composición visual la fija `ux.md`;
+    mientras no la incluya, se construye con los componentes existentes según la spec): etiqueta del
     concepto por `kind` (Decisión 3), título, fecha/hora localizada (`DateBadge`/`formatoFechas`,
-    `<time datetime>`) y lugar — nada más (FR-025). Cada ítem enlaza al bloque correspondiente de la
-    sección (`/eventos#eventos` / `/eventos#actividades`, anclas ya existentes) y el bloque lleva el
-    **enlace general a `/eventos`** (FR-026). **Sin ítems → el bloque no se renderiza** (sin huecos
-    ni marcadores; con 1 o 2 se muestran exactos) y con error de la consulta se omite con aviso
-    discreto (patrón `error.partial` de F3) sin romper la portada. Sistema de F10
+    `<time datetime>`), lugar e imagen con su `alt` (FR-025). Cada ítem enlaza al bloque
+    correspondiente de la sección (`/eventos#eventos` / `/eventos#actividades`, anclas ya
+    existentes) y el bloque lleva el **botón «Ver más eventos»** a `/eventos` (FR-026; **solo cuando
+    hay ítems**). **Sin ítems → el bloque SÍ se muestra con el mensaje** «Por el momento no hay
+    eventos ni actividades» (FR-026 refinado; sin huecos, sin marcadores y **sin botón** — evita un
+    enlace a la sección vacía, coherencia con SC-012); con menos de 5 se muestran exactos y con
+    error de la consulta se pinta igual que sin ítems (mensaje + aviso discreto, patrón
+    `error.partial` de F3) sin romper la portada. Sistema de F10
     (`Card`/`SectionHeading`/`Reveal`), responsive desde 320 px, foco visible y orden de tabulación
     comprensible (FR-023/FR-024/FR-027). **La portada de F3 no se toca** más allá de esa inserción.
   - **Pruebas incluidas** (§III): Vitest + Testing Library. **Cómo se verifica**:
-    `npm test -- --run` en verde: 3 ítems exactos (los más cercanos, etiquetados y en orden) con 5
-    disponibles; 1–2 sin huecos; sin ítems ningún nodo del bloque en el DOM; enlaces de ítem y
-    general correctos; en inglés traducido con fallback visible; error → sin bloque y con aviso; y
+    `npm test -- --run` en verde: 5 ítems exactos (los más cercanos, etiquetados, con imagen y en
+    orden) con 8 disponibles; menos de 5 sin huecos; enlaces de ítem y **botón «Ver más eventos»**
+    correctos (y el botón **ausente** sin ítems); sin ítems el bloque muestra el **mensaje** (y no
+    tarjetas ni huecos); en inglés traducido con fallback visible; error → mensaje + aviso; y
     `homePage.test.tsx` confirma que **las secciones de F3 se renderizan igual que antes**.
   - **Criterio de terminado**: US7/FR-025…FR-027 en pantalla y `quickstart.md` §15 ejecutable en
     navegador.
@@ -1232,11 +1264,14 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 
   - **Archivos**: `frontend/e2e/portada-proximamente.spec.ts` (NUEVO; usa los helpers de
     `frontend/e2e/helpers.ts`).
-  - **Qué hace**: recorrido de US7 según `quickstart.md` §15: con 5 ítems próximos (eventos y
-    actividades) el bloque muestra **exactamente los 3 más cercanos** mezclados y etiquetados; con 1
-    o 2, exactos; con solo borradores/vencidos **el bloque no aparece** y la portada queda coherente
-    (mismo caso: la entrada «Eventos y actividades» sigue oculta); un ítem vencido desaparece y el
-    siguiente ocupa su lugar (FR-025/FR-026, SC-014); los enlaces de cada ítem y el general llegan a
+  - **Qué hace**: recorrido de US7 según `quickstart.md` §15: con 8 ítems próximos (eventos y
+    actividades) el bloque muestra **exactamente los 5 más cercanos** mezclados y etiquetados con
+    imagen; con menos, exactos; con ítems dentro de la ventana de 2 meses **no sale ninguno lejano**
+    y, con la ventana vacía, salen los **siguientes próximos** (respaldo, FR-025/FR-026, SC-014);
+    con solo borradores/vencidos el bloque muestra el **mensaje** «Por el momento no hay eventos ni
+    actividades» **sin botón** y la portada queda coherente (mismo caso: la entrada «Eventos y
+    actividades» sigue oculta); un ítem vencido desaparece y el siguiente ocupa su lugar; los
+    enlaces de cada ítem y el **botón «Ver más eventos»** llegan a
     `/eventos` (al bloque del concepto correspondiente) en un solo paso (SC-015); en inglés se
     respeta el fallback; 320 px sin desplazamiento horizontal (SC-007) y recorrido por teclado con
     foco visible (SC-008).
@@ -1261,7 +1296,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 | **US4** Controlar la publicación | T418–T420, T431, T435–T437, T439 | quickstart §7 · e2e T439 (SC-002, SC-003, SC-012) |
 | **US5** Ver en inglés | T418, T432, T433, T438 | quickstart §8 · e2e T438 (SC-006) |
 | **US6** Dispositivo y accesible | T433, T434, T438, T442, T440 | quickstart §10 · e2e en 3 anchos (SC-007) · e2e de teclado T442 (SC-008) |
-| **US7** Ver lo que viene desde la portada *(enmienda Q8)* | T443, T444, T445, T446, T447, T448, T449 | quickstart §15 · e2e T449 (SC-014, SC-015) |
+| **US7** Ver lo que viene desde la portada *(enmienda Q8 — refinada: tope 5, ventana de 2 meses con respaldo, mensaje, botón)* | T443, T444, T445, T446, T447, T448, T449 | quickstart §15 · e2e T449 (SC-014, SC-015) |
 | FR-001 (sección pública, dos conceptos) | T404, T418, T423, T433 | quickstart §1 · e2e T438 |
 | FR-002 (solo lo próximo, orden cronológico) | T404, T417, T418, T423 | pruebas de la regla R4-2 (SC-009) |
 | FR-003 (orden por próxima fecha, sin filtros) | T418, T423, T433 | pruebas de orden del service |
@@ -1286,11 +1321,11 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 | FR-022 (navegación oculta sin contenido) | T429, T433, T434, T438 | quickstart §7 · e2e T438 (SC-012) |
 | FR-023 (responsividad y navegación simple) | T433, T434, T438 | quickstart §10 · e2e en 320/768/1280 (SC-007) |
 | FR-024 (accesibilidad y fechas legibles) | T432, T433, T442, T440 | checklist WCAG de quickstart §10 · e2e de teclado T442 (SC-008) |
-| FR-025 (hasta 3 ítems próximos, eventos y actividades juntos por cercanía, solo publicado y próximo) *(enmienda Q8)* | T443, T444, T445, T446, T448 | pruebas del service/repository (tope 3, mezcla ordenada) · quickstart §15 · e2e T449 (SC-014) |
-| FR-026 (cada ítem y el enlace general llevan a la sección; sin ítems → bloque no se muestra, sin huecos) *(enmienda Q8)* | T445, T446, T448, T449 | quickstart §15 · e2e T449 (SC-014, SC-015) |
-| FR-027 (bilingüe, responsive y accesible; la portada de F3 no se rediseña) *(enmienda Q8)* | T445, T447, T448, T449 | quickstart §8/§10/§15 · e2e T449 (SC-006, SC-007, SC-008) · revisión de `revisor-codigo` sobre el diff de `HomePage` |
-| SC-014 (exactamente los ítems más cercanos; 0 borradores, 0 vencidos, 0 bloques vacíos ni con huecos) *(enmienda Q8)* | T444, T445, T448, T449 | pruebas del service/repository (tope 3, `items` omitido) · e2e T449 · quickstart §15 |
-| SC-015 (ítems y enlace general llevan a la sección en un solo paso; ≥90 % identifica qué viene, cuándo y dónde desde la portada) *(enmienda Q8)* | T448, T449, T440 | e2e T449 · prueba manual con personas (protocolo de SC-010 ampliado con una tarea sobre la portada) |
+| FR-025 (hasta 5 ítems próximos, eventos y actividades juntos por cercanía, ventana de 2 meses con respaldo, solo publicado y próximo, con imagen) *(enmienda Q8 — refinada)* | T443, T444, T445, T446, T448 | pruebas del service/repository (tope 5, ventana + respaldo, mezcla ordenada) · quickstart §15 · e2e T449 (SC-014) |
+| FR-026 (cada ítem y el botón «Ver más eventos» llevan a la sección; sin ítems → bloque con mensaje y sin botón, sin huecos) *(enmienda Q8 — refinada)* | T445, T446, T448, T449 | quickstart §15 · e2e T449 (SC-014, SC-015) |
+| FR-027 (bilingüe, responsive y accesible; composición visual según `ux.md`; la portada de F3 no se rediseña) *(enmienda Q8 — refinada)* | T445, T447, T448, T449 | quickstart §8/§10/§15 · e2e T449 (SC-006, SC-007, SC-008) · revisión de `revisor-codigo` sobre el diff de `HomePage` |
+| SC-014 (exactamente los ítems más cercanos —ventana con respaldo—; 0 borradores, 0 vencidos, 0 huecos: sin ítems se muestra el mensaje) *(enmienda Q8 — refinada)* | T444, T445, T448, T449 | pruebas del service/repository (tope 5, ventana + respaldo, `items` vacía/omitida) · e2e T449 · quickstart §15 |
+| SC-015 (ítems y botón «Ver más eventos» llevan a la sección en un solo paso; ≥90 % identifica qué viene, cuándo y dónde desde la portada) *(enmienda Q8 — refinada)* | T448, T449, T440 | e2e T449 · prueba manual con personas (protocolo de SC-010 ampliado con una tarea sobre la portada) |
 
 También quedan cubiertos los **Edge Cases** de la spec sin FR propio: **página sin contenido con
 aviso, sin redirigir** (T433, T438; y el ítem oculto en nav/menú/pie: T434) · **imagen de elemento
@@ -1301,9 +1336,13 @@ fecha** en orden estable (T418) · **texto con tildes/`ñ`/`¿¡`/emojis intacto
 **archivo inválido no rompe la sección** (T427, T433) · **fechas pasadas permitidas al cargar**
 (T419) · **ediciones simultáneas** (última escritura completa gana: T412) · **sin permiso por
 cualquier vía, incluido el cruce y el catálogo de categorías** (T426, T428, T430, T439) · **nada se
-aplica sin registro** (T416). *Enmienda Q8*: **bloque de la portada con menos de 3 ítems** (se
-muestran exactos, sin huecos ni marcadores), **sin ítems** (no se renderiza y la navegación sigue
-coherente) y **con vencidos o borradores** (fuera; el siguiente ocupa su lugar) — T445, T448, T449.
+aplica sin registro** (T416). *Enmienda Q8 (refinada)*: **bloque de la portada con menos de 5
+ítems** (se
+muestran exactos, sin huecos ni marcadores), **sin ítems** (el bloque muestra el mensaje «Por el
+momento no hay eventos ni actividades», sin botón, y la navegación sigue
+coherente), **con vencidos o borradores** (fuera; el siguiente ocupa su lugar) y **ventana de 2
+meses con respaldo** (sin ítems en la ventana salen los siguientes próximos, sin mezclar) —
+T444, T445, T448, T449.
 
 **Excepción aprobada registrada**: T405 actualiza las 5 pruebas de F2 que fijaban el catálogo de
 permisos en 9 a **10** (más la fixture `sampleCatalog()`), por el cambio de alcance Q7/FR-012

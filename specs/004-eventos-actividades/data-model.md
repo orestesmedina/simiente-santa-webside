@@ -334,7 +334,7 @@ Listas con `ORDER BY` explícito y determinista (§8.1.7). Sin `SELECT *`. Todo 
 | `InsertActivity`, `UpdateActivity`, `DeleteActivity`, `GetActivityByID` | Gestión de la actividad |
 | `ListActivities` / `CountActivities` | Panel paginado (`ORDER BY created_at DESC, id DESC`) |
 | `ListUpcomingActivities` | Público: `published` **y** fecha próxima; `ORDER BY activity_date, start_time NULLS FIRST, title_es, id` |
-| `ListNextUpcomingItems` | Extracto de la portada (`GET /api/v1/portada/proximamente`, enmienda Q8 del 2026-10-12): `UNION ALL` de eventos (con su primera fecha próxima) y actividades, solo `published` **y** próximas (misma regla R4-2 con `today`/`now_time` parametrizados), `ORDER BY date, start_time NULLS FIRST, title_es, id` y `LIMIT 3` (`maxPortadaItems`, tope firme) |
+| `ListNextUpcomingItems` | Extracto de la portada (`GET /api/v1/portada/proximamente`, enmienda Q8 del 2026-10-12 — refinada el mismo día): `UNION ALL` de eventos (con su primera fecha próxima, y `image_file`/`image_alt_*`) y actividades, solo `published` **y** próximas (misma regla R4-2 con `today`/`now_time` parametrizados), **ventana de 2 meses** (`date ≤ window_end`, con `window_end = today + 2 meses calendario` en `APP_TZ`, parametrizado) con **respaldo** cuando la ventana está vacía (la rama de respaldo solo aporta filas si la ventana no tiene ninguna: `WHERE NOT EXISTS (SELECT 1 FROM ventana)`), `ORDER BY date, start_time NULLS FIRST, title_es, id` y `LIMIT 5` (`maxPortadaItems`, tope firme) |
 
 ### `backend/internal/db/queries/media.sql` (dominio `media`, nuevo — R4-6)
 

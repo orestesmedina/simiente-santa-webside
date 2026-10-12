@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 9/9 · Entregar — en curso: 3 bugs (`equipo-bug`) + cambio de alcance Q8 (bloque en la portada) antes del PR |
 | Ciclo de corrección | 1/3 (validación de F4 cerrada; pendiente re-validar bugs + bloque) |
-| Próximo paso | Re-aprobar spec v3 (Q8) y plan; corregir los 3 bugs; implementar el bloque; re-validar |
+| Próximo paso | Re-aprobar spec v3 refinada (Q8: 5 ítems, ventana 2 meses, mensaje vacío, botón «Ver más eventos») y plan; luego corregir los 3 bugs e implementar el bloque |
 | Bloqueado por | — |
 | Actualizado | 2026-10-12 |
 
