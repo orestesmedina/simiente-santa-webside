@@ -549,7 +549,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     límites son el único punto de verdad (los usan T419–T421 y los cita el contrato).
   - **Commit sugerido**: `feat(agenda): invariantes, limites y regla de proximidad con APP_TZ`
 
-- [ ] T418 · `agenda`: `service_public.go` — "lo que viene" · `[backend]`
+- [X] T418 · `agenda`: `service_public.go` — "lo que viene" · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/service_public.go` y `service_public_test.go` (NUEVOS).
   - **Qué hace**: `GetProximamente(lang)` (FR-001…FR-005): devuelve `{lang, events?, activities?}`
