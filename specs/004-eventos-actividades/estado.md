@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Cierre (41/42 tareas; Fases 1–4 y 8–9 completas; T440 hecha, falta T441) |
-| Ciclo de corrección | 0/3 |
-| Próximo paso | T441 `[infra]` documentación (`documentador`) y PR (el humano aprueba merge) |
+| Fase | 7/9 · Validar (ciclo de corrección 1) |
+| Ciclo de corrección | 1/3 |
+| Próximo paso | Corregir I1 (N+1) y M1–M3 con `dev-backend`; re-validar con `revisor-codigo`/`qa-tester` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
@@ -32,10 +32,14 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 ## Hallazgos abiertos
 
-Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
+Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-11.md`).
 
-- **SC-010 (usabilidad con personas) pendiente**: prueba manual con ≥ 6 personas observada por `qa-tester` con el humano; informe `pruebas-usabilidad-SC-010.md` por crear (queda fuera de `make ci`/`make e2e` por diseño).
-- **Entorno local WSL**: el Chromium headless shell de Playwright no arranca por falta de `libnspr4`/`libnss3`/`libasound2`. Resuelto *sin tocar el repo* extrayendo los `.deb` a `/tmp/opencode/e2e-libs` y corriendo con `LD_LIBRARY_PATH`; la vía oficial del proyecto sigue siendo la imagen Docker de Playwright (ver bitácora de T438–T442).
+- **I1 (IMPORTANTE, `revisor-codigo`)** — consultas N+1: `internal/agenda/service_public.go:128-139` (`GetProximamente`) y `service_admin.go:306-313, 846-853` (`ListEventos`/`ListActividades`) consultan las fechas evento por evento (hasta ~201 queries en un endpoint público). → `dev-backend`, consulta por lote.
+- **M1** — código muerto en el fake de portada (`internal/portada/service_test.go:194`, `IsHomeFilePublished`). → `dev-backend`.
+- **M2** — `MaxCategories` cuenta con `ListCategories` (ineficaz y con carrera). → `dev-backend`.
+- **M3** — `targetLabel` de auditoría usa el UUID en los `fail` de edición. → `dev-backend`.
+- **M4 (registro)** — `useSiteLinks.test.ts` reescrita (renombrada a `.tsx`) en T434 como **excepción aprobada** (la ruta `/eventos` cambia la forma del ítem); sin cambios de aserciones de comportamiento.
+- **Deuda aceptada (no bloquea)**: seguridad B1/B2/B3; revisor M5 (`Optional[T]` duplicado); QA: SC-010 (usabilidad con ≥6 personas) y lectura con lector de pantalla físico quedan como verificación **manual**.
 
 ## Decisiones y aclaraciones
 
@@ -48,6 +52,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-11 — **Fase 5 (Validar) — ciclo 1**: `qa-tester` **APROBADO** (US1–US6 y SC-001…SC-013 cubiertos; SC-010 y lector de pantalla quedan manuales), `seguridad` **APROBADO** (0 críticos/altos/medios; 3 bajos + 3 informativos), `revisor-codigo` **APROBADO con cambios menores** (1 IMPORTANTE: N+1 en `GetProximamente`/`ListEventos`/`ListActividades`; 5 menores). Consolidado en `revision-2026-10-11.md`. El orquestador abre **ciclo de corrección 1** para I1 + M1–M3.
 
 - 2026-10-11 — **T410 y T440 completadas** (`devops`): T410 documenta **`APP_TZ=America/Costa_Rica`** en `.env.example` (consumidor `platform/config`; compose no lo inyecta y el contenedor usa el default idéntico; commit `chore(infra): documentar APP_TZ en .env.example (F4 T410)`). **T440 — verificación de cierre en verde**: **`make ci`** completa (lint, go test unitarias + `-tags=integration` contra PostgreSQL real, vitest **74 archivos / 505 pruebas**, govulncheck 0, npm audit 0); **e2e de agenda** en 3 tandas (pública, panel, accesibilidad): **5 casos pasados** con `LD_LIBRARY_PATH` local contra el rate-limit de login; **cobertura `internal/agenda/service*.go` = 89,4 %** (≥ 80 % exigido); **`sqlc-verify` y `api-gen` sin deriva** (1 commit de diff: 0); **migraciones `000008`/`000009` up→down→up** (T416 en verde) y BD dev en versión 9; **`docker compose up`** con los 4 servicios arriba, `/healthz` 200, ruta inexistente `404` con `ErrorEnvelope`, `GET /api/v1/proximamente?lang=es` `200 no-store` con base recién migrada (`{"lang":"es"}` vacío, SC-012) y `lang=fr` → `400 invalid`; catálogo en la BD = **10 permisos con `categorias`**; **sin cambios de F4 en docker-compose.yml, Dockerfiles ni `.github/`** (árbol limpio). Pendiente registrado en hallazgos: SC-010 (manual con personas) y el fix local de librerías del navegador.
 - 2026-10-11 — **Ajuste autorizado de un e2e de F2 por el cambio de producto de F4** (`dev-frontend`): `acceso.spec.ts` creaba un rol con «Eventos» + «Actividades» para comprobar el escenario «cuenta con módulos **reservados** → solo Inicio y el aviso». Con F4 esos dos permisos ya son módulos reales, así que el fixture pasa a dos módulos de F5–F9 («Noticias y galería» y «Donaciones»): el escenario y sus aserciones se conservan intactos (no se debilita nada). Misma naturaleza que la excepción aprobada RG4-10/T405 sobre las pruebas de F2 del catálogo 9 → 10.
