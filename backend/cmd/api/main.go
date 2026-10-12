@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"simiente-santa/backend/internal/media"
 	"simiente-santa/backend/internal/platform/config"
 	"simiente-santa/backend/internal/platform/database"
 	"simiente-santa/backend/internal/platform/httpserver"
@@ -125,6 +126,17 @@ func main() {
 		Logger:         appLog,
 	})
 
+	// Dominio media (F4/R4-6): la descarga pública de archivos, promovida desde
+	// la portada. Comparte el almacén local y usa la zona del lugar (APP_TZ,
+	// T409) para el corte "publicado y próximo" de las imágenes de agenda.
+	mediaSvc := media.NewService(media.ServiceDeps{
+		Repository: media.NewRepository(pool),
+		Store:      portadaStore,
+		Location:   cfg.TimeZone,
+		Logger:     appLog,
+	})
+	mediaHandler := media.NewHandler(media.HandlerDeps{Service: mediaSvc, Logger: appLog})
+
 	handler := usuarios.NewHandler(usuarios.HandlerDeps{
 		Access:     authSvc,
 		Setup:      initSvc,
@@ -180,6 +192,7 @@ func main() {
 				Logger:     appLog,
 			},
 		},
+		mediaHandler: mediaHandler,
 	}
 
 	srv := httpserver.New(newMux(deps, appLog),
@@ -204,11 +217,12 @@ type apiDeps struct {
 	admin          usuarios.AdminDeps
 	portadaHandler *portada.Handler
 	portadaAdmin   portada.AdminDeps
+	mediaHandler   *media.Handler
 }
 
 // newMux compone el enrutador con las rutas de status y las de los dominios
-// usuarios (acceso y grupo de panel) y portada (superficie pública y panel).
-// Recibe las dependencias ya construidas.
+// usuarios (acceso y grupo de panel), portada (superficie pública y panel) y
+// media (descarga pública de archivos). Recibe las dependencias ya construidas.
 func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	root := httpserver.NewMuxRegistrar(mux)
@@ -217,5 +231,6 @@ func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	usuarios.RegisterAdmin(root, deps.admin)
 	portada.RegisterPublic(root, deps.portadaHandler)
 	portada.RegisterAdmin(root, deps.portadaHandler, deps.portadaAdmin)
+	media.RegisterPublic(root, deps.mediaHandler)
 	return mux
 }

@@ -282,17 +282,3 @@ SELECT id, network, url, publication_state, created_at, updated_at
 FROM home_social_links
 WHERE publication_state = 'published'
 ORDER BY network;
-
--- ---------------------------------------------------- archivos de imagen
-
--- name: IsHomeFilePublished :one
--- ¿El nombre de archivo está referenciado por contenido PUBLICADO? (analyze C4)
--- `TRUE` solo si la identidad publicada lo usa como logo o imagen de portada;
--- `FALSE` cuando no existe referencia, la identidad está en borrador o el
--- archivo es huérfano. F4–F9 amplían esta consulta con sus tablas.
-SELECT EXISTS (
-    SELECT 1
-    FROM home_identity
-    WHERE publication_state = 'published'
-      AND sqlc.arg('file_name') IN (logo_file, cover_image_file)
-) AS published;

@@ -1,4 +1,4 @@
-package portada
+package media
 
 import (
 	"bytes"
@@ -11,10 +11,14 @@ import (
 	"simiente-santa/backend/internal/platform/testutil"
 )
 
-// Tests del handler de descarga GET /api/v1/media/{fileName} (T323): el handler
-// real sobre el service real, con un LocalStore sobre t.TempDir() y el
-// repositorio falso. Comprueban la política de publicación (analyze C4/M6) y las
-// cabeceras seguras.
+// Tests del handler de descarga GET /api/v1/media/{fileName} (movidos desde la
+// portada, T415): el handler real sobre el service real, con un LocalStore sobre
+// t.TempDir() y el repositorio falso. Comprueban la política de publicación
+// (analyze C4/M6) y las cabeceras seguras.
+
+// pngSignature es la firma binaria mínima de un PNG (basta para el almacén
+// local, que valida por firma).
+var pngSignature = []byte("\x89PNG\r\n\x1a\n")
 
 // newMediaHandler construye el handler y devuelve también el Store para sembrar
 // archivos reales.
@@ -23,7 +27,7 @@ func newMediaHandler(t *testing.T, repo *fakeRepository, dir string, maxBytes in
 	logger, _ := testutil.NewLogger()
 	store := storage.NewLocalStore(dir, maxBytes)
 	svc := NewService(ServiceDeps{Repository: repo, Store: store, Logger: logger})
-	return NewHandler(HandlerDeps{Service: svc, MaxUploadBytes: maxBytes, Logger: logger}), store
+	return NewHandler(HandlerDeps{Service: svc, Logger: logger}), store
 }
 
 func doMedia(t *testing.T, h *Handler, name string) *httptest.ResponseRecorder {
@@ -44,7 +48,7 @@ func TestGetMediaHandlerPublishedFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sembrar archivo: %v", err)
 	}
-	repo.publishedFiles[file.Name] = true
+	repo.published[file.Name] = true
 
 	rec := doMedia(t, h, file.Name)
 	if rec.Code != http.StatusOK {
@@ -93,7 +97,7 @@ func TestGetMediaHandlerNotPublished(t *testing.T) {
 		t.Fatalf("sembrar archivo: %v", err)
 	}
 	// El archivo existe en disco pero NO está referenciado por contenido
-	// publicado: 404 (analyze C4).
+	// publicado y próximo: 404 (analyze C4/R4-6).
 	rec := doMedia(t, h, file.Name)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, se esperaba 404 (%s)", rec.Code, rec.Body)
@@ -109,7 +113,7 @@ func TestGetMediaHandlerMissingFile(t *testing.T) {
 	h, _ := newMediaHandler(t, repo, dir, 1<<20)
 
 	name := "img_11111111-1111-1111-1111-111111111111.png"
-	repo.publishedFiles[name] = true // publicado pero el archivo no existe
+	repo.published[name] = true // publicado pero el archivo no existe
 
 	rec := doMedia(t, h, name)
 	if rec.Code != http.StatusNotFound {

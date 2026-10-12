@@ -3,7 +3,6 @@ package portada
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"testing"
 
@@ -167,45 +166,6 @@ func TestGetPortadaOrderingAndLinks(t *testing.T) {
 	}
 }
 
-// T318: política de descarga (analyze C4/M6).
-func TestOpenMediaPolicy(t *testing.T) {
-	const valid = "img_22222222-2222-2222-2222-222222222222.png"
-	repo := newFakeRepository()
-	store := &fakeStore{files: map[string][]byte{valid: []byte("PNG")}}
-	service := NewService(ServiceDeps{Repository: repo, Store: store})
-
-	// Nombre fuera del patrón → 400 invalid.
-	if _, err := service.OpenMedia(context.Background(), "logo.png"); errorKind(err) != apperr.KindInvalid {
-		t.Fatalf("nombre inválido debería ser invalid: %v", err)
-	}
-
-	// Nombre válido pero no referenciado por contenido publicado → 404.
-	if _, err := service.OpenMedia(context.Background(), valid); errorKind(err) != apperr.KindNotFound {
-		t.Fatalf("archivo no publicado debería ser not_found: %v", err)
-	}
-
-	// Publicado y existente → se abre.
-	repo.publishedFiles[valid] = true
-	reader, err := service.OpenMedia(context.Background(), valid)
-	if err != nil {
-		t.Fatalf("OpenMedia publicado = %v", err)
-	}
-	data, _ := io.ReadAll(reader)
-	_ = reader.Close()
-	if string(data) != "PNG" {
-		t.Fatalf("contenido = %q", data)
-	}
-
-	// Publicado pero el archivo físico no existe → 404.
-	missing := "img_33333333-3333-3333-3333-333333333333.webp"
-	repo.publishedFiles[missing] = true
-	if _, err := service.OpenMedia(context.Background(), missing); errorKind(err) != apperr.KindNotFound {
-		t.Fatalf("archivo físico ausente debería ser not_found: %v", err)
-	}
-
-	// Error del repositorio se propaga.
-	repo.getErr = errors.New("boom")
-	if _, err := service.OpenMedia(context.Background(), valid); err == nil {
-		t.Fatal("se esperaba error del repositorio")
-	}
-}
+// T318: la política de descarga (analyze C4/M6) se movió con la descarga al
+// dominio `internal/media/` (F4/T415): sus pruebas viven allí
+// (internal/media/service_test.go, handler_media_test.go y la de integración).

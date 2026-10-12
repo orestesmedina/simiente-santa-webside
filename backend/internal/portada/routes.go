@@ -20,14 +20,16 @@ const PermissionPortada = "portada"
 // RegisterPublic publica la superficie pública de la portada, SIN middlewares
 // de sesión (solo los globales de la aplicación): es de solo lectura y solo
 // sirve contenido publicado (FR-001/FR-013).
+//
+// La descarga de imágenes NO se publica aquí: vive en el dominio
+// `internal/media/` desde F4 (R4-6), que sirve el mismo
+// `GET /api/v1/media/{fileName}` con la regla "publicado y próximo".
 func RegisterPublic(root httpserver.Registrar, h *Handler) {
 	if h == nil {
 		return
 	}
 	// Portada pública (FR-001…FR-009).
 	root.Handle(http.MethodGet, "/api/v1/portada", h.GetPortada)
-	// Descarga pública de imágenes, limitada a lo publicado (analyze C4/M6).
-	root.Handle(http.MethodGet, "/api/v1/media/{fileName}", h.GetMedia)
 }
 
 // AdminDeps reúne la configuración del grupo de panel de la portada.

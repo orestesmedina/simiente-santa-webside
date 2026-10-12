@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"simiente-santa/backend/internal/media"
 	"simiente-santa/backend/internal/platform/httpserver"
 	"simiente-santa/backend/internal/platform/middleware"
 	"simiente-santa/backend/internal/platform/paginate"
@@ -54,6 +55,14 @@ func (stubPortadaRepo) ListHomeWhatsappChannelsPublished(context.Context) ([]por
 
 func (stubPortadaRepo) ListHomeSocialLinksPublished(context.Context) ([]portada.SocialLink, error) {
 	return nil, nil
+}
+
+// stubMediaRepo satisface media.Repository para el humo de composición: ningún
+// archivo está publicado (la descarga responde 404 salvo por el nombre).
+type stubMediaRepo struct{}
+
+func (stubMediaRepo) IsFilePublished(context.Context, string, string, string) (bool, error) {
+	return false, nil
 }
 
 // fakeAuthService guioniza el servicio de acceso para el humo de composición.
@@ -160,6 +169,10 @@ func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
 		MaxUploadBytes: 1 << 20,
 		Logger:         log,
 	})
+	mediaHandler := media.NewHandler(media.HandlerDeps{
+		Service: media.NewService(media.ServiceDeps{Repository: stubMediaRepo{}, Logger: log}),
+		Logger:  log,
+	})
 	return apiDeps{
 		statusRepo:  repo,
 		authHandler: handler,
@@ -196,6 +209,7 @@ func testDeps(repo status.Repository, log *slog.Logger) apiDeps {
 				Logger:     log,
 			},
 		},
+		mediaHandler: mediaHandler,
 	}
 }
 

@@ -105,10 +105,6 @@ type Repository interface {
 	GetHomeContactPublished(ctx context.Context) (Contact, bool, error)
 	UpsertHomeContact(ctx context.Context, contact Contact, actions ...audit.Action) (Contact, error)
 
-	// Archivos: TRUE solo si el nombre lo referencia contenido publicado
-	// (analyze C4).
-	IsHomeFilePublished(ctx context.Context, fileName string) (bool, error)
-
 	// Horario.
 	InsertHomeService(ctx context.Context, service Service, actions ...audit.Action) (Service, error)
 	UpdateHomeService(ctx context.Context, service Service, actions ...audit.Action) (Service, error)

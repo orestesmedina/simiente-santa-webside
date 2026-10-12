@@ -29,16 +29,42 @@ import (
 
 // newAgendaRepo construye el repositorio contra la base de pruebas y vacía las
 // tablas de agenda para partir de un estado conocido.
+//
+// Se usa DELETE (no TRUNCATE): TRUNCATE pide un bloqueo ACCESS EXCLUSIVE sobre
+// las cuatro tablas y, como las pruebas de integración de otros dominios
+// (media) siembran filas de agenda dentro de una transacción, el orden de
+// bloqueos puede producir un interbloqueo. DELETE solo pide ROW EXCLUSIVE, es
+// compatible con esas transacciones y no ve sus filas sin confirmar.
+//
+// Las filas de `admin_actions` que dejan estas pruebas se retiran al terminar
+// cada una (cleanupAdminActionsByLabel): la tabla es compartida y las pruebas de
+// integración de otros dominios cuentan sus propias filas.
 func newAgendaRepo(t *testing.T) (*repository, *pgxpool.Pool) {
 	t.Helper()
 
 	ctx := context.Background()
 	pool := testutil.Pool(t, ctx)
-	const truncate = `TRUNCATE agenda_activities, agenda_event_dates, agenda_events, agenda_categories`
-	if _, err := pool.Exec(ctx, truncate); err != nil {
+	const cleanup = `DELETE FROM agenda_activities;
+		DELETE FROM agenda_event_dates;
+		DELETE FROM agenda_events;
+		DELETE FROM agenda_categories`
+	if _, err := pool.Exec(ctx, cleanup); err != nil {
 		t.Fatalf("vaciar tablas de agenda: %v", err)
 	}
 	return NewRepository(pool), pool
+}
+
+// cleanupAdminActionsByLabel borra al terminar la prueba las filas de auditoría
+// con la etiqueta indicada, para no ensuciar una tabla compartida con las
+// pruebas de integración de otros dominios.
+func cleanupAdminActionsByLabel(t *testing.T, pool *pgxpool.Pool, label string) {
+	t.Helper()
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(),
+			`DELETE FROM admin_actions WHERE target_label = $1`, label); err != nil {
+			t.Logf("no se pudieron limpiar las filas de auditoría de la prueba: %v", err)
+		}
+	})
 }
 
 // countCategoriesByName cuenta las categorías con un nombre exacto (una consulta
@@ -98,6 +124,7 @@ func TestIntegrationWriteTxCommitsMutationAndAudit(t *testing.T) {
 
 	name := "Categoría de tx " + uuid.NewString()
 	label := "Eventos · tx de prueba " + uuid.NewString()
+	cleanupAdminActionsByLabel(t, pool, label)
 
 	err := repo.withTx(ctx, func(tx *repository) error {
 		if err := insertTestCategory(t, ctx, tx, name); err != nil {

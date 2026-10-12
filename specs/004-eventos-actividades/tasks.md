@@ -475,7 +475,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     dominio.
   - **Commit sugerido**: `feat(agenda): persistencia del catalogo de categorias`
 
-- [ ] T415 · `media`: promoción de la descarga + `IsFilePublished` · `[backend]` `[P]` (P2)
+- [X] T415 · `media`: promoción de la descarga + `IsFilePublished` · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/media/handler_media.go`, `repository.go`, `routes.go`,
     `*_test.go` (NUEVOS, movidos desde `backend/internal/portada/`); `backend/internal/portada/`
