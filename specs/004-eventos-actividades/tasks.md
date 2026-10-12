@@ -738,7 +738,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     subida (idénticas a las de F3).
   - **Commit sugerido**: `feat(agenda): subida de imagenes por modulo con auditoria`
 
-- [ ] T428 · `routes.go` + `cmd/api/main.go` (3 × `AdminChain`) + humo · `[backend]`
+- [X] T428 · `routes.go` + `cmd/api/main.go` (3 × `AdminChain`) + humo · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/routes.go` (NUEVO), `backend/cmd/api/main.go` (EDITADO:
     DI de `agenda` y `media` + registro de `/api/v1/proximamente`, `/api/v1/media` y
