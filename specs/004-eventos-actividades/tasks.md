@@ -674,7 +674,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: `quickstart.md` §1 es ejecutable tal cual (US1).
   - **Commit sugerido**: `feat(agenda): endpoint publico de lo que viene`
 
-- [ ] T424 · `handler_admin.go` — eventos · `[backend]`
+- [X] T424 · `handler_admin.go` — eventos · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/handler_admin.go`, `handler_admin_test.go` (NUEVOS).
   - **Qué hace**: `GET/POST /api/v1/admin/eventos`, `GET/PATCH/DELETE /api/v1/admin/eventos/{id}`
