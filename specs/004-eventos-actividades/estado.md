@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar (ciclo de corrección 1) |
-| Ciclo de corrección | 1/3 |
-| Próximo paso | Corregir I1 (N+1) y M1–M3 con `dev-backend`; re-validar con `revisor-codigo`/`qa-tester` |
+| Fase | 8/9 · Converger |
+| Ciclo de corrección | 1/3 (cerrado: los tres roles aprobaron en el ciclo 2) |
+| Próximo paso | Corregir la deriva documental (S1); luego Fase 9 (entrega: documentación + PR) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
@@ -32,14 +32,10 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 ## Hallazgos abiertos
 
-Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-11.md`).
+Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-11-ciclo2.md`).
 
-- **I1 (IMPORTANTE, `revisor-codigo`)** — consultas N+1: `internal/agenda/service_public.go:128-139` (`GetProximamente`) y `service_admin.go:306-313, 846-853` (`ListEventos`/`ListActividades`) consultan las fechas evento por evento (hasta ~201 queries en un endpoint público). → `dev-backend`, consulta por lote.
-- **M1** — código muerto en el fake de portada (`internal/portada/service_test.go:194`, `IsHomeFilePublished`). → `dev-backend`.
-- **M2** — `MaxCategories` cuenta con `ListCategories` (ineficaz y con carrera). → `dev-backend`.
-- **M3** — `targetLabel` de auditoría usa el UUID en los `fail` de edición. → `dev-backend`.
-- **M4 (registro)** — `useSiteLinks.test.ts` reescrita (renombrada a `.tsx`) en T434 como **excepción aprobada** (la ruta `/eventos` cambia la forma del ítem); sin cambios de aserciones de comportamiento.
-- **Deuda aceptada (no bloquea)**: seguridad B1/B2/B3; revisor M5 (`Optional[T]` duplicado); QA: SC-010 (usabilidad con ≥6 personas) y lectura con lector de pantalla físico quedan como verificación **manual**.
+- **(ninguno)** — los bloqueantes del ciclo 1 (I1, M1–M3) están corregidos y re-validados; los **tres roles APROBARON** en el ciclo 2.
+- **Deuda aceptada (no bloquea)**: deriva documental **S1** (se corrige en convergencia), **S2** (falta una prueba de la rama de conflicto de `UpdateEvento`), **S3** (estilo); seguridad **B1/B2/B3**; revisor **M5** (`Optional[T]`); **QA**: SC-010 y lector de pantalla quedan como verificación **manual** con el humano.
 
 ## Decisiones y aclaraciones
 
@@ -52,6 +48,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-11 — **Fase 5 (Validar) — ciclo 2: APROBADO por los tres roles.** El ciclo de corrección 1 (`1714e2b`, `3ec0b2d`, `53c7007`, `8b03db3`) cerró I1 (consultas por lote, sin N+1) y M1–M3. Re-validación: `qa-tester` APROBADO, `revisor-codigo` APROBADO, `seguridad` APROBADO. Consolidado en `revision-2026-10-11-ciclo2.md`. Quedan solo sugerencias no bloqueantes (S1 deriva documental, S2, S3) y deuda aceptada. Arranca la convergencia (Fase 8).
 
 - 2026-10-11 — **Fase 5 (Validar) — ciclo 1**: `qa-tester` **APROBADO** (US1–US6 y SC-001…SC-013 cubiertos; SC-010 y lector de pantalla quedan manuales), `seguridad` **APROBADO** (0 críticos/altos/medios; 3 bajos + 3 informativos), `revisor-codigo` **APROBADO con cambios menores** (1 IMPORTANTE: N+1 en `GetProximamente`/`ListEventos`/`ListActividades`; 5 menores). Consolidado en `revision-2026-10-11.md`. El orquestador abre **ciclo de corrección 1** para I1 + M1–M3.
 
