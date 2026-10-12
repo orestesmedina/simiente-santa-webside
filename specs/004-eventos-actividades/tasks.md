@@ -574,7 +574,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     (`go test -cover`, ≥ 80 % al cierre).
   - **Commit sugerido**: `feat(agenda): lo que viene publicado y proximo con fallback en->es`
 
-- [ ] T419 · `agenda`: `service_admin.go` — eventos · `[backend]`
+- [X] T419 · `agenda`: `service_admin.go` — eventos · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/service_admin.go` y `service_admin_test.go` (NUEVOS).
   - **Qué hace**: `CreateEvento`/`UpdateEvento`/`DeleteEvento`/`ListEventos`/`GetEvento` (FR-010):
