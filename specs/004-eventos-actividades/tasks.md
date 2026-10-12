@@ -635,7 +635,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: Q6/Q7 y el `409` firme cubiertos en el service.
   - **Commit sugerido**: `feat(agenda): gestion del catalogo de categorias con 409 en uso`
 
-- [ ] T422 · `agenda`: `service_audit.go` — `audit.Recorder` · `[backend]`
+- [X] T422 · `agenda`: `service_audit.go` — `audit.Recorder` · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/service_audit.go` y `service_audit_test.go` (NUEVOS).
   - **Qué hace**: implementa `audit.Recorder` para el dominio (R4-10.4): `RecordDenied` resuelve

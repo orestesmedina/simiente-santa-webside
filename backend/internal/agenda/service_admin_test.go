@@ -1372,3 +1372,216 @@ func TestListCategoriasKeepsOrder(t *testing.T) {
 		t.Errorf("orden devuelto = %+v", list.Items)
 	}
 }
+
+// TestUpdateEventoCoversEveryPatchField recorre todos los campos del PATCH de
+// eventos (valores, cambios y `null` explícito) para fijar la mezcla completa.
+func TestUpdateEventoCoversEveryPatchField(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	category, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Acción social"})
+	if err != nil {
+		t.Fatalf("CreateCategoria: %v", err)
+	}
+	created, err := svc.CreateEvento(ctx, uuid.New(), validEventoInput())
+	if err != nil {
+		t.Fatalf("CreateEvento: %v", err)
+	}
+	id := uuid.MustParse(created.ID)
+
+	// PATCH con TODOS los campos con valor.
+	title, detail, place := "Noche de vigilia", "Detalle nuevo", "Templo Nuevo"
+	frequency, mapURL, organizer := "Cada primer viernes", "https://maps.example/vigilia", "Equipo"
+	titleEn, detailEn, frequencyEn, placeEn, organizerEn := "Vigil night", "New detail", "Every Friday", "New temple", "Team"
+	file, altEs, altEn, published := "img_11111111-1111-1111-1111-111111111111.jpg", "Foto de la vigilia", "Vigil photo", "published"
+	dates := []FechaInput{{Date: "2026-11-06", StartTime: "19:00", EndTime: "22:00"}}
+
+	out, err := svc.UpdateEvento(ctx, uuid.New(), id, EventoPatch{
+		TitleEs:          &title,
+		TitleEn:          OptionalOf(titleEn),
+		FrequencyEs:      OptionalOf(frequency),
+		FrequencyEn:      OptionalOf(frequencyEn),
+		DetailEs:         &detail,
+		DetailEn:         OptionalOf(detailEn),
+		PlaceEs:          &place,
+		PlaceEn:          OptionalOf(placeEn),
+		MapURL:           OptionalOf(mapURL),
+		OrganizerEs:      OptionalOf(organizer),
+		OrganizerEn:      OptionalOf(organizerEn),
+		CategoryID:       OptionalOf(category.ID),
+		ImageFile:        OptionalOf(file),
+		ImageAltEs:       OptionalOf(altEs),
+		ImageAltEn:       OptionalOf(altEn),
+		PublicationState: &published,
+		Dates:            &dates,
+	})
+	if err != nil {
+		t.Fatalf("UpdateEvento(completo): %v", err)
+	}
+	if out.TitleEs != title || out.TitleEn == nil || *out.TitleEn != titleEn {
+		t.Errorf("títulos = %+v", out)
+	}
+	if out.FrequencyEs == nil || *out.FrequencyEs != frequency || out.FrequencyEn == nil || *out.FrequencyEn != frequencyEn {
+		t.Errorf("frecuencia = %+v", out)
+	}
+	if out.DetailEs != detail || out.DetailEn == nil || *out.DetailEn != detailEn {
+		t.Errorf("detalle = %+v", out)
+	}
+	if out.PlaceEs != place || out.PlaceEn == nil || *out.PlaceEn != placeEn {
+		t.Errorf("lugar = %+v", out)
+	}
+	if out.MapURL == nil || *out.MapURL != mapURL || out.OrganizerEn == nil || *out.OrganizerEn != organizerEn {
+		t.Errorf("enlaces = %+v", out)
+	}
+	if out.CategoryID == nil || *out.CategoryID != category.ID {
+		t.Errorf("categoría = %v", out.CategoryID)
+	}
+	if out.ImageFile == nil || *out.ImageFile != file || out.ImageAltEn == nil || *out.ImageAltEn != altEn {
+		t.Errorf("imagen = %+v", out)
+	}
+	if len(out.Dates) != 1 || out.Dates[0].StartTime == nil || *out.Dates[0].StartTime != "19:00" {
+		t.Errorf("fechas = %+v", out.Dates)
+	}
+
+	// PATCH que limpia los opcionales (valores vacíos y `null`).
+	cleared, err := svc.UpdateEvento(ctx, uuid.New(), id, EventoPatch{
+		FrequencyEs: OptionalOf("   "),
+		FrequencyEn: nullOptional(),
+		MapURL:      nullOptional(),
+		OrganizerEs: OptionalOf(""),
+		OrganizerEn: nullOptional(),
+		CategoryID:  nullOptional(),
+		ImageFile:   nullOptional(),
+		ImageAltEs:  nullOptional(),
+		ImageAltEn:  nullOptional(),
+	})
+	if err != nil {
+		t.Fatalf("UpdateEvento(limpiar): %v", err)
+	}
+	if cleared.FrequencyEs != nil || cleared.FrequencyEn != nil || cleared.MapURL != nil {
+		t.Errorf("los opcionales no se limpiaron: %+v", cleared)
+	}
+	if cleared.OrganizerEs != nil || cleared.OrganizerEn != nil || cleared.CategoryID != nil {
+		t.Errorf("los opcionales no se limpiaron: %+v", cleared)
+	}
+	if cleared.ImageFile != nil || cleared.ImageAltEs != nil || cleared.ImageAltEn != nil {
+		t.Errorf("la imagen no se quitó: %+v", cleared)
+	}
+	if cleared.TitleEs != title {
+		t.Errorf("el título cambió sin pedirlo: %q", cleared.TitleEs)
+	}
+}
+
+// TestUpdateActividadCoversEveryPatchField recorre todos los campos del PATCH de
+// actividades (valores, fecha y horario, y `null` explícito).
+func TestUpdateActividadCoversEveryPatchField(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	category, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Predicación"})
+	if err != nil {
+		t.Fatalf("CreateCategoria: %v", err)
+	}
+	created, err := svc.CreateActividad(ctx, uuid.New(), validActividadInput())
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	id := uuid.MustParse(created.ID)
+
+	title, detail, place, date := "Predicar en el parque", "Detalle nuevo", "Parque central", "2026-11-15"
+	titleEn, detailEn, placeEn, mapURL, organizer := "Preach", "New detail", "Central park", "https://maps.example/parque", "Equipo"
+	file, altEs, published := "img_22222222-2222-2222-2222-222222222222.png", "Foto", "published"
+
+	out, err := svc.UpdateActividad(ctx, uuid.New(), id, ActividadPatch{
+		TitleEs:          &title,
+		TitleEn:          OptionalOf(titleEn),
+		DetailEs:         &detail,
+		DetailEn:         OptionalOf(detailEn),
+		PlaceEs:          &place,
+		PlaceEn:          OptionalOf(placeEn),
+		MapURL:           OptionalOf(mapURL),
+		OrganizerEs:      OptionalOf(organizer),
+		CategoryID:       OptionalOf(category.ID),
+		ImageFile:        OptionalOf(file),
+		ImageAltEs:       OptionalOf(altEs),
+		Date:             &date,
+		StartTime:        OptionalOf("15:00"),
+		EndTime:          OptionalOf("17:30"),
+		PublicationState: &published,
+	})
+	if err != nil {
+		t.Fatalf("UpdateActividad(completo): %v", err)
+	}
+	if out.Date != date || out.StartTime == nil || *out.StartTime != "15:00" || out.EndTime == nil || *out.EndTime != "17:30" {
+		t.Errorf("fecha/horario = %+v", out)
+	}
+	if out.TitleEn == nil || out.DetailEn == nil || out.PlaceEn == nil {
+		t.Errorf("traducciones = %+v", out)
+	}
+	if out.MapURL == nil || out.CategoryID == nil || out.ImageFile == nil || out.ImageAltEs == nil {
+		t.Errorf("campos opcionales = %+v", out)
+	}
+	if out.PublicationState != "published" {
+		t.Errorf("estado = %q", out.PublicationState)
+	}
+
+	// Quitar la hora de fin y el resto de los opcionales.
+	cleared, err := svc.UpdateActividad(ctx, uuid.New(), id, ActividadPatch{
+		EndTime:     nullOptional(),
+		MapURL:      nullOptional(),
+		OrganizerEs: OptionalOf("  "),
+		CategoryID:  nullOptional(),
+		ImageFile:   nullOptional(),
+		ImageAltEs:  nullOptional(),
+		TitleEn:     nullOptional(),
+		DetailEn:    nullOptional(),
+		PlaceEn:     nullOptional(),
+	})
+	if err != nil {
+		t.Fatalf("UpdateActividad(limpiar): %v", err)
+	}
+	if cleared.EndTime != nil || cleared.MapURL != nil || cleared.OrganizerEs != nil {
+		t.Errorf("los opcionales no se limpiaron: %+v", cleared)
+	}
+	if cleared.CategoryID != nil || cleared.ImageFile != nil || cleared.ImageAltEs != nil {
+		t.Errorf("los opcionales no se limpiaron: %+v", cleared)
+	}
+	if cleared.TitleEn != nil || cleared.DetailEn != nil || cleared.PlaceEn != nil {
+		t.Errorf("las traducciones no se limpiaron: %+v", cleared)
+	}
+	if cleared.StartTime == nil || *cleared.StartTime != "15:00" {
+		t.Errorf("el inicio no debía tocarse: %v", cleared.StartTime)
+	}
+}
+
+// TestUpdateCategoriaCoversEveryPatchField recorre los campos del PATCH del
+// catálogo (nombre en inglés con valor y con `null`).
+func TestUpdateCategoriaCoversEveryPatchField(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	created, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Otro", SortOrder: 999})
+	if err != nil {
+		t.Fatalf("CreateCategoria: %v", err)
+	}
+	id := uuid.MustParse(created.ID)
+
+	withEnglish, err := svc.UpdateCategoria(ctx, uuid.New(), id, CategoriaPatch{NameEn: OptionalOf("Other")})
+	if err != nil {
+		t.Fatalf("UpdateCategoria(nameEn): %v", err)
+	}
+	if withEnglish.NameEn == nil || *withEnglish.NameEn != "Other" {
+		t.Errorf("nameEn = %v", withEnglish.NameEn)
+	}
+
+	cleared, err := svc.UpdateCategoria(ctx, uuid.New(), id, CategoriaPatch{NameEn: nullOptional()})
+	if err != nil {
+		t.Fatalf("UpdateCategoria(nameEn null): %v", err)
+	}
+	if cleared.NameEn != nil {
+		t.Errorf("nameEn = %v, se esperaba null", cleared.NameEn)
+	}
+}
