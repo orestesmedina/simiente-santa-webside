@@ -417,7 +417,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     T412–T414.
   - **Commit sugerido**: `feat(agenda): modelo y base del repository con auditoria transaccional`
 
-- [ ] T412 · `agenda`: repository de eventos + fechas · `[backend]` `[P]` (P2)
+- [X] T412 · `agenda`: repository de eventos + fechas · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/agenda/repository_eventos.go` y
     `repository_eventos_integration_test.go` (NUEVOS; `//go:build integration`).
