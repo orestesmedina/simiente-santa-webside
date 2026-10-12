@@ -501,7 +501,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     verificada en ambos sentidos y F3 no regresiona.
   - **Commit sugerido**: `refactor(media): promover la descarga de archivos a internal/media`
 
-- [ ] T416 · Integración: migraciones, regla "próximo" y atomicidad · `[backend]`
+- [X] T416 · Integración: migraciones, regla "próximo" y atomicidad · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/repository_migrations_integration_test.go` y
     `repository_audit_integration_test.go` (NUEVOS; `//go:build integration`).

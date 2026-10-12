@@ -205,3 +205,63 @@ func TestIntegrationWriteTxRollsBackWhenAuditCodeIsUnknown(t *testing.T) {
 		t.Errorf("la mutación se aplicó sin registro válido: %d categorías", got)
 	}
 }
+
+// TestIntegrationAdminActionCheckMatchesPlatformAudit fija el registro cerrado
+// de F4 (FR-017/R4-10/T408): los 15 códigos `event.*`, `activity.*` y
+// `category.*` que declara `platform/audit` coinciden uno a uno con el CHECK de
+// la base, la base no admite ningún código de F4 de más y un código fuera del
+// registro se rechaza.
+func TestIntegrationAdminActionCheckMatchesPlatformAudit(t *testing.T) {
+	ctx := context.Background()
+	_, tx := testTx(t, ctx)
+
+	// El CHECK que se compara es el que define la migración 000008: se aplica
+	// dentro de la transacción de prueba (su up es idempotente: quita y vuelve a
+	// crear la restricción) para que la comprobación no dependa del estado
+	// confirmado de la base, que otras pruebas de integración (la de la
+	// migración 000006 de F3, que reejecuta su propio up/down sin transacción)
+	// pueden haber dejado en la versión de F3.
+	execMigrationInTx(t, ctx, tx, "000008_extend_admin_actions_for_agenda.up.sql")
+
+	var def string
+	if err := tx.QueryRow(ctx, `SELECT pg_get_constraintdef(oid) FROM pg_constraint
+		WHERE conname = 'admin_actions_action_check' AND conrelid = 'admin_actions'::regclass`).Scan(&def); err != nil {
+		t.Fatalf("definición del CHECK de acciones: %v", err)
+	}
+
+	f4Codes := make([]string, 0, 15)
+	for _, code := range audit.ActionCodes {
+		if strings.HasPrefix(code, "event.") || strings.HasPrefix(code, "activity.") ||
+			strings.HasPrefix(code, "category.") {
+			f4Codes = append(f4Codes, code)
+		}
+	}
+	if len(f4Codes) != 15 {
+		t.Fatalf("platform/audit declara %d códigos de F4, se esperaban 15", len(f4Codes))
+	}
+	for _, code := range f4Codes {
+		if !strings.Contains(def, "'"+code+"'") {
+			t.Fatalf("el CHECK de la BD no incluye %q", code)
+		}
+	}
+
+	// La base no tiene códigos de F4 de más: el recuento del CHECK coincide.
+	inCheck := 0
+	for _, prefix := range []string{"'event.", "'activity.", "'category."} {
+		inCheck += strings.Count(def, prefix)
+	}
+	if inCheck != len(f4Codes) {
+		t.Fatalf("el CHECK tiene %d códigos de F4 y platform/audit declara %d", inCheck, len(f4Codes))
+	}
+
+	// Un código fuera del registro cerrado se rechaza en la base (fail-closed).
+	_, err := tx.Exec(ctx, `INSERT INTO admin_actions
+		(actor_user_id, action, target_kind, target_label, result)
+		VALUES (NULL, 'event.archive', 'content', 'Eventos · X', 'success')`)
+	if err == nil {
+		t.Fatal("la base aceptó un código fuera del registro")
+	}
+	if !strings.Contains(err.Error(), "admin_actions_action_check") {
+		t.Fatalf("el error no viene del CHECK del registro: %v", err)
+	}
+}
