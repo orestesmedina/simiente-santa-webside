@@ -784,7 +784,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     solo del contrato vivo.
   - **Commit sugerido**: `feat(frontend): cliente de agenda y hooks de consulta`
 
-- [ ] T430 · Permisos, rutas y accesos del panel: `CATEGORIAS`, `/eventos`, `/panel/*`,
+- [X] T430 · Permisos, rutas y accesos del panel: `CATEGORIAS`, `/eventos`, `/panel/*`,
   `AccesosRapidos`, `ACTION_LABELS` · `[frontend]`
 
   - **Archivos**: `frontend/src/lib/permissions.ts`, `frontend/src/features/roles/permissions.ts` y

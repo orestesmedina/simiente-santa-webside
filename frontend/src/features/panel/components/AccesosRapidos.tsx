@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom';
 import type { SessionUser } from '../../../api/auth';
-import { ADMIN_USERS_ROLES, PORTADA, hasPermission } from '../../../lib/permissions';
+import {
+  ACTIVIDADES,
+  ADMIN_USERS_ROLES,
+  CATEGORIAS,
+  EVENTOS,
+  PORTADA,
+  hasPermission,
+} from '../../../lib/permissions';
 
 interface QuickAccess {
   to: string;
@@ -10,6 +17,9 @@ interface QuickAccess {
 
 const SECTIONS: QuickAccess[] = [
   { to: '/panel/informacion', label: 'Portada e información general', code: PORTADA },
+  { to: '/panel/eventos', label: 'Gestión de eventos', code: EVENTOS },
+  { to: '/panel/actividades', label: 'Gestión de actividades', code: ACTIVIDADES },
+  { to: '/panel/categorias', label: 'Categorías', code: CATEGORIAS },
   { to: '/panel/usuarios', label: 'Usuarios', code: ADMIN_USERS_ROLES },
   { to: '/panel/roles', label: 'Roles', code: ADMIN_USERS_ROLES },
   { to: '/panel/auditoria', label: 'Auditoría', code: ADMIN_USERS_ROLES },
