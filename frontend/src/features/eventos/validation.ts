@@ -216,3 +216,46 @@ export function validateDateRows(rows: DateRow[], requiredMessage: string): Date
 export function isDateRowsValid(validation: DateRowsValidation): boolean {
   return validation.general === undefined && Object.keys(validation.rows).length === 0;
 }
+
+/* ── Fecha única de una actividad ────────────────────────────────────── */
+
+export interface OccurrenceErrors {
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+/**
+ * Valida la fecha única de una actividad (FR-005/FR-015/Decisión 3): fecha real
+ * obligatoria, horas `HH:MM` opcionales y **la hora de fin exige la de inicio**
+ * y debe ser posterior (misma decisión firme que en los eventos).
+ */
+export function validateOccurrence(
+  date: string,
+  startTime: string,
+  endTime: string,
+  requiredMessage: string,
+): OccurrenceErrors {
+  const errors: OccurrenceErrors = {};
+
+  if (date.trim() === '') {
+    errors.date = requiredMessage;
+  } else if (!isRealDate(date)) {
+    errors.date = DATE_INVALID;
+  }
+
+  if (startTime !== '' && !TIME_PATTERN.test(startTime)) {
+    errors.startTime = TIME_INVALID;
+  }
+  if (endTime !== '') {
+    if (startTime === '') {
+      errors.endTime = END_WITHOUT_START;
+    } else if (!TIME_PATTERN.test(endTime)) {
+      errors.endTime = TIME_INVALID;
+    } else if (endTime <= startTime) {
+      errors.endTime = END_TIME_INVALID;
+    }
+  }
+
+  return errors;
+}

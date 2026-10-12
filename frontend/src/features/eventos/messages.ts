@@ -114,9 +114,10 @@ export function counter(count: number, max: number): string {
   return `${count}/${max}`;
 }
 
-/** «Ya existe un {evento/actividad} igual (mismo título, misma fecha y mismo lugar)…». */
+/** «Ya existe un {evento}/una {actividad} igual (mismo título, misma fecha y mismo lugar)…». */
 export function duplicateMessage(concept: 'evento' | 'actividad'): string {
-  return `Ya existe un ${concept} igual (mismo título, misma fecha y mismo lugar). Edita el que ya tienes o cambia algún dato.`;
+  const article = concept === 'actividad' ? 'una' : 'un';
+  return `Ya existe ${article} ${concept} igual (mismo título, misma fecha y mismo lugar). Edita el que ya tienes o cambia algún dato.`;
 }
 
 /** «3 fechas futuras» / «1 fecha futura» (ux.md §4.3). */

@@ -924,7 +924,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: US2 ejecutable en < 2 min según `quickstart.md` §3 (SC-004).
   - **Commit sugerido**: `feat(frontend): panel de eventos con editor de fechas`
 
-- [ ] T436 · Panel: `ActivitiesPage` + `ActivitiesList` + `ActivityForm` · `[frontend]`
+- [X] T436 · Panel: `ActivitiesPage` + `ActivitiesList` + `ActivityForm` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/eventos/pages/ActivitiesPage.tsx`,
     `components/ActivitiesList.tsx`, `components/ActivityForm.tsx` y tests (NUEVOS).
