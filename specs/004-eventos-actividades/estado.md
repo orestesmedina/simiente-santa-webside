@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar — en curso: 3 bugs (`equipo-bug`) + cambio de alcance Q8 (bloque en la portada) antes del PR |
+| Fase | 6/9 · Implementar — correcciones: 3 bugs (`equipo-bug`) + bloque de portada (T443–T449) |
 | Ciclo de corrección | 1/3 (validación de F4 cerrada; pendiente re-validar bugs + bloque) |
-| Próximo paso | Re-aprobar spec v3 refinada (Q8: 5 ítems, ventana 2 meses, mensaje vacío, botón «Ver más eventos») y plan; luego corregir los 3 bugs e implementar el bloque |
+| Próximo paso | T443–T446 `[backend]` endpoint `GET /api/v1/portada/proximamente` (contrato 0.6.0) → `dev-backend`; luego bugs + bloque frontend |
 | Bloqueado por | — |
 | Actualizado | 2026-10-12 |
 
@@ -25,8 +25,8 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | aprobado | humano | 2026-10-11 | v1: "apruebo la spec"; v2 (permiso «categorías»): "Re-apruebo la spec"; **v3 (Q8, bloque en la portada) pendiente de re-aprobar (2026-10-12)** |
-| Plan | aprobado | humano | 2026-10-11 | "Apruebo el plan" (decisiones firmes: APP_TZ=America/Costa_Rica, ruta /eventos, aviso sin redirigir, permiso «categorías», endTime exige startTime, borrado de categoría en uso 409); **actualización por Q8 pendiente de aprobar** |
+| Spec | aprobado | humano | 2026-10-12 | v1: "apruebo la spec"; v2 (permiso «categorías»): "Re-apruebo la spec"; v3 (Q8, bloque en la portada): "Re-apruebo la spec" |
+| Plan | aprobado | humano | 2026-10-12 | v1: "Apruebo el plan"; v2 (bloque de portada Q8): "Apruebo el plan" (con las decisiones firmes: APP_TZ=America/Costa_Rica, ruta /eventos, aviso sin redirigir, permiso «categorías», endTime exige startTime, borrado de categoría en uso 409; bloque de portada con 5 ítems y ventana de 2 meses) |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
