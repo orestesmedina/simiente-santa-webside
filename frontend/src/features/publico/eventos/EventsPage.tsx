@@ -4,6 +4,7 @@ import { PublicButton } from '../../../components/publico/PublicButton';
 import { SectionSkeleton } from '../components/SectionSkeleton';
 import { useLanguage } from '../i18n/useLanguage';
 import { Reveal } from '../motion/Reveal';
+import { RevealGroup } from '../motion/RevealGroup';
 import { ActivitiesSection } from './ActivitiesSection';
 import { EventsSection } from './EventsSection';
 import { HiddenNotice } from './HiddenNotice';
@@ -70,16 +71,24 @@ export function EventsPage() {
 
       {withoutContent && <HiddenNotice />}
 
-      {events.length > 0 && (
-        <Reveal from="left">
-          <EventsSection events={events} />
-        </Reveal>
-      )}
-      {activities.length > 0 && (
-        <Reveal from="right">
-          <ActivitiesSection activities={activities} />
-        </Reveal>
-      )}
+      {/* Los dos bloques viven dentro de `RevealGroup`: además de escalonar su
+          entrada, es quien **recorta** el desplazamiento lateral del revelado
+          (`overflow-x: clip`, F10 T1018) mientras el bloque está pendiente y
+          fuera de pantalla. Sin ese recorte, el bloque de actividades —que
+          entra desde la derecha— desborda 28 px el ancho del documento y la
+          página gana scroll horizontal (FR-023/SC-007). */}
+      <RevealGroup>
+        {events.length > 0 && (
+          <Reveal from="left">
+            <EventsSection events={events} />
+          </Reveal>
+        )}
+        {activities.length > 0 && (
+          <Reveal from="right">
+            <ActivitiesSection activities={activities} />
+          </Reveal>
+        )}
+      </RevealGroup>
     </section>
   );
 }
