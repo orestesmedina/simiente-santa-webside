@@ -840,7 +840,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     regresión.
   - **Commit sugerido**: `refactor(frontend): promover ImageUploader y PublishControls al inventario`
 
-- [ ] T432 · `features/publico/eventos/`: `formatoFechas.ts` + claves i18n · `[frontend]` `[P]` (P3)
+- [X] T432 · `features/publico/eventos/`: `formatoFechas.ts` + claves i18n · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/features/publico/eventos/formatoFechas.ts` (NUEVO),
     `frontend/src/features/publico/i18n/{messages,es,en}.ts` (EDITADOS).
