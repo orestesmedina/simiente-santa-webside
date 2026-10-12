@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 8/9 · Converger |
+| Fase | 9/9 · Entregar (documentación lista; PR pendiente de abrir por el humano) |
 | Ciclo de corrección | 1/3 (cerrado: los tres roles aprobaron en el ciclo 2) |
-| Próximo paso | Corregir la deriva documental (S1); luego Fase 9 (entrega: documentación + PR) |
+| Próximo paso | **El humano** hace `git push` y abre el PR (el entorno no tiene `gh`); al aprobarlo, `make costos CERRAR=1` y merge |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
