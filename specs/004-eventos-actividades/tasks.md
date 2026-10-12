@@ -962,7 +962,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 
 ## Fase 9 — E2E
 
-- [ ] T438 · E2E Playwright `agenda-publica.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T438 · E2E Playwright `agenda-publica.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/agenda-publica.spec.ts` (NUEVO).
   - **Qué hace**: recorrido del visitante (US1, US5, US6) según `quickstart.md` §1/§8/§9/§10: ve lo
