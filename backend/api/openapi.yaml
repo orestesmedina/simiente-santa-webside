@@ -1,12 +1,12 @@
 # ============================================================================
 # DOCUMENTO VIVO — Contrato OpenAPI de la API (backend/api/openapi.yaml)
 #
-# Versión 0.5.0: funde **aditivamente** el delta de F4 "Eventos y actividades"
-# (specs/004-eventos-actividades/contracts/openapi.yaml, P4-16) sobre el contrato
-# vivo 0.4.0 (F1 "estructura base" + F2 "acceso y gestión de usuarios" + F3
-# "portada e información general"); 0.4.0 había fundido, a su vez, el delta de
-# F3 sobre el 0.3.0. El snapshot de specs/ no se vuelve a editar; este es el
-# único contrato fuente y se edita antes que el código.
+# Versión 0.6.0: funde **aditivamente** la enmienda de alcance de F4 del
+# 2026-10-12 (Q8: bloque «Lo que viene» de la portada, P4-18…P4-20/R4-16) sobre
+# el contrato vivo 0.5.0, que ya había fundido el delta de F4 "Eventos y
+# actividades" (specs/004-eventos-actividades/contracts/openapi.yaml, P4-16). El
+# snapshot de specs/ no se vuelve a editar; este es el único contrato fuente y se
+# edita antes que el código.
 #
 # F4 añade 17 operaciones (una pública de "lo que viene" y tres grupos de panel
 # —eventos, actividades y categorías—), sus schemas y una variable de diseño:
@@ -14,9 +14,15 @@
 # ("publicado y próximo") resuelto en el servidor con el huso del lugar
 # (`APP_TZ`, P4-3/R4-2); el registro de `error.code` NO crece.
 #
-# Fusionado con `scripts/fusionar_f4_openapi.py` (documenta la fusión; el
-# snapshot del delta tiene cinco escalares sin entrecomillar con ": " que el
-# script entrecomilla al fundir para que el contrato vivo sea YAML válido).
+# La enmienda Q8 añade **una** operación pública más —`GET
+# /api/v1/portada/proximamente` (extracto de hasta 5 ítems para el bloque de la
+# portada, con ventana de 2 meses y respaldo)— y dos esquemas
+# (`PortadaProximamente`, `ItemProximoPortada`). Sigue siendo **aditivo**:
+# ninguna operación existente cambia y el registro de `error.code` tampoco.
+#
+# Fusionado con `scripts/fusionar_f4_openapi.py` (documenta la fusión del delta
+# de F4; el snapshot del delta tiene cinco escalares sin entrecomillar con ": "
+# que el script entrecomilla al fundir para que el contrato vivo sea YAML válido).
 #
 # Formato uniforme de respuestas (FR-012/FR-013, D13 del plan de F1):
 #   - 2xx  → sobre de éxito: el DTO documentado de la operación
@@ -28,7 +34,7 @@
 openapi: 3.1.0
 info:
   title: API — Iglesia Simiente Santa
-  version: 0.5.0
+  version: 0.6.0
   description: |
     API REST del sitio web de la Iglesia Simiente Santa.
 
@@ -47,7 +53,12 @@ info:
     tres módulos desde el panel (`/api/v1/admin/eventos` con el permiso `eventos`,
     `/api/v1/admin/actividades` con `actividades` y el catálogo compartido
     `/api/v1/admin/categorias` con el permiso nuevo `categorias`; los tres son
-    independientes entre sí).
+    independientes entre sí). La **enmienda de alcance del 2026-10-12 (Q8)**
+    añade el **bloque «Lo que viene» de la portada**: `GET
+    /api/v1/portada/proximamente?lang=es|en`, un extracto de hasta **5 ítems**
+    (eventos y actividades mezclados por cercanía, preferentemente de los
+    próximos **2 meses** con respaldo a los siguientes próximos), solo
+    publicado y próximo, con imagen y sin `detail` ni lista de fechas.
 
     ## Formato uniforme de respuestas (FR-012)
 
@@ -1440,6 +1451,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProximamentePublica"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/portada/proximamente:
+    get:
+      tags: [proximamente]
+      operationId: getPortadaProximamente
+      summary: "Bloque «Lo que viene» de la portada: hasta 5 ítems próximos (eventos y actividades juntos, con imagen)"
+      description: |
+        Extracto de la agenda para el bloque **«Lo que viene»** de la portada
+        (US7/FR-025…FR-027, cambio de alcance del 2026-10-12/Q8, **refinado el
+        mismo día**). Devuelve **hasta 5 ítems** —eventos y actividades
+        **mezclados** (Decisión 3: cada ítem lleva `kind` para identificarlo),
+        los **más cercanos por fecha**— tomados únicamente de lo **publicado** y
+        **próximo** (misma regla R4-2 que el resto del público: sin borradores,
+        sin vencidos y sin eventos sin fecha próxima). El tope de **5 es firme**
+        (FR-025): no hay parámetro de límite ni paginación.
+
+        **Ventana temporal de 2 meses** (regla exacta): el servidor calcula
+        `today`/`now_time` en `APP_TZ` (research R4-2) y `window_end =
+        today + 2 meses calendario` (p. ej. `2026-10-12` → `2026-12-12`). Si
+        **al menos un ítem** tiene su próxima fecha dentro de la ventana
+        (`today ≤ date ≤ window_end`, con la regla "próximo" de R4-2 para el día
+        en curso), se devuelven **solo** ítems de la ventana (hasta 5, los más
+        cercanos). Si la ventana está **vacía**, se aplica el **respaldo**: se
+        devuelven los **siguientes próximos** sin límite de ventana (hasta 5,
+        los más cercanos). Nunca se mezclan ítems de dentro y de fuera de la
+        ventana.
+
+        Cada ítem trae lo que la tarjeta compacta muestra (FR-025): `title`, la
+        **próxima** fecha con su horario opcional, `place` y su `image` (`url` +
+        `alt`), ya resueltos a `lang` con fallback `en → es` (FR-008). Sin
+        `detail`, categoría ni lista completa de fechas: esos datos viven en
+        `GET /api/v1/proximamente` y en la sección `/eventos` (el botón «Ver más
+        eventos» del bloque enlaza a ella; FR-026).
+
+        `items` va ordenado por cercanía (`date` y `startTime` ascendentes, con
+        desempate estable `title`, `id` — FR-003). Cuando **no hay ningún ítem**
+        publicado y próximo la respuesta viene **sin `items`** (clave omitida,
+        equivalente a vacía y nunca `null`, §8.1.2): la portada entonces **sí
+        muestra el bloque**, con el mensaje «Por el momento no hay eventos ni
+        actividades» (FR-026). `Cache-Control: no-store`.
+
+        El recurso lo sirve el dominio `agenda` aunque su ruta cuelgue del
+        segmento `portada` (que es el agregado de F3): es un extracto de la
+        agenda y así el contrato no toca ninguna operación de F3 (FR-027: la
+        portada no se rediseña).
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8).
+          schema:
+            type: string
+            enum: [es, en]
+            default: es
+      responses:
+        "200":
+          description: "Extracto de la portada resuelto a `lang`. Sin ítems publicados y próximos la respuesta viene sin `items` (clave omitida/vacía): la portada muestra el bloque con su mensaje."
+          headers:
+            Cache-Control:
+              description: Siempre `no-store` (los cambios guardados y el retiro automático se reflejan en la primera carga).
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortadaProximamente"
         "400":
           $ref: "#/components/responses/Invalid"
         "500":
@@ -3595,6 +3680,82 @@ components:
       additionalProperties: false
 
     # ------------------------------------------------------------- público
+    PortadaProximamente:
+      type: object
+      required: [lang]
+      description: |
+        Extracto «Lo que viene» de la portada (US7, enmienda del 2026-10-12,
+        **refinada el mismo día**): hasta **5** ítems próximos, eventos y
+        actividades juntos y ordenados por cercanía (ventana de 2 meses con
+        respaldo; ver la descripción de la operación). `items` está presente
+        **solo** si hay ítems; vacío/ausente significa "no hay nada publicado y
+        próximo" y la portada muestra el bloque con su mensaje (FR-026). Nunca
+        es `null` (§8.1.2) y nunca supera los 5 elementos (FR-025, tope firme
+        del servidor: no es configurable desde la API).
+      properties:
+        lang:
+          type: string
+          enum: [es, en]
+          description: Idioma en el que se resolvieron los contenidos.
+        items:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/ItemProximoPortada"
+      additionalProperties: false
+    ItemProximoPortada:
+      type: object
+      required: [kind, id, title, date, place]
+      description: |
+        Ítem del bloque de la portada: **solo** lo que la tarjeta compacta de la
+        fila horizontal muestra (FR-025) — identificación como evento o
+        actividad (Decisión 3), título, **próxima** fecha con su horario
+        opcional, lugar e **imagen** con su texto alternativo, todo ya localizado
+        a `lang` (FR-008). Sin `detail`, categoría ni lista de fechas: el
+        detalle vive en la sección `/eventos` (el botón «Ver más eventos» lleva
+        a ella; FR-026). La composición visual de la fila y las tarjetas la fija
+        `ux.md`.
+      properties:
+        kind:
+          type: string
+          enum: [event, activity]
+          description: |
+            Concepto del ítem (Decisión 3): `event` (encuentro periódico) o
+            `activity` (acción puntual). El cliente lo usa para etiquetar el
+            ítem y para enlazar al bloque correspondiente de `/eventos`.
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 160
+        date:
+          allOf:
+            - $ref: "#/components/schemas/Date"
+          description: |
+            Próxima fecha del ítem (`YYYY-MM-DD`): la primera fecha próxima del
+            evento o la fecha única de la actividad. Siempre es una fecha
+            **próxima** según la regla del servidor (R4-2).
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+          description: Hora de inicio opcional (`null`/ausente = sin hora).
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+          description: Hora de fin opcional; **exige `startTime`** y siempre es posterior a él.
+        place:
+          type: string
+          maxLength: 200
+        image:
+          $ref: "#/components/schemas/ImagenPublica"
+          description: |
+            Imagen opcional del elemento con su texto alternativo (FR-020) para
+            la tarjeta compacta; misma URL relativa `/api/v1/media/<file>` y
+            misma regla de publicación que la sección (solo contenido publicado
+            y próximo). Ausente si el elemento no tiene imagen.
+      additionalProperties: false
+
     ProximamentePublica:
       type: object
       required: [lang]

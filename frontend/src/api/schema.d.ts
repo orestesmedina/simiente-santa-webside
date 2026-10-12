@@ -852,6 +852,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portada/proximamente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bloque «Lo que viene» de la portada: hasta 5 ítems próximos (eventos y actividades juntos, con imagen)
+         * @description Extracto de la agenda para el bloque **«Lo que viene»** de la portada
+         *     (US7/FR-025…FR-027, cambio de alcance del 2026-10-12/Q8, **refinado el
+         *     mismo día**). Devuelve **hasta 5 ítems** —eventos y actividades
+         *     **mezclados** (Decisión 3: cada ítem lleva `kind` para identificarlo),
+         *     los **más cercanos por fecha**— tomados únicamente de lo **publicado** y
+         *     **próximo** (misma regla R4-2 que el resto del público: sin borradores,
+         *     sin vencidos y sin eventos sin fecha próxima). El tope de **5 es firme**
+         *     (FR-025): no hay parámetro de límite ni paginación.
+         *
+         *     **Ventana temporal de 2 meses** (regla exacta): el servidor calcula
+         *     `today`/`now_time` en `APP_TZ` (research R4-2) y `window_end =
+         *     today + 2 meses calendario` (p. ej. `2026-10-12` → `2026-12-12`). Si
+         *     **al menos un ítem** tiene su próxima fecha dentro de la ventana
+         *     (`today ≤ date ≤ window_end`, con la regla "próximo" de R4-2 para el día
+         *     en curso), se devuelven **solo** ítems de la ventana (hasta 5, los más
+         *     cercanos). Si la ventana está **vacía**, se aplica el **respaldo**: se
+         *     devuelven los **siguientes próximos** sin límite de ventana (hasta 5,
+         *     los más cercanos). Nunca se mezclan ítems de dentro y de fuera de la
+         *     ventana.
+         *
+         *     Cada ítem trae lo que la tarjeta compacta muestra (FR-025): `title`, la
+         *     **próxima** fecha con su horario opcional, `place` y su `image` (`url` +
+         *     `alt`), ya resueltos a `lang` con fallback `en → es` (FR-008). Sin
+         *     `detail`, categoría ni lista completa de fechas: esos datos viven en
+         *     `GET /api/v1/proximamente` y en la sección `/eventos` (el botón «Ver más
+         *     eventos» del bloque enlaza a ella; FR-026).
+         *
+         *     `items` va ordenado por cercanía (`date` y `startTime` ascendentes, con
+         *     desempate estable `title`, `id` — FR-003). Cuando **no hay ningún ítem**
+         *     publicado y próximo la respuesta viene **sin `items`** (clave omitida,
+         *     equivalente a vacía y nunca `null`, §8.1.2): la portada entonces **sí
+         *     muestra el bloque**, con el mensaje «Por el momento no hay eventos ni
+         *     actividades» (FR-026). `Cache-Control: no-store`.
+         *
+         *     El recurso lo sirve el dominio `agenda` aunque su ruta cuelgue del
+         *     segmento `portada` (que es el agregado de F3): es un extracto de la
+         *     agenda y así el contrato no toca ninguna operación de F3 (FR-027: la
+         *     portada no se rediseña).
+         */
+        get: operations["getPortadaProximamente"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/eventos": {
         parameters: {
             query?: never;
@@ -1925,6 +1982,64 @@ export interface components {
             startTime?: components["schemas"]["ClockTime"];
             /** @description Hora de fin opcional; **exige `startTime`** (decisión firme de la puerta 2) y siempre es posterior a él. */
             endTime?: components["schemas"]["ClockTime"];
+        };
+        /**
+         * @description Extracto «Lo que viene» de la portada (US7, enmienda del 2026-10-12,
+         *     **refinada el mismo día**): hasta **5** ítems próximos, eventos y
+         *     actividades juntos y ordenados por cercanía (ventana de 2 meses con
+         *     respaldo; ver la descripción de la operación). `items` está presente
+         *     **solo** si hay ítems; vacío/ausente significa "no hay nada publicado y
+         *     próximo" y la portada muestra el bloque con su mensaje (FR-026). Nunca
+         *     es `null` (§8.1.2) y nunca supera los 5 elementos (FR-025, tope firme
+         *     del servidor: no es configurable desde la API).
+         */
+        PortadaProximamente: {
+            /**
+             * @description Idioma en el que se resolvieron los contenidos.
+             * @enum {string}
+             */
+            lang: "es" | "en";
+            items?: components["schemas"]["ItemProximoPortada"][];
+        };
+        /**
+         * @description Ítem del bloque de la portada: **solo** lo que la tarjeta compacta de la
+         *     fila horizontal muestra (FR-025) — identificación como evento o
+         *     actividad (Decisión 3), título, **próxima** fecha con su horario
+         *     opcional, lugar e **imagen** con su texto alternativo, todo ya localizado
+         *     a `lang` (FR-008). Sin `detail`, categoría ni lista de fechas: el
+         *     detalle vive en la sección `/eventos` (el botón «Ver más eventos» lleva
+         *     a ella; FR-026). La composición visual de la fila y las tarjetas la fija
+         *     `ux.md`.
+         */
+        ItemProximoPortada: {
+            /**
+             * @description Concepto del ítem (Decisión 3): `event` (encuentro periódico) o
+             *     `activity` (acción puntual). El cliente lo usa para etiquetar el
+             *     ítem y para enlazar al bloque correspondiente de `/eventos`.
+             * @enum {string}
+             */
+            kind: "event" | "activity";
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /**
+             * @description Próxima fecha del ítem (`YYYY-MM-DD`): la primera fecha próxima del
+             *     evento o la fecha única de la actividad. Siempre es una fecha
+             *     **próxima** según la regla del servidor (R4-2).
+             */
+            date: components["schemas"]["Date"];
+            /** @description Hora de inicio opcional (`null`/ausente = sin hora). */
+            startTime?: components["schemas"]["ClockTime"];
+            /** @description Hora de fin opcional; **exige `startTime`** y siempre es posterior a él. */
+            endTime?: components["schemas"]["ClockTime"];
+            place: string;
+            /**
+             * @description Imagen opcional del elemento con su texto alternativo (FR-020) para
+             *     la tarjeta compacta; misma URL relativa `/api/v1/media/<file>` y
+             *     misma regla de publicación que la sección (solo contenido publicado
+             *     y próximo). Ausente si el elemento no tiene imagen.
+             */
+            image?: components["schemas"]["ImagenPublica"];
         };
         /**
          * @description "Lo que viene" publicado y con fecha desde hoy en adelante, resuelto a
@@ -3535,6 +3650,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProximamentePublica"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    getPortadaProximamente: {
+        parameters: {
+            query?: {
+                /** @description Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8). */
+                lang?: "es" | "en";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Extracto de la portada resuelto a `lang`. Sin ítems publicados y próximos la respuesta viene sin `items` (clave omitida/vacía): la portada muestra el bloque con su mensaje. */
+            200: {
+                headers: {
+                    /** @description Siempre `no-store` (los cambios guardados y el retiro automático se reflejan en la primera carga). */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortadaProximamente"];
                 };
             };
             400: components["responses"]["Invalid"];
