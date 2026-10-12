@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 4/9 · Implementar (32/42 tareas; backend y datos completos; frontend en curso T429–T437) |
+| Fase | 4/9 · Implementar (33/42 tareas; backend y datos completos; frontend en curso T429–T437) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | T434 `[frontend]` navegación condicional `/eventos` → `dev-frontend` |
+| Próximo paso | T435 `[frontend]` panel de eventos (tras T430) → `dev-frontend` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-11 |
 
@@ -48,7 +48,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
-- 2026-10-11 — **Fase 8 (Frontend) en curso** (`dev-frontend`): **T429** completada (`api/agenda.ts` + hooks de eventos, actividades, categorías, subida de imagen y consulta pública `proximamente`; 27 pruebas nuevas) **T431** completada (promoción de `ImageUploader`/`PublishControls` al inventario único `src/components/`, sin cambios de comportamiento) **T432** completada (`formatoFechas.ts` con `Intl` sin conversión de zona + 16 claves i18n es/en de agenda) y **T433** completada (página pública `/eventos` con los dos bloques, tarjetas, `DateBadge`/`MapLink`/`CategoryChip` y `HiddenNotice` sin redirigir; 11 pruebas de página). Siguen T430 y T434–T437.
+- 2026-10-11 — **Fase 8 (Frontend) en curso** (`dev-frontend`): **T429** completada (`api/agenda.ts` + hooks de eventos, actividades, categorías, subida de imagen y consulta pública `proximamente`; 27 pruebas nuevas) **T431** completada (promoción de `ImageUploader`/`PublishControls` al inventario único `src/components/`, sin cambios de comportamiento) **T432** completada (`formatoFechas.ts` con `Intl` sin conversión de zona + 16 claves i18n es/en de agenda) **T433** completada (página pública `/eventos` con los dos bloques, tarjetas, `DateBadge`/`MapLink`/`CategoryChip` y `HiddenNotice` sin redirigir) y **T434** completada (ítem «Eventos y actividades» con `href /eventos` en barra, menú móvil y mapa del pie, oculto sin contenido publicado y próximo; handler MSW por defecto para la consulta pública compartida). Suite completa: 69 archivos / 461 pruebas en verde. Siguen T430 y T435–T437.
 - 2026-10-11 — **Puertas 1 (re-aprobación) y 2 superadas**: el humano **re-aprobó la spec** ("Re-apruebo la spec") y **aprobó el plan** ("Apruebo el plan"). Arranca la Fase 3 (tareas + coherencia).
 - 2026-10-11 — **Fase 2 (Planificar)**: `plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml` y `quickstart.md` redactados por `arquitecto`; `ux.md` por `disenador-ux`. 4 tablas `agenda_*`, 3 migraciones (`000007` contenido, `000008` auditoría, `000009` permiso «categorías»), 0 dependencias nuevas, reutiliza el sistema de F10 y la subida de imágenes de F3. **Cambio de alcance aprobado** en la puerta 2 (permiso «categorías»); spec actualizada → **re-aprobación pendiente**. **Puerta 2 pendiente** de aprobación humana del plan.
 - 2026-10-11 — **Puerta 1 superada**: el humano **aprobó la spec** ("apruebo la spec"). Arranca la Fase 2 (plan técnico).

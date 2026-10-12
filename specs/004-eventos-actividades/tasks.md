@@ -883,7 +883,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     sin redirigir verificado (requisito 6 del plan).
   - **Commit sugerido**: `feat(frontend): pagina /eventos con bloques y aviso sin redireccion`
 
-- [ ] T434 · `useSiteLinks`: href `/eventos` e ítem oculto sin contenido · `[frontend]` `[P]` (P4)
+- [X] T434 · `useSiteLinks`: href `/eventos` e ítem oculto sin contenido · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/hooks/useSiteLinks.ts` y su test (EDITADOS).
   - **Qué hace**: `SiteLink` crece con `href` de **ruta** (el hook ya estaba preparado) y añade la
