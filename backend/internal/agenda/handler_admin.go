@@ -121,3 +121,105 @@ func (h *Handler) DeleteEvento(w http.ResponseWriter, r *http.Request) {
 		return h.service.DeleteEvento(ctx, actorID, id)
 	})
 }
+
+// --- Actividades (FR-011, T425) ---
+
+// ListActividades responde GET /api/v1/admin/actividades (FR-011): listado
+// paginado del módulo —borradoras y con cualquier fecha incluidas— con filtro
+// opcional por estado (FR-013). Cada fila trae su fecha única y su `isPast`
+// (FR-006).
+// Códigos: 200 con ActividadAdminList; `limit`/`offset` o `publicationState`
+// inválidos → 400 con details; sin sesión → 401; sin permiso → 403 (cadena).
+func (h *Handler) ListActividades(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if _, ok := h.adminIdentity(ctx, w); !ok {
+		return
+	}
+	if !h.serviceConfigured(ctx, w) {
+		return
+	}
+
+	params, state, err := h.listParams(r)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	out, err := h.service.ListActividades(ctx, state, params)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	httpserver.WriteJSON(w, http.StatusOK, out)
+}
+
+// CreateActividad responde POST /api/v1/admin/actividades (FR-011/FR-019): alta
+// de una actividad puntual con su fecha única y su estado de publicación.
+// Códigos: 201 con ActividadAdmin; DTO inválido → 400 con details por campo;
+// duplicado exacto del módulo → 409; sin sesión → 401; sin permiso → 403.
+func (h *Handler) CreateActividad(w http.ResponseWriter, r *http.Request) {
+	h.createItem(w, r, func(ctx context.Context, actorID uuid.UUID) (any, error) {
+		var in ActividadInput
+		if !h.decodeAndValidate(w, r, &in) {
+			return nil, errAlreadyHandled
+		}
+		return h.service.CreateActividad(ctx, actorID, in)
+	})
+}
+
+// GetActividad responde GET /api/v1/admin/actividades/{id} (FR-011): ficha
+// completa para el formulario de edición.
+// Códigos: 200 con ActividadAdmin; id no UUID → 400 con details.id; inexistente
+// → 404.
+func (h *Handler) GetActividad(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if _, ok := h.adminIdentity(ctx, w); !ok {
+		return
+	}
+	if !h.serviceConfigured(ctx, w) {
+		return
+	}
+	id, err := agendaItemIDFromRequest(r)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	out, err := h.service.GetActividad(ctx, id)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	httpserver.WriteJSON(w, http.StatusOK, out)
+}
+
+// UpdateActividad responde PATCH /api/v1/admin/actividades/{id} (FR-011): edición
+// parcial (al menos un campo) y/o cambio de estado por elemento.
+// Códigos: 200 con ActividadAdmin; id no UUID, PATCH vacío o datos inválidos →
+// 400; inexistente → 404; duplicado del módulo → 409.
+func (h *Handler) UpdateActividad(w http.ResponseWriter, r *http.Request) {
+	id, err := agendaItemIDFromRequest(r)
+	if err != nil {
+		httpserver.WriteError(r.Context(), w, h.logger, err)
+		return
+	}
+	h.updateItem(w, r, func(ctx context.Context, actorID uuid.UUID) (any, error) {
+		var patch ActividadPatch
+		if !h.decodeAndValidate(w, r, &patch) {
+			return nil, errAlreadyHandled
+		}
+		return h.service.UpdateActividad(ctx, actorID, id, patch)
+	})
+}
+
+// DeleteActividad responde DELETE /api/v1/admin/actividades/{id} (FR-011):
+// borrado físico (la auditoría conserva su etiqueta, R4-10).
+// Códigos: 204 sin cuerpo; id no UUID → 400; inexistente → 404.
+func (h *Handler) DeleteActividad(w http.ResponseWriter, r *http.Request) {
+	id, err := agendaItemIDFromRequest(r)
+	if err != nil {
+		httpserver.WriteError(r.Context(), w, h.logger, err)
+		return
+	}
+	h.deleteItem(w, r, func(ctx context.Context, actorID uuid.UUID) error {
+		return h.service.DeleteActividad(ctx, actorID, id)
+	})
+}

@@ -690,7 +690,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: `quickstart.md` §3/§7 ejecutables vía API (US2).
   - **Commit sugerido**: `feat(agenda): endpoints de panel de eventos`
 
-- [ ] T425 · `handler_admin.go` — actividades · `[backend]`
+- [X] T425 · `handler_admin.go` — actividades · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/handler_admin.go` (EDITADO) y `handler_admin_test.go`
     (AMPLIADO).

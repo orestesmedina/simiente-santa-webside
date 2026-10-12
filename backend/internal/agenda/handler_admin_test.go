@@ -432,3 +432,295 @@ func contextWithIdentity() context.Context {
 	req := withIdentity(httptest.NewRequest(http.MethodGet, "/", nil), adminIdentityForTest())
 	return req.Context()
 }
+
+// --- Actividades (T425) ---
+
+// TestCreateActividadHandler fija el 201 con el DTO del panel, el 400 con
+// `details` por campo (sin guardar nada) y el 409 del duplicado del módulo.
+func TestCreateActividadHandler(t *testing.T) {
+	t.Run("alta correcta", func(t *testing.T) {
+		repo := newFakeRepository()
+		h := newAdminHandler(t, repo)
+
+		body := `{"titleEs":"  Repartir comida  ","detailEs":"Detalle","placeEs":"Salón",
+			"date":"2026-10-12","startTime":"10:00","endTime":"13:00","publicationState":"published"}`
+		rec := httptest.NewRecorder()
+		h.CreateActividad(rec, adminRequest(http.MethodPost, "/api/v1/admin/actividades", body, true))
+
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("status = %d, se esperaba 201 (%s)", rec.Code, rec.Body)
+		}
+		var got ActividadAdmin
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo no es ActividadAdmin: %v (%s)", err, rec.Body)
+		}
+		if got.TitleEs != "Repartir comida" || got.Date != "2026-10-12" || got.IsPast {
+			t.Errorf("actividad = %+v", got)
+		}
+		if got.StartTime == nil || *got.StartTime != "10:00" {
+			t.Errorf("startTime = %v", got.StartTime)
+		}
+		if len(repo.activities) != 1 {
+			t.Fatalf("el service no guardó la actividad: %+v", repo.activities)
+		}
+	})
+
+	tests := []struct {
+		name   string
+		body   string
+		detail string
+	}{
+		{name: "título vacío", body: `{"titleEs":"","detailEs":"D","placeEs":"P","date":"2026-10-12"}`, detail: "titleEs"},
+		{name: "sin fecha", body: `{"titleEs":"T","detailEs":"D","placeEs":"P","date":""}`, detail: "date"},
+		{name: "fecha inexistente", body: `{"titleEs":"T","detailEs":"D","placeEs":"P","date":"2026-13-32"}`, detail: "date"},
+		{name: "fin sin inicio", body: `{"titleEs":"T","detailEs":"D","placeEs":"P","date":"2026-10-12","endTime":"21:00"}`, detail: "endTime"},
+		{name: "campo desconocido", body: `{"titleEs":"T","otro":1}`, detail: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepository()
+			h := newAdminHandler(t, repo)
+
+			rec := httptest.NewRecorder()
+			h.CreateActividad(rec, adminRequest(http.MethodPost, "/api/v1/admin/actividades", tt.body, true))
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+			}
+			if tt.detail != "" && !strings.Contains(rec.Body.String(), tt.detail) {
+				t.Errorf("sin details.%s: %s", tt.detail, rec.Body)
+			}
+			if len(repo.activities) != 0 {
+				t.Errorf("un DTO inválido no debe guardar nada: %+v", repo.activities)
+			}
+		})
+	}
+
+	t.Run("duplicado", func(t *testing.T) {
+		repo := newFakeRepository()
+		h := newAdminHandler(t, repo)
+		body := `{"titleEs":"Repartir comida","detailEs":"D","placeEs":"Salón","date":"2026-10-12"}`
+
+		rec := httptest.NewRecorder()
+		h.CreateActividad(rec, adminRequest(http.MethodPost, "/api/v1/admin/actividades", body, true))
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("primera alta: status = %d (%s)", rec.Code, rec.Body)
+		}
+		rec = httptest.NewRecorder()
+		h.CreateActividad(rec, adminRequest(http.MethodPost, "/api/v1/admin/actividades", body, true))
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("duplicado: status = %d, se esperaba 409 (%s)", rec.Code, rec.Body)
+		}
+	})
+}
+
+// TestActividadHandlersRequireSession fija el 401 de red de seguridad de las
+// cinco operaciones del panel de actividades.
+func TestActividadHandlersRequireSession(t *testing.T) {
+	h := newAdminHandler(t, newFakeRepository())
+	id := uuid.New().String()
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		call   func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request)
+	}{
+		{name: "listado", method: http.MethodGet, path: "/api/v1/admin/actividades", call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.ListActividades(rec, req)
+		}},
+		{name: "alta", method: http.MethodPost, path: "/api/v1/admin/actividades", call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.CreateActividad(rec, req)
+		}},
+		{name: "ficha", method: http.MethodGet, path: "/api/v1/admin/actividades/" + id, call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.GetActividad(rec, req)
+		}},
+		{name: "edición", method: http.MethodPatch, path: "/api/v1/admin/actividades/" + id, call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.UpdateActividad(rec, req)
+		}},
+		{name: "borrado", method: http.MethodDelete, path: "/api/v1/admin/actividades/" + id, call: func(h *Handler, rec *httptest.ResponseRecorder, req *http.Request) {
+			h.DeleteActividad(rec, req)
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := withPathValue(adminRequest(tt.method, tt.path, "{}", false), id)
+			rec := httptest.NewRecorder()
+			tt.call(h, rec, req)
+			if rec.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, se esperaba 401 (%s)", rec.Code, rec.Body)
+			}
+		})
+	}
+}
+
+// TestListActividadesHandler fija el listado del panel de actividades con su
+// paginación, su filtro y el `isPast` de cada fila.
+func TestListActividadesHandler(t *testing.T) {
+	repo := newFakeRepository()
+	h := newAdminHandler(t, repo)
+	ctx := contextWithIdentity()
+	actor := adminIdentityForTest().UserID
+
+	if _, err := h.service.CreateActividad(ctx, actor, ActividadInput{
+		TitleEs: "Futura", DetailEs: "D", PlaceEs: "P", Date: "2026-10-12", PublicationState: "published",
+	}); err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	if _, err := h.service.CreateActividad(ctx, actor, ActividadInput{
+		TitleEs: "Vencida", DetailEs: "D", PlaceEs: "P", Date: "2026-10-01",
+	}); err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+
+	t.Run("sin filtros", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.ListActividades(rec, adminRequest(http.MethodGet, "/api/v1/admin/actividades", "", true))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+		var got ActividadAdminList
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo no es ActividadAdminList: %v (%s)", err, rec.Body)
+		}
+		if got.Total != 2 || len(got.Items) != 2 {
+			t.Fatalf("listado = %+v", got)
+		}
+		if !strings.Contains(rec.Body.String(), `"isPast":true`) {
+			t.Errorf("falta isPast en el listado: %s", rec.Body)
+		}
+	})
+
+	t.Run("con filtro y paginación", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.ListActividades(rec, adminRequest(http.MethodGet, "/api/v1/admin/actividades?publicationState=published&limit=1", "", true))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+		var got ActividadAdminList
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo inesperado: %v", err)
+		}
+		if got.Total != 1 || len(got.Items) != 1 || got.Items[0].TitleEs != "Futura" || got.Limit != 1 {
+			t.Errorf("listado = %+v", got)
+		}
+	})
+
+	t.Run("filtro inválido", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		h.ListActividades(rec, adminRequest(http.MethodGet, "/api/v1/admin/actividades?publicationState=archived", "", true))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+}
+
+// TestGetUpdateDeleteActividadHandler cubre la ficha, la edición y el borrado
+// con sus códigos (200/400/404/204).
+func TestGetUpdateDeleteActividadHandler(t *testing.T) {
+	repo := newFakeRepository()
+	h := newAdminHandler(t, repo)
+	ctx := contextWithIdentity()
+
+	created, err := h.service.CreateActividad(ctx, adminIdentityForTest().UserID, ActividadInput{
+		TitleEs: "Repartir comida", DetailEs: "D", PlaceEs: "P", Date: "2026-10-12",
+	})
+	if err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+
+	t.Run("ficha", func(t *testing.T) {
+		req := withPathValue(adminRequest(http.MethodGet, "/api/v1/admin/actividades/"+created.ID, "", true), created.ID)
+		rec := httptest.NewRecorder()
+		h.GetActividad(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+		var got ActividadAdmin
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo inesperado: %v", err)
+		}
+		if got.ID != created.ID {
+			t.Errorf("ficha = %+v", got)
+		}
+	})
+
+	t.Run("ficha con id no uuid", func(t *testing.T) {
+		req := withPathValue(adminRequest(http.MethodGet, "/api/v1/admin/actividades/nope", "", true), "nope")
+		rec := httptest.NewRecorder()
+		h.GetActividad(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("ficha inexistente", func(t *testing.T) {
+		missing := uuid.New().String()
+		req := withPathValue(adminRequest(http.MethodGet, "/api/v1/admin/actividades/"+missing, "", true), missing)
+		rec := httptest.NewRecorder()
+		h.GetActividad(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("edición", func(t *testing.T) {
+		req := withPathValue(adminRequest(http.MethodPatch, "/api/v1/admin/actividades/"+created.ID,
+			`{"titleEs":"Repartir comida (editada)","publicationState":"published"}`, true), created.ID)
+		rec := httptest.NewRecorder()
+		h.UpdateActividad(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+		var got ActividadAdmin
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo inesperado: %v", err)
+		}
+		if got.TitleEs != "Repartir comida (editada)" || got.PublicationState != string(StatePublished) {
+			t.Errorf("actividad = %+v", got)
+		}
+	})
+
+	t.Run("edición con PATCH vacío", func(t *testing.T) {
+		req := withPathValue(adminRequest(http.MethodPatch, "/api/v1/admin/actividades/"+created.ID, `{}`, true), created.ID)
+		rec := httptest.NewRecorder()
+		h.UpdateActividad(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("edición inexistente", func(t *testing.T) {
+		missing := uuid.New().String()
+		req := withPathValue(adminRequest(http.MethodPatch, "/api/v1/admin/actividades/"+missing, `{"titleEs":"X"}`, true), missing)
+		rec := httptest.NewRecorder()
+		h.UpdateActividad(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+
+	t.Run("borrado", func(t *testing.T) {
+		req := withPathValue(adminRequest(http.MethodDelete, "/api/v1/admin/actividades/"+created.ID, "", true), created.ID)
+		rec := httptest.NewRecorder()
+		h.DeleteActividad(rec, req)
+		if rec.Code != http.StatusNoContent || rec.Body.Len() != 0 {
+			t.Fatalf("status = %d, cuerpo = %q", rec.Code, rec.Body)
+		}
+		if len(repo.activities) != 0 {
+			t.Errorf("la actividad no se borró: %+v", repo.activities)
+		}
+	})
+
+	t.Run("borrado inexistente", func(t *testing.T) {
+		missing := uuid.New().String()
+		req := withPathValue(adminRequest(http.MethodDelete, "/api/v1/admin/actividades/"+missing, "", true), missing)
+		rec := httptest.NewRecorder()
+		h.DeleteActividad(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("status = %d (%s)", rec.Code, rec.Body)
+		}
+	})
+}
