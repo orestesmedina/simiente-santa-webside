@@ -125,11 +125,14 @@ func (s *service) GetProximamente(ctx context.Context, lang string) (PublicProxi
 	}
 
 	publicEvents := make([]PublicEvent, 0, len(events))
+	// Las fechas de TODOS los eventos del bloque se leen en UNA sola consulta
+	// (por lote): la vista pública no puede hacer una consulta por evento.
+	datesByEvent, err := s.upcomingDatesByEvent(ctx, events, today, nowTime)
+	if err != nil {
+		return PublicProximamente{}, err
+	}
 	for _, event := range events {
-		dates, err := s.repository.ListUpcomingEventDates(ctx, event.ID, today, nowTime)
-		if err != nil {
-			return PublicProximamente{}, fmt.Errorf("leer las fechas del evento: %w", err)
-		}
+		dates := datesByEvent[event.ID]
 		// Defensa: un evento sin ninguna fecha próxima no aparece (la consulta
 		// pública ya lo filtra; FR-002/FR-013).
 		if len(dates) == 0 {
@@ -156,8 +159,44 @@ func (s *service) GetProximamente(ctx context.Context, lang string) (PublicProxi
 	return out, nil
 }
 
-// --- Categorías del bloque ---
+// --- Fechas del bloque ---
 
+// upcomingDatesByEvent lee en UNA sola consulta las fechas próximas de todos los
+// eventos del bloque (regla R4-2) y las agrupa por evento conservando el orden
+// ascendente que devuelve la consulta. Sin eventos no se consulta la base.
+func (s *service) upcomingDatesByEvent(ctx context.Context, events []Event, today, nowTime string) (map[uuid.UUID][]EventDate, error) {
+	if len(events) == 0 {
+		return nil, nil
+	}
+	dates, err := s.repository.ListUpcomingEventDatesForEvents(ctx, eventIDs(events), today, nowTime)
+	if err != nil {
+		return nil, fmt.Errorf("leer las fechas próximas de los eventos: %w", err)
+	}
+	return groupDatesByEvent(dates), nil
+}
+
+// groupDatesByEvent agrupa las fechas por evento conservando el orden en que
+// llegan (ascendente por fecha y hora, que es el de las consultas): la primera
+// de cada evento es "la próxima fecha" (FR-004).
+func groupDatesByEvent(dates []EventDate) map[uuid.UUID][]EventDate {
+	byEvent := make(map[uuid.UUID][]EventDate, len(dates))
+	for _, date := range dates {
+		byEvent[date.EventID] = append(byEvent[date.EventID], date)
+	}
+	return byEvent
+}
+
+// eventIDs devuelve los identificadores de una lista de eventos (para las
+// consultas por lote).
+func eventIDs(events []Event) []uuid.UUID {
+	ids := make([]uuid.UUID, 0, len(events))
+	for _, event := range events {
+		ids = append(ids, event.ID)
+	}
+	return ids
+}
+
+// --- Categorías del bloque ---
 // categoryNames resuelve el nombre de las categorías usadas por los elementos
 // del bloque con UNA sola lectura del catálogo (Q6/R4-5): solo se consulta si
 // algún elemento tiene categoría.

@@ -412,3 +412,49 @@ func TestGetProximamenteNeverExposesPublicationState(t *testing.T) {
 
 // ptrOf devuelve un puntero al valor indicado.
 func ptrOf(value string) *string { return &value }
+
+// TestGetProximamenteReadsDatesInOneBatchQuery fija el hallazgo I1: la vista
+// pública lee las fechas de TODOS los eventos del bloque en UNA sola consulta
+// (por lote), sin crecer con el número de eventos. El repositorio falso cuenta
+// las llamadas al lote.
+func TestGetProximamenteReadsDatesInOneBatchQuery(t *testing.T) {
+	repo := &fakeRepository{eventDates: map[uuid.UUID][]EventDate{}}
+	const events = 25
+	for i := 0; i < events; i++ {
+		event := samplePublicEvent(fmt.Sprintf("Evento %02d", i), "2026-10-12")
+		repo.events = append(repo.events, event)
+		repo.eventDates[event.ID] = []EventDate{
+			{Date: "2026-10-10"},                            // pasada: fuera del bloque público
+			{Date: "2026-10-12"},                            // próxima
+			{Date: "2026-10-19", StartTime: ptrOf("19:00")}, // segunda próxima
+		}
+	}
+	svc := newPublicService(t, repo)
+
+	out, err := svc.GetProximamente(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetProximamente: %v", err)
+	}
+	if len(out.Events) != events {
+		t.Fatalf("eventos públicos = %d, se esperaban %d", len(out.Events), events)
+	}
+	if repo.upcomingBatchCalls != 1 {
+		t.Errorf("consultas de fechas por lote = %d, se esperaba 1 (sin N+1)", repo.upcomingBatchCalls)
+	}
+	// Cada evento trae solo sus fechas próximas, en orden.
+	for _, event := range out.Events {
+		if len(event.Dates) != 2 || event.Dates[0].Date != "2026-10-12" || event.Dates[1].Date != "2026-10-19" {
+			t.Fatalf("fechas de %q = %+v, se esperaban las 2 próximas", event.Title, event.Dates)
+		}
+	}
+
+	// Sin eventos no se consulta la base (ni se inventa una llamada).
+	emptyRepo := newFakeRepository()
+	emptySvc := newPublicService(t, emptyRepo)
+	if _, err := emptySvc.GetProximamente(context.Background(), LangES); err != nil {
+		t.Fatalf("GetProximamente(sin contenido): %v", err)
+	}
+	if emptyRepo.upcomingBatchCalls != 0 {
+		t.Errorf("sin eventos no debe consultarse el lote: %d llamadas", emptyRepo.upcomingBatchCalls)
+	}
+}

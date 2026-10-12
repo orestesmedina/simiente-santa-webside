@@ -632,6 +632,45 @@ func (q *Queries) ListEventDates(ctx context.Context, eventID pgtype.UUID) ([]Ag
 	return items, nil
 }
 
+const listEventDatesForEvents = `-- name: ListEventDatesForEvents :many
+SELECT id, event_id, event_date, start_time, end_time, created_at, updated_at
+FROM agenda_event_dates
+WHERE event_id = ANY($1::uuid[])
+ORDER BY event_id, event_date, start_time NULLS FIRST, id
+`
+
+// Panel (lote): todas las fechas de VARIOS eventos en UNA sola consulta, para
+// que el listado paginado no haga una consulta por fila (N+1). El orden es por
+// `event_id` y luego ascendente por fecha, así que el service agrupa por evento
+// conservando el orden de `ListEventDates`.
+func (q *Queries) ListEventDatesForEvents(ctx context.Context, eventIds []pgtype.UUID) ([]AgendaEventDate, error) {
+	rows, err := q.db.Query(ctx, listEventDatesForEvents, eventIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AgendaEventDate
+	for rows.Next() {
+		var i AgendaEventDate
+		if err := rows.Scan(
+			&i.ID,
+			&i.EventID,
+			&i.EventDate,
+			&i.StartTime,
+			&i.EndTime,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEvents = `-- name: ListEvents :many
 SELECT id, title_es, title_en, frequency_es, frequency_en, detail_es, detail_en,
        place_es, place_en, map_url, organizer_es, organizer_en, category_id,
@@ -757,28 +796,30 @@ func (q *Queries) ListUpcomingActivities(ctx context.Context, arg ListUpcomingAc
 	return items, nil
 }
 
-const listUpcomingEventDates = `-- name: ListUpcomingEventDates :many
+const listUpcomingEventDatesForEvents = `-- name: ListUpcomingEventDatesForEvents :many
 SELECT id, event_id, event_date, start_time, end_time, created_at, updated_at
 FROM agenda_event_dates
-WHERE event_id = $1
+WHERE event_id = ANY($1::uuid[])
   AND (
       event_date > $2::date
       OR (event_date = $2::date
           AND (end_time IS NULL OR end_time::time >= $3::time))
   )
-ORDER BY event_date, start_time NULLS FIRST, id
+ORDER BY event_id, event_date, start_time NULLS FIRST, id
 `
 
-type ListUpcomingEventDatesParams struct {
-	EventID pgtype.UUID
-	Today   pgtype.Date
-	NowTime pgtype.Time
+type ListUpcomingEventDatesForEventsParams struct {
+	EventIds []pgtype.UUID
+	Today    pgtype.Date
+	NowTime  pgtype.Time
 }
 
-// Público: solo las fechas próximas del evento (regla R4-2). La primera es
-// "la próxima fecha" (FR-004).
-func (q *Queries) ListUpcomingEventDates(ctx context.Context, arg ListUpcomingEventDatesParams) ([]AgendaEventDate, error) {
-	rows, err := q.db.Query(ctx, listUpcomingEventDates, arg.EventID, arg.Today, arg.NowTime)
+// Público (lote): solo las fechas PRÓXIMAS de VARIOS eventos en UNA sola
+// consulta (regla R4-2, única implementación del filtro para las fechas
+// públicas; sustituye a la variante por evento). La primera fecha de cada evento
+// es "la próxima fecha" (FR-004).
+func (q *Queries) ListUpcomingEventDatesForEvents(ctx context.Context, arg ListUpcomingEventDatesForEventsParams) ([]AgendaEventDate, error) {
+	rows, err := q.db.Query(ctx, listUpcomingEventDatesForEvents, arg.EventIds, arg.Today, arg.NowTime)
 	if err != nil {
 		return nil, err
 	}

@@ -19,9 +19,9 @@ import (
 // (R4-10/R4-11): o todo o nada.
 //
 // La única vía pública de un evento es `ListUpcomingEvents` (+
-// `ListUpcomingEventDates`): exige `publication_state='published'` Y una fecha
-// próxima según la regla R4-2, con `today`/`now_time` que el service calcula en
-// `APP_TZ` y pasa parametrizados (nunca SQL concatenado, §IV/CWE-89).
+// `ListUpcomingEventDatesForEvents`): exige `publication_state='published'` Y una
+// fecha próxima según la regla R4-2, con `today`/`now_time` que el service
+// calcula en `APP_TZ` y pasa parametrizados (nunca SQL concatenado, §IV/CWE-89).
 
 // InsertEvent crea un evento con su lista completa de fechas (1..50, ya
 // validada por el service) y sus filas de auditoría, todo en una transacción.
@@ -199,17 +199,34 @@ func (r *repository) ListEventDates(ctx context.Context, eventID uuid.UUID) ([]E
 	return dates, nil
 }
 
-// ListUpcomingEventDates devuelve solo las fechas PRÓXIMAS del evento según la
-// regla R4-2 (la primera es "la próxima fecha" de FR-004). Es la única vía
-// pública de las fechas: las pasadas no salen de aquí.
-func (r *repository) ListUpcomingEventDates(ctx context.Context, eventID uuid.UUID, today, nowTime string) ([]EventDate, error) {
-	rows, err := r.q.ListUpcomingEventDates(ctx, gendb.ListUpcomingEventDatesParams{
-		EventID: pgUUID(eventID),
-		Today:   pgDate(today),
-		NowTime: pgTime(nowTime),
+// ListEventDatesForEvents devuelve las fechas de VARIOS eventos en UNA sola
+// consulta (el listado del panel no debe hacer una consulta por fila). El orden
+// es por `event_id` y ascendente por fecha: el service agrupa por evento y
+// conserva el mismo orden que `ListEventDates`.
+func (r *repository) ListEventDatesForEvents(ctx context.Context, eventIDs []uuid.UUID) ([]EventDate, error) {
+	rows, err := r.q.ListEventDatesForEvents(ctx, pgUUIDs(eventIDs))
+	if err != nil {
+		return nil, wrap(err, "list event dates for events", "", "")
+	}
+	dates := make([]EventDate, 0, len(rows))
+	for _, row := range rows {
+		dates = append(dates, mapEventDate(row))
+	}
+	return dates, nil
+}
+
+// ListUpcomingEventDatesForEvents devuelve solo las fechas PRÓXIMAS de VARIOS
+// eventos en UNA sola consulta (regla R4-2): es la única vía pública de las
+// fechas (las pasadas no salen de aquí) y evita la consulta por evento de la
+// vista pública. La primera fecha de cada evento es "la próxima fecha" (FR-004).
+func (r *repository) ListUpcomingEventDatesForEvents(ctx context.Context, eventIDs []uuid.UUID, today, nowTime string) ([]EventDate, error) {
+	rows, err := r.q.ListUpcomingEventDatesForEvents(ctx, gendb.ListUpcomingEventDatesForEventsParams{
+		EventIds: pgUUIDs(eventIDs),
+		Today:    pgDate(today),
+		NowTime:  pgTime(nowTime),
 	})
 	if err != nil {
-		return nil, wrap(err, "list upcoming event dates", "", "")
+		return nil, wrap(err, "list upcoming event dates for events", "", "")
 	}
 	dates := make([]EventDate, 0, len(rows))
 	for _, row := range rows {

@@ -203,18 +203,30 @@ FROM agenda_event_dates
 WHERE event_id = sqlc.arg('event_id')
 ORDER BY event_date, start_time NULLS FIRST, id;
 
--- name: ListUpcomingEventDates :many
--- Público: solo las fechas próximas del evento (regla R4-2). La primera es
--- "la próxima fecha" (FR-004).
+-- name: ListEventDatesForEvents :many
+-- Panel (lote): todas las fechas de VARIOS eventos en UNA sola consulta, para
+-- que el listado paginado no haga una consulta por fila (N+1). El orden es por
+-- `event_id` y luego ascendente por fecha, así que el service agrupa por evento
+-- conservando el orden de `ListEventDates`.
 SELECT id, event_id, event_date, start_time, end_time, created_at, updated_at
 FROM agenda_event_dates
-WHERE event_id = sqlc.arg('event_id')
+WHERE event_id = ANY(sqlc.arg('event_ids')::uuid[])
+ORDER BY event_id, event_date, start_time NULLS FIRST, id;
+
+-- name: ListUpcomingEventDatesForEvents :many
+-- Público (lote): solo las fechas PRÓXIMAS de VARIOS eventos en UNA sola
+-- consulta (regla R4-2, única implementación del filtro para las fechas
+-- públicas; sustituye a la variante por evento). La primera fecha de cada evento
+-- es "la próxima fecha" (FR-004).
+SELECT id, event_id, event_date, start_time, end_time, created_at, updated_at
+FROM agenda_event_dates
+WHERE event_id = ANY(sqlc.arg('event_ids')::uuid[])
   AND (
       event_date > sqlc.arg('today')::date
       OR (event_date = sqlc.arg('today')::date
           AND (end_time IS NULL OR end_time::time >= sqlc.arg('now_time')::time))
   )
-ORDER BY event_date, start_time NULLS FIRST, id;
+ORDER BY event_id, event_date, start_time NULLS FIRST, id;
 
 -- name: ExistsEventDuplicate :one
 -- Duplicado DENTRO del módulo (R4-9): mismo título y lugar normalizados

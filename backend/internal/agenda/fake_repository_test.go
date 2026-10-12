@@ -41,6 +41,11 @@ type fakeRepository struct {
 	// Observaciones de las consultas.
 	cutoffs     []cutoffCall
 	blockLimits []int
+	// datesBatchCalls y upcomingBatchCalls cuentan las lecturas de fechas por
+	// lote: las pruebas del service fijan que son UNA por listado, sin importar
+	// cuántos eventos haya (no hay consultas N+1).
+	datesBatchCalls    int
+	upcomingBatchCalls int
 }
 
 // cutoffCall es una llamada al repositorio con el corte "hoy"/"ahora".
@@ -57,11 +62,13 @@ func newFakeRepository() *fakeRepository {
 	return &fakeRepository{eventDates: map[uuid.UUID][]EventDate{}}
 }
 
-// upcomingDates devuelve las fechas próximas de un evento.
+// upcomingDates devuelve las fechas próximas de un evento (con su `event_id`
+// resuelto, como lo devuelve el repository real).
 func (f *fakeRepository) upcomingDates(eventID uuid.UUID, today, nowTime string) []EventDate {
 	out := make([]EventDate, 0, len(f.eventDates[eventID]))
 	for _, date := range f.eventDates[eventID] {
 		if isUpcoming(date.Date, today, nowTime, date.EndTime) {
+			date.EventID = eventID
 			out = append(out, date)
 		}
 	}
@@ -230,10 +237,33 @@ func (f *fakeRepository) ListEventDates(_ context.Context, eventID uuid.UUID) ([
 	return out, nil
 }
 
-func (f *fakeRepository) ListUpcomingEventDates(_ context.Context, eventID uuid.UUID, today, nowTime string) ([]EventDate, error) {
-	dates := f.upcomingDates(eventID, today, nowTime)
-	sort.SliceStable(dates, func(i, j int) bool { return dates[i].Date < dates[j].Date })
-	return dates, nil
+// ListEventDatesForEvents devuelve las fechas de varios eventos en una sola
+// llamada (lote) y cuenta la llamada: las pruebas del service comprueban así que
+// el listado del panel NO crece en consultas con el número de filas.
+func (f *fakeRepository) ListEventDatesForEvents(_ context.Context, eventIDs []uuid.UUID) ([]EventDate, error) {
+	f.datesBatchCalls++
+	out := make([]EventDate, 0, len(eventIDs))
+	for _, eventID := range eventIDs {
+		dates, err := f.ListEventDates(context.Background(), eventID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, dates...)
+	}
+	return out, nil
+}
+
+// ListUpcomingEventDatesForEvents devuelve las fechas próximas de varios eventos
+// en una sola llamada (lote) y cuenta la llamada (misma razón que la anterior).
+func (f *fakeRepository) ListUpcomingEventDatesForEvents(_ context.Context, eventIDs []uuid.UUID, today, nowTime string) ([]EventDate, error) {
+	f.upcomingBatchCalls++
+	out := make([]EventDate, 0, len(eventIDs))
+	for _, eventID := range eventIDs {
+		dates := f.upcomingDates(eventID, today, nowTime)
+		sort.SliceStable(dates, func(i, j int) bool { return dates[i].Date < dates[j].Date })
+		out = append(out, dates...)
+	}
+	return out, nil
 }
 
 func (f *fakeRepository) ExistsEventDuplicate(context.Context, string, string, []string, *uuid.UUID) (bool, error) {

@@ -306,11 +306,12 @@ func TestIntegrationListUpcomingEventsOrdersByNextDate(t *testing.T) {
 	}
 }
 
-// TestIntegrationListUpcomingEventDatesOnlyUpcoming comprueba que las fechas
-// públicas son solo las próximas (las pasadas y las ya terminadas no salen de la
-// consulta). Una fecha por día por evento (UNIQUE): los dos casos de "hoy" van
-// en eventos distintos.
-func TestIntegrationListUpcomingEventDatesOnlyUpcoming(t *testing.T) {
+// TestIntegrationListUpcomingEventDatesForEvents fija la consulta POR LOTE de
+// las fechas públicas (I1): con varios eventos en una sola llamada, cada uno
+// recibe solo sus fechas próximas (las pasadas y las ya terminadas no salen) y el
+// resultado viene ordenado por evento y fecha. Una fecha por día por evento
+// (UNIQUE): los dos casos de "hoy" van en eventos distintos.
+func TestIntegrationListUpcomingEventDatesForEvents(t *testing.T) {
 	repo, _ := newAgendaRepo(t)
 	ctx := context.Background()
 
@@ -320,33 +321,88 @@ func TestIntegrationListUpcomingEventDatesOnlyUpcoming(t *testing.T) {
 		date(testToday, startOf(testStart), &earlyEnd), // hoy con fin ya terminado
 		date(testFuture, nil, nil),
 	})
-
-	upcoming, err := repo.ListUpcomingEventDates(ctx, mixed.ID, testToday, testNowTime)
-	if err != nil {
-		t.Fatalf("ListUpcomingEventDates: %v", err)
-	}
-	if len(upcoming) != 1 || upcoming[0].Date != testFuture {
-		t.Fatalf("fechas próximas = %+v, se esperaba solo %s", upcoming, testFuture)
-	}
-
-	// El panel ve TODAS las fechas (borradores y pasadas incluidas).
-	all, err := repo.ListEventDates(ctx, mixed.ID)
-	if err != nil {
-		t.Fatalf("ListEventDates: %v", err)
-	}
-	if len(all) != 3 {
-		t.Errorf("fechas del panel = %d, se esperaban 3", len(all))
-	}
-
 	// Hoy sin hora de fin: se muestra todo el día (segundo caso de R4-2).
 	todayOpen := insertEvent(t, repo, sampleEvent("Hoy sin fin "+uuid.NewString()),
 		[]EventDate{date(testToday, nil, nil)})
-	upcoming, err = repo.ListUpcomingEventDates(ctx, todayOpen.ID, testToday, testNowTime)
+	// Solo con una fecha pasada: no aporta ninguna fecha próxima.
+	expired := insertEvent(t, repo, sampleEvent("Vencido "+uuid.NewString()),
+		[]EventDate{date(testPast, nil, nil)})
+
+	upcoming, err := repo.ListUpcomingEventDatesForEvents(ctx,
+		[]uuid.UUID{mixed.ID, todayOpen.ID, expired.ID}, testToday, testNowTime)
 	if err != nil {
-		t.Fatalf("ListUpcomingEventDates(hoy sin fin): %v", err)
+		t.Fatalf("ListUpcomingEventDatesForEvents: %v", err)
 	}
-	if len(upcoming) != 1 || upcoming[0].Date != testToday {
-		t.Fatalf("fechas próximas de hoy sin fin = %+v, se esperaba %s", upcoming, testToday)
+	if len(upcoming) != 2 {
+		t.Fatalf("fechas próximas = %+v, se esperaban 2 (una por evento con próxima)", upcoming)
+	}
+
+	byEvent := map[uuid.UUID][]EventDate{}
+	for _, date := range upcoming {
+		byEvent[date.EventID] = append(byEvent[date.EventID], date)
+	}
+	if dates := byEvent[mixed.ID]; len(dates) != 1 || dates[0].Date != testFuture {
+		t.Errorf("fechas de «mezcladas» = %+v, se esperaba solo %s", dates, testFuture)
+	}
+	if dates := byEvent[todayOpen.ID]; len(dates) != 1 || dates[0].Date != testToday {
+		t.Errorf("fechas de «hoy sin fin» = %+v, se esperaba %s", dates, testToday)
+	}
+	if dates := byEvent[expired.ID]; len(dates) != 0 {
+		t.Errorf("un evento vencido no debe aportar fechas próximas: %+v", dates)
+	}
+
+	// Sin eventos no hay nada que consultar (ni filas que devolver).
+	empty, err := repo.ListUpcomingEventDatesForEvents(ctx, nil, testToday, testNowTime)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("lote vacío = %+v (%v)", empty, err)
+	}
+}
+
+// TestIntegrationListEventDatesForEvents fija la consulta POR LOTE del panel
+// (I1): todas las fechas de varios eventos en una sola llamada, ordenadas por
+// evento y fecha (el service agrupa conservando ese orden).
+func TestIntegrationListEventDatesForEvents(t *testing.T) {
+	repo, _ := newAgendaRepo(t)
+	ctx := context.Background()
+
+	first := insertEvent(t, repo, sampleEvent("Panel A "+uuid.NewString()), []EventDate{
+		date(testFuture, nil, nil),
+		date(testPast, nil, nil),
+	})
+	second := insertEvent(t, repo, sampleEvent("Panel B "+uuid.NewString()), []EventDate{
+		date(testLater, nil, nil),
+	})
+
+	dates, err := repo.ListEventDatesForEvents(ctx, []uuid.UUID{first.ID, second.ID})
+	if err != nil {
+		t.Fatalf("ListEventDatesForEvents: %v", err)
+	}
+	if len(dates) != 3 {
+		t.Fatalf("fechas = %+v, se esperaban 3 (todas, próximas y pasadas)", dates)
+	}
+
+	byEvent := map[uuid.UUID][]EventDate{}
+	for _, date := range dates {
+		byEvent[date.EventID] = append(byEvent[date.EventID], date)
+	}
+	firstDates := byEvent[first.ID]
+	if len(firstDates) != 2 || firstDates[0].Date != testPast || firstDates[1].Date != testFuture {
+		t.Errorf("fechas de A = %+v, se esperaban ascendentes (%s, %s)", firstDates, testPast, testFuture)
+	}
+	if secondDates := byEvent[second.ID]; len(secondDates) != 1 || secondDates[0].Date != testLater {
+		t.Errorf("fechas de B = %+v, se esperaba %s", secondDates, testLater)
+	}
+
+	// El lote no mezcla eventos de fuera de la lista.
+	other := insertEvent(t, repo, sampleEvent("Panel C "+uuid.NewString()), []EventDate{date(testFuture, nil, nil)})
+	dates, err = repo.ListEventDatesForEvents(ctx, []uuid.UUID{first.ID})
+	if err != nil {
+		t.Fatalf("ListEventDatesForEvents(solo A): %v", err)
+	}
+	for _, date := range dates {
+		if date.EventID == other.ID {
+			t.Errorf("el lote devolvió un evento que no se pidió: %+v", date)
+		}
 	}
 }
 

@@ -128,6 +128,16 @@ func pgUUIDPtr(id *uuid.UUID) pgtype.UUID {
 	return pgUUID(*id)
 }
 
+// pgUUIDs traduce una lista de uuid.UUID al parámetro `uuid[]` de sqlc (para las
+// consultas por lote, p. ej. las fechas de varios eventos en una sola consulta).
+func pgUUIDs(ids []uuid.UUID) []pgtype.UUID {
+	out := make([]pgtype.UUID, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, pgUUID(id))
+	}
+	return out
+}
+
 // textPtr traduce una columna TEXT anulable a *string (nil si NULL).
 func textPtr(v pgtype.Text) *string {
 	if !v.Valid {

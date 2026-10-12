@@ -1585,3 +1585,55 @@ func TestUpdateCategoriaCoversEveryPatchField(t *testing.T) {
 		t.Errorf("nameEn = %v, se esperaba null", cleared.NameEn)
 	}
 }
+
+// TestListEventosReadsDatesInOneBatchQuery fija el hallazgo I1 en el panel: el
+// listado de eventos lee las fechas de TODA la página en UNA sola consulta (por
+// lote), sin crecer con el número de filas.
+func TestListEventosReadsDatesInOneBatchQuery(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	const events = 12
+	for i := 0; i < events; i++ {
+		in := validEventoInput()
+		in.TitleEs = fmt.Sprintf("Evento %02d", i)
+		in.Dates = []FechaInput{
+			{Date: "2026-10-01"}, // pasada
+			{Date: "2026-10-12"}, // próxima
+		}
+		if _, err := svc.CreateEvento(ctx, uuid.New(), in); err != nil {
+			t.Fatalf("CreateEvento: %v", err)
+		}
+	}
+	repo.datesBatchCalls = 0
+
+	list, err := svc.ListEventos(ctx, nil, paginate.Params{Limit: 100})
+	if err != nil {
+		t.Fatalf("ListEventos: %v", err)
+	}
+	if list.Total != events || len(list.Items) != events {
+		t.Fatalf("listado = %+v", list)
+	}
+	if repo.datesBatchCalls != 1 {
+		t.Errorf("consultas de fechas por lote = %d, se esperaba 1 (sin N+1)", repo.datesBatchCalls)
+	}
+	// Cada fila conserva sus fechas (ascendentes) y su `nextDate`.
+	for _, item := range list.Items {
+		if len(item.Dates) != 2 || item.Dates[0].Date != "2026-10-01" || item.Dates[1].Date != "2026-10-12" {
+			t.Fatalf("fechas de %q = %+v", item.TitleEs, item.Dates)
+		}
+		if item.NextDate == nil || *item.NextDate != "2026-10-12" || item.IsPast {
+			t.Fatalf("nextDate/isPast de %q = %v/%v", item.TitleEs, item.NextDate, item.IsPast)
+		}
+	}
+
+	// Una página vacía no consulta el lote.
+	repo.datesBatchCalls = 0
+	if _, err := svc.ListEventos(ctx, nil, paginate.Params{Limit: 10, Offset: events}); err != nil {
+		t.Fatalf("ListEventos(página vacía): %v", err)
+	}
+	if repo.datesBatchCalls != 0 {
+		t.Errorf("una página sin filas no debe consultar el lote: %d llamadas", repo.datesBatchCalls)
+	}
+}

@@ -303,15 +303,36 @@ func (s *service) ListEventos(ctx context.Context, state *PublicationState, para
 		return EventoAdminList{}, fmt.Errorf("listar los eventos: %w", err)
 	}
 
+	today, nowTime, err := s.cutoff()
+	if err != nil {
+		return EventoAdminList{}, err
+	}
+	// Las fechas de TODA la página se leen en UNA sola consulta (por lote): el
+	// listado no puede hacer una consulta por fila.
+	datesByEvent, err := s.datesByEvent(ctx, events)
+	if err != nil {
+		return EventoAdminList{}, err
+	}
+
 	items := make([]EventoAdmin, 0, len(events))
 	for _, event := range events {
-		admin, err := s.eventoAdmin(ctx, event)
-		if err != nil {
-			return EventoAdminList{}, err
-		}
-		items = append(items, admin)
+		items = append(items, eventoAdminFrom(event, datesByEvent[event.ID], today, nowTime))
 	}
 	return EventoAdminList{Items: items, Total: total, Limit: params.Limit, Offset: params.Offset}, nil
+}
+
+// datesByEvent lee en UNA sola consulta las fechas (todas, próximas y pasadas)
+// de los eventos de la página y las agrupa por evento. Sin eventos no se
+// consulta la base.
+func (s *service) datesByEvent(ctx context.Context, events []Event) (map[uuid.UUID][]EventDate, error) {
+	if len(events) == 0 {
+		return nil, nil
+	}
+	dates, err := s.repository.ListEventDatesForEvents(ctx, eventIDs(events))
+	if err != nil {
+		return nil, fmt.Errorf("leer las fechas de los eventos: %w", err)
+	}
+	return groupDatesByEvent(dates), nil
 }
 
 // UploadEventoImage guarda una imagen subida desde el panel para el módulo de
@@ -843,13 +864,16 @@ func (s *service) ListActividades(ctx context.Context, state *PublicationState, 
 		return ActividadAdminList{}, fmt.Errorf("listar las actividades: %w", err)
 	}
 
+	// El corte de la regla R4-2 se calcula UNA vez para toda la página (la
+	// actividad no tiene consultas por fila: su fecha vive en su propia fila).
+	today, nowTime, err := s.cutoff()
+	if err != nil {
+		return ActividadAdminList{}, err
+	}
+
 	items := make([]ActividadAdmin, 0, len(activities))
 	for _, activity := range activities {
-		admin, err := s.actividadAdmin(ctx, activity)
-		if err != nil {
-			return ActividadAdminList{}, err
-		}
-		items = append(items, admin)
+		items = append(items, actividadAdminFrom(activity, today, nowTime))
 	}
 	return ActividadAdminList{Items: items, Total: total, Limit: params.Limit, Offset: params.Offset}, nil
 }
