@@ -979,7 +979,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     verificado (requisito 6 del plan).
   - **Commit sugerido**: `test(e2e): seccion publica /eventos (lo que viene, idioma y aviso)`
 
-- [ ] T439 · E2E Playwright `agenda-panel.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T439 · E2E Playwright `agenda-panel.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/agenda-panel.spec.ts` (NUEVO).
   - **Qué hace**: recorrido del panel (US2, US3, US4) según `quickstart.md` §2–§7/§11/§12: login con
