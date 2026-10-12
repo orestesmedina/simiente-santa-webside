@@ -526,7 +526,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 
 ## Fase 6 — Dominio `agenda`: servicios
 
-- [ ] T417 · `agenda`: `service.go` — invariantes, límites y regla "próximo" · `[backend]`
+- [X] T417 · `agenda`: `service.go` — invariantes, límites y regla "próximo" · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/service.go` y `service_test.go` (NUEVOS).
   - **Qué hace**: interfaz `Repository` (definida por quien la consume, R3), constantes revisables
