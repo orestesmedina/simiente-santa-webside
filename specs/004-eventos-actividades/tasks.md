@@ -939,7 +939,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: US3 ejecutable según `quickstart.md` §4 (SC-004).
   - **Commit sugerido**: `feat(frontend): panel de actividades con fecha unica`
 
-- [ ] T437 · Panel: `CategoriesPage` + `CategoryForm` + borrado con `409` · `[frontend]`
+- [X] T437 · Panel: `CategoriesPage` + `CategoryForm` + borrado con `409` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/eventos/pages/CategoriesPage.tsx`,
     `components/CategoryForm.tsx`, `components/DeleteConfirm.tsx` y tests (NUEVOS).

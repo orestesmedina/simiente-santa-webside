@@ -97,6 +97,11 @@ export const MAP_URL_INVALID =
 export const SPANISH_REQUIRED =
   'El contenido en español es obligatorio: es el idioma base del sitio.';
 export const CATEGORY_DUPLICATE = 'Ya existe una categoría con ese nombre.';
+export const CATEGORY_NAME_MAX = 120;
+export const CATEGORY_IN_USE_TITLE = 'No se puede eliminar';
+export const CATEGORY_IN_USE_HINT = 'quítala primero de los elementos.';
+export const NO_ENGLISH_LABEL = 'Sin inglés';
+export const SAVED_CATEGORY = 'Categoría guardada.';
 export const REQUIRED_CATEGORY_NAME = 'Escribe el nombre de la categoría.';
 
 /** «Ese texto es demasiado largo (máximo {límite}).» (ux.md §7.1). */
