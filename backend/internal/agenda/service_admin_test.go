@@ -2,7 +2,9 @@ package agenda
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -1104,5 +1106,269 @@ func TestUploadActividadImageAudits(t *testing.T) {
 	}
 	if repo.recorded[0].TargetLabel != "Actividades · Imagen · "+out.FileName {
 		t.Errorf("targetLabel = %q", repo.recorded[0].TargetLabel)
+	}
+}
+
+// --- Catálogo de categorías (T421) ---
+
+// TestCreateCategoriaValidatesAndAudits fija Q6/Q7: nombre en español
+// obligatorio y acotado, inglés opcional y registro `category.create` (R4-10).
+func TestCreateCategoriaValidatesAndAudits(t *testing.T) {
+	t.Run("nombre vacío", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+
+		_, err := svc.CreateCategoria(context.Background(), uuid.New(), CategoriaInput{NameEs: "   "})
+		if errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+		if _, ok := detailsOf(t, err)["nameEs"]; !ok {
+			t.Errorf("sin details.nameEs: %v", err)
+		}
+		if len(repo.categories) != 0 || len(repo.committed) != 0 {
+			t.Errorf("un rechazo guardó algo: %+v", repo.categories)
+		}
+	})
+
+	t.Run("nombre largo", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+
+		_, err := svc.CreateCategoria(context.Background(), uuid.New(), CategoriaInput{NameEs: strings.Repeat("a", 121)})
+		if errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+		if _, ok := detailsOf(t, err)["nameEs"]; !ok {
+			t.Errorf("sin details.nameEs: %v", err)
+		}
+	})
+
+	t.Run("alta correcta", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+
+		out, err := svc.CreateCategoria(context.Background(), uuid.New(), CategoriaInput{
+			NameEs: "  Acción   social ", NameEn: "   ", SortOrder: 10,
+		})
+		if err != nil {
+			t.Fatalf("CreateCategoria: %v", err)
+		}
+		if out.NameEs != "Acción social" || out.NameEn != nil || out.SortOrder != 10 {
+			t.Errorf("categoría = %+v", out)
+		}
+		if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionCategoryCreate {
+			t.Fatalf("auditoría = %+v, se esperaba category.create", repo.committed)
+		}
+		if repo.committed[0].TargetLabel != "Categorías · Acción social" {
+			t.Errorf("targetLabel = %q", repo.committed[0].TargetLabel)
+		}
+	})
+
+	t.Run("límite del catálogo", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+		for i := 0; i < MaxCategories; i++ {
+			repo.categories = append(repo.categories, Category{ID: uuid.New(), NameEs: fmt.Sprintf("Categoría %d", i)})
+		}
+
+		_, err := svc.CreateCategoria(context.Background(), uuid.New(), CategoriaInput{NameEs: "Una más"})
+		if errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+		if len(repo.categories) != MaxCategories {
+			t.Errorf("el catálogo creció: %d", len(repo.categories))
+		}
+	})
+
+	t.Run("nombre duplicado", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+		ctx := context.Background()
+
+		if _, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Predicación"}); err != nil {
+			t.Fatalf("CreateCategoria: %v", err)
+		}
+		repo.recorded = nil
+
+		if _, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Predicación"}); errorKind(err) != apperr.KindConflict {
+			t.Fatalf("duplicado = %v, se esperaba conflict", err)
+		}
+		if len(repo.recorded) != 1 || repo.recorded[0].Result != audit.ResultFailure {
+			t.Errorf("registro del rechazo = %+v", repo.recorded)
+		}
+	})
+}
+
+// TestUpdateCategoriaAllowsRenaming fija Q6/R4-5: renombrar está permitido (el
+// cambio se ve de inmediato en lo publicado) y el duplicado es 409.
+func TestUpdateCategoriaAllowsRenaming(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	first, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Adoración", SortOrder: 30})
+	if err != nil {
+		t.Fatalf("CreateCategoria: %v", err)
+	}
+	second, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Entrevista", SortOrder: 40})
+	if err != nil {
+		t.Fatalf("CreateCategoria: %v", err)
+	}
+	repo.committed = nil
+
+	name := "Adoración y alabanza"
+	order := 35
+	updated, err := svc.UpdateCategoria(ctx, uuid.New(), uuid.MustParse(first.ID), CategoriaPatch{NameEs: &name, SortOrder: &order})
+	if err != nil {
+		t.Fatalf("UpdateCategoria: %v", err)
+	}
+	if updated.NameEs != "Adoración y alabanza" || updated.SortOrder != 35 {
+		t.Errorf("categoría = %+v", updated)
+	}
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionCategoryUpdate {
+		t.Fatalf("auditoría = %+v, se esperaba category.update", repo.committed)
+	}
+
+	// Renombrar a un nombre ya usado por OTRA categoría → 409.
+	duplicated := "Adoración y alabanza"
+	if _, err := svc.UpdateCategoria(ctx, uuid.New(), uuid.MustParse(second.ID), CategoriaPatch{NameEs: &duplicated}); errorKind(err) != apperr.KindConflict {
+		t.Fatalf("duplicado = %v, se esperaba conflict", err)
+	}
+
+	// Sin cambios / id inexistente / nombre vacío.
+	if _, err := svc.UpdateCategoria(ctx, uuid.New(), uuid.MustParse(first.ID), CategoriaPatch{}); errorKind(err) != apperr.KindInvalid {
+		t.Errorf("sin cambios = %v, se esperaba invalid", err)
+	}
+	if _, err := svc.UpdateCategoria(ctx, uuid.New(), uuid.New(), CategoriaPatch{NameEs: &name}); errorKind(err) != apperr.KindNotFound {
+		t.Errorf("id inexistente = %v, se esperaba not_found", err)
+	}
+	empty := "  "
+	if _, err := svc.UpdateCategoria(ctx, uuid.New(), uuid.MustParse(first.ID), CategoriaPatch{NameEs: &empty}); errorKind(err) != apperr.KindInvalid {
+		t.Errorf("nombre vacío = %v, se esperaba invalid", err)
+	}
+
+	// `null` explícito vacía el nombre en inglés.
+	nullEn, err := svc.UpdateCategoria(ctx, uuid.New(), uuid.MustParse(first.ID), CategoriaPatch{NameEn: nullOptional()})
+	if err != nil {
+		t.Fatalf("UpdateCategoria(nameEn null): %v", err)
+	}
+	if nullEn.NameEn != nil {
+		t.Errorf("nameEn = %v, se esperaba null", nullEn.NameEn)
+	}
+}
+
+// TestDeleteCategoriaInUseIsConflict fija la decisión firme de la puerta 2
+// (P4-6): una categoría en uso NO se borra (409 con el recuento) y NO se desliga
+// de los elementos; sin uso, el borrado procede con su registro.
+func TestDeleteCategoriaInUseIsConflict(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	category, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Noche de oración"})
+	if err != nil {
+		t.Fatalf("CreateCategoria: %v", err)
+	}
+	categoryID := uuid.MustParse(category.ID)
+	free, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Otro"})
+	if err != nil {
+		t.Fatalf("CreateCategoria: %v", err)
+	}
+
+	// Un evento y una actividad usan la categoría.
+	eventIn := validEventoInput()
+	eventIn.CategoryID = category.ID
+	if _, err := svc.CreateEvento(ctx, uuid.New(), eventIn); err != nil {
+		t.Fatalf("CreateEvento: %v", err)
+	}
+	activityIn := validActividadInput()
+	activityIn.CategoryID = category.ID
+	if _, err := svc.CreateActividad(ctx, uuid.New(), activityIn); err != nil {
+		t.Fatalf("CreateActividad: %v", err)
+	}
+	repo.committed = nil
+	repo.recorded = nil
+
+	err = svc.DeleteCategoria(ctx, uuid.New(), categoryID)
+	if errorKind(err) != apperr.KindConflict {
+		t.Fatalf("borrado en uso = %v, se esperaba conflict", err)
+	}
+	if !strings.Contains(err.Error(), "está en uso por 2 elementos") {
+		t.Errorf("mensaje = %q, se esperaba el recuento", err.Error())
+	}
+	if _, ok := detailsOf(t, err)["categoryId"]; !ok {
+		t.Errorf("sin details.categoryId: %v", err)
+	}
+	if len(repo.categories) != 2 {
+		t.Errorf("la categoría en uso desapareció: %+v", repo.categories)
+	}
+	if len(repo.recorded) != 1 || repo.recorded[0].Result != audit.ResultFailure {
+		t.Errorf("registro del rechazo = %+v", repo.recorded)
+	}
+
+	// Al quitar la categoría de sus usos, el borrado procede.
+	stored, _, err := repo.GetEventByID(ctx, repo.events[0].ID)
+	if err != nil {
+		t.Fatalf("GetEventByID: %v", err)
+	}
+	stored.CategoryID = nil
+	if _, err := repo.UpdateEvent(ctx, stored, nil); err != nil {
+		t.Fatalf("UpdateEvent: %v", err)
+	}
+	storedActivity := repo.activities[0]
+	storedActivity.CategoryID = nil
+	if _, err := repo.UpdateActivity(ctx, storedActivity); err != nil {
+		t.Fatalf("UpdateActivity: %v", err)
+	}
+
+	if err := svc.DeleteCategoria(ctx, uuid.New(), categoryID); err != nil {
+		t.Fatalf("DeleteCategoria(sin uso): %v", err)
+	}
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionCategoryDelete {
+		t.Errorf("auditoría = %+v, se esperaba category.delete", repo.committed)
+	}
+	if repo.committed[0].TargetLabel != "Categorías · Noche de oración" {
+		t.Errorf("targetLabel = %q", repo.committed[0].TargetLabel)
+	}
+
+	// Sin uso y sin existir.
+	if err := svc.DeleteCategoria(ctx, uuid.New(), uuid.MustParse(free.ID)); err != nil {
+		t.Fatalf("DeleteCategoria(libre): %v", err)
+	}
+	if err := svc.DeleteCategoria(ctx, uuid.New(), uuid.New()); errorKind(err) != apperr.KindNotFound {
+		t.Errorf("borrado inexistente = %v, se esperaba not_found", err)
+	}
+}
+
+// TestListCategoriasKeepsOrder fija que el catálogo se devuelve en su orden de
+// presentación (sort_order, id) y sin estado de publicación.
+func TestListCategoriasKeepsOrder(t *testing.T) {
+	repo := newFakeRepository()
+	svc := newAdminService(t, repo)
+	ctx := context.Background()
+
+	for _, in := range []CategoriaInput{{NameEs: "Otro", SortOrder: 999}, {NameEs: "Acción social", SortOrder: 10}} {
+		if _, err := svc.CreateCategoria(ctx, uuid.New(), in); err != nil {
+			t.Fatalf("CreateCategoria: %v", err)
+		}
+	}
+	// El repositorio real ordena por `sort_order, id`; el falso conserva el orden
+	// de inserción, así que se comprueba el contrato del DTO.
+	list, err := svc.ListCategorias(ctx)
+	if err != nil {
+		t.Fatalf("ListCategorias: %v", err)
+	}
+	if len(list.Items) != 2 {
+		t.Fatalf("categorías = %+v", list.Items)
+	}
+	body, err := json.Marshal(list)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(body), "publicationState") {
+		t.Errorf("el catálogo no tiene estado de publicación: %s", body)
+	}
+	if list.Items[0].SortOrder != 999 || list.Items[1].SortOrder != 10 {
+		t.Errorf("orden devuelto = %+v", list.Items)
 	}
 }

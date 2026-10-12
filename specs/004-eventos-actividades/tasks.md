@@ -616,7 +616,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
   - **Criterio de terminado**: US3 y FR-011 cubiertas en el service.
   - **Commit sugerido**: `feat(agenda): gestion de actividades con fecha unica y auditoria`
 
-- [ ] T421 · `agenda`: `service_admin.go` — categorías · `[backend]`
+- [X] T421 · `agenda`: `service_admin.go` — categorías · `[backend]`
 
   - **Archivos**: `backend/internal/agenda/service_admin.go` (EDITADO) y `service_admin_test.go`
     (AMPLIADO).

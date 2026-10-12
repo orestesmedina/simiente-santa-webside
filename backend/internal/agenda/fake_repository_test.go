@@ -112,6 +112,11 @@ func (f *fakeRepository) UpdateCategory(_ context.Context, category Category, ac
 	if f.mutationErr != nil {
 		return Category{}, f.mutationErr
 	}
+	for _, stored := range f.categories {
+		if stored.ID != category.ID && stored.NameEs == category.NameEs {
+			return Category{}, apperr.Conflict("Ya existe una categoría con ese nombre")
+		}
+	}
 	for i, stored := range f.categories {
 		if stored.ID == category.ID {
 			f.categories[i] = category
@@ -314,6 +319,12 @@ func (f *fakeRepository) InsertActivity(_ context.Context, activity Activity, ac
 func (f *fakeRepository) UpdateActivity(_ context.Context, activity Activity, actions ...audit.Action) (Activity, error) {
 	if f.mutationErr != nil {
 		return Activity{}, f.mutationErr
+	}
+	for _, stored := range f.activities {
+		if stored.ID != activity.ID && stored.TitleEs == activity.TitleEs &&
+			stored.Date == activity.Date && stored.PlaceEs == activity.PlaceEs {
+			return Activity{}, apperr.Conflict(duplicateActivityMessage)
+		}
 	}
 	for i, stored := range f.activities {
 		if stored.ID == activity.ID {

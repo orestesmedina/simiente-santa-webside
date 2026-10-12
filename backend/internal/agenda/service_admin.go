@@ -1052,3 +1052,231 @@ func (s *service) mergeActividad(ctx context.Context, current Activity, patch Ac
 	}
 	return updated, dataChanged, stateChanged, nil
 }
+
+// --- Catálogo de categorías (Q6/Q7, T421) ---
+
+// CategoriaAdmin es una categoría del catálogo en el panel (Q6): nombre en
+// español obligatorio, en inglés opcional y su orden de presentación. El
+// catálogo NO tiene estado de publicación (son etiquetas, no contenido).
+type CategoriaAdmin struct {
+	ID        string    `json:"id"`
+	NameEs    string    `json:"nameEs"`
+	NameEn    *string   `json:"nameEn"`
+	SortOrder int       `json:"sortOrder"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// CategoriaAdminList es el catálogo completo (acotado en el servidor a
+// `MaxCategories`, sin paginación: es un catálogo pequeño, §8.1.3).
+type CategoriaAdminList struct {
+	Items []CategoriaAdmin `json:"items"`
+}
+
+// CategoriaPatch es el cuerpo de PATCH /api/v1/admin/categorias/{id}: solo los
+// campos presentes se tocan (`null` explícito vacía el nombre en inglés).
+type CategoriaPatch struct {
+	NameEs    *string          `json:"nameEs,omitempty"`
+	NameEn    Optional[string] `json:"nameEn"`
+	SortOrder *int             `json:"sortOrder,omitempty"`
+}
+
+// hasChanges indica si el PATCH trae al menos un campo.
+func (p CategoriaPatch) hasChanges() bool {
+	return p.NameEs != nil || p.NameEn.Set() || p.SortOrder != nil
+}
+
+// ListCategorias devuelve el catálogo completo en su orden de presentación
+// (`sort_order, id`): lo usan los selectores del panel (Q6).
+func (s *service) ListCategorias(ctx context.Context) (CategoriaAdminList, error) {
+	categories, err := s.repository.ListCategories(ctx)
+	if err != nil {
+		return CategoriaAdminList{}, fmt.Errorf("listar las categorías: %w", err)
+	}
+	items := make([]CategoriaAdmin, 0, len(categories))
+	for _, category := range categories {
+		items = append(items, categoriaAdminFrom(category))
+	}
+	return CategoriaAdminList{Items: items}, nil
+}
+
+// CreateCategoria da de alta una categoría del catálogo (Q6): nombre en español
+// obligatorio y en inglés opcional, con `sortOrder` opcional; el catálogo está
+// acotado a `MaxCategories`. Nombre duplicado → 409 (`UNIQUE (name_es)`).
+// Registra `category.create` (R4-10) en la misma transacción.
+func (s *service) CreateCategoria(ctx context.Context, actorID uuid.UUID, in CategoriaInput) (CategoriaAdmin, error) {
+	fail := func(err error) (CategoriaAdmin, error) {
+		s.recordContentFailure(ctx, actorID, ModuleCategories.CreateCode(), contentLabel(ModuleCategories, ""))
+		return CategoriaAdmin{}, err
+	}
+
+	if err := validate.Struct(in); err != nil {
+		return fail(err)
+	}
+
+	existing, err := s.repository.ListCategories(ctx)
+	if err != nil {
+		return CategoriaAdmin{}, fmt.Errorf("contar las categorías: %w", err)
+	}
+	if len(existing) >= MaxCategories {
+		return fail(apperr.Invalid(
+			fmt.Sprintf("No se pueden guardar más de %d categorías", MaxCategories),
+			apperr.WithDetails(map[string]any{"categorias": "límite alcanzado"}),
+		))
+	}
+
+	category := Category{
+		NameEs:    normalizeText(in.NameEs),
+		NameEn:    normalizeOptional(in.NameEn),
+		SortOrder: in.SortOrder,
+	}
+	label := contentLabel(ModuleCategories, category.NameEs)
+	actions := []audit.Action{contentAction(actorID, ModuleCategories.CreateCode(), label)}
+	saved, err := s.repository.InsertCategory(ctx, category, actions...)
+	if err != nil {
+		if isConflict(err) {
+			s.recordContentFailure(ctx, actorID, ModuleCategories.CreateCode(), label)
+		}
+		return CategoriaAdmin{}, fmt.Errorf("crear la categoría: %w", err)
+	}
+	return categoriaAdminFrom(saved), nil
+}
+
+// UpdateCategoria edita una categoría (Q6). Renombrar está permitido: el cambio
+// se ve de inmediato en los elementos publicados que la usan (es un dato del
+// elemento, como cualquier otro). Nombre duplicado → 409. Registra
+// `category.update` (R4-10) en la misma transacción.
+func (s *service) UpdateCategoria(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch CategoriaPatch) (CategoriaAdmin, error) {
+	fail := func(err error) (CategoriaAdmin, error) {
+		s.recordContentFailure(ctx, actorID, ModuleCategories.UpdateCode(), contentLabel(ModuleCategories, id.String()))
+		return CategoriaAdmin{}, err
+	}
+
+	if !patch.hasChanges() {
+		return fail(apperr.Invalid("No hay cambios que guardar"))
+	}
+
+	current, found, err := s.repository.GetCategoryByID(ctx, id)
+	if err != nil {
+		return CategoriaAdmin{}, fmt.Errorf("leer la categoría: %w", err)
+	}
+	if !found {
+		return fail(apperr.NotFound("La categoría no existe"))
+	}
+
+	updated, dataChanged, err := mergeCategoria(current, patch)
+	if err != nil {
+		return fail(err)
+	}
+	if !dataChanged {
+		return categoriaAdminFrom(current), nil
+	}
+
+	label := contentLabel(ModuleCategories, updated.NameEs)
+	actions := []audit.Action{contentAction(actorID, ModuleCategories.UpdateCode(), label)}
+	saved, err := s.repository.UpdateCategory(ctx, updated, actions...)
+	if err != nil {
+		if isConflict(err) {
+			s.recordContentFailure(ctx, actorID, ModuleCategories.UpdateCode(), label)
+		}
+		return CategoriaAdmin{}, fmt.Errorf("editar la categoría: %w", err)
+	}
+	return categoriaAdminFrom(saved), nil
+}
+
+// DeleteCategoria borra una categoría del catálogo y registra `category.delete`
+// (R4-10) en la misma transacción. Si algún evento o actividad la usa responde
+// `409 conflict` con el recuento ("está en uso por N elementos", P4-6, decisión
+// firme de la puerta 2): la categoría en uso NO se desliga automáticamente, hay
+// que quitarla primero de esos elementos. Un id inexistente → 404.
+func (s *service) DeleteCategoria(ctx context.Context, actorID uuid.UUID, id uuid.UUID) error {
+	current, found, err := s.repository.GetCategoryByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("leer la categoría: %w", err)
+	}
+	if !found {
+		return apperr.NotFound("La categoría no existe")
+	}
+
+	usage, err := s.repository.CountCategoryUsage(ctx, id)
+	if err != nil {
+		return fmt.Errorf("contar el uso de la categoría: %w", err)
+	}
+	if usage > 0 {
+		s.recordContentFailure(ctx, actorID, ModuleCategories.DeleteCode(), contentLabel(ModuleCategories, current.NameEs))
+		return apperr.Conflict(
+			categoryUsageMessage(usage),
+			apperr.WithDetails(map[string]any{"categoryId": "quítala primero de esos elementos"}),
+		)
+	}
+
+	actions := []audit.Action{contentAction(actorID, ModuleCategories.DeleteCode(), contentLabel(ModuleCategories, current.NameEs))}
+	deleted, err := s.repository.DeleteCategory(ctx, id, actions...)
+	if err != nil {
+		// Carrera: alguien la usó entre el recuento y el borrado (la FK la
+		// protege igualmente).
+		if isConflict(err) {
+			s.recordContentFailure(ctx, actorID, ModuleCategories.DeleteCode(), contentLabel(ModuleCategories, current.NameEs))
+		}
+		return fmt.Errorf("eliminar la categoría: %w", err)
+	}
+	if !deleted {
+		return apperr.NotFound("La categoría no existe")
+	}
+	return nil
+}
+
+// categoryUsageMessage arma el mensaje del 409 del borrado con el recuento
+// (P4-6): "está en uso por N elementos".
+func categoryUsageMessage(usage int64) string {
+	if usage == 1 {
+		return "La categoría está en uso por 1 elemento"
+	}
+	return fmt.Sprintf("La categoría está en uso por %d elementos", usage)
+}
+
+// mergeCategoria combina la categoría actual con los campos presentes del PATCH
+// y valida el resultado (Q6).
+func mergeCategoria(current Category, patch CategoriaPatch) (Category, bool, error) {
+	updated := current
+	dataChanged := false
+
+	if patch.NameEs != nil {
+		name := normalizeText(*patch.NameEs)
+		if name == "" {
+			return Category{}, false, apperr.Invalid(
+				"Revisa los datos del formulario",
+				apperr.WithDetails(map[string]any{"nameEs": "Este campo es obligatorio."}),
+			)
+		}
+		if len([]rune(name)) > MaxCategoryNameLength {
+			return Category{}, false, apperr.Invalid(
+				"Revisa los datos del formulario",
+				apperr.WithDetails(map[string]any{"nameEs": fmt.Sprintf("No puede tener más de %d caracteres.", MaxCategoryNameLength)}),
+			)
+		}
+		updated.NameEs = name
+		dataChanged = true
+	}
+	if patch.NameEn.Set() {
+		updated.NameEn = normalizeOptional(patch.NameEn.Value())
+		dataChanged = true
+	}
+	if patch.SortOrder != nil {
+		updated.SortOrder = *patch.SortOrder
+		dataChanged = true
+	}
+	return updated, dataChanged, nil
+}
+
+// categoriaAdminFrom traduce la categoría guardada a su DTO del panel.
+func categoriaAdminFrom(category Category) CategoriaAdmin {
+	return CategoriaAdmin{
+		ID:        category.ID.String(),
+		NameEs:    category.NameEs,
+		NameEn:    category.NameEn,
+		SortOrder: category.SortOrder,
+		CreatedAt: category.CreatedAt,
+		UpdatedAt: category.UpdatedAt,
+	}
+}
