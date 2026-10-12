@@ -439,7 +439,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     pública (`…Upcoming`).
   - **Commit sugerido**: `feat(agenda): persistencia de eventos con lista de fechas`
 
-- [ ] T413 · `agenda`: repository de actividades · `[backend]` `[P]` (P2)
+- [X] T413 · `agenda`: repository de actividades · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/agenda/repository_actividades.go` y
     `repository_actividades_integration_test.go` (NUEVOS).
