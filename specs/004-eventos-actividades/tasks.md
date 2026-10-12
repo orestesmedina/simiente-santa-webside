@@ -858,7 +858,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     completo.
   - **Commit sugerido**: `feat(frontend): formato de fechas localizado y claves i18n de agenda`
 
-- [ ] T433 · `features/publico/eventos/`: `EventsPage`, bloques, tarjetas y `HiddenNotice` · `[frontend]` `[P]` (P4)
+- [X] T433 · `features/publico/eventos/`: `EventsPage`, bloques, tarjetas y `HiddenNotice` · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/eventos/EventsPage.tsx`, `EventsSection.tsx`,
     `ActivitiesSection.tsx`, `EventCard.tsx`, `ActivityCard.tsx`, `CategoryChip.tsx`, `DateBadge.tsx`,

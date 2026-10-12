@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ApiError } from '../../../../api/client';
 import { getProximamente, type ProximamentePublica } from '../../../../api/agenda';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -23,11 +24,23 @@ export const UPCOMING_QUERY_KEY = ['proximamente'] as const;
 export function useUpcomingEvents() {
   const { lang } = useLanguage();
 
-  return useQuery<ProximamentePublica, ApiError>({
+  const query = useQuery<ProximamentePublica, ApiError>({
     queryKey: [...UPCOMING_QUERY_KEY, lang],
     queryFn: () => getProximamente(lang),
     placeholderData: keepPreviousData,
   });
+
+  // Última versión **válida** vista (ux.md §4.1: «error con caché previa»). El
+  // `placeholderData` solo cubre la recarga en curso; si la recarga falla, el
+  // contenido ya conocido se conserva y la página solo añade un aviso discreto.
+  // Ajuste de estado durante el render (patrón de React para estado derivado,
+  // el mismo de `Reveal`/`IdentityForm`): sin efecto ni render en cascada.
+  const [retained, setRetained] = useState<ProximamentePublica>();
+  if (query.data && query.data !== retained) {
+    setRetained(query.data);
+  }
+
+  return { ...query, data: query.data ?? retained };
 }
 
 /**
