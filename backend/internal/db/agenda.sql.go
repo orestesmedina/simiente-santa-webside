@@ -745,6 +745,153 @@ func (q *Queries) ListEvents(ctx context.Context, arg ListEventsParams) ([]Agend
 	return items, nil
 }
 
+const listNextUpcomingItems = `-- name: ListNextUpcomingItems :many
+
+WITH next_event_dates AS (
+    SELECT DISTINCT ON (d.event_id)
+           d.event_id, d.event_date, d.start_time, d.end_time
+    FROM agenda_event_dates d
+    WHERE (
+        d.event_date > $2::date
+        OR (d.event_date = $2::date
+            AND (d.end_time IS NULL OR d.end_time::time >= $3::time))
+    )
+    ORDER BY d.event_id, d.event_date, d.start_time NULLS FIRST, d.id
+),
+upcoming_items AS (
+    SELECT 'event'::text AS kind,
+           e.id AS item_id,
+           e.title_es,
+           e.title_en,
+           nd.event_date AS item_date,
+           nd.start_time,
+           nd.end_time,
+           e.place_es,
+           e.place_en,
+           e.image_file,
+           e.image_alt_es,
+           e.image_alt_en,
+           (nd.event_date <= $4::date) AS in_window
+    FROM agenda_events e
+    JOIN next_event_dates nd ON nd.event_id = e.id
+    WHERE e.publication_state = 'published'
+
+    UNION ALL
+
+    SELECT 'activity'::text,
+           a.id,
+           a.title_es,
+           a.title_en,
+           a.activity_date,
+           a.start_time,
+           a.end_time,
+           a.place_es,
+           a.place_en,
+           a.image_file,
+           a.image_alt_es,
+           a.image_alt_en,
+           (a.activity_date <= $4::date)
+    FROM agenda_activities a
+    WHERE a.publication_state = 'published'
+      AND (
+          a.activity_date > $2::date
+          OR (a.activity_date = $2::date
+              AND (a.end_time IS NULL OR a.end_time::time >= $3::time))
+      )
+),
+chosen AS (
+    SELECT kind, item_id, title_es, title_en, item_date, start_time, end_time,
+           place_es, place_en, image_file, image_alt_es, image_alt_en
+    FROM upcoming_items
+    WHERE in_window = EXISTS (SELECT 1 FROM upcoming_items WHERE in_window)
+)
+SELECT kind, item_id, title_es, title_en, item_date, start_time, end_time,
+       place_es, place_en, image_file, image_alt_es, image_alt_en
+FROM chosen
+ORDER BY item_date, start_time NULLS FIRST, title_es, item_id
+LIMIT $1
+`
+
+type ListNextUpcomingItemsParams struct {
+	Lim       int32
+	Today     pgtype.Date
+	NowTime   pgtype.Time
+	WindowEnd pgtype.Date
+}
+
+type ListNextUpcomingItemsRow struct {
+	Kind       string
+	ItemID     pgtype.UUID
+	TitleEs    string
+	TitleEn    pgtype.Text
+	ItemDate   pgtype.Date
+	StartTime  pgtype.Text
+	EndTime    pgtype.Text
+	PlaceEs    string
+	PlaceEn    pgtype.Text
+	ImageFile  pgtype.Text
+	ImageAltEs pgtype.Text
+	ImageAltEn pgtype.Text
+}
+
+// --------------------------------------------- extracto de la portada (Q8)
+// Extracto del bloque «Lo que viene» de la portada (US7/FR-025, enmienda del
+// 2026-10-12/Q8 refinada el mismo día; research R4-16): eventos y actividades
+// MEZCLADOS por cercanía, solo publicado y próximo (misma regla R4-2 con
+// `today`/`now_time` parametrizados, corte en APP_TZ) y con la **ventana de 2
+// meses con respaldo**:
+//
+//   - `window_end` (= today + 2 meses de calendario, calculado por el service en
+//     APP_TZ) marca la ventana `[today, window_end]`;
+//   - `in_window` dice si la próxima fecha del ítem cae dentro;
+//   - el predicado `in_window = EXISTS (…)` deja SOLO los ítems de la ventana
+//     cuando la ventana tiene alguno, y SOLO los de fuera (respaldo) cuando está
+//     vacía: las dos ramas nunca se mezclan (equivalente a la rama de respaldo
+//     `WHERE NOT EXISTS (SELECT 1 FROM ventana)`, en una sola pasada);
+//   - el tope (`lim` = `maxPortadaItems`, 5 firme) y el orden
+//     `date, start_time NULLS FIRST, title_es, id` (FR-003) cierran la consulta.
+//
+// De cada evento se usa su PRIMERA fecha próxima (DISTINCT ON + ORDER BY), que
+// es "la próxima fecha" de FR-004. Columnas explícitas (sin `SELECT *`) y sin
+// detalle, categoría ni lista de fechas: la tarjeta compacta no los muestra.
+func (q *Queries) ListNextUpcomingItems(ctx context.Context, arg ListNextUpcomingItemsParams) ([]ListNextUpcomingItemsRow, error) {
+	rows, err := q.db.Query(ctx, listNextUpcomingItems,
+		arg.Lim,
+		arg.Today,
+		arg.NowTime,
+		arg.WindowEnd,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListNextUpcomingItemsRow
+	for rows.Next() {
+		var i ListNextUpcomingItemsRow
+		if err := rows.Scan(
+			&i.Kind,
+			&i.ItemID,
+			&i.TitleEs,
+			&i.TitleEn,
+			&i.ItemDate,
+			&i.StartTime,
+			&i.EndTime,
+			&i.PlaceEs,
+			&i.PlaceEn,
+			&i.ImageFile,
+			&i.ImageAltEs,
+			&i.ImageAltEn,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUpcomingActivities = `-- name: ListUpcomingActivities :many
 SELECT id, title_es, title_en, detail_es, detail_en, place_es, place_en,
        map_url, organizer_es, organizer_en, category_id, image_file,
