@@ -767,7 +767,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
 > composición según `ux.md` §6; las pantallas y textos siguen `ux.md`. Ningún `fetch` fuera del
 > cliente de API (regla F2); i18n solo en el sitio público (FR-016: el panel va en español).
 
-- [ ] T429 · `api/agenda.ts` + hooks · `[frontend]`
+- [X] T429 · `api/agenda.ts` + hooks · `[frontend]`
 
   - **Archivos**: `frontend/src/api/agenda.ts` (NUEVO) y `frontend/src/features/publico/eventos/hooks/useUpcomingEvents.ts`,
     `frontend/src/features/eventos/hooks/*` (NUEVOS).
