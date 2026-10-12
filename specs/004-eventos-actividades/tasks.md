@@ -901,7 +901,7 @@ diseño, **inmutable**) · `ux.md` (pantallas, componentes, textos, estados) · 
     las tres superficies.
   - **Commit sugerido**: `feat(frontend): navegacion con /eventos condicional en barra, menu y pie`
 
-- [ ] T435 · Panel: `EventsPage` + `EventsList` + `EventForm` + `DatesEditor` · `[frontend]`
+- [X] T435 · Panel: `EventsPage` + `EventsList` + `EventForm` + `DatesEditor` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/eventos/pages/EventsPage.tsx`,
     `components/EventsList.tsx`, `components/EventForm.tsx`, `components/DatesEditor.tsx`,

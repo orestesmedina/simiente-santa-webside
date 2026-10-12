@@ -16,6 +16,14 @@ export interface PublishControlsProps {
   loading?: boolean;
   onPublish: () => void;
   onUnpublish: () => void;
+  /**
+   * Textos del módulo que reutiliza el control (F4/T435). Por defecto los de la
+   * portada de F3, de modo que su comportamiento no cambia (promoción T431).
+   */
+  retireLabel?: string;
+  confirmTitle?: string;
+  confirmDescription?: (name: string) => string;
+  cancelText?: string;
 }
 
 /**
@@ -34,6 +42,10 @@ export function PublishControls({
   loading = false,
   onPublish,
   onUnpublish,
+  retireLabel = 'Retirar de la portada',
+  confirmTitle = UNPUBLISH_CONFIRM_TITLE,
+  confirmDescription = unpublishConfirmDescription,
+  cancelText = UNPUBLISH_CANCEL,
 }: PublishControlsProps) {
   const [confirming, setConfirming] = useState(false);
 
@@ -41,14 +53,14 @@ export function PublishControls({
     return (
       <>
         <Button variant="secondary" disabled={loading} onClick={() => setConfirming(true)}>
-          Retirar de la portada
+          {retireLabel}
         </Button>
         {confirming && (
           <ConfirmDialog
-            title={UNPUBLISH_CONFIRM_TITLE}
-            description={unpublishConfirmDescription(name)}
+            title={confirmTitle}
+            description={confirmDescription(name)}
             confirmText={UNPUBLISH_CONFIRM_ACTION}
-            cancelText={UNPUBLISH_CANCEL}
+            cancelText={cancelText}
             danger
             loading={loading}
             onConfirm={() => {
