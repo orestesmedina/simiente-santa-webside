@@ -127,8 +127,12 @@ func (p EventoPatch) hasChanges() bool {
 // el duplicado del módulo con 409 (R4-9) y registra `event.create` —aunque el
 // evento nazca publicado (R4-10)— en la misma transacción que el alta (FR-017).
 func (s *service) CreateEvento(ctx context.Context, actorID uuid.UUID, in EventoInput) (EventoAdmin, error) {
+	// Etiqueta del rechazo: vacía mientras no se conozca el título (los datos
+	// inválidos no lo traen) y el título ya normalizado en cuanto se conoce
+	// (R4-10: etiquetas legibles, nunca el UUID).
+	label := contentLabel(ModuleEvents, "")
 	fail := func(err error) (EventoAdmin, error) {
-		s.recordContentFailure(ctx, actorID, ModuleEvents.CreateCode(), contentLabel(ModuleEvents, ""))
+		s.recordContentFailure(ctx, actorID, ModuleEvents.CreateCode(), label)
 		return EventoAdmin{}, err
 	}
 
@@ -166,6 +170,8 @@ func (s *service) CreateEvento(ctx context.Context, actorID uuid.UUID, in Evento
 		PublicationState: publicationStateOr(in.PublicationState),
 	}
 
+	label = contentLabel(ModuleEvents, event.TitleEs)
+
 	duplicate, err := s.repository.ExistsEventDuplicate(ctx, event.TitleEs, event.PlaceEs, datesStrings(dates), nil)
 	if err != nil {
 		return EventoAdmin{}, fmt.Errorf("comprobar el duplicado del evento: %w", err)
@@ -177,7 +183,6 @@ func (s *service) CreateEvento(ctx context.Context, actorID uuid.UUID, in Evento
 		))
 	}
 
-	label := contentLabel(ModuleEvents, event.TitleEs)
 	actions := []audit.Action{contentAction(actorID, ModuleEvents.CreateCode(), label)}
 	saved, err := s.repository.InsertEvent(ctx, event, dates, actions...)
 	if err != nil {
@@ -191,8 +196,11 @@ func (s *service) CreateEvento(ctx context.Context, actorID uuid.UUID, in Evento
 // —dos filas cuando ocurren ambas (R4-10)— en la misma transacción. Un id
 // inexistente → 404; el duplicado del módulo (sin contarse a sí mismo) → 409.
 func (s *service) UpdateEvento(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch EventoPatch) (EventoAdmin, error) {
+	// Etiqueta del rechazo: el UUID mientras el evento no esté leído y su título
+	// en cuanto se conoce (R4-10: etiquetas legibles).
+	label := contentLabel(ModuleEvents, id.String())
 	fail := func(err error) (EventoAdmin, error) {
-		s.recordContentFailure(ctx, actorID, ModuleEvents.UpdateCode(), contentLabel(ModuleEvents, id.String()))
+		s.recordContentFailure(ctx, actorID, ModuleEvents.UpdateCode(), label)
 		return EventoAdmin{}, err
 	}
 
@@ -207,6 +215,7 @@ func (s *service) UpdateEvento(ctx context.Context, actorID uuid.UUID, id uuid.U
 	if !found {
 		return fail(apperr.NotFound("El evento no existe"))
 	}
+	label = contentLabel(ModuleEvents, current.TitleEs)
 
 	updated, dates, dataChanged, stateChanged, err := s.mergeEvento(ctx, current, patch)
 	if err != nil {
@@ -238,7 +247,7 @@ func (s *service) UpdateEvento(ctx context.Context, actorID uuid.UUID, id uuid.U
 		}
 	}
 
-	label := contentLabel(ModuleEvents, updated.TitleEs)
+	label = contentLabel(ModuleEvents, updated.TitleEs)
 	actions := make([]audit.Action, 0, 2)
 	if dataChanged {
 		actions = append(actions, contentAction(actorID, ModuleEvents.UpdateCode(), label))
@@ -249,6 +258,12 @@ func (s *service) UpdateEvento(ctx context.Context, actorID uuid.UUID, id uuid.U
 
 	saved, err := s.repository.UpdateEvent(ctx, updated, dates, actions...)
 	if err != nil {
+		// Un conflicto de la base (p. ej. la categoría dejó de existir) identifica
+		// al elemento por su identidad actual, no por el título que se intentaba
+		// guardar.
+		if isConflict(err) {
+			s.recordContentFailure(ctx, actorID, ModuleEvents.UpdateCode(), contentLabel(ModuleEvents, current.TitleEs))
+		}
 		return EventoAdmin{}, fmt.Errorf("editar el evento: %w", err)
 	}
 	return s.eventoAdmin(ctx, saved)
@@ -774,8 +789,11 @@ func (s *service) CreateActividad(ctx context.Context, actorID uuid.UUID, in Act
 // de publicación que los eventos (FR-013/FR-014) y la regla de códigos de
 // R4-10 (`activity.update` y/o `activity.publish`/`activity.unpublish`).
 func (s *service) UpdateActividad(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch ActividadPatch) (ActividadAdmin, error) {
+	// Etiqueta del rechazo: el UUID mientras la actividad no esté leída y su
+	// título en cuanto se conoce (R4-10: etiquetas legibles).
+	label := contentLabel(ModuleActivities, id.String())
 	fail := func(err error) (ActividadAdmin, error) {
-		s.recordContentFailure(ctx, actorID, ModuleActivities.UpdateCode(), contentLabel(ModuleActivities, id.String()))
+		s.recordContentFailure(ctx, actorID, ModuleActivities.UpdateCode(), label)
 		return ActividadAdmin{}, err
 	}
 
@@ -790,6 +808,7 @@ func (s *service) UpdateActividad(ctx context.Context, actorID uuid.UUID, id uui
 	if !found {
 		return fail(apperr.NotFound("La actividad no existe"))
 	}
+	label = contentLabel(ModuleActivities, current.TitleEs)
 
 	updated, dataChanged, stateChanged, err := s.mergeActividad(ctx, current, patch)
 	if err != nil {
@@ -799,7 +818,7 @@ func (s *service) UpdateActividad(ctx context.Context, actorID uuid.UUID, id uui
 		return s.actividadAdmin(ctx, current)
 	}
 
-	label := contentLabel(ModuleActivities, updated.TitleEs)
+	label = contentLabel(ModuleActivities, updated.TitleEs)
 	actions := make([]audit.Action, 0, 2)
 	if dataChanged {
 		actions = append(actions, contentAction(actorID, ModuleActivities.UpdateCode(), label))
@@ -810,8 +829,10 @@ func (s *service) UpdateActividad(ctx context.Context, actorID uuid.UUID, id uui
 
 	saved, err := s.repository.UpdateActivity(ctx, updated, actions...)
 	if err != nil {
+		// El duplicado exacto del módulo lo detecta la base (UNIQUE): el rechazo
+		// identifica a la actividad por su título ACTUAL (R4-10, M3).
 		if isConflict(err) {
-			s.recordContentFailure(ctx, actorID, ModuleActivities.UpdateCode(), label)
+			s.recordContentFailure(ctx, actorID, ModuleActivities.UpdateCode(), contentLabel(ModuleActivities, current.TitleEs))
 		}
 		return ActividadAdmin{}, fmt.Errorf("editar la actividad: %w", err)
 	}
@@ -1174,8 +1195,11 @@ func (s *service) CreateCategoria(ctx context.Context, actorID uuid.UUID, in Cat
 // elemento, como cualquier otro). Nombre duplicado → 409. Registra
 // `category.update` (R4-10) en la misma transacción.
 func (s *service) UpdateCategoria(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch CategoriaPatch) (CategoriaAdmin, error) {
+	// Etiqueta del rechazo: el UUID mientras la categoría no esté leída y su
+	// nombre en cuanto se conoce (R4-10: etiquetas legibles).
+	label := contentLabel(ModuleCategories, id.String())
 	fail := func(err error) (CategoriaAdmin, error) {
-		s.recordContentFailure(ctx, actorID, ModuleCategories.UpdateCode(), contentLabel(ModuleCategories, id.String()))
+		s.recordContentFailure(ctx, actorID, ModuleCategories.UpdateCode(), label)
 		return CategoriaAdmin{}, err
 	}
 
@@ -1190,6 +1214,7 @@ func (s *service) UpdateCategoria(ctx context.Context, actorID uuid.UUID, id uui
 	if !found {
 		return fail(apperr.NotFound("La categoría no existe"))
 	}
+	label = contentLabel(ModuleCategories, current.NameEs)
 
 	updated, dataChanged, err := mergeCategoria(current, patch)
 	if err != nil {
@@ -1199,12 +1224,14 @@ func (s *service) UpdateCategoria(ctx context.Context, actorID uuid.UUID, id uui
 		return categoriaAdminFrom(current), nil
 	}
 
-	label := contentLabel(ModuleCategories, updated.NameEs)
+	label = contentLabel(ModuleCategories, updated.NameEs)
 	actions := []audit.Action{contentAction(actorID, ModuleCategories.UpdateCode(), label)}
 	saved, err := s.repository.UpdateCategory(ctx, updated, actions...)
 	if err != nil {
+		// El nombre duplicado lo detecta la base (UNIQUE): el rechazo identifica
+		// a la categoría por su nombre ACTUAL (R4-10, M3).
 		if isConflict(err) {
-			s.recordContentFailure(ctx, actorID, ModuleCategories.UpdateCode(), label)
+			s.recordContentFailure(ctx, actorID, ModuleCategories.UpdateCode(), contentLabel(ModuleCategories, current.NameEs))
 		}
 		return CategoriaAdmin{}, fmt.Errorf("editar la categoría: %w", err)
 	}

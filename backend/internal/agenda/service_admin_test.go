@@ -1644,3 +1644,109 @@ func TestListEventosReadsDatesInOneBatchQuery(t *testing.T) {
 		t.Errorf("una página sin filas no debe consultar el lote: %d llamadas", repo.datesBatchCalls)
 	}
 }
+
+// TestRejectionLabelsUseTheTitle fija el hallazgo M3 (R4-10: etiquetas
+// legibles): los rechazos de una edición registran el TÍTULO del elemento (no su
+// UUID) en cuanto el service lo ha leído, y el alta de un evento duplicado deja
+// el título que se intentó guardar.
+func TestRejectionLabelsUseTheTitle(t *testing.T) {
+	t.Run("edición de evento con datos inválidos", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+		ctx := context.Background()
+
+		created, err := svc.CreateEvento(ctx, uuid.New(), validEventoInput())
+		if err != nil {
+			t.Fatalf("CreateEvento: %v", err)
+		}
+		repo.recorded = nil
+
+		empty := "   "
+		if _, err := svc.UpdateEvento(ctx, uuid.New(), uuid.MustParse(created.ID), EventoPatch{TitleEs: &empty}); errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+		assertRejectionLabel(t, repo, audit.ActionEventUpdate, "Eventos · Noche de aposentos")
+	})
+
+	t.Run("edición de evento inexistente", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+		missing := uuid.New()
+
+		title := "X"
+		if _, err := svc.UpdateEvento(context.Background(), uuid.New(), missing, EventoPatch{TitleEs: &title}); errorKind(err) != apperr.KindNotFound {
+			t.Fatalf("error = %v, se esperaba not_found", err)
+		}
+		// Sin evento no hay título: la etiqueta es el identificador de la ruta.
+		assertRejectionLabel(t, repo, audit.ActionEventUpdate, "Eventos · "+missing.String())
+	})
+
+	t.Run("edición de actividad con datos inválidos", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+		ctx := context.Background()
+
+		created, err := svc.CreateActividad(ctx, uuid.New(), validActividadInput())
+		if err != nil {
+			t.Fatalf("CreateActividad: %v", err)
+		}
+		repo.recorded = nil
+
+		empty := "  "
+		if _, err := svc.UpdateActividad(ctx, uuid.New(), uuid.MustParse(created.ID), ActividadPatch{TitleEs: &empty}); errorKind(err) != apperr.KindInvalid {
+			t.Fatalf("error = %v, se esperaba invalid", err)
+		}
+		assertRejectionLabel(t, repo, audit.ActionActivityUpdate, "Actividades · Repartir comida")
+	})
+
+	t.Run("edición de categoría duplicada", func(t *testing.T) {
+		repo := newFakeRepository()
+		svc := newAdminService(t, repo)
+		ctx := context.Background()
+
+		if _, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Acción social"}); err != nil {
+			t.Fatalf("CreateCategoria: %v", err)
+		}
+		other, err := svc.CreateCategoria(ctx, uuid.New(), CategoriaInput{NameEs: "Otro"})
+		if err != nil {
+			t.Fatalf("CreateCategoria: %v", err)
+		}
+		repo.recorded = nil
+
+		duplicated := "Acción social"
+		if _, err := svc.UpdateCategoria(ctx, uuid.New(), uuid.MustParse(other.ID), CategoriaPatch{NameEs: &duplicated}); errorKind(err) != apperr.KindConflict {
+			t.Fatalf("error = %v, se esperaba conflict", err)
+		}
+		assertRejectionLabel(t, repo, audit.ActionCategoryUpdate, "Categorías · Otro")
+	})
+
+	t.Run("alta de evento duplicado", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.duplicate = true
+		svc := newAdminService(t, repo)
+
+		if _, err := svc.CreateEvento(context.Background(), uuid.New(), validEventoInput()); errorKind(err) != apperr.KindConflict {
+			t.Fatalf("error = %v, se esperaba conflict", err)
+		}
+		assertRejectionLabel(t, repo, audit.ActionEventCreate, "Eventos · Noche de aposentos")
+	})
+}
+
+// assertRejectionLabel comprueba que el rechazo registrado usa el código y la
+// etiqueta esperados, con result='failure'.
+func assertRejectionLabel(t *testing.T, repo *fakeRepository, code, label string) {
+	t.Helper()
+	if len(repo.recorded) != 1 {
+		t.Fatalf("rechazos registrados = %+v, se esperaba 1", repo.recorded)
+	}
+	action := repo.recorded[0]
+	if action.Code != code {
+		t.Errorf("código = %q, se esperaba %q", action.Code, code)
+	}
+	if action.TargetLabel != label {
+		t.Errorf("targetLabel = %q, se esperaba %q", action.TargetLabel, label)
+	}
+	if action.Result != audit.ResultFailure {
+		t.Errorf("result = %q, se esperaba failure", action.Result)
+	}
+}
