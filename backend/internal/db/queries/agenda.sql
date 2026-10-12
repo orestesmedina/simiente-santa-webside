@@ -63,6 +63,13 @@ SELECT (
     + (SELECT count(*) FROM agenda_activities ac WHERE ac.category_id = sqlc.arg('id')::uuid)
 )::bigint AS total;
 
+-- name: CountCategories :one
+-- Tope del catálogo (Q6): cuenta las categorías sin traerlas todas (el service
+-- lo compara con `MaxCategories`). El tope es blando: dos altas concurrentes
+-- podrían superarlo en una fila.
+SELECT count(*)::bigint AS total
+FROM agenda_categories;
+
 -- ----------------------------------------------------------------- eventos
 
 -- name: InsertEvent :one

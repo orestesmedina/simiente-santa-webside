@@ -1178,6 +1178,13 @@ func TestCreateCategoriaValidatesAndAudits(t *testing.T) {
 		if len(repo.categories) != MaxCategories {
 			t.Errorf("el catálogo creció: %d", len(repo.categories))
 		}
+		// El tope se comprueba con un CONTEO (M2): el catálogo no se carga entero.
+		if repo.countCategoriesCalls != 1 {
+			t.Errorf("conteos del catálogo = %d, se esperaba 1", repo.countCategoriesCalls)
+		}
+		if repo.listCategoriesCalls != 0 {
+			t.Errorf("el tope no debe cargar el catálogo entero: %d listados", repo.listCategoriesCalls)
+		}
 	})
 
 	t.Run("nombre duplicado", func(t *testing.T) {

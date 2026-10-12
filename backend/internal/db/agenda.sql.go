@@ -26,6 +26,21 @@ func (q *Queries) CountActivities(ctx context.Context, publicationState pgtype.T
 	return total, err
 }
 
+const countCategories = `-- name: CountCategories :one
+SELECT count(*)::bigint AS total
+FROM agenda_categories
+`
+
+// Tope del catálogo (Q6): cuenta las categorías sin traerlas todas (el service
+// lo compara con `MaxCategories`). El tope es blando: dos altas concurrentes
+// podrían superarlo en una fila.
+func (q *Queries) CountCategories(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countCategories)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const countCategoryUsage = `-- name: CountCategoryUsage :one
 SELECT (
     (SELECT count(*) FROM agenda_events ev WHERE ev.category_id = $1::uuid)

@@ -1138,11 +1138,14 @@ func (s *service) CreateCategoria(ctx context.Context, actorID uuid.UUID, in Cat
 		return fail(err)
 	}
 
-	existing, err := s.repository.ListCategories(ctx)
+	// El tope del catálogo se comprueba con un conteo (no cargando el catálogo
+	// entero): es un tope blando, dos altas concurrentes podrían superarlo en una
+	// fila (Q6).
+	total, err := s.repository.CountCategories(ctx)
 	if err != nil {
 		return CategoriaAdmin{}, fmt.Errorf("contar las categorías: %w", err)
 	}
-	if len(existing) >= MaxCategories {
+	if total >= MaxCategories {
 		return fail(apperr.Invalid(
 			fmt.Sprintf("No se pueden guardar más de %d categorías", MaxCategories),
 			apperr.WithDetails(map[string]any{"categorias": "límite alcanzado"}),

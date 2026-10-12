@@ -125,6 +125,15 @@ func (r *repository) DeleteCategory(ctx context.Context, id uuid.UUID, actions .
 	return deleted, nil
 }
 
+// CountCategories cuenta el catálogo sin traerlo (tope `MaxCategories`, Q6).
+func (r *repository) CountCategories(ctx context.Context) (int64, error) {
+	total, err := r.q.CountCategories(ctx)
+	if err != nil {
+		return 0, wrap(err, "count categories", "", "")
+	}
+	return total, nil
+}
+
 // CountCategoryUsage cuenta cuántos elementos (eventos y actividades) usan la
 // categoría: es el número del mensaje "está en uso por N elementos" del 409
 // (R4-5/P4-6).

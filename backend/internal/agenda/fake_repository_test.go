@@ -46,6 +46,10 @@ type fakeRepository struct {
 	// cuántos eventos haya (no hay consultas N+1).
 	datesBatchCalls    int
 	upcomingBatchCalls int
+	// listCategoriesCalls y countCategoriesCalls cuentan las lecturas del
+	// catálogo (el tope `MaxCategories` debe usar el conteo, no el listado).
+	listCategoriesCalls  int
+	countCategoriesCalls int
 }
 
 // cutoffCall es una llamada al repositorio con el corte "hoy"/"ahora".
@@ -88,7 +92,14 @@ func (f *fakeRepository) RecordAction(_ context.Context, action audit.Action) er
 // --- Catálogo de categorías ---
 
 func (f *fakeRepository) ListCategories(context.Context) ([]Category, error) {
+	f.listCategoriesCalls++
 	return f.categories, nil
+}
+
+// CountCategories cuenta el catálogo sin traerlo (tope `MaxCategories`).
+func (f *fakeRepository) CountCategories(context.Context) (int64, error) {
+	f.countCategoriesCalls++
+	return int64(len(f.categories)), nil
 }
 
 func (f *fakeRepository) GetCategoryByID(_ context.Context, id uuid.UUID) (Category, bool, error) {

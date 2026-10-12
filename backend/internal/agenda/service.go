@@ -142,6 +142,7 @@ type Repository interface {
 	InsertCategory(ctx context.Context, category Category, actions ...audit.Action) (Category, error)
 	UpdateCategory(ctx context.Context, category Category, actions ...audit.Action) (Category, error)
 	DeleteCategory(ctx context.Context, id uuid.UUID, actions ...audit.Action) (bool, error)
+	CountCategories(ctx context.Context) (int64, error)
 	CountCategoryUsage(ctx context.Context, id uuid.UUID) (int64, error)
 
 	// Eventos con su lista de fechas (FR-004/FR-010/FR-013).
