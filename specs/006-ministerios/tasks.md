@@ -565,7 +565,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     `service*.go` ≥ 80 % intacta.
   - **Commit sugerido**: `feat(ministerios): extracto de la portada con tope 5 y sin encargado`
 
-- [ ] T615 · `ministerios`: `service_admin.go` — CRUD, publicación y visibilidad del encargado · `[backend]`
+- [X] T615 · `ministerios`: `service_admin.go` — CRUD, publicación y visibilidad del encargado · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/service_admin.go` y `service_admin_test.go`
     (NUEVOS).
