@@ -458,7 +458,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     las imágenes de F3/F4.
   - **Commit sugerido**: `refactor(media): IsFilePublished cubre imagenes de ministerios`
 
-- [ ] T611 · Integración: migraciones up→down→up, «oculto por defecto» y atomicidad · `[backend]`
+- [X] T611 · Integración: migraciones up→down→up, «oculto por defecto» y atomicidad · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/repository_migrations_integration_test.go` y
     `repository_audit_integration_test.go` (NUEVOS; `//go:build integration`).
