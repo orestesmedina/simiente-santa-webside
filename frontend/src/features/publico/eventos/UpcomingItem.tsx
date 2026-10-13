@@ -38,12 +38,15 @@ export function UpcomingItem({ item }: UpcomingItemProps) {
         </span>
 
         <h3 className="font-sans text-[1.0625rem] font-semibold leading-snug text-ink">
+          {/* El enlace es el **único** elemento clicable de la tarjeta y cumple
+              el objetivo táctil ≥ 44 px (FR-023/FR-024): la caja es un `flex`
+              de 44 px con el título —recortado a 2 líneas— centrado dentro. */}
           <Link
             to={to}
             aria-label={`${badge}: ${item.title}`}
-            className="line-clamp-2 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className="flex min-h-11 items-center underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
-            {item.title}
+            <span className="line-clamp-2">{item.title}</span>
           </Link>
         </h3>
 
