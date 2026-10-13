@@ -12,6 +12,14 @@ export const es: PublicMessages = {
   'nav.sections.contact': 'Contacto',
   'nav.sections.social': 'Redes sociales',
   'nav.sections.events': 'Eventos y actividades',
+  'home.upcoming.title': 'Lo que viene',
+  'home.upcoming.subtitle': 'Lo más próximo de nuestra agenda',
+  'home.upcoming.seeAll': 'Ver más eventos',
+  'home.upcoming.empty': 'Por el momento no hay eventos ni actividades.',
+  'home.upcoming.error.load': 'No pudimos cargar lo que viene.',
+  'home.upcoming.error.retry': 'Volver a intentar',
+  'home.upcoming.badge.event': 'Evento',
+  'home.upcoming.badge.activity': 'Actividad',
   'events.page.title': 'Eventos y actividades',
   'events.page.subtitle':
     'Lo que viene: reuniones de la iglesia y acciones concretas en las que puedes participar.',
@@ -76,4 +84,5 @@ export const es: PublicMessages = {
   'a11y.logo': 'Logotipo de la iglesia Simiente Santa',
   'a11y.hero': 'Imagen de la portada de la iglesia',
   'a11y.events.heading': 'Eventos y actividades de la iglesia',
+  'a11y.home.upcoming.heading': 'Lo que viene: próximos eventos y actividades de la iglesia',
 };

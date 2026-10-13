@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import type { PortadaPublica } from '../../../api/portada';
-import { useSiteLinks } from '../hooks/useSiteLinks';
+import { useSiteLinks, type SiteLink } from '../hooks/useSiteLinks';
 import { usePublicHomeData } from '../hooks/usePublicHomeData';
 import { LanguageProvider } from '../i18n/LanguageProvider';
 import { useLanguage } from '../i18n/useLanguage';
@@ -30,40 +29,39 @@ export function PublicLayout() {
 }
 
 /**
- * Lleva la vista a la sección del hash de la URL (`/#whatsapp`) cuando se llega
- * desde **otra ruta** (QA Bug 1: `/eventos` → «WhatsApp»). El navegador resuelve
- * el salto al cargar el documento, pero en una SPA las secciones aparecen
- * **después** de resolver la consulta pública, así que sin este efecto el
- * visitante aterriza arriba del todo.
+ * Lleva la vista a la sección del hash de la URL (`/#whatsapp` en la portada,
+ * `/eventos#actividades` en la sección de agenda).
  *
- * Se ejecuta **una sola vez por carga de documento** y solo en la portada, y
- * espera a que la respuesta pública esté resuelta (las secciones ya montadas)
- * antes de dar el ancla por resuelta: un ancla pulsada dentro de la propia
- * portada la resuelve el navegador (navegación en el mismo documento) y no se
- * repite el desplazamiento suave. `scrollIntoView` sin opciones respeta el
- * `scroll-behavior` y el `scroll-padding-top` del sistema (F10), de modo que la
- * sección no queda tapada por la cabecera fija y `prefers-reduced-motion` sigue
- * mandando.
+ * El navegador resuelve el salto al cargar el documento, pero en una SPA las
+ * secciones aparecen **después** de resolver su consulta pública, así que sin
+ * este efecto el visitante aterriza arriba del todo. El efecto se reintenta
+ * cuando llegan los datos públicos (depende de `links`, que cambia con ellos:
+ * portada y agenda) y da cada ancla por resuelta una sola vez por
+ * ruta+fragmento, de modo que un ancla pulsada dentro de la propia página no
+ * repite el desplazamiento suave del navegador.
+ *
+ * `scrollIntoView` sin opciones respeta el `scroll-behavior` y el
+ * `scroll-padding-top` del sistema (F10): la sección no queda tapada por la
+ * cabecera fija y `prefers-reduced-motion` sigue mandando.
  */
-function useHashScrollOnArrival(isHome: boolean, hash: string, data: PortadaPublica | undefined) {
-  const handled = useRef(false);
+function useHashScrollOnArrival(pathname: string, hash: string, links: SiteLink[]) {
+  const handled = useRef('');
 
   useEffect(() => {
-    if (handled.current || !isHome || !data) {
-      return; // la portada aún no está renderizada: se reintenta cuando llegue
-    }
     if (hash === '') {
-      handled.current = true; // carga sin ancla: no hay nada que resolver
+      return;
+    }
+    const key = `${pathname}${hash}`;
+    if (handled.current === key) {
       return;
     }
     const target = document.getElementById(hash.slice(1));
     if (!target) {
-      handled.current = true; // ancla desconocida: no se insiste
-      return;
+      return; // aún no está renderizada: se reintenta cuando lleguen los datos
     }
-    handled.current = true;
+    handled.current = key;
     target.scrollIntoView();
-  }, [isHome, hash, data]);
+  }, [pathname, hash, links]);
 }
 
 function PublicChrome() {
@@ -71,7 +69,7 @@ function PublicChrome() {
   const { data } = usePublicHomeData();
   const links = useSiteLinks();
   const { pathname, hash } = useLocation();
-  useHashScrollOnArrival(pathname === '/', hash, data);
+  useHashScrollOnArrival(pathname, hash, links);
 
   return (
     <div className="relative isolate flex min-h-screen flex-col bg-surface font-sans text-ink">

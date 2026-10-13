@@ -18,6 +18,14 @@ export const publicMessageKeys = [
   'nav.sections.contact',
   'nav.sections.social',
   'nav.sections.events',
+  'home.upcoming.title',
+  'home.upcoming.subtitle',
+  'home.upcoming.seeAll',
+  'home.upcoming.empty',
+  'home.upcoming.error.load',
+  'home.upcoming.error.retry',
+  'home.upcoming.badge.event',
+  'home.upcoming.badge.activity',
   'events.page.title',
   'events.page.subtitle',
   'events.block.scheduled',
@@ -78,6 +86,7 @@ export const publicMessageKeys = [
   'a11y.logo',
   'a11y.hero',
   'a11y.events.heading',
+  'a11y.home.upcoming.heading',
 ] as const;
 
 export type PublicMessageKey = (typeof publicMessageKeys)[number];

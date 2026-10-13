@@ -1228,7 +1228,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
   - **Criterio de terminado**: hook consumible por el bloque con sus tipos generados (0 `any`).
   - **Commit sugerido**: `feat(frontend): cliente y hook del extracto de la portada`
 
-- [ ] T448 · Bloque «Lo que viene» en la portada · `[frontend]`
+- [X] T448 · Bloque «Lo que viene» en la portada · `[frontend]`
 
   - **Archivos**: `frontend/src/features/publico/eventos/ProximamenteBlock.tsx` (NUEVO) y su test,
     `frontend/src/features/publico/pages/HomePage.tsx` (EDITADO: **una inserción** tras

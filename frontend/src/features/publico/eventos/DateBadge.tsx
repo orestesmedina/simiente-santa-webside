@@ -11,6 +11,12 @@ export interface DateBadgeProps {
   endTime?: string | null;
   /** Rótulo opcional encima de la fecha (p. ej. «Próxima fecha»). */
   label?: string;
+  /**
+   * Variante **compacta** del extracto de la portada (ux.md §4.10): fecha y
+   * horario en un cuerpo menor para que quepan en una línea en una tarjeta de
+   * una quinta parte del ancho. Mismas reglas de formato y de `<time datetime>`.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -20,7 +26,7 @@ export interface DateBadgeProps {
  * horario al lado en Bebas como «momento de impacto» del sistema. Una fecha
  * sin hora no muestra bloque de horario (⟲ D-12).
  */
-export function DateBadge({ date, startTime, endTime, label }: DateBadgeProps) {
+export function DateBadge({ date, startTime, endTime, label, compact = false }: DateBadgeProps) {
   const { t, lang } = useLanguage();
   const time = startTime ? formatTimeRange(startTime, endTime, t) : undefined;
 
@@ -34,12 +40,23 @@ export function DateBadge({ date, startTime, endTime, label }: DateBadgeProps) {
       <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <time
           dateTime={datetimeValue(date, startTime)}
-          className="font-sans text-lg font-semibold text-ink"
+          className={
+            compact
+              ? 'font-sans text-base font-semibold text-ink'
+              : 'font-sans text-lg font-semibold text-ink'
+          }
         >
           {formatLongDate(date, lang)}
         </time>
         {time && (
-          <span className="font-display text-2xl leading-none text-accent" data-testid="hora">
+          <span
+            className={
+              compact
+                ? 'font-display text-lg leading-none text-accent'
+                : 'font-display text-2xl leading-none text-accent'
+            }
+            data-testid="hora"
+          >
             {time}
           </span>
         )}

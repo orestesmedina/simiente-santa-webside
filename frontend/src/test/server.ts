@@ -15,4 +15,9 @@ import { API_BASE_URL } from '../api/client';
  */
 export const server = setupServer(
   http.get(`${API_BASE_URL}/api/v1/proximamente`, () => HttpResponse.json({ lang: 'es' })),
+  // El bloque «Lo que viene» de la portada (F4/US7) consulta su propio
+  // extracto en cuanto se monta la portada: sin handler por defecto, cualquier
+  // prueba que renderice `HomePage` fallaría por petición no gestionada. Sin
+  // ítems, como una agenda vacía; cada prueba lo sobrescribe si necesita datos.
+  http.get(`${API_BASE_URL}/api/v1/portada/proximamente`, () => HttpResponse.json({ lang: 'es' })),
 );
