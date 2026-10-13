@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 6/9 · Implementar — correcciones: 3 bugs (`equipo-bug`) + bloque de portada (T443–T449) |
 | Ciclo de corrección | 1/3 (validación de F4 cerrada; pendiente re-validar bugs + bloque) |
-| Próximo paso | T443–T446 `[backend]` endpoint `GET /api/v1/portada/proximamente` (contrato 0.6.0) → `dev-backend`; luego bugs + bloque frontend |
+| Próximo paso | T447–T449 `[frontend]` bloque «Lo que viene» en la portada → `dev-frontend`; luego re-validar (bugs + bloque) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-12 |
 
