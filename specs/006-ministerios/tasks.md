@@ -633,7 +633,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 
 ## Fase 6 — Handlers, rutas y cableado
 
-- [ ] T617 · `handler_public.go` — `GET /api/v1/ministerios` · `[backend]`
+- [X] T617 · `handler_public.go` — `GET /api/v1/ministerios` · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/handler.go`, `handler_public.go`,
     `handler_public_test.go` (NUEVOS).
