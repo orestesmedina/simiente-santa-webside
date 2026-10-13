@@ -768,7 +768,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     solo del contrato vivo (0 `any`).
   - **Commit sugerido**: `feat(frontend): cliente y hooks de ministerios`
 
-- [ ] T623 · Promoción de `CardImage` al inventario único · `[frontend]` `[P]` (P3)
+- [X] T623 · Promoción de `CardImage` al inventario único · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/components/publico/CardImage.tsx` y su test (MOVIDOS desde
     `frontend/src/features/publico/eventos/ItemCardParts.tsx`); imports ajustados en

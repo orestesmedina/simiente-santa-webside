@@ -1,9 +1,10 @@
 import type { ActividadPublica } from '../../../api/agenda';
 import { Card } from '../../../components/publico/Card';
+import { CardImage } from '../../../components/publico/CardImage';
 import { useLanguage } from '../i18n/useLanguage';
 import { CategoryChip } from './CategoryChip';
 import { DateBadge } from './DateBadge';
-import { CardImage, PlaceLine } from './ItemCardParts';
+import { PlaceLine } from './ItemCardParts';
 
 export interface ActivityCardProps {
   /** Actividad publicada con **fecha única** (FR-005/Decisión 3). */

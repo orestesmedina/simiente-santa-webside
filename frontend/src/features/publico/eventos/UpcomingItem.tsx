@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import type { ItemProximoPortada } from '../../../api/agenda';
 import { Card } from '../../../components/publico/Card';
+import { CardImage } from '../../../components/publico/CardImage';
 import { useLanguage } from '../i18n/useLanguage';
 import { DateBadge } from './DateBadge';
-import { CardImage } from './ItemCardParts';
 
 export interface UpcomingItemProps {
   /** Ítem del extracto, ya resuelto por el servidor a `lang` (FR-008). */
