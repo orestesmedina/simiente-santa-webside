@@ -32,11 +32,16 @@ type fakeRepository struct {
 	recorded  []audit.Action
 	committed []audit.Action
 
-	// Guionización de errores y de la detección de duplicados.
-	recordErr   error
-	mutationErr error
-	readErr     error
-	duplicate   bool
+	// Guionización de errores y de la detección de duplicados. `readErr` afecta a
+	// las lecturas públicas y a los listados del panel; `getErr` solo al detalle
+	// (para poder fallar al releer DESPUÉS de escribir); `duplicateCheckErr` solo
+	// a la comprobación del duplicado.
+	recordErr         error
+	mutationErr       error
+	readErr           error
+	getErr            error
+	duplicateCheckErr error
+	duplicate         bool
 
 	// Observaciones de las consultas.
 	publicLimits []int
@@ -176,6 +181,9 @@ func (f *fakeRepository) DeleteMinistry(_ context.Context, id uuid.UUID, actions
 }
 
 func (f *fakeRepository) GetMinistryByID(_ context.Context, id uuid.UUID) (MinistryListItem, bool, error) {
+	if f.getErr != nil {
+		return MinistryListItem{}, false, f.getErr
+	}
 	if f.readErr != nil {
 		return MinistryListItem{}, false, f.readErr
 	}
@@ -236,6 +244,9 @@ func (f *fakeRepository) CountMinistries(_ context.Context, state *PublicationSt
 }
 
 func (f *fakeRepository) ExistsMinistryDuplicate(_ context.Context, nameEs, descriptionEs string, leaderNameEs, whatsappURL *string, excludeID *uuid.UUID) (bool, error) {
+	if f.duplicateCheckErr != nil {
+		return false, f.duplicateCheckErr
+	}
 	if f.readErr != nil {
 		return false, f.readErr
 	}

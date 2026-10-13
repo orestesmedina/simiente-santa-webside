@@ -292,3 +292,19 @@ func TestRecordRejectionNeverCarriesTheBody(t *testing.T) {
 		t.Errorf("el registro cerrado tiene %d códigos", got)
 	}
 }
+
+// TestSplitPathEdgeCases fija el troceado de rutas: una ruta vacía o solo barras
+// no produce segmentos (ninguna acción) y los segmentos vacíos se descartan.
+func TestSplitPathEdgeCases(t *testing.T) {
+	for _, path := range []string{"", "/", "//"} {
+		if got := splitPath(path); got != nil {
+			t.Errorf("splitPath(%q) = %v, se esperaba nil", path, got)
+		}
+	}
+	if got := splitPath("/api/v1/admin/ministerios/"); len(got) != 4 {
+		t.Errorf("splitPath = %v, se esperaban 4 segmentos", got)
+	}
+	if _, ok := auditActionFromRoute(http.MethodPost, ""); ok {
+		t.Error("una ruta vacía no tiene acción asociada")
+	}
+}

@@ -948,3 +948,189 @@ func TestMinisterioAdminDTOCarriesStoredLeader(t *testing.T) {
 func boolPtr(v bool) *bool { return &v }
 
 func intPtr(v int) *int { return &v }
+
+// TestPanelOperationsWrapRepositoryErrors fija que ningún fallo de datos se
+// disfraza: cada operación del panel devuelve el error envuelto con el contexto
+// de la operación (el detalle queda en el log, no en la respuesta) y el cliente
+// no recibe un 200 falso.
+func TestPanelOperationsWrapRepositoryErrors(t *testing.T) {
+	boom := errors.New("boom")
+	valid := MinisterioInput{NameEs: "Alabanza", DescriptionEs: "D"}
+	ctx := context.Background()
+
+	tests := []struct {
+		name       string
+		setup      func(*fakeRepository)
+		storeSetup func(*fakeStore)
+		run        func(*service) error
+		want       string
+	}{
+		{
+			name:  "alta: comprobar el duplicado",
+			setup: func(r *fakeRepository) { r.duplicateCheckErr = boom },
+			run: func(s *service) error {
+				_, err := s.CreateMinisterio(ctx, actorID(), valid)
+				return err
+			},
+			want: "comprobar el duplicado",
+		},
+		{
+			name:  "alta: releer el guardado",
+			setup: func(r *fakeRepository) { r.getErr = boom },
+			run: func(s *service) error {
+				_, err := s.CreateMinisterio(ctx, actorID(), valid)
+				return err
+			},
+			want: "leer el ministerio",
+		},
+		{
+			name:  "edición: leer el actual",
+			setup: func(r *fakeRepository) { r.seed(storedMinistry("Alabanza")); r.getErr = boom },
+			run: func(s *service) error {
+				_, err := s.UpdateMinisterio(ctx, actorID(), storedMinistry("Alabanza").ID, MinisterioPatch{NameEs: textOf("Otro")})
+				return err
+			},
+			want: "leer el ministerio",
+		},
+		{
+			name:  "edición: comprobar el duplicado",
+			setup: func(r *fakeRepository) { r.seed(storedMinistry("Alabanza")); r.duplicateCheckErr = boom },
+			run: func(s *service) error {
+				_, err := s.UpdateMinisterio(ctx, actorID(), storedMinistry("Alabanza").ID, MinisterioPatch{NameEs: textOf("Otro")})
+				return err
+			},
+			want: "comprobar el duplicado",
+		},
+		{
+			name:  "borrado: leer el actual",
+			setup: func(r *fakeRepository) { r.getErr = boom },
+			run: func(s *service) error {
+				return s.DeleteMinisterio(ctx, actorID(), storedMinistry("Alabanza").ID)
+			},
+			want: "leer el ministerio",
+		},
+		{
+			name:  "borrado: eliminar",
+			setup: func(r *fakeRepository) { r.seed(storedMinistry("Alabanza")); r.mutationErr = boom },
+			run: func(s *service) error {
+				return s.DeleteMinisterio(ctx, actorID(), storedMinistry("Alabanza").ID)
+			},
+			want: "eliminar el ministerio",
+		},
+		{
+			name:  "detalle",
+			setup: func(r *fakeRepository) { r.getErr = boom },
+			run: func(s *service) error {
+				_, err := s.GetMinisterio(ctx, storedMinistry("Alabanza").ID)
+				return err
+			},
+			want: "leer el ministerio",
+		},
+		{
+			name:  "listado: contar",
+			setup: func(r *fakeRepository) { r.readErr = boom },
+			run: func(s *service) error {
+				_, err := s.ListMinisterios(ctx, nil, paginate.Params{Limit: 10})
+				return err
+			},
+			want: "contar los ministerios",
+		},
+		{
+			name:       "subida: guardar el archivo",
+			setup:      func(*fakeRepository) {},
+			storeSetup: func(store *fakeStore) { store.saveErr = boom },
+			run: func(s *service) error {
+				_, err := s.UploadMinisterioImage(ctx, actorID(), []byte("x"))
+				return err
+			},
+			want: "guardar la imagen",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepository()
+			tt.setup(repo)
+
+			store := newFakeStore()
+			if tt.storeSetup != nil {
+				tt.storeSetup(store)
+			}
+			err := tt.run(newAdminService(repo, store))
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("err = %v, se esperaba el contexto %q", err, tt.want)
+			}
+			if !errors.Is(err, boom) {
+				t.Errorf("el error original se perdió: %v", err)
+			}
+		})
+	}
+}
+
+// TestMergeMinisterioCoversEveryField fija que el PATCH toca TODOS los campos del
+// contrato (ninguno se queda fuera de la fusión) y que el resultado es la fila
+// completa.
+func TestMergeMinisterioCoversEveryField(t *testing.T) {
+	current := Ministry{
+		ID:               storedMinistry("Alabanza").ID,
+		NameEs:           "Alabanza",
+		DescriptionEs:    "Grupo de alabanza",
+		PublicationState: StateDraft,
+	}
+	patch := MinisterioPatch{
+		NameEs:           textOf("  Alabanza y adoración  "),
+		NameEn:           OptionalOf("  Worship  "),
+		DescriptionEs:    textOf("  Grupo de alabanza y adoración  "),
+		DescriptionEn:    OptionalOf("Worship team"),
+		LeaderNameEs:     OptionalOf("  Ana Pérez  "),
+		LeaderNameEn:     OptionalOf("Ana Perez"),
+		LeaderPhone:      OptionalOf("  +58 412 000 0000  "),
+		LeaderVisible:    boolPtr(true),
+		WhatsappURL:      OptionalOf("  https://chat.whatsapp.com/abc  "),
+		ScheduleEs:       OptionalOf("  Todos los viernes  "),
+		ScheduleEn:       OptionalOf("Every Friday"),
+		PlaceEs:          OptionalOf("  Templo  "),
+		PlaceEn:          OptionalOf("Temple"),
+		ImageFile:        OptionalOf("  img_aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png  "),
+		ImageAltEs:       OptionalOf("  Grupo de alabanza  "),
+		ImageAltEn:       OptionalOf("Worship team"),
+		PublicationState: textOf("published"),
+		SortOrder:        intPtr(4),
+	}
+
+	updated, dataChanged, stateChanged, leaderChanged, err := mergeMinisterio(current, patch)
+	if err != nil {
+		t.Fatalf("mergeMinisterio = %v", err)
+	}
+	if !dataChanged || !stateChanged || !leaderChanged {
+		t.Fatalf("flags = %v/%v/%v, se esperaban los tres", dataChanged, stateChanged, leaderChanged)
+	}
+	if updated.ID != current.ID || updated.CreatedAt != current.CreatedAt {
+		t.Error("la fusión cambió la identidad de la fila")
+	}
+
+	want := Ministry{
+		ID:               current.ID,
+		NameEs:           "Alabanza y adoración",
+		NameEn:           textOf("Worship"),
+		DescriptionEs:    "Grupo de alabanza y adoración",
+		DescriptionEn:    textOf("Worship team"),
+		LeaderNameEs:     textOf("Ana Pérez"),
+		LeaderNameEn:     textOf("Ana Perez"),
+		LeaderPhone:      textOf("+58 412 000 0000"),
+		LeaderVisible:    true,
+		WhatsappURL:      textOf("https://chat.whatsapp.com/abc"),
+		ScheduleEs:       textOf("Todos los viernes"),
+		ScheduleEn:       textOf("Every Friday"),
+		PlaceEs:          textOf("Templo"),
+		PlaceEn:          textOf("Temple"),
+		ImageFile:        textOf("img_aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.png"),
+		ImageAltEs:       textOf("Grupo de alabanza"),
+		ImageAltEn:       textOf("Worship team"),
+		PublicationState: StatePublished,
+		SortOrder:        4,
+	}
+	if got := mustJSON(t, updated); got != mustJSON(t, want) {
+		t.Errorf("fusión = %s\nse esperaba %s", got, mustJSON(t, want))
+	}
+}

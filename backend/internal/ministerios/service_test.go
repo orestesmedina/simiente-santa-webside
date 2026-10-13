@@ -1,6 +1,7 @@
 package ministerios
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -9,6 +10,8 @@ import (
 
 	"simiente-santa/backend/internal/platform/apperr"
 	"simiente-santa/backend/internal/platform/audit"
+	"simiente-santa/backend/internal/platform/httpserver"
+	"simiente-santa/backend/internal/platform/testutil"
 )
 
 // detailsOf devuelve los detalles del error de dominio de validación (falla si no
@@ -489,5 +492,48 @@ func TestAuditCodesForTheModule(t *testing.T) {
 	}
 	if got := contentAction(uuid.New(), audit.ActionMinistryCreate, contentLabel("Alabanza")); got.TargetKind != audit.TargetContent {
 		t.Errorf("TargetKind = %q, se esperaba content", got.TargetKind)
+	}
+}
+
+// TestLogErrorUsesTheRequestLogger fija que un fallo best-effort se registra con
+// el logger de la petición (que lleva el request_id) cuando está en el contexto,
+// y con el logger base del service cuando no lo está.
+func TestLogErrorUsesTheRequestLogger(t *testing.T) {
+	baseLogger, baseCapture := testutil.NewLogger()
+	requestLogger, requestCapture := testutil.NewLogger()
+	svc := NewService(ServiceDeps{Repository: newFakeRepository(), Logger: baseLogger})
+
+	svc.logError(context.Background(), "sin request logger", errors.New("boom"))
+	if _, ok := baseCapture.Find("sin request logger"); !ok {
+		t.Error("el logger base no registró el fallo")
+	}
+
+	ctx := httpserver.ContextWithRequestLogger(context.Background(), requestLogger)
+	svc.logError(ctx, "con request logger", errors.New("boom"))
+	if _, ok := requestCapture.Find("con request logger"); !ok {
+		t.Error("el logger de la petición no registró el fallo")
+	}
+	if _, ok := baseCapture.Find("con request logger"); ok {
+		t.Error("el fallo se registró en el logger base en vez del de la petición")
+	}
+
+	// Un service sin logger cae al logger por defecto sin reventar.
+	NewService(ServiceDeps{Repository: newFakeRepository()}).logError(context.Background(), "sin logger", errors.New("boom"))
+}
+
+// TestMergeInvalidIgnoresNonDomainErrors fija que el traspaso de detalles de
+// platform/validate es defensivo: un error que no es de dominio (o nil) no
+// inventa campos.
+func TestMergeInvalidIgnoresNonDomainErrors(t *testing.T) {
+	details := map[string]any{}
+	mergeInvalid(details, "whatsappUrl", nil)
+	mergeInvalid(details, "whatsappUrl", errors.New("boom"))
+	if len(details) != 0 {
+		t.Errorf("details = %v, se esperaba vacío", details)
+	}
+
+	mergeInvalid(details, "whatsappUrl", apperr.Invalid("x", apperr.WithDetails(map[string]any{"URL": "motivo"})))
+	if got, ok := details["whatsappUrl"]; !ok || got != "motivo" {
+		t.Errorf("details = %v, se esperaba el motivo en whatsappUrl", details)
 	}
 }

@@ -521,3 +521,27 @@ func TestGetPortadaMinisteriosRepositoryError(t *testing.T) {
 		t.Fatalf("err = %v, se esperaba el error del repositorio", err)
 	}
 }
+
+// TestPickOptionalWithoutAnyTranslation fija que un campo opcional sin español y
+// sin inglés se omite (nunca queda una clave vacía, SC-017), en los dos idiomas.
+func TestPickOptionalWithoutAnyTranslation(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(publishedMinistry("Alabanza"))
+
+	for _, lang := range []string{LangES, LangEN} {
+		out, err := newTestService(repo).GetMinisterios(context.Background(), lang)
+		if err != nil {
+			t.Fatalf("GetMinisterios(%s) = %v", lang, err)
+		}
+		item := out.Items[0]
+		if item.Schedule != nil || item.Place != nil || item.Image != nil || item.WhatsappURL != nil || item.Leader != nil {
+			t.Errorf("lang=%s: el ministerio sin datos opcionales lleva claves: %+v", lang, item)
+		}
+		raw := mustJSON(t, item)
+		for _, key := range []string{"schedule", "place", "image", "whatsappUrl", "leader"} {
+			if strings.Contains(raw, key) {
+				t.Errorf("lang=%s: el JSON lleva %q: %s", lang, key, raw)
+			}
+		}
+	}
+}

@@ -716,7 +716,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     subida (idénticas a las de F3/F4).
   - **Commit sugerido**: `feat(ministerios): subida de imagenes con auditoria`
 
-- [ ] T621 · `routes.go` + `cmd/api/main.go` (`AdminChain("ministerios")`) + humo · `[backend]`
+- [X] T621 · `routes.go` + `cmd/api/main.go` (`AdminChain("ministerios")`) + humo · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/routes.go` y `routes_test.go` (NUEVOS),
     `backend/cmd/api/main.go` y `main_test.go` (EDITADOS: DI del dominio `ministerios` + registro de
