@@ -10,10 +10,11 @@ export const PENDING_PERMISSION_NOTE = 'Disponible más adelante';
 /**
  * `true` solo para los permisos de módulos que existen hoy. En F2 el único
  * módulo construido era la administración de usuarios y roles; F3 sumó
- * «Portada e información general» (`portada`, FR-012) y F4 suma los tres de la
- * agenda (`eventos`, `actividades` y `categorias`, ⟲ D-6). El resto del catálogo
- * (F5–F9) se puede asignar a un rol pero no da acceso a nada todavía (FR-015: es
- * válido y esperado).
+ * «Portada e información general» (`portada`, FR-012), F4 suma los tres de la
+ * agenda (`eventos`, `actividades` y `categorias`, ⟲ D-6) y F6 suma
+ * «Ministerios» (`ministerios`, FR-011: permiso ya sembrado por F2, sin sello).
+ * El resto del catálogo (F5–F9) se puede asignar a un rol pero no da acceso a
+ * nada todavía (FR-015: es válido y esperado).
  */
 export function isPermissionAvailable(code: string): boolean {
   return (MODULE_PERMISSIONS as readonly string[]).includes(code);

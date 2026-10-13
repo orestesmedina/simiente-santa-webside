@@ -804,7 +804,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     panel listo para T630/T631.
   - **Commit sugerido**: `feat(frontend): textos de ministerios (i18n publico y panel)`
 
-- [ ] T625 · Permisos, accesos del panel y `ACTION_LABELS` · `[frontend]`
+- [X] T625 · Permisos, accesos del panel y `ACTION_LABELS` · `[frontend]`
 
   - **Archivos**: `frontend/src/lib/permissions.ts` (EDITADO: `MINISTERIOS = 'ministerios'` y su
     entrada en `MODULE_PERMISSIONS`), `frontend/src/features/roles/permissions.ts` (EDITADO: el sello

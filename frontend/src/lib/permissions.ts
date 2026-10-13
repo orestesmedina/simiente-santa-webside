@@ -20,9 +20,16 @@ export const ACTIVIDADES = 'actividades';
 export const CATEGORIAS = 'categorias';
 
 /**
- * Permisos de módulo construidos hasta hoy (F2, F3 y F4). Lo usa el inicio del
- * panel para decidir si hay algún acceso rápido que ofrecer y la lista de roles
- * para saber qué módulos existen de verdad (FR-015 de F2/FR-012 de F4).
+ * Permiso del módulo «Ministerios» (F6, FR-011). Ya existía en el catálogo de
+ * F2 (`ministerios`); F6 lo **activa** en la interfaz: no se crea ningún permiso
+ * nuevo y el catálogo del backend sigue en 10.
+ */
+export const MINISTERIOS = 'ministerios';
+
+/**
+ * Permisos de módulo construidos hasta hoy (F2, F3, F4 y F6). Lo usa el inicio
+ * del panel para decidir si hay algún acceso rápido que ofrecer y la lista de
+ * roles para saber qué módulos existen de verdad (FR-015 de F2/FR-012 de F4).
  */
 export const MODULE_PERMISSIONS = [
   ADMIN_USERS_ROLES,
@@ -30,6 +37,7 @@ export const MODULE_PERMISSIONS = [
   EVENTOS,
   ACTIVIDADES,
   CATEGORIAS,
+  MINISTERIOS,
 ] as const;
 
 /** Forma mínima de sesión que necesita la comprobación de permisos. */

@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { API_BASE_URL } from '../api/client';
-import { ADMIN_USERS_ROLES, PORTADA } from '../lib/permissions';
+import { ADMIN_USERS_ROLES, MINISTERIOS, PORTADA } from '../lib/permissions';
 import { server } from '../test/server';
 import { AppProviders } from './providers';
 import { AppLayout, PanelLayout, PanelSurfaceLayout } from './layout';
@@ -120,5 +120,35 @@ describe('PanelLayout', () => {
       await within(nav).findByRole('link', { name: 'Portada e información general' }),
     ).toBeInTheDocument();
     expect(within(nav).queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
+  });
+
+  it('muestra la entrada de ministerios solo con el permiso `ministerios`', async () => {
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/auth/session`, () =>
+        HttpResponse.json({ ...session, permissions: [MINISTERIOS] }),
+      ),
+    );
+
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/panel']}>
+          <Routes>
+            <Route path="/panel" element={<PanelLayout />}>
+              <Route index element={<p>contenido</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: 'Navegación del panel' });
+    expect(
+      await within(nav).findByRole('link', { name: 'Gestión de ministerios' }),
+    ).toHaveAttribute('href', '/panel/ministerios');
+    // Los módulos son independientes: «ministerios» no abre los demás (Decisión 5).
+    expect(within(nav).queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
+    expect(
+      within(nav).queryByRole('link', { name: 'Portada e información general' }),
+    ).not.toBeInTheDocument();
   });
 });

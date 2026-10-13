@@ -48,6 +48,16 @@ export const ACTION_LABELS: Record<string, string> = {
   'category.create': 'Creó una categoría',
   'category.update': 'Modificó una categoría',
   'category.delete': 'Eliminó una categoría',
+  // F6 (migración `000011`, R6-12): 8 códigos del módulo de ministerios, para
+  // que el panel no muestre códigos crudos (ux.md §4.8/§7.1).
+  'ministry.create': 'Creó el ministerio',
+  'ministry.update': 'Modificó el ministerio',
+  'ministry.delete': 'Eliminó el ministerio',
+  'ministry.publish': 'Publicó el ministerio',
+  'ministry.unpublish': 'Retiró el ministerio',
+  'ministry.leader.show': 'Publicó la ficha del encargado del ministerio',
+  'ministry.leader.hide': 'Ocultó la ficha del encargado del ministerio',
+  'ministry.image.upload': 'Subió la imagen de un ministerio',
 };
 
 export function actionLabel(action: string): string {
