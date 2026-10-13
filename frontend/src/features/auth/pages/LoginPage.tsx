@@ -161,7 +161,7 @@ export function LoginPage() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900">Entrar al panel</h1>
+      <h1 className="text-2xl font-bold text-panel-ink">Entrar al panel</h1>
 
       {motivoNotice && (
         <Notice variant={motivoNotice.variant} className="mt-4">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { SessionWarning } from '../features/auth/components/SessionWarning';
@@ -34,6 +34,27 @@ export function AppLayout() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+/**
+ * Superficie clara de las pantallas del panel que viven **fuera** de
+ * `PanelLayout` (acceso, cambio de contraseña, «sin permiso» y el 404): el panel
+ * es siempre claro y no cambia de tema (FR-016/P10-11), así que estas rutas
+ * fuerzan la **misma** superficie que `AppLayout`/`PanelLayout`
+ * (`bg-white text-slate-900`).
+ *
+ * Sin ella, el lienzo del navegador se ve por detrás: el script anti-FOUC de
+ * `index.html` fija `color-scheme: dark` en `<html>` cuando el tema es oscuro y
+ * el navegador pinta el fondo del documento en negro, dejando la pantalla
+ * ilegible (texto oscuro sobre negro). No se resuelve con un fondo global en
+ * `body`: el sitio público necesita su lienzo oscuro (su layout pinta encima).
+ */
+export function PanelSurfaceLayout({ children }: { children?: ReactNode }) {
+  return (
+    <div className="flex min-h-screen flex-col bg-white text-panel-ink">
+      {children ?? <Outlet />}
     </div>
   );
 }

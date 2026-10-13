@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../api/client';
 import { ADMIN_USERS_ROLES, PORTADA } from '../lib/permissions';
 import { server } from '../test/server';
 import { AppProviders } from './providers';
-import { AppLayout, PanelLayout } from './layout';
+import { AppLayout, PanelLayout, PanelSurfaceLayout } from './layout';
 
 describe('AppLayout', () => {
   it('expone un layout semántico accesible con main y navegación', () => {
@@ -23,6 +23,40 @@ describe('AppLayout', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Navegación principal' })).toBeInTheDocument();
     expect(screen.getByText('contenido de la ruta')).toBeInTheDocument();
+  });
+});
+
+describe('PanelSurfaceLayout', () => {
+  it('pinta la superficie clara del panel y su contenido (bug del fondo negro)', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<PanelSurfaceLayout />}>
+            <Route index element={<p>contenido de la ruta</p>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    // El panel es siempre claro (FR-016): la superficie no depende del tema del
+    // sitio público, de modo que el lienzo oscuro del navegador nunca se ve.
+    const shell = container.querySelector('#root > div') ?? container.firstElementChild;
+    expect(shell).not.toBeNull();
+    expect((shell as HTMLElement).className).toContain('bg-white');
+    expect((shell as HTMLElement).className).toContain('text-panel-ink');
+    expect(screen.getByText('contenido de la ruta')).toBeInTheDocument();
+  });
+
+  it('acepta contenido explícito además del Outlet (404 fuera del panel)', () => {
+    const { container } = render(
+      <PanelSurfaceLayout>
+        <main>página no encontrada</main>
+      </PanelSurfaceLayout>,
+    );
+
+    expect(screen.getByText('página no encontrada')).toBeInTheDocument();
+    const shell = container.firstElementChild as HTMLElement;
+    expect(shell.className).toContain('bg-white');
   });
 });
 

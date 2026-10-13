@@ -24,6 +24,15 @@
   --color-coral: #ff6b3d;
   --color-leaf: #217638;
 
+  /*
+   * Tinta del panel (pantallas claras que viven fuera de `PanelLayout`): mismo
+   * valor que `slate-900` —Δ≈1/255— escrito en sRGB heredado. Tailwind 4 emite
+   * `slate-900` como `oklch()`, que no es legible por las comprobaciones de
+   * contraste del e2e (parser `rgb()`); el valor es el mismo y no depende del
+   * tema del sitio público (el panel es siempre claro, FR-016).
+   */
+  --color-panel-ink: #0f172a;
+
   /* Tipografías autoalojadas con @fontsource (R3-12, sin CDN externo). */
   --font-display: 'Bebas Neue', 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
