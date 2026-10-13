@@ -32,10 +32,10 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 ## Hallazgos abiertos
 
-Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-12.md`).
+Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-12-tanda2.md`).
 
-- **(ninguno)** — los 3 bugs corregidos y el bloque de portada (Q8) fueron **re-validados el 2026-10-12** con **APROBADO** de los tres roles. Los hallazgos del ciclo previo (I1, M1–M3) siguen cerrados.
-- **Deuda aceptada (no bloquea)**: sugerencias del revisor (2 IMPORTANTE solo de documentación —`plan.md` P4-19/RG4-11— ya alineadas; `useLocation` en `try/catch`; lógica «retained» duplicada; `handled` de `useHashScrollOnArrival`); seguridad **B1/B2/B3**; revisor **M5** (`Optional[T]`); **QA**: SC-010 y lector de pantalla quedan como verificación **manual** con el humano.
+- **(ninguno)** — los 3 bugs iniciales, el bloque de portada (Q8), el **fondo negro fuera del layout del panel** (login/cambio de contraseña/sin permiso/404) y el **reorden del bloque** (antes de «quiénes somos») fueron **re-validados el 2026-10-12** con **APROBADO** de los tres roles.
+- **Deuda aceptada (no bloquea)**: sugerencias del revisor (aserción de posición de WhatsApp retirada; selector muerto en `layout.test.tsx`; token `--color-panel-ink` fuera del sistema F10; posible destello al montar `/login` en tema oscuro; `useLocation` en `try/catch`; lógica «retained» duplicada); seguridad **B1/B2/B3**; revisor **M5** (`Optional[T]`); **QA**: SC-010 y lector de pantalla quedan como verificación **manual** con el humano.
 
 ## Decisiones y aclaraciones
 
@@ -48,6 +48,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-12 — **Tanda 2: bug del login y reorden del bloque.** (1) **Bug**: `/login`, `/cambiar-contrasena`, `/sin-permiso` y el 404 se veían **negros** en tema oscuro — hueco previo de **F10** (`color-scheme: dark` global sin fondo en esas rutas); corregido con `PanelSurfaceLayout` (`bg-white`, sin depender del tema) y e2e de regresión con `colorScheme: dark`. (2) **Ajuste Q8**: el bloque «Lo que viene» pasa a ser la **primera sección tras el hero, antes de «quiénes somos»** (D-24 confirmada). **Re-validación: APROBADO por los tres roles** (46 e2e en 4 tandas, Vitest 530, Go unit+integración 87,0 %). `plan.md` realineado con D-24 y `Status` de la spec a «Aprobada v3». Consolidado en `revision-2026-10-12-tanda2.md`. **PR pendiente de abrir por el humano**.
 
 - 2026-10-12 — **Bugs y cambio de alcance Q8, cerrados.** (1) **3 bugs** reportados por el usuario, corregidos con `equipo-bug` y pruebas de reproducción de `qa-tester` en verde: navegación desde `/eventos` (`/#…`), hover + estado activo del menú, y modal de evento más ancho y sin scroll horizontal. (2) **Cambio de alcance Q8**: bloque **«Lo que viene»** en la portada (hasta **5** ítems, ventana de **2 meses** con respaldo, fila de tarjetas compactas con imagen, mensaje si no hay nada, botón «Ver más eventos» → `/eventos`), con endpoint `GET /api/v1/portada/proximamente` (contrato **0.6.0**) y spec v3 **re-aprobada** + plan aprobado. **Re-validación del 2026-10-12: APROBADO por los tres roles** (Go integración 21/21, cobertura 87,0 %, Vitest 528, e2e 45/45 en 3 tandas). T440 re-verificado (`make ci` en verde). Consolidado en `revision-2026-10-12.md`. Documentación (CHANGELOG `[0.5.0]`, README, entrega, `pr.md`) lista; **PR pendiente de abrir por el humano**.
 

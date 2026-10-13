@@ -2,7 +2,8 @@
 
 > Descripción para el Pull Request de la rama `004-eventos-actividades` (preparada por
 > `documentador`, 2026-10-11; T441 — **actualizada el 2026-10-12** con las 3 correcciones de bugs,
-> la enmienda de alcance Q8 y su re-validación). **El merge y el despliegue requieren aprobación
+> la enmienda de alcance Q8, su re-validación y la **tanda 2** del mismo día (fondo negro de las
+> pantallas de acceso + reorden del bloque). **El merge y el despliegue requieren aprobación
 > humana explícita** (fase 9/9 del flujo equipo-feature; puertas «PR / merge» y «Despliegue»
 > pendientes en `estado.md`). El entorno no tiene `gh`: quien abre el PR es `devops`/el humano con
 > esta descripción.
@@ -61,20 +62,26 @@ spec; Q1–Q7 resueltos el 2026-10-11 y **enmienda de alcance Q8** el 2026-10-12
   localizadas por idioma (`formatoFechas.ts`, `Intl` sin conversión de zona).
 - **Bloque «Lo que viene» en la portada** (enmienda Q8, T447–T449): cliente `api/agenda.ts` +
   hook `usePortadaProximamente` y componente `ProximamenteBlock` con `UpcomingItem`, insertado
-  **entre el horario de servicios y los canales de WhatsApp** (`ux.md` D-24; `HomePage` no se
-  rediseña), **fila horizontal de tarjetas compactas con imagen** (`CardImage` + `alt`),
+  **inmediatamente después del hero y antes de «quiénes somos»** (`ux.md` D-24 confirmada por el
+  humano el 2026-10-12; reorden en `9aef868` — `HomePage` no se rediseña y el resto de secciones
+  solo se recorre hacia abajo), **fila horizontal de tarjetas compactas con imagen** (`CardImage` + `alt`),
   etiquetas «Evento»/«Actividad», tope de 5 sin huecos ni marcadores, **ventana de 2 meses con
   respaldo**, mensaje `role="status"` **«Por el momento no hay eventos ni actividades»** con el
   botón oculto cuando no hay ítems (excepción de Q8 a SC-012), botón **«Ver más eventos»** y
   enlaces a `/eventos#eventos` / `/eventos#actividades`, i18n `es`/`en` con fallback, responsive
   (móvil en columna, sin scroll horizontal a 320 px), tema oscuro y foco visible.
+- **Superficie clara fuera del panel** (`PanelSurfaceLayout`, `2a70591`): `/login`,
+  `/cambiar-contrasena`, `/sin-permiso` y el 404 se envuelven en fondo claro del panel **sin depender
+  del tema** y sin fondo global en `body`/`html` (evita el destello en la portada oscura); ver el
+  bug 4 de la tabla siguiente.
 - **Panel**: `/panel/eventos`, `/panel/actividades` y `/panel/categorias` (`EventsPage`,
   `ActivitiesPage`, `CategoriesPage`, `EventForm`, `ActivityForm`, `CategoryForm`, `DatesEditor`,
   listados con marca «Pasado», `409` de duplicado y de categoría en uso), permisos filtrados en
   menú, `AccesosRapidos` y rutas; `ImageUploader` y `PublishControls` **promovidos al inventario
   único** `src/components/`; `ACTION_LABELS` con etiqueta humana para los 15 códigos nuevos.
-- **Vitest 78 archivos / 528 pruebas**, `lint`, `typecheck` y `build` en verde (74/505 antes de
-  la enmienda Q8: +4 archivos y +23 pruebas, todas de este alcance).
+- **Vitest 78 archivos / 530 pruebas**, `lint`, `typecheck` y `build` en verde (74/505 antes de la
+  enmienda Q8, 528 con ella: +4 archivos y +23 pruebas de alcance; +2 del `PanelSurfaceLayout`
+  en la tanda 2).
 
 **Infraestructura / Docker (devops)**
 - **`APP_TZ=America/Costa_Rica`** documentada en `.env.example` (T410, leída por
@@ -83,14 +90,18 @@ spec; Q1–Q7 resueltos el 2026-10-11 y **enmienda de alcance Q8** el 2026-10-12
 - **Sin cambios** en `docker-compose.yml`, Dockerfiles ni `.github/` (árbol limpio, verificado
   en T440).
 
-### Bugs corregidos (equipo-bug, antes de la re-validación)
+### Bugs corregidos (equipo-bug + tanda 2 del 2026-10-12)
 
 | # | Problema | Arreglo | Pruebas |
 |---|---|---|---|
 | 1 | Desde `/eventos` el menú no navegaba a las anclas de la portada (`href` relativos) y el ancla no se resolvía al llegar | enlaces **absolutos `/#ancla`** (`useSiteLinks`) + resolución del ancla al cargar la portada (`useHashScrollOnArrival`, con reintento) — `ef93c77`/`e1f6fed`/`4348875` | `qa-b1-siteLinks-relativas.test.tsx`, e2e `qa-bugs-004` caso 1, `navegacion-movil` (anclas absolutas) |
 | 2 | El menú público no marcaba la sección actual ni respondía al *hover* | *hover* con par acento/azul marino **certificado AA** + `aria-current="page"` en la ruta activa — `72665e2` | `qa-b2-PublicNav-activo.test.tsx`, e2e caso 2 (repintado real) |
 | 3 | El modal de «Agregar evento» era angosto y con doble scroll horizontal | `Dialog size="wide"` + `overflow-x-hidden`, `minmax(0,1fr)` en `DatesEditor`, imagen `max-w-full` — `66c8472` | e2e caso 3 (`width ≥ 640`, `scrollWidth ≤ clientWidth`), sin tocar `Dialog.test.tsx` |
+| 4 | **Fondo negro** en `/login`, `/cambiar-contrasena`, `/sin-permiso` y 404 con el dispositivo en tema oscuro (texto ilegible): **hueco previo de F10**, no regresión de F4 (el anti-FOUC fija `color-scheme: dark` en `<html>` y esas rutas no declaraban fondo) | esas 4 rutas se envuelven en **`PanelSurfaceLayout`** (`bg-white` sin depender del tema) sin fondo global en `body`/`html` — `2a70591` | e2e de regresión `qa-bug-fondo-oscuro-fuera-layouts.spec.ts` con `colorScheme: 'dark'` (3 rutas, `f179daa`) + 2 unitarias nuevas en `layout.test.tsx` para `/cambiar-contrasena` (`310cd1c`) |
 | — | Colateral: el enlace-título de las tarjetas del bloque nuevo no llegaba a 44 px | `min-h-11` (`e74d086`, FR-023/FR-024) | e2e `portada-accesibilidad` (mide todos los enlaces de `main`) |
+
+**Ajuste (no bug)**: el bloque «Lo que viene» pasa a la **primera sección tras el hero, antes de
+«quiénes somos»** (`9aef868`, D-24 confirmada por el humano el 2026-10-12).
 
 ### Decisiones firmes de la puerta 2 (aplicadas, no reabiertas)
 
@@ -105,8 +116,7 @@ spec; Q1–Q7 resueltos el 2026-10-11 y **enmienda de alcance Q8** el 2026-10-12
 
 ### Cambio de alcance Q8 (2026-10-12) — bloque «Lo que viene»
 
-Decisiones firmes del humano (versión definitiva del mismo día; la spec queda **pendiente de
-re-aprobación humana**):
+Decisiones firmes del humano (versión definitiva del mismo día):
 
 - **Hasta 5 ítems** de la agenda en la portada, **eventos y actividades juntos** y etiquetados,
   los más cercanos por fecha; **ventana preferente de los próximos 2 meses con respaldo** a los
@@ -116,9 +126,10 @@ re-aprobación humana**):
 - Sin nada publicado y próximo, el bloque **sí se muestra** con el mensaje «Por el momento no hay
   eventos ni actividades» **sin botón** (excepción explícita a SC-012; el resto de secciones
   sigue ocultándose vacías).
-- **Único contenido de F4 en la portada** (ubicación `ux.md` D-24: entre horario y WhatsApp); el
-  resto de la portada no cambia; sin ítems pasados, sin paginación, sin más de 5 ítems y sin
-  configuración del bloque desde el panel.
+- **Único contenido de F4 en la portada**, colocado **inmediatamente después del hero y antes de
+  «quiénes somos»** (`ux.md` **D-24 confirmada por el humano el 2026-10-12**; reorden `9aef868`,
+  con `plan.md` P4-19 realineado). El resto de la portada no cambia; sin ítems pasados, sin
+  paginación, sin más de 5 ítems y sin configuración del bloque desde el panel.
 
 ### Cómo probarlo (quickstart)
 
@@ -138,7 +149,7 @@ curl -s 'http://localhost:8080/api/v1/proximamente?lang=es' | jq
 ```
 
 Pruebas automatizadas: `make ci` (lint + backend unit/integración + frontend + security) y
-`npx playwright test --config e2e/playwright.config.ts --workers=1` desde `frontend/`, **en tres
+`npx playwright test --config e2e/playwright.config.ts --workers=1` desde `frontend/`, **en cuatro
 tandas** (ver abajo).
 
 ### Evidencia de pruebas
@@ -171,7 +182,27 @@ re-lanzarla dos veces; queda registrado como **flake aislado** (sin defecto de F
 | Bloque (US7, FR-025…FR-027, SC-014/SC-015) | cubierto en las 3 capas (cliente API, hook, componente + service/repository sobre PostgreSQL): tope 5, ventana de 2 meses con respaldo, mensaje sin botón, botón a `/eventos`, fallback `en → es`, 320 px y teclado |
 | Dependencias / secretos | `govulncheck` **0** que afecten al código · `npm audit` **0** · sin secretos nuevos |
 
+**Re-validación tanda 2 (2026-10-12 — fondo negro + reorden del bloque)**
+
+| Verificación | Resultado |
+|---|---|
+| e2e nuevo de regresión (fondo) | `qa-bug-fondo-oscuro-fuera-layouts.spec.ts` **3/3 (7,5 s)** con `colorScheme: 'dark'` y repintado real (fondo `rgb(255,255,255)` + título legible) en `/login`, `/sin-permiso` y 404 |
+| e2e (4 tandas, `--workers=1`, sin `429`) | **46/46**: fondo oscuro **3/3** · tanda A F3/F10 + bloque **33/33** (incluidos los 4 de `portada-proximamente.spec.ts`) · tanda B F4 + bugs **8/8** · tanda C F2 **2/2** |
+| Frontend | **Vitest 78 archivos / 530 pruebas** (+2 de `PanelSurfaceLayout`) · `lint` y `typecheck` sin errores |
+| Backend | unit **20 paquetes ok** · integración **21/21** · cobertura `internal/agenda` **87,0 %** |
+| Reorden | aserción de orden en `homePage.test.tsx` (`compareDocumentPosition`: hero → bloque → «quiénes somos» → horario) y tanda A íntegra; el resto de F3 conserva contenido, anclas y direcciones de entrada |
+| Defectos de este alcance | **ninguno** |
+
 ### Validación del equipo
+
+**Tanda 2 del 2026-10-12 (fondo negro + reorden) — APROBADO por los tres roles**
+([consolidado](./revision-2026-10-12-tanda2.md)):
+
+| Informe | Veredicto | Nota |
+|---|---|---|
+| [`revision-2026-10-12-qa-tanda2.md`](./revision-2026-10-12-qa-tanda2.md) | **APROBADO** | 46 e2e en 4 tandas, 530 unitarias frontend y suites Go (unit + integración, cobertura 87,0 %) en verde; 0 defectos |
+| [`revision-2026-10-12-codigo-tanda2.md`](./revision-2026-10-12-codigo-tanda2.md) | **APROBADO** | arreglo del login correcto y **sin tocar el sitio público**; el reorden cumple D-24; 1 IMPORTANTE (documentación) + 5 sugerencias |
+| [`revision-2026-10-12-seguridad-tanda2.md`](./revision-2026-10-12-seguridad-tanda2.md) | **APROBADO** | solo presentación/orden de componentes; autorización intacta; **sin secretos ni hallazgos** |
 
 **Re-validación del 2026-10-12 — APROBADO por los tres roles, sin bloqueantes**
 ([consolidado](./revision-2026-10-12.md)):
@@ -218,11 +249,11 @@ El ciclo 1 queda como registro en [`revision-2026-10-11.md`](./revision-2026-10-
 
 ### Deuda aceptada (registrada; no bloquea el PR)
 
-- **Documentación (2 IMPORTANTE, revisor 2026-10-12)** — `plan.md` **P4-19** describe el bloque
-  «tras el hero» mientras `ux.md` D-24 y el código lo sitúan **entre horario y WhatsApp**, y
-  `plan.md` **RG4-11** dice «el bloque se omite» cuando el código muestra el mensaje de error
-  patrón F3. La implementación sigue `ux.md` (autoridad); **alinear `plan.md`** para que un ciclo
-  futuro no «corrija» algo que está bien. No bloquea el PR.
+- **Documentación (resuelta en la tanda 2)** — los 2 hallazgos **IMPORTANTE** de documentación del
+  revisor del 2026-10-12 quedaron **cerrados**: `plan.md` **P4-19** está realineado con `ux.md`
+  **D-24** (bloque tras el hero, antes de «quiénes somos», confirmada por el humano) y **RG4-11**
+  ya describe que «el bloque **nunca** se omite» (mensaje + `Notice` de error con «Volver a
+  intentar»). No queda deuda documental pendiente.
 - **Seguridad (bajos, ciclo 1)** — **B1**: el `PATCH` no revalida la longitud de los campos
   opcionales (la BD corta con `400` genérico); **B2**: validación de `imageFile` por patrón
   (UUID no enumerable); **B3**: contraseña de prueba fija en un e2e. Ninguno es crítico/alto/medio.
@@ -232,6 +263,14 @@ El ciclo 1 queda como registro en [`revision-2026-10-11.md`](./revision-2026-10-
   pantalla físico** (NVDA/VoiceOver) del checklist WCAG 2.1 AA de `/eventos` **y del bloque de la
   portada**: verificación **manual con el humano**; lo automatizable (teclado, foco, jerarquía,
   `<time>`, `alt`, contraste, 200 %, 320 px, `aria-current`) ya está en verde.
+- **Sugerencias de la tanda 2 (deuda menor, no bloquean)** — aserción de posición de WhatsApp
+  retirada en `homePage.test.tsx` al cambiar el orden (se propone añadir el orden completo de
+  secciones); selector muerto `#root > div` en `layout.test.tsx`; el docstring del e2e de fondo
+  promete 4 pantallas y cubre 3 (`/cambiar-contrasena` requiere sesión); el token
+  `--color-panel-ink` queda **fuera del sistema F10** y aplicado a medias junto a
+  `text-slate-900/700` (convendría usarlo en las 4 pantallas o documentarlo como excepción en
+  `ux.md`); y un posible destello previo al montaje en `/login` con tema oscuro (el arreglo es
+  post-montaje de React — no urgente).
 - **Sugerencias de código (2026-10-12, no bloqueantes)** — `useLocation` en `try/catch` (mejor
   `MemoryRouter` en las pruebas), lógica «retained» duplicada entre hooks (`useRetainedQuery`) y
   `handled` de `useHashScrollOnArrival` que no re-enrola en la misma ruta+hash.
@@ -250,13 +289,13 @@ El ciclo 1 queda como registro en [`revision-2026-10-11.md`](./revision-2026-10-
   re-validación del 2026-10-12) y **T441** (documentación y PR, esta misma entrega), que se
   cierran con el merge. Esta descripción del PR es la parte **T441** de la fase 9 (entrega), junto
   con la documentación. Documentación actualizada por `documentador`: `CHANGELOG.md` (**0.5.0**, con «Agregado» del
-  bloque y «Corregido» de los 3 bugs), `README.md` (bloque de la portada, endpoint
-  `/api/v1/portada/proximamente`, contrato 0.6.0 y e2e del 2026-10-12),
-  `docs/entrega/F4-eventos-y-actividades.md` (nota para el cliente, con la sección
-  «Correcciones incluidas») y este `pr.md`.
+  bloque, «Cambiado» con el reorden y «Corregido» con los **4** bugs), `README.md` (bloque de la
+  portada, endpoint `/api/v1/portada/proximamente`, contrato 0.6.0 y e2e del 2026-10-12),
+  `docs/entrega/F4-eventos-y-actividades.md` (nota para el cliente, con «Correcciones incluidas»
+  y «Ajuste de posición del bloque») y este `pr.md`.
 - El contrato `backend/api/openapi.yaml` está en **0.6.0** y `make api-gen`/`make sqlc-verify`
   quedaron sin deriva.
-- **Q8 está aplicado en código y aprobado como decisión humana, pero la spec sigue pendiente de
-  re-aprobación humana** (estado de `spec.md`); conviene confirmarlo al aprobar el PR.
+- **Spec v3 y plan re-aprobados por el humano el 2026-10-12**: el cambio de alcance Q8 está
+  aplicado en código y aprobado en ambas puertas; **no queda nada pendiente de re-aprobación**.
 - **Merge y despliegue**: solo con aprobación humana explícita (puertas pendientes en
   `estado.md`); después, `make costos CERRAR=1`.
