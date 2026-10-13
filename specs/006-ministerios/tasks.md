@@ -697,7 +697,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
   - **Criterio de terminado**: `quickstart.md` §3/§4/§6 ejecutables vía API (US2).
   - **Commit sugerido**: `feat(ministerios): endpoints del panel de ministerios`
 
-- [ ] T620 · `handler_images.go` — `POST /api/v1/admin/ministerios/imagenes` · `[backend]`
+- [X] T620 · `handler_images.go` — `POST /api/v1/admin/ministerios/imagenes` · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/handler_images.go` y `handler_images_test.go`
     (NUEVOS).
