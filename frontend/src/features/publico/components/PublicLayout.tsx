@@ -1,4 +1,6 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import type { PortadaPublica } from '../../../api/portada';
 import { useSiteLinks } from '../hooks/useSiteLinks';
 import { usePublicHomeData } from '../hooks/usePublicHomeData';
 import { LanguageProvider } from '../i18n/LanguageProvider';
@@ -27,10 +29,49 @@ export function PublicLayout() {
   );
 }
 
+/**
+ * Lleva la vista a la sección del hash de la URL (`/#whatsapp`) cuando se llega
+ * desde **otra ruta** (QA Bug 1: `/eventos` → «WhatsApp»). El navegador resuelve
+ * el salto al cargar el documento, pero en una SPA las secciones aparecen
+ * **después** de resolver la consulta pública, así que sin este efecto el
+ * visitante aterriza arriba del todo.
+ *
+ * Se ejecuta **una sola vez por carga de documento** y solo en la portada: un
+ * ancla pulsada dentro de la propia portada la resuelve el navegador (navegación
+ * en el mismo documento) y no se repite el desplazamiento suave. `scrollIntoView`
+ * sin opciones respeta el `scroll-behavior` y el `scroll-padding-top` del sistema
+ * (F10), de modo que la sección no queda tapada por la cabecera fija y
+ * `prefers-reduced-motion` sigue mandando.
+ */
+function useHashScrollOnArrival(isHome: boolean, hash: string, data: PortadaPublica | undefined) {
+  const handled = useRef(false);
+
+  useEffect(() => {
+    if (handled.current || !isHome) {
+      return;
+    }
+    if (hash === '') {
+      handled.current = true; // carga sin ancla: no hay nada que resolver
+      return;
+    }
+    if (!data) {
+      return; // aún sin secciones: se reintenta cuando lleguen
+    }
+    const target = document.getElementById(hash.slice(1));
+    if (!target) {
+      return;
+    }
+    handled.current = true;
+    target.scrollIntoView();
+  }, [isHome, hash, data]);
+}
+
 function PublicChrome() {
   const { t } = useLanguage();
   const { data } = usePublicHomeData();
   const links = useSiteLinks();
+  const { pathname, hash } = useLocation();
+  useHashScrollOnArrival(pathname === '/', hash, data);
 
   return (
     <div className="relative isolate flex min-h-screen flex-col bg-surface font-sans text-ink">
