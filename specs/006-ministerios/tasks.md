@@ -385,7 +385,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     T608/T609.
   - **Commit sugerido**: `feat(ministerios): modelo y base del repository con auditoria transaccional`
 
-- [ ] T608 · `ministerios`: `repository_ministerios.go` (CRUD, duplicados y aviso de enlace) · `[backend]` `[P]` (P2)
+- [X] T608 · `ministerios`: `repository_ministerios.go` (CRUD, duplicados y aviso de enlace) · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/ministerios/repository_ministerios.go` y
     `repository_ministerios_integration_test.go` (NUEVOS; `//go:build integration`).
