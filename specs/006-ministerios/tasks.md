@@ -365,7 +365,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 
 ## Fase 4 — Dominio `ministerios`: repository
 
-- [ ] T607 · `ministerios`: `model.go` + `repository.go` · `[backend]`
+- [X] T607 · `ministerios`: `model.go` + `repository.go` · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/model.go`, `repository.go`, `repository_test.go`
     (NUEVOS).
