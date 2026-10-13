@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 006-ministerios |
 | Flujo | equipo-feature |
-| Fase | 1/9 · Especificar — **completa (spec v2 aprobada)** · siguiente: 2/9 · Planificar |
+| Fase | 2/9 · Planificar — documentos escritos; **puerta 2 pendiente** |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 2: `plan` con `arquitecto` (plan, modelo de datos, contratos, quickstart) y `ux.md` con `disenador-ux` en paralelo; al terminar, **puerta 2** (aprobación humana del plan) |
+| Próximo paso | Puerta 2: el humano responde (a) el **default del interruptor `leaderVisible`**, (b) si `/ministerios` sin nada publicado muestra **aviso sin redirigir** (patrón de F4) y (c) **aprueba el plan**; después, Fase 3 (`tasks` + `analyze`) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-13 |
 
@@ -49,5 +49,6 @@ Nuevos puntos abiertos derivados: **Q8** (¿un solo medio de contacto y obligato
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-13 — **Fase 2 (planificar): documentos escritos.** `plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml` y `quickstart.md` por `arquitecto`; `ux.md` por `disenador-ux`, en paralelo y coherentes entre sí. Claves: una tabla `ministries` (encargado como columnas del ministerio, sin tabla de personas), migraciones **`000010_create_ministries`** y **`000011_extend_admin_actions_for_ministries`** (**sin** migración de permisos: «ministerios» ya existe), `sort_order` + `ORDER BY sort_order, id`, contrato **0.6.0 → 0.7.0**, endpoints `GET /api/v1/ministerios`, `GET /api/v1/portada/ministerios` (tope 5) y el módulo del panel tras `AdminChain("ministerios")`, **privacidad del encargado en tres capas** (DTO, consulta pública y bloque de portada) con pruebas de «0 apariciones», **0 dependencias nuevas**. Puerta 2 pendiente.
 - 2026-10-13 — **Puerta 1 superada: spec v2 aprobada.** El humano resolvió Q1–Q9 (Q8: el medio de contacto es opcional aunque haya encargado; Q9: el interruptor de visibilidad oculta también el nombre), confirmó el horario como texto libre y el tope de 5 ítems en el bloque de la portada, y dijo: **«Re-apruebo la spec v2»**. La spec queda cerrada con 6 US, 29 FR y 17 SC y **sin marcas `[NECESITA ACLARACIÓN]`**. Roadmap: decisión 19. Arranca la Fase 2 (plan técnico). Commit `4e4fa0f` (v2) y el de este ajuste.
 - 2026-10-13 — Inicio de la funcionalidad F6 (ministerios): rama `006-ministerios` creada desde `main` (`0797d3d`), `spec.md` desde la plantilla de Spec Kit. Fase 1 (especificar). Roadmap: F6 → **en curso**.
