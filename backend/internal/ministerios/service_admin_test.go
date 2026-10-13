@@ -165,7 +165,10 @@ func TestCreateMinisterioDefaultsToHidden(t *testing.T) {
 	if len(public.Items) != 1 || public.Items[0].Leader != nil {
 		t.Fatalf("el DTO público lleva la ficha oculta: %+v", public.Items)
 	}
-	if raw := mustJSON(t, public); strings.Contains(raw, "Ana Pérez") || strings.Contains(raw, "412") {
+	// Los datos del encargado oculto no viajan en ninguna forma (SC-014). Se
+	// buscan las cadenas completas: un UUID aleatorio podría contener dígitos
+	// sueltos y la aserción tiene que ser determinista.
+	if raw := mustJSON(t, public); strings.Contains(raw, "Ana Pérez") || strings.Contains(raw, "+58 412 000 0000") {
 		t.Errorf("el JSON público filtra el encargado oculto: %s", raw)
 	}
 }

@@ -157,7 +157,7 @@ func TestGetMinisteriosHidesUnpublishedLeader(t *testing.T) {
 			t.Fatalf("GetMinisterios(%s) = %v", lang, err)
 		}
 		raw := mustJSON(t, out)
-		for _, secret := range []string{name, "Ana Perez", phone, "412", "000 0000"} {
+		for _, secret := range []string{name, "Ana Perez", phone} {
 			if strings.Contains(raw, secret) {
 				t.Errorf("lang=%s: el JSON contiene %q: %s", lang, secret, raw)
 			}
@@ -215,7 +215,7 @@ func TestGetMinisteriosDefaultsToHidden(t *testing.T) {
 	if out.Items[0].Leader != nil {
 		t.Errorf("leader = %+v, se esperaba la ficha oculta", out.Items[0].Leader)
 	}
-	if raw := mustJSON(t, out); strings.Contains(raw, "Ana Pérez") || strings.Contains(raw, "412") {
+	if raw := mustJSON(t, out); strings.Contains(raw, "Ana Pérez") || strings.Contains(raw, "+58 412 000 0000") {
 		t.Errorf("el JSON filtra el encargado oculto: %s", raw)
 	}
 }
@@ -446,7 +446,7 @@ func TestGetPortadaMinisteriosHasNoLeaderFields(t *testing.T) {
 	}
 
 	raw := mustJSON(t, out)
-	for _, forbidden := range []string{name, "412", "leader", "whatsappUrl", "description", "publicationState"} {
+	for _, forbidden := range []string{name, phone, "leader", "whatsappUrl", "description", "publicationState"} {
 		if strings.Contains(raw, forbidden) {
 			t.Errorf("el extracto contiene %q: %s", forbidden, raw)
 		}
