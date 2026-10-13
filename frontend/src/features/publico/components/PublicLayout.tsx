@@ -36,29 +36,29 @@ export function PublicLayout() {
  * **después** de resolver la consulta pública, así que sin este efecto el
  * visitante aterriza arriba del todo.
  *
- * Se ejecuta **una sola vez por carga de documento** y solo en la portada: un
- * ancla pulsada dentro de la propia portada la resuelve el navegador (navegación
- * en el mismo documento) y no se repite el desplazamiento suave. `scrollIntoView`
- * sin opciones respeta el `scroll-behavior` y el `scroll-padding-top` del sistema
- * (F10), de modo que la sección no queda tapada por la cabecera fija y
- * `prefers-reduced-motion` sigue mandando.
+ * Se ejecuta **una sola vez por carga de documento** y solo en la portada, y
+ * espera a que la respuesta pública esté resuelta (las secciones ya montadas)
+ * antes de dar el ancla por resuelta: un ancla pulsada dentro de la propia
+ * portada la resuelve el navegador (navegación en el mismo documento) y no se
+ * repite el desplazamiento suave. `scrollIntoView` sin opciones respeta el
+ * `scroll-behavior` y el `scroll-padding-top` del sistema (F10), de modo que la
+ * sección no queda tapada por la cabecera fija y `prefers-reduced-motion` sigue
+ * mandando.
  */
 function useHashScrollOnArrival(isHome: boolean, hash: string, data: PortadaPublica | undefined) {
   const handled = useRef(false);
 
   useEffect(() => {
-    if (handled.current || !isHome) {
-      return;
+    if (handled.current || !isHome || !data) {
+      return; // la portada aún no está renderizada: se reintenta cuando llegue
     }
     if (hash === '') {
       handled.current = true; // carga sin ancla: no hay nada que resolver
       return;
     }
-    if (!data) {
-      return; // aún sin secciones: se reintenta cuando lleguen
-    }
     const target = document.getElementById(hash.slice(1));
     if (!target) {
+      handled.current = true; // ancla desconocida: no se insiste
       return;
     }
     handled.current = true;
