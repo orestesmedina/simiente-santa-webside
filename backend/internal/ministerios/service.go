@@ -172,14 +172,6 @@ func normalizeOptional(value string) *string {
 	return &normalized
 }
 
-// derefString devuelve el valor de un opcional, o "" si no existe.
-func derefString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
-}
-
 // publicationStateOr traduce el estado de entrada; un valor vacío es `draft`
 // (el default del contrato y de la BD).
 func publicationStateOr(value string) PublicationState {

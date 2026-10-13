@@ -510,7 +510,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     los límites son el único punto de verdad (los usan T613–T615 y los cita el contrato).
   - **Commit sugerido**: `feat(ministerios): invariantes y validacion de dominio`
 
-- [ ] T613 · `ministerios`: `service_public.go` — `GetMinisterios` (sección) · `[backend]`
+- [X] T613 · `ministerios`: `service_public.go` — `GetMinisterios` (sección) · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/service_public.go` y `service_public_test.go`
     (NUEVOS).
