@@ -415,7 +415,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     BD y traducidos a errores del dominio.
   - **Commit sugerido**: `feat(ministerios): persistencia de ministerios con duplicados y aviso de enlace`
 
-- [ ] T609 · `ministerios`: `repository_public.go` — privacidad del encargado en la consulta · `[backend]` `[P]` (P2)
+- [X] T609 · `ministerios`: `repository_public.go` — privacidad del encargado en la consulta · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/ministerios/repository_public.go` y
     `repository_public_integration_test.go` (NUEVOS; `//go:build integration`).
