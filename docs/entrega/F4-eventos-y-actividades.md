@@ -1,6 +1,6 @@
 # Entrega F4 — Eventos y actividades
 
-**Fecha:** 2026-10-11 · **Versión:** 0.5.0 · **Rama:** `004-eventos-actividades`
+**Fecha:** 2026-10-11 · **Actualizada:** 2026-10-12 · **Versión:** 0.5.0 · **Rama:** `004-eventos-actividades`
 
 Nota de entrega en lenguaje sencillo. Si querés la parte técnica, está en el [`README`](../../README.md), en el [`CHANGELOG`](../../CHANGELOG.md) y en la [spec de la funcionalidad](../../specs/004-eventos-actividades/spec.md).
 
@@ -8,6 +8,7 @@ Nota de entrega en lenguaje sencillo. Si querés la parte técnica, está en el 
 
 Ya está la sección que resuelve el problema principal: **que nadie se quede sin enterarse de lo que viene**. El sitio público muestra los próximos eventos y actividades de la iglesia, y el equipo los administra desde el panel, sin depender de nadie más.
 
+- **El bloque «Lo que viene» en la portada**, entre el horario de servicios y los canales de WhatsApp: hasta **5 elementos** próximos —eventos y actividades juntos, los más cercanos por fecha— en una fila de tarjetas pequeñas con su imagen, su título, su fecha y su lugar, cada uno marcado como evento o actividad. Se prefieren los de los **próximos 2 meses** y, si en ese plazo no hay nada, se muestran los siguientes próximos. Con el botón **«Ver más eventos»** se llega a la sección completa en un solo paso. Si todavía no hay nada publicado, el bloque se queda visible con el mensaje **«Por el momento no hay eventos ni actividades»** (es la única sección que no se oculta cuando está vacía).
 - **La sección «Eventos y actividades»** (en <http://localhost:5173/eventos>), con dos bloques bien separados:
   - **Próximos eventos**: los encuentros periódicos de la iglesia (noche de aposentos, vigilia…) con sus fechas concretas y, si quieren, un texto de frecuencia («todos los viernes»).
   - **Próximas actividades**: las acciones puntuales (repartir comida, predicar en tal lugar…) con su fecha y su horario.
@@ -24,9 +25,10 @@ Ya está la sección que resuelve el problema principal: **que nadie se quede si
 
 ### Visitante (sin cuenta)
 
-1. Abrir <http://localhost:5173/eventos> o llegar desde el menú («Eventos y actividades»).
-2. Ver los dos bloques en orden: primero lo más próximo. Cada tarjeta dice qué es (evento o actividad), cuándo, a qué hora y dónde; el enlace de lugar abre la ubicación en el mapa.
-3. Para el detalle completo, se toca la tarjeta. Para cambiar a inglés, se usa el selector de la cabecera.
+1. **Desde la portada** (<http://localhost:5173/>): el bloque **«Lo que viene»**, entre el horario y los canales de WhatsApp, ya muestra los próximos 5 eventos y actividades con su imagen; tocando cualquiera (o el botón **«Ver más eventos»**) se llega a la sección completa.
+2. Abrir <http://localhost:5173/eventos> o llegar desde el menú («Eventos y actividades»).
+3. Ver los dos bloques en orden: primero lo más próximo. Cada tarjeta dice qué es (evento o actividad), cuándo, a qué hora y dónde; el enlace de lugar abre la ubicación en el mapa.
+4. Para el detalle completo, se toca la tarjeta. Para cambiar a inglés, se usa el selector de la cabecera.
 
 ### Panel (con cuenta)
 
@@ -49,19 +51,30 @@ La guía completa está en [`specs/004-eventos-actividades/quickstart.md`](../..
 - **§1 · La sección sin cuenta**: abrir <http://localhost:5173/eventos> sin iniciar sesión.
 - **§2 · Permisos**: crear un rol con «Eventos», «Actividades» y/o «Categorías de agenda» y comprobar que no se mezclan.
 - **§3–§6 · Panel**: crear eventos con fechas, actividades puntuales, categorías e imágenes.
-- **§7 · Publicar y retirar**, **§8 · idiomas**, **§9 · retiro automático al pasar la fecha**, **§10 · dispositivos y accesibilidad**, **§11 · sin permiso**, **§12 · auditoría**, **§13 · pruebas automatizadas** (Go + 505 pruebas de frontend + 38 casos extremo a extremo en verde) y **§14 · mapa de criterios**.
+- **§7 · Publicar y retirar**, **§8 · idiomas**, **§9 · retiro automático al pasar la fecha**, **§10 · dispositivos y accesibilidad**, **§11 · sin permiso**, **§12 · auditoría**, **§13 · pruebas automatizadas** (Go + 528 pruebas de frontend + 43 casos extremo a extremo en verde) y **§14 · mapa de criterios**.
+- **§15 · Bloque «Lo que viene» de la portada**: los 5 ítems, la ventana de 2 meses con respaldo, el mensaje cuando no hay nada y el botón «Ver más eventos».
 
-Nota para quien ejecute las pruebas extremo a extremo: se corren **en tres tandas separadas** (F2, F4, F3/F10) y en serie, por el límite de intentos de inicio de sesión por minuto; el detalle está en la cabecera de los propios archivos de prueba.
+Nota para quien ejecute las pruebas extremo a extremo: se corren **en tres tandas separadas** (F3/F10 + bloque, F4 + bugs, F2) y en serie, por el límite de intentos de inicio de sesión por minuto; el detalle está en la cabecera de los propios archivos de prueba.
+
+## Correcciones incluidas
+
+Además de lo anterior, esta entrega incluye **tres arreglos de errores detectados en la revisión**:
+
+- **Desde la sección `/eventos`, el menú no llevaba a las secciones de la portada**: los enlaces de las secciones se construían mal al venir de otra página. Ya navegan bien y, al llegar, la página se coloca en la sección elegida.
+- **El menú público no marcaba la sección actual ni respondía al pasar el cursor**: ahora la sección en la que estás parado aparece resaltada (y lo anuncia el lector de pantalla) y el efecto al pasar el cursor se ve con el contraste adecuado.
+- **El diálogo para agregar un evento era angosto y con desplazamiento lateral**: ahora se abre más ancho y se pueden agregar varias fechas sin desplazarse a los costados.
+
+Se aprovechó además para cumplir con el requisito de objetivos táctiles grandes (≥ 44 px) en las tarjetas del bloque nuevo.
 
 ## Límites conocidos de esta entrega
 
 - **No hay inscripciones ni avisos**: la gente se entera entrando al sitio; no se envían correos, mensajes ni recordatorios, y no hay botón «agregar a mi calendario».
 - **No se calculan fechas automáticamente**: el equipo carga las fechas concretas de cada evento (y opcionalmente un texto de frecuencia). El sistema no genera la próxima fecha por periodicidad.
-- **No hay «Lo que viene» en la portada**: la sección vive bajo su propia entrada de menú; la portada de F3 no se tocó. Si lo quieren en la portada, sería un pedido aparte.
+- **El bloque de la portada no se puede configurar**: no hay más de 5 ítems, ni paginación, ni filtros, ni ajuste de fechas desde el panel, y F4 **no rediseña el resto de la portada de F3** (solo añade ese bloque). Todo lo demás de la portada sigue siendo de F3.
 - **Borrar es borrar para siempre** (igual que en la portada): si algo no quieren perder, usen «Retirar» en vez de eliminarlo.
 - **Sin traducción automática**: el inglés lo escribe el equipo, contenido por contenido.
 - **El panel sigue en español** (como F2 y F3): el bilingüismo es del sitio público.
-- **Quedan dos revisiones solo con personas**, ya preparadas para esta entrega: la **prueba de usabilidad** (SC-010: personas de distintas edades identifican qué viene, cuándo y dónde sin ayuda) y la **lectura con lector de pantalla** (NVDA/VoiceOver) de la sección. Lo automatizable de accesibilidad —teclado, foco, jerarquía, contraste, textos al 200 %, 320 px— ya está en verde.
+- **Quedan dos revisiones solo con personas**, ya preparadas para esta entrega: la **prueba de usabilidad** (SC-010/SC-015: personas de distintas edades identifican qué viene, cuándo y dónde sin ayuda, ahora también desde la portada) y la **lectura con lector de pantalla** (NVDA/VoiceOver) de la sección y del bloque nuevo. Lo automatizable de accesibilidad —teclado, foco, jerarquía, contraste, textos al 200 %, 320 px— ya está en verde.
 - **Sin despliegue a internet**: por ahora todo funciona en local, en tu equipo.
 
 ## Qué sigue

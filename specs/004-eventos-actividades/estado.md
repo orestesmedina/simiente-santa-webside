@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar (re-validación: 3 bugs corregidos + bloque de portada) |
-| Ciclo de corrección | 2/3 |
-| Próximo paso | Re-validar con `qa-tester`/`revisor-codigo`/`seguridad`; luego CHANGELOG y PR |
+| Fase | 9/9 · Entregar (re-validación APROBADA; PR pendiente de abrir por el humano) |
+| Ciclo de corrección | 2/3 (cerrado: los tres roles aprobaron el 2026-10-12) |
+| Próximo paso | **El humano** hace `git push` y abre el PR; al aprobarlo, `make costos CERRAR=1` y merge |
 | Bloqueado por | — |
 | Actualizado | 2026-10-12 |
 
@@ -32,15 +32,10 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 ## Hallazgos abiertos
 
-Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-11-ciclo2.md`).
+Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-12.md`).
 
-- **(validación de F4: ninguno)** — los bloqueantes del ciclo 1 (I1, M1–M3) están corregidos y re-validados; los **tres roles APROBARON** en el ciclo 2.
-- **Bugs reportados por el usuario (2026-10-12)** — flujo `equipo-bug`, diagnóstico hecho, pendientes de arreglo y re-validación:
-  - **Bug 1** — desde `/eventos` el menú no navega a las secciones de la portada: `useSiteLinks.ts:62` construye `href` relativos (`#whatsapp`) en vez de `/#whatsapp` (regresión exhibida por F4).
-  - **Bug 2** — el menú no tiene hover ni estado actual: `PublicNav.tsx:45` sin `hover:` ni `aria-current` (hueco de F10, FR-008/T1012).
-  - **Bug 3** — el modal de crear evento es pequeño y con doble scroll: `Dialog.tsx:87` `max-w-lg` + `overflow-y-auto`; el `DatesEditor` desborda (hueco de F2, expuesto por F4).
-- **Cambio de alcance Q8 (2026-10-12)** — bloque «Lo que viene» en la portada (hasta 3 ítems próximos, eventos y actividades juntos): spec/plan/ux/tasks actualizados; **pendiente re-aprobar** e implementar.
-- **Deuda aceptada (no bloquea)**: deriva documental **S1** (corregida), **S2**, **S3**; seguridad **B1/B2/B3**; revisor **M5** (`Optional[T]`); **QA**: SC-010 y lector de pantalla quedan como verificación **manual** con el humano.
+- **(ninguno)** — los 3 bugs corregidos y el bloque de portada (Q8) fueron **re-validados el 2026-10-12** con **APROBADO** de los tres roles. Los hallazgos del ciclo previo (I1, M1–M3) siguen cerrados.
+- **Deuda aceptada (no bloquea)**: sugerencias del revisor (2 IMPORTANTE solo de documentación —`plan.md` P4-19/RG4-11— ya alineadas; `useLocation` en `try/catch`; lógica «retained» duplicada; `handled` de `useHashScrollOnArrival`); seguridad **B1/B2/B3**; revisor **M5** (`Optional[T]`); **QA**: SC-010 y lector de pantalla quedan como verificación **manual** con el humano.
 
 ## Decisiones y aclaraciones
 
@@ -53,6 +48,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-12 — **Bugs y cambio de alcance Q8, cerrados.** (1) **3 bugs** reportados por el usuario, corregidos con `equipo-bug` y pruebas de reproducción de `qa-tester` en verde: navegación desde `/eventos` (`/#…`), hover + estado activo del menú, y modal de evento más ancho y sin scroll horizontal. (2) **Cambio de alcance Q8**: bloque **«Lo que viene»** en la portada (hasta **5** ítems, ventana de **2 meses** con respaldo, fila de tarjetas compactas con imagen, mensaje si no hay nada, botón «Ver más eventos» → `/eventos`), con endpoint `GET /api/v1/portada/proximamente` (contrato **0.6.0**) y spec v3 **re-aprobada** + plan aprobado. **Re-validación del 2026-10-12: APROBADO por los tres roles** (Go integración 21/21, cobertura 87,0 %, Vitest 528, e2e 45/45 en 3 tandas). T440 re-verificado (`make ci` en verde). Consolidado en `revision-2026-10-12.md`. Documentación (CHANGELOG `[0.5.0]`, README, entrega, `pr.md`) lista; **PR pendiente de abrir por el humano**.
 
 - 2026-10-12 — **T440 re-verificada tras la enmienda Q8 y las 3 correcciones de bugs** (`devops`): **`make ci`** completo en verde (lint, Go unitarias + `-tags=integration` contra PostgreSQL real, **vitest 78 archivos / 528 pruebas**, govulncheck 0, npm audit 0); **e2e en las 3 tandas documentadas** (imagen Docker `mcr.microsoft.com/playwright:v1.63.0-jammy`, `--network host`, `--workers=1`): tanda 1 (F2) 2 casos, tanda 2 (`agenda-`, T438–T442) 5 casos y tanda 3 (`portada- diseno- movimiento navegacion- tema- qa- status`, **incluido `portada-proximamente` de T449** y `qa-bugs-004`) 38 casos — **45/45 pasados**; **cobertura `internal/agenda/service*.go` = 89,4 %** (service.go 95,5 %, admin 87,5 %, audit 100 %, public 88,0 %); **`sqlc-verify` y `api-gen` sin deriva**; **migraciones `000007`–`000009` up→down→up** sobre una BD desechable en el contenedor (down llega a versión 6, re-up a 9 y catálogo **10** con `categorias`); backend Docker reconstruido a la fecha del último commit del dominio (endpoint `/api/v1/portada/proximamente` responde `200` con el bloque — SC-014/SC-015 —); `/healthz` 200, ruta inexistente `404` con `ErrorEnvelope`, `/eventos` y `/` 200 en el frontend; **sin cambios pendientes de F4 en `.env.example`, docker-compose.yml, Dockerfiles ni `.github/`**. Pendiente registrado: **SC-010** (manual con el humano y `qa-tester`). Sin PR ni despliegue.
 - 2026-10-11 — **Fase 5 (Validar) — ciclo 2: APROBADO por los tres roles.** El ciclo de corrección 1 (`1714e2b`, `3ec0b2d`, `53c7007`, `8b03db3`) cerró I1 (consultas por lote, sin N+1) y M1–M3. Re-validación: `qa-tester` APROBADO, `revisor-codigo` APROBADO, `seguridad` APROBADO. Consolidado en `revision-2026-10-11-ciclo2.md`. Quedan solo sugerencias no bloqueantes (S1 deriva documental, S2, S3) y deuda aceptada. Arranca la convergencia (Fase 8).
