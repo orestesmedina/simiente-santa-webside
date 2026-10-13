@@ -10,6 +10,7 @@ import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
 import { PublicLayout } from '../features/publico/components/PublicLayout';
 import { EventsPage as PublicEventsPage } from '../features/publico/eventos/EventsPage';
+import { MinisteriosPage as PublicMinisteriosPage } from '../features/publico/ministerios/MinisteriosPage';
 import { HomePage } from '../features/publico/pages/HomePage';
 import { RolesPage } from '../features/roles/pages/RolesPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
@@ -71,6 +72,10 @@ const appRoutes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       // La sección de agenda es una **ruta real** (⟲ D-1), no un ancla de la portada.
       { path: 'eventos', element: <PublicEventsPage /> },
+      // «Ministerios» es una **ruta real** (⟲ D-1 de F6) y una sola entrada de
+      // navegación (T628). Sin publicados redirige a la portada desde la propia
+      // página (D-14/P6-21), no desde aquí.
+      { path: 'ministerios', element: <PublicMinisteriosPage /> },
     ],
   },
   {

@@ -856,7 +856,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     excepción queda documentada en la evidencia.
   - **Commit sugerido**: `test(frontend): permisos y accesos con ministerios (cambio acotado RG6-6)`
 
-- [ ] T627 · `/ministerios`: `MinisteriosPage`, `MinistryCard`, `EncargadoLine`, `WhatsappJoinButton` y **redirección** · `[frontend]` `[P]` (P4)
+- [X] T627 · `/ministerios`: `MinisteriosPage`, `MinistryCard`, `EncargadoLine`, `WhatsappJoinButton` y **redirección** · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/ministerios/MinisteriosPage.tsx`, `MinistryCard.tsx`,
     `EncargadoLine.tsx`, `WhatsappJoinButton.tsx` y `*.test.tsx` (NUEVOS),
