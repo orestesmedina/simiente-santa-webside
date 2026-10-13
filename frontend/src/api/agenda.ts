@@ -20,6 +20,10 @@ export type OcurrenciaPublica = components['schemas']['OcurrenciaPublica'];
 export type CategoriaPublica = components['schemas']['CategoriaPublica'];
 export type ImagenPublica = components['schemas']['ImagenPublica'];
 
+/** Extracto «Lo que viene» de la portada (US7/FR-025, contrato 0.6.0). */
+export type PortadaProximamente = components['schemas']['PortadaProximamente'];
+export type ItemProximoPortada = components['schemas']['ItemProximoPortada'];
+
 export type EventoAdmin = components['schemas']['EventoAdmin'];
 export type EventoAdminList = components['schemas']['EventoAdminList'];
 export type EventoInput = components['schemas']['EventoInput'];
@@ -66,6 +70,18 @@ function listQuery(params: AgendaListParams): Record<string, string | number | u
  */
 export async function getProximamente(lang: AgendaLang): Promise<ProximamentePublica> {
   return apiFetch<ProximamentePublica>(buildUrl('/api/v1/proximamente', { lang }));
+}
+
+/**
+ * Extracto «Lo que viene» de la portada (US7/FR-025…FR-027, D-26): hasta **5**
+ * ítems —eventos y actividades mezclados por cercanía— con el DTO mínimo de la
+ * tarjeta compacta (título, fecha, horario, lugar e imagen con `alt`), ya
+ * resueltos al idioma pedido por el servidor (fallback `en → es` por campo).
+ * La ventana de 2 meses con respaldo la aplica el servidor: el cliente **no**
+ * filtra ni reimplementa nada. `no-store`, sin sesión.
+ */
+export async function getPortadaProximamente(lang: AgendaLang): Promise<PortadaProximamente> {
+  return apiFetch<PortadaProximamente>(buildUrl('/api/v1/portada/proximamente', { lang }));
 }
 
 /* ── Eventos (panel) ─────────────────────────────────────────────────── */

@@ -11,6 +11,7 @@ import {
   deleteActividad,
   deleteCategoria,
   deleteEvento,
+  getPortadaProximamente,
   getProximamente,
   listActividades,
   listCategorias,
@@ -23,6 +24,7 @@ import {
   type ActividadAdmin,
   type CategoriaAdmin,
   type EventoAdmin,
+  type PortadaProximamente,
   type ProximamentePublica,
 } from './agenda';
 import { API_BASE_URL, ApiError } from './client';
@@ -147,6 +149,62 @@ describe('getProximamente', () => {
     const error = (await getProximamente('es').catch((cause: unknown) => cause)) as ApiError;
     expect(error.code).toBe('invalid');
     expect(error.status).toBe(400);
+    expect(error.details).toEqual({ lang: 'es|en' });
+  });
+});
+
+describe('getPortadaProximamente', () => {
+  const extractoUrl = `${API_BASE_URL}/api/v1/portada/proximamente`;
+
+  const extracto: PortadaProximamente = {
+    lang: 'es',
+    items: [
+      {
+        kind: 'event',
+        id: itemId,
+        title: 'Vigilia de viernes',
+        date: '2026-10-17',
+        startTime: '19:00',
+        place: 'Templo central',
+        image: { url: '/api/v1/media/img_x.png', alt: 'Templo iluminado' },
+      },
+      {
+        kind: 'activity',
+        id: itemId,
+        title: 'Repartir comida',
+        date: '2026-10-18',
+        place: 'Comedor comunal',
+      },
+    ],
+  };
+
+  it('consulta el extracto de la portada con el idioma pedido', async () => {
+    let consultada: string | undefined;
+    server.use(
+      http.get(extractoUrl, ({ request }) => {
+        consultada = request.url;
+        return HttpResponse.json(extracto);
+      }),
+    );
+
+    await expect(getPortadaProximamente('en')).resolves.toEqual(extracto);
+    expect(consultada).toBe(`${extractoUrl}?lang=en`);
+  });
+
+  it('propaga el ApiError del sobre con su `details`', async () => {
+    server.use(
+      http.get(extractoUrl, () =>
+        HttpResponse.json(
+          {
+            error: { code: 'invalid', message: 'Idioma no soportado', details: { lang: 'es|en' } },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+
+    const error = (await getPortadaProximamente('es').catch((cause: unknown) => cause)) as ApiError;
+    expect(error.code).toBe('invalid');
     expect(error.details).toEqual({ lang: 'es|en' });
   });
 });

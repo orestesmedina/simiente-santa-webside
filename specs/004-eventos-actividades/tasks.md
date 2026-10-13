@@ -1212,7 +1212,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
   - **Criterio de terminado**: `quickstart.md` §15 es ejecutable tal cual por API (US7).
   - **Commit sugerido**: `feat(agenda): endpoint publico del extracto de la portada`
 
-- [ ] T447 · `api/agenda.ts` + hook `usePortadaProximamente` · `[frontend]`
+- [X] T447 · `api/agenda.ts` + hook `usePortadaProximamente` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/schema.d.ts` (REGENERADO con `npm run api-gen` desde el contrato
     0.6.0), `frontend/src/api/agenda.ts` (EDITADO: `getPortadaProximamente(lang)`),
