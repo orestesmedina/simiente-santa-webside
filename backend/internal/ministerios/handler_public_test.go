@@ -183,3 +183,135 @@ func TestGetMinisteriosHandlerWithoutService(t *testing.T) {
 		t.Errorf("sobre inesperado: %s", rec.Body)
 	}
 }
+
+// --- Bloque de la portada (T618, US6/FR-027/FR-028) ---
+
+// TestGetPortadaMinisteriosHandlerOK fija el 200 con el sobre del contrato, la
+// cabecera no-store y la tarjeta compacta (sin descripción, sin encargado y sin
+// enlace: el detalle vive en la sección).
+func TestGetPortadaMinisteriosHandlerOK(t *testing.T) {
+	repo := newFakeRepository()
+	ministry := publishedMinistry("Alabanza")
+	ministry.PlaceEs = textOf("Templo")
+	ministry.LeaderNameEs = textOf("Ana Pérez")
+	ministry.LeaderVisible = true
+	ministry.WhatsappURL = textOf("https://chat.whatsapp.com/abc")
+	repo.seed(ministry)
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaMinisterios, "/api/v1/portada/ministerios")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+	}
+
+	var got PortadaMinisterios
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es PortadaMinisterios: %v (%s)", err, rec.Body)
+	}
+	if got.Lang != LangES || len(got.Items) != 1 {
+		t.Fatalf("sobre = %+v", got)
+	}
+	if got.Items[0].Name != "Alabanza" || got.Items[0].Place == nil || *got.Items[0].Place != "Templo" {
+		t.Errorf("item = %+v", got.Items[0])
+	}
+}
+
+// TestGetPortadaMinisteriosHandlerOmitsItemsWhenEmpty fija FR-028/SC-010: sin
+// publicados la respuesta lleva solo `lang` (nunca `items: null`) y la portada no
+// dibuja el bloque; la API responde 200.
+func TestGetPortadaMinisteriosHandlerOmitsItemsWhenEmpty(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := doGet(t, h.GetPortadaMinisterios, "/api/v1/portada/ministerios")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != `{"lang":"es"}` {
+		t.Fatalf("cuerpo = %s, se esperaba solo lang", body)
+	}
+}
+
+// TestGetPortadaMinisteriosHandlerIgnoresLimit fija FR-027: el tope 5 es del
+// servidor; la ruta no admite parámetro de límite.
+func TestGetPortadaMinisteriosHandlerIgnoresLimit(t *testing.T) {
+	repo := newFakeRepository()
+	for i := 0; i < 8; i++ {
+		ministry := publishedMinistry("Ministerio")
+		ministry.SortOrder = i
+		repo.seed(ministry)
+	}
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaMinisterios, "/api/v1/portada/ministerios?limit=100")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got PortadaMinisterios
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es PortadaMinisterios: %v", err)
+	}
+	if len(got.Items) != maxPortadaItems {
+		t.Fatalf("items = %d, se esperaban %d (tope del servidor)", len(got.Items), maxPortadaItems)
+	}
+}
+
+// TestGetPortadaMinisteriosHandlerNeverLeaksLeader fija la privacidad estructural
+// del extracto: el JSON crudo no lleva el nombre ni el contacto del encargado ni
+// `publicationState`, aunque la ficha esté publicada (D-12).
+func TestGetPortadaMinisteriosHandlerNeverLeaksLeader(t *testing.T) {
+	const (
+		name  = "Ana Pérez"
+		email = "ana@ejemplo.com"
+	)
+	repo := newFakeRepository()
+	ministry := publishedMinistry("Alabanza")
+	ministry.ID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	ministry.LeaderNameEs = textOf(name)
+	ministry.LeaderEmail = textOf(email)
+	ministry.LeaderVisible = true
+	repo.seed(ministry)
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaMinisterios, "/api/v1/portada/ministerios")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	raw := rec.Body.String()
+	for _, secret := range []string{name, email, "leader", "whatsappUrl", "publicationState", "description"} {
+		if strings.Contains(raw, secret) {
+			t.Errorf("el JSON crudo del extracto contiene %q: %s", secret, raw)
+		}
+	}
+}
+
+// TestGetPortadaMinisteriosHandlerInvalidLang fija el 400 invalid con
+// details.lang.
+func TestGetPortadaMinisteriosHandlerInvalidLang(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := doGet(t, h.GetPortadaMinisterios, "/api/v1/portada/ministerios?lang=fr")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"invalid"`) || !strings.Contains(rec.Body.String(), `"lang"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+}
+
+// TestGetPortadaMinisteriosHandlerServiceError fija el sobre genérico.
+func TestGetPortadaMinisteriosHandlerServiceError(t *testing.T) {
+	repo := newFakeRepository()
+	repo.readErr = errors.New("boom")
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaMinisterios, "/api/v1/portada/ministerios")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "boom") {
+		t.Errorf("la respuesta filtra la causa interna: %s", rec.Body)
+	}
+}

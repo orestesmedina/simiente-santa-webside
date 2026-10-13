@@ -653,7 +653,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     está verificada también en la capa HTTP.
   - **Commit sugerido**: `feat(ministerios): endpoint publico de la seccion`
 
-- [ ] T618 · `handler_public.go` — `GET /api/v1/portada/ministerios` · `[backend]`
+- [X] T618 · `handler_public.go` — `GET /api/v1/portada/ministerios` · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/handler_public.go` (EDITADO),
     `handler_public_test.go` (AMPLIADO).
