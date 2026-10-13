@@ -252,7 +252,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     anterior (§VI).
   - **Commit sugerido**: `feat(db): ampliar admin_actions a ministerios (000011)`
 
-- [ ] T603 · Consultas sqlc `ministries.sql` + rama de `media.sql` y generar · `[db]`
+- [X] T603 · Consultas sqlc `ministries.sql` + rama de `media.sql` y generar · `[db]`
 
   - **Archivos**: `backend/internal/db/queries/ministries.sql` (NUEVO),
     `backend/internal/db/queries/media.sql` (EDITADO: `IsFilePublished` crece con `ministries`) y

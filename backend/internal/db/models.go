@@ -176,6 +176,31 @@ type LoginEvent struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type Ministry struct {
+	ID               pgtype.UUID
+	NameEs           string
+	NameEn           pgtype.Text
+	DescriptionEs    string
+	DescriptionEn    pgtype.Text
+	LeaderNameEs     pgtype.Text
+	LeaderNameEn     pgtype.Text
+	LeaderPhone      pgtype.Text
+	LeaderEmail      pgtype.Text
+	LeaderVisible    bool
+	WhatsappUrl      pgtype.Text
+	ScheduleEs       pgtype.Text
+	ScheduleEn       pgtype.Text
+	PlaceEs          pgtype.Text
+	PlaceEn          pgtype.Text
+	ImageFile        pgtype.Text
+	ImageAltEs       pgtype.Text
+	ImageAltEn       pgtype.Text
+	PublicationState string
+	SortOrder        int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type Permission struct {
 	ID        pgtype.UUID
 	Code      string

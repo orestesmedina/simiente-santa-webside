@@ -6,13 +6,15 @@
 --
 -- `IsFilePublished` sustituye a `IsHomeFilePublished` (de `home.sql`): responde
 -- TRUE solo si el nombre está referenciado por contenido **publicado y visible
--- hoy** (decisión firme de la puerta 2, R4-6):
---   * `home_identity` publicada (F3: logo e imagen de portada), sin fecha; y
+-- hoy** (decisión firme de la puerta 2, R4-6; F6 añade la tercera rama, R6-7):
+--   * `home_identity` publicada (F3: logo e imagen de portada), sin fecha;
 --   * `agenda_events` / `agenda_activities` publicados **y próximos** según la
 --     regla R4-2 (`today`/`now_time` que el service calcula en `APP_TZ` y pasa
---     parametrizados).
+--     parametrizados); y
+--   * `ministries` publicado (F6: la imagen del ministerio, sin fecha).
 -- Un elemento vencido deja de servir su imagen **sin borrar el archivo** y la
--- misma URL vuelve a responder 200 al cargarle una fecha próxima.
+-- misma URL vuelve a responder 200 al cargarle una fecha próxima; igual en F6: el
+-- ministerio en borrador no sirve su imagen y la URL vuelve al publicarlo.
 
 -- name: IsFilePublished :one
 -- ¿El nombre de archivo lo referencia contenido publicado y próximo? `TRUE`
@@ -57,5 +59,15 @@ SELECT EXISTS (
                   AND (a.end_time IS NULL
                        OR a.end_time::time >= sqlc.arg('now_time')::time))
           )
+
+        UNION ALL
+
+        -- F6 (R6-7): la imagen de un ministerio PUBLICADO. Rama aditiva: el
+        -- ministerio en borrador no sirve su imagen y el archivo no se borra
+        -- (al publicarlo, la misma URL vuelve a responder 200).
+        SELECT m.id
+        FROM ministries m
+        WHERE m.publication_state = 'published'
+          AND m.image_file = sqlc.arg('file_name')::text
     ) AS referenced
 ) AS published;
