@@ -203,7 +203,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 > huecos desde `000001` (F4 terminó en `000009`). **Sin migración de permisos** (P6-6: `ministerios`
 > ya está sembrado por `000002` y el catálogo sigue en 10).
 
-- [ ] T601 · Migración `000010_create_ministries` · `[db]` `[P]` (P1)
+- [X] T601 · Migración `000010_create_ministries` · `[db]` `[P]` (P1)
 
   - **Archivos**: `backend/migrations/000010_create_ministries.up.sql` y
     `000010_create_ministries.down.sql` (NUEVOS).
