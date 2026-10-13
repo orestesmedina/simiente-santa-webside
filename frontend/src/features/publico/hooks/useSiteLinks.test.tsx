@@ -44,7 +44,7 @@ describe('useSiteLinks · fuente única de navegación (FR-012/FR-027)', () => {
     const links = buildSiteLinks({ lang: 'es', about: { text: 'solo quiénes somos' } });
 
     expect(links.map((link) => link.id)).toEqual(['who']);
-    expect(links.map((link) => link.href)).toEqual(['#quienes-somos']);
+    expect(links.map((link) => link.href)).toEqual(['/#quienes-somos']);
   });
 
   it('el orden es el de la página y los nombres salen de las claves de la cabecera', () => {
@@ -63,7 +63,7 @@ describe('useSiteLinks · fuente única de navegación (FR-012/FR-027)', () => {
       expect(section, `la sección ${link.id} existe en PUBLIC_SECTIONS`).toBeDefined();
       expect(link.messageKey).toBe(section?.messageKey);
       expect(link.anchor).toBe(section?.anchor);
-      expect(link.href).toBe(`#${section?.anchor}`);
+      expect(link.href).toBe(`/#${section?.anchor}`);
     }
   });
 
@@ -73,8 +73,9 @@ describe('useSiteLinks · fuente única de navegación (FR-012/FR-027)', () => {
 
     expect(conRuta.slice(0, sinRuta.length)).toEqual(sinRuta);
     for (const link of sinRuta) {
-      expect(link.href.startsWith('#')).toBe(true);
-      expect(PUBLIC_SECTIONS.some((section) => `#${section.anchor}` === link.href)).toBe(true);
+      // QA Bug 1: el ancla es absoluta a la portada (`/#ancla`), nunca relativa.
+      expect(link.href.startsWith('/#')).toBe(true);
+      expect(PUBLIC_SECTIONS.some((section) => `/#${section.anchor}` === link.href)).toBe(true);
     }
   });
 });
@@ -135,10 +136,11 @@ describe('useSiteLinks · superficies de la misma lista (FR-022)', () => {
     // La lista del menú móvil es la MISMA del `<nav>` (una sola lista en DOM).
     expect(document.querySelectorAll('a[href="/eventos"]')).toHaveLength(2);
 
-    // El resto de enlaces de la portada sigue siendo un ancla existente.
+    // El resto de enlaces de la portada sigue siendo un ancla existente (y
+    // absoluta a la portada, QA Bug 1).
     expect(within(nav).getByRole('link', { name: 'Quiénes somos' })).toHaveAttribute(
       'href',
-      '#quienes-somos',
+      '/#quienes-somos',
     );
   });
 

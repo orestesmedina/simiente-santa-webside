@@ -47,7 +47,15 @@ describe('useSiteLinks · QA Bug 1: los anclas de portada son absolutos a la ra�
   it('el ítem de agenda sigue siendo la ruta /eventos (sin doble barra)', () => {
     const links = buildSiteLinks(portadaConTodo, {
       lang: 'es',
-      events: [{ id: 'ev-1', title: 'Vigilia', dates: [{ date: '2026-10-17' }], place: 'Templo' }],
+      events: [
+        {
+          id: 'ev-1',
+          title: 'Vigilia',
+          dates: [{ date: '2026-10-17' }],
+          place: 'Templo',
+          detail: 'Noche de oración',
+        },
+      ],
     });
 
     expect(links.find((link) => link.id === 'events')?.href).toBe('/eventos');

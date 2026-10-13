@@ -25,7 +25,10 @@ export interface SiteLink {
   anchor?: string;
   /** Clave i18n del nombre visible (la misma en cabecera y pie). */
   messageKey: PublicMessageKey;
-  /** Destino del enlace: ancla de la portada (`#…`) o ruta propia (`/eventos`). */
+  /**
+   * Destino del enlace: `/#ancla` (ancla **absoluta** a la portada, válida
+   * desde cualquier ruta) o una ruta propia (`/eventos`).
+   */
   href: string;
 }
 
@@ -39,6 +42,14 @@ const EVENTS_LINK: SiteLink = {
   messageKey: 'nav.sections.events',
   href: '/eventos',
 };
+
+/**
+ * Ruta de la portada: los enlaces de sección son **absolutos** a la raíz
+ * (`/#ancla`, QA Bug 1). Como se pintan con `<a>` nativos desde cualquier ruta
+ * —incluida `/eventos`—, un ancla relativa (`#ancla`) se resolvería contra la
+ * ruta actual (`/eventos#ancla`) y el usuario no navegaría a ninguna parte.
+ */
+const HOME_PATH = '/';
 
 /**
  * Deriva los enlaces visibles de las dos respuestas públicas (FR-012/FR-022/
@@ -59,7 +70,7 @@ export function buildSiteLinks(
     id: section.id,
     anchor: section.anchor,
     messageKey: section.messageKey,
-    href: `#${section.anchor}`,
+    href: `${HOME_PATH}#${section.anchor}`,
   }));
 
   if (hasUpcomingContent(upcoming)) {

@@ -250,9 +250,10 @@ test.describe('Navegación móvil y mapa del sitio (F10 · T1030)', () => {
       await page.reload();
       await expect(page.locator('#whatsapp')).toHaveCount(0);
       await expect(page.locator('#horario')).toHaveCount(0);
-      // 0 enlaces rotos: ni el CTA del hero ni la nav ni el pie apuntan a lo ausente.
-      await expect(page.locator('a[href="#horario"]')).toHaveCount(0);
-      await expect(page.locator('a[href="#whatsapp"]')).toHaveCount(0);
+      // 0 enlaces rotos: ni el CTA del hero ni la nav ni el pie apuntan a lo
+      // ausente. Los anclas de portada son absolutos (`/#ancla`, QA Bug 1).
+      await expect(page.locator('a[href="/#horario"]')).toHaveCount(0);
+      await expect(page.locator('a[href="/#whatsapp"]')).toHaveCount(0);
       await expect(
         page
           .getByRole('navigation', { name: SECTIONS_NAV })
