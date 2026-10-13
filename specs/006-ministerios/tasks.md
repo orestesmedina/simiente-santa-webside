@@ -610,7 +610,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
   - **Criterio de terminado**: US2/US3 y FR-010/FR-014/FR-017/FR-025 cubiertos en el service.
   - **Commit sugerido**: `feat(ministerios): gestion del panel con visibilidad del encargado y auditoria`
 
-- [ ] T616 · `ministerios`: `service_audit.go` — `audit.Recorder` · `[backend]`
+- [X] T616 · `ministerios`: `service_audit.go` — `audit.Recorder` · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/service_audit.go` y `service_audit_test.go`
     (NUEVOS).
