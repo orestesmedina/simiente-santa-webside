@@ -436,7 +436,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     en la interfaz (FR-026: "no basta con ocultarlo en la interfaz").
   - **Commit sugerido**: `feat(ministerios): lectura publica sin datos del encargado oculto`
 
-- [ ] T610 · `media`: `IsFilePublished` con `ministries` (regresión de F3/F4) · `[backend]` `[P]` (P2) *(RG6-5)*
+- [X] T610 · `media`: `IsFilePublished` con `ministries` (regresión de F3/F4) · `[backend]` `[P]` (P2) *(RG6-5)*
 
   - **Archivos**: `backend/internal/media/repository.go`, `repository_media_integration_test.go`
     (EDITADOS) — la consulta ya creció en T603. *El resto de `internal/media/` y de F3/F4 no se

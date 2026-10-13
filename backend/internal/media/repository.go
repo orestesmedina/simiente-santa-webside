@@ -30,9 +30,10 @@ func NewRepository(pool *pgxpool.Pool) *repository {
 }
 
 // IsFilePublished responde si el nombre de archivo lo referencia contenido
-// publicado Y visible hoy: la identidad de la portada publicada (F3, sin fecha)
-// o un evento/actividad publicados con fecha próxima (F4, regla R4-2). `today` y
-// `nowTime` los calcula el service en APP_TZ y viajan parametrizados.
+// publicado Y visible hoy: la identidad de la portada publicada (F3, sin fecha),
+// un evento/actividad publicados con fecha próxima (F4, regla R4-2) o un
+// ministerio publicado (F6, sin fecha). `today` y `nowTime` los calcula el
+// service en APP_TZ y viajan parametrizados.
 func (r *repository) IsFilePublished(ctx context.Context, fileName, today, nowTime string) (bool, error) {
 	published, err := r.q.IsFilePublished(ctx, gendb.IsFilePublishedParams{
 		FileName: fileName,
