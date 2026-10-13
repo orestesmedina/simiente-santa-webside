@@ -1260,7 +1260,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
     navegador.
   - **Commit sugerido**: `feat(frontend): bloque lo que viene en la portada`
 
-- [ ] T449 · E2E Playwright `portada-proximamente.spec.ts` · `[frontend]`
+- [X] T449 · E2E Playwright `portada-proximamente.spec.ts` · `[frontend]`
 
   - **Archivos**: `frontend/e2e/portada-proximamente.spec.ts` (NUEVO; usa los helpers de
     `frontend/e2e/helpers.ts`).
