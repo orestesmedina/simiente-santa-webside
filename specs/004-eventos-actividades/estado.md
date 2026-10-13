@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (re-validación APROBADA; PR pendiente de abrir por el humano) |
+| Fase | 9/9 · Entregar (PR aprobado por el humano; **costo cerrado**; pendiente el merge) |
 | Ciclo de corrección | 2/3 (cerrado: los tres roles aprobaron el 2026-10-12) |
-| Próximo paso | **El humano** hace `git push` y abre el PR; al aprobarlo, `make costos CERRAR=1` y merge |
+| Próximo paso | El humano hace el **merge**; al confirmarlo, F4 → **terminada** en el roadmap |
 | Bloqueado por | — |
 | Actualizado | 2026-10-12 |
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-12 | v1: "apruebo la spec"; v2 (permiso «categorías»): "Re-apruebo la spec"; v3 (Q8, bloque en la portada): "Re-apruebo la spec" |
 | Plan | aprobado | humano | 2026-10-12 | v1: "Apruebo el plan"; v2 (bloque de portada Q8): "Apruebo el plan" (con las decisiones firmes: APP_TZ=America/Costa_Rica, ruta /eventos, aviso sin redirigir, permiso «categorías», endTime exige startTime, borrado de categoría en uso 409; bloque de portada con 5 ítems y ventana de 2 meses) |
-| PR / merge | pendiente | | | |
+| PR / merge | aprobado | humano | 2026-10-13 | "El pr pasó las pruebas del CI creo que puedes hacer el cierre para poder yo poder hacer el merge" (pendiente el merge) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos

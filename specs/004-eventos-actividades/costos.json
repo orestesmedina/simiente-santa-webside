@@ -1,8 +1,8 @@
 {
   "rama": "004-eventos-actividades",
-  "estado": "abierto",
+  "estado": "cerrado",
   "inicio": "2026-10-11T19:10:24Z",
-  "cerrado": null,
+  "cerrado": "2026-10-13T15:51:13Z",
   "moneda": "USD",
   "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
   "precios": [
@@ -1335,6 +1335,34 @@
         }
       ],
       "hasta_ms": 1791862276239
+    },
+    {
+      "id": "ses_ed385a2e0ffe15YgBBFKO37LVw",
+      "padre": null,
+      "titulo": "Continuar con F4",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-13T15:51:13Z",
+      "desde": "2026-10-13T03:31:53Z",
+      "hasta": "2026-10-13T15:50:39Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 3,
+          "respuestas_pico": 2,
+          "tokens": {
+            "input": 259660,
+            "output": 1158,
+            "reasoning": 850,
+            "cache_read": 515968,
+            "cache_write": 0
+          },
+          "costo": 0.043805,
+          "costo_opencode": 0.041702
+        }
+      ],
+      "hasta_ms": 1791906639133
     }
   ],
   "totales": {
@@ -1402,16 +1430,16 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 143,
+        "respuestas": 146,
         "tokens": {
-          "input": 1160567,
-          "output": 84400,
-          "reasoning": 50491,
-          "cache_read": 21625216,
+          "input": 1420227,
+          "output": 85558,
+          "reasoning": 51341,
+          "cache_read": 22141184,
           "cache_write": 0
         },
-        "costo": 0.436271,
-        "costo_opencode": 0.319896,
+        "costo": 0.480076,
+        "costo_opencode": 0.361598,
         "sin_precio": false
       },
       {
@@ -1505,8 +1533,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 595968344,
-    "costo": 9.656083,
-    "costo_opencode": 8.121528
+    "tokens": 596745980,
+    "costo": 9.699888,
+    "costo_opencode": 8.16323
   }
 }
