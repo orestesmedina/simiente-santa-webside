@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
+import { createAdminContext } from './publicSeed';
 
 /**
  * QA · Regresión del bug «fondo negro fuera de los layouts» (⟲ QA, no modifica
@@ -10,7 +11,10 @@ import { expect, test, type Locator } from '@playwright/test';
  * viven **fuera** de `PublicLayout`/`PanelLayout` y no declaran fondo propio
  * (`/login`, `/cambiar-contrasena`, `/sin-permiso` y el 404) dejan ver ese lienzo:
  * fondo negro con texto oscuro → página ilegible. `PanelLayout` sí fuerza
- * `bg-white`, de ahí que el resto del panel no padezca el bug.
+ * `bg-white`, de ahí que el resto del panel no padezca el bug. La cuarta
+ * pantalla afectada, `/cambiar-contrasena`, exige sesión: se cubre con la sesión
+ * de administrador **cacheada** (`createAdminContext`, un solo inicio de sesión
+ * por proceso) y el tema oscuro emulado en la página, sin gastar logins extra.
  *
  * Esta prueba exige que, con `prefers-color-scheme: dark` (y sin elección
  * guardada en `ss.theme`, tal como llega un visitante con dispositivo oscuro),
@@ -99,4 +103,36 @@ test.describe('Bug: pantallas fuera de los layouts con fondo negro en tema oscur
       }
     });
   }
+
+  test('tema oscuro del dispositivo → «/cambiar-contrasena» (con sesión) pinta fondo claro y texto oscuro', async ({
+    browser,
+  }) => {
+    // La ruta vive tras `RequireAuth`: se reutiliza la sesión de administrador
+    // cacheada —un solo inicio de sesión por proceso, patrón de los e2e de F10—
+    // y se emula el tema oscuro del dispositivo **antes** de cargar la página,
+    // de modo que el script anti-FOUC aplique `colorScheme: 'dark'` igual que en
+    // las otras tres pantallas.
+    const context = await createAdminContext(browser);
+    try {
+      const page = await context.newPage();
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await page.goto('/cambiar-contrasena');
+
+      expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark');
+      expect(await page.evaluate(() => document.documentElement.style.colorScheme)).toBe('dark');
+
+      const contenedor = page.locator('main').first();
+      await expect(contenedor.getByRole('heading', { name: 'Cambiar contraseña' })).toBeVisible();
+
+      const fondo = await fondoPintado(contenedor);
+      expect(fondo, 'fondo pintado en /cambiar-contrasena').toBe(CLARO);
+
+      const colorTitulo = await contenedor
+        .getByRole('heading', { name: 'Cambiar contraseña' })
+        .evaluate((el) => getComputedStyle(el).color);
+      expect(luminancia(colorTitulo), 'color del título en /cambiar-contrasena').toBeLessThan(0.5);
+    } finally {
+      await context.close();
+    }
+  });
 });
