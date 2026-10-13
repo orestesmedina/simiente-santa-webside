@@ -79,7 +79,7 @@ export function ImageUploader({
         <img
           src={preview}
           alt={altEs || label}
-          className="max-h-40 w-auto rounded border border-slate-200 object-contain"
+          className="max-h-40 max-w-full w-auto rounded border border-slate-200 object-contain"
         />
       )}
 

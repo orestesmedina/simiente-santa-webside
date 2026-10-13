@@ -39,31 +39,40 @@ export function DatesEditor({ rows, onChange, errors = {}, generalError }: Dates
       {rows.map((row, index) => (
         <div
           key={index}
-          className="grid gap-3 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-start"
+          className="grid gap-3 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
         >
-          <Field
-            id={`agenda-date-${index}`}
-            label={`Fecha ${index + 1}`}
-            type="date"
-            required
-            value={row.date}
-            error={errors[index]?.date}
-            onChange={(event) => update(index, { date: event.target.value })}
-          />
-          <Field
-            label="Hora de inicio (opcional)"
-            type="time"
-            value={row.startTime}
-            error={errors[index]?.startTime}
-            onChange={(event) => update(index, { startTime: event.target.value })}
-          />
-          <Field
-            label="Hora de fin (opcional)"
-            type="time"
-            value={row.endTime}
-            error={errors[index]?.endTime}
-            onChange={(event) => update(index, { endTime: event.target.value })}
-          />
+          {/* `minmax(0,1fr)` + `min-w-0` (QA Bug 3): las columnas pueden
+              encogerse por debajo del ancho mínimo de los inputs nativos, así
+              que la fila nunca desborda el ancho del diálogo. */}
+          <div className="min-w-0">
+            <Field
+              id={`agenda-date-${index}`}
+              label={`Fecha ${index + 1}`}
+              type="date"
+              required
+              value={row.date}
+              error={errors[index]?.date}
+              onChange={(event) => update(index, { date: event.target.value })}
+            />
+          </div>
+          <div className="min-w-0">
+            <Field
+              label="Hora de inicio (opcional)"
+              type="time"
+              value={row.startTime}
+              error={errors[index]?.startTime}
+              onChange={(event) => update(index, { startTime: event.target.value })}
+            />
+          </div>
+          <div className="min-w-0">
+            <Field
+              label="Hora de fin (opcional)"
+              type="time"
+              value={row.endTime}
+              error={errors[index]?.endTime}
+              onChange={(event) => update(index, { endTime: event.target.value })}
+            />
+          </div>
           <Button
             variant="secondary"
             size="sm"

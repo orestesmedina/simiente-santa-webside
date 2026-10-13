@@ -279,7 +279,7 @@ export function EventForm({ event, categories, onDone, onCancel }: EventFormProp
     mutation.error && Object.keys(serverErrors).length === 0 && !conflict && !serverDatesError;
 
   return (
-    <Dialog title={isEdit ? 'Editar evento' : ADD_EVENT} onClose={onCancel}>
+    <Dialog title={isEdit ? 'Editar evento' : ADD_EVENT} size="wide" onClose={onCancel}>
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {summaryMessages.length > 0 && (
           <Notice variant="error">

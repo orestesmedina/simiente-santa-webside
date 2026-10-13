@@ -221,7 +221,7 @@ export function ActivityForm({ activity, categories, onDone, onCancel }: Activit
   const showGeneralError = mutation.error && Object.keys(serverErrors).length === 0 && !conflict;
 
   return (
-    <Dialog title={isEdit ? 'Editar actividad' : ADD_ACTIVITY} onClose={onCancel}>
+    <Dialog title={isEdit ? 'Editar actividad' : ADD_ACTIVITY} size="wide" onClose={onCancel}>
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {summaryMessages.length > 0 && (
           <Notice variant="error">
