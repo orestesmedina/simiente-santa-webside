@@ -893,7 +893,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     redirección silenciosa sin destello verificada (requisito de la puerta 2, RG6-13).
   - **Commit sugerido**: `feat(frontend): pagina /ministerios con redireccion silenciosa sin publicados`
 
-- [ ] T628 · `useSiteLinks`: entrada «Ministerios» condicional · `[frontend]` `[P]` (P4)
+- [X] T628 · `useSiteLinks`: entrada «Ministerios» condicional · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/hooks/useSiteLinks.ts` y su test (EDITADOS).
   - **Qué hace**: `SiteLinkId` crece con **`'ministries'`** y la entrada única **«Ministerios»** con
