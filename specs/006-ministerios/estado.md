@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 3/9 · Tareas y coherencia — **completa** (38 tareas; `analyze` sin críticos, 5 importantes y 8 menores corregidos) · siguiente: 4/9 · Implementar |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 4 (implementar): bloque **P1** con `dev-backend` — `T601`/`T602` (migraciones `000010` y `000011`), `T604` (fusión del contrato 0.7.0) y `T606` (códigos `ministry.*`) |
+| Próximo paso | Fase 4 (implementar), en curso: **T601–T604, T606 y T603 hechas**; siguiente **T607–T611** (`dev-backend`: repositorio, lectura pública con privacidad e `IsFilePublished`), luego T612–T621 (servicios y handlers) y el frontend (T605, T622–T636) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-13 |
 
