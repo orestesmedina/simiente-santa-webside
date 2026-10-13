@@ -131,7 +131,7 @@ describe('HomePage · secciones publicadas (US1, SC-012)', () => {
     ).toEqual(['Lo que viene']);
   });
 
-  it('inserta el bloque «Lo que viene» entre el horario y WhatsApp sin alterar F3 (F4/US7)', async () => {
+  it('pone el bloque «Lo que viene» tras el hero y antes de «quiénes somos» sin alterar F3 (F4/US7)', async () => {
     responder(completa);
     server.use(
       http.get(`${API_BASE_URL}/api/v1/portada/proximamente`, () =>
@@ -162,12 +162,15 @@ describe('HomePage · secciones publicadas (US1, SC-012)', () => {
 
     await screen.findByRole('link', { name: 'Evento: Vigilia de viernes' });
 
-    // Ubicación ⟲ D-24: después de «Horario de servicios» y antes de «WhatsApp».
-    const horario = screen.getByRole('heading', { level: 2, name: 'Horario de servicios' });
+    // Ubicación (ajuste del 2026-10-12): inmediatamente después del hero y
+    // **antes** de «quiénes somos»; el resto del orden de F3 no cambia.
+    const hero = screen.getByRole('heading', { level: 1, name: 'Iglesia Simiente Santa' });
     const bloque = screen.getByRole('heading', { level: 2, name: 'Lo que viene' });
-    const whatsapp = screen.getByRole('heading', { level: 2, name: 'WhatsApp' });
-    expect(horario.compareDocumentPosition(bloque)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(bloque.compareDocumentPosition(whatsapp)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    const quienesSomos = screen.getByRole('heading', { level: 2, name: 'Quiénes somos' });
+    const horario = screen.getByRole('heading', { level: 2, name: 'Horario de servicios' });
+    expect(hero.compareDocumentPosition(bloque)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(bloque.compareDocumentPosition(quienesSomos)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(quienesSomos.compareDocumentPosition(horario)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
     // Los ítems del extracto, etiquetados y enlazados a su bloque de /eventos.
     expect(screen.getByText('Evento')).toBeInTheDocument();

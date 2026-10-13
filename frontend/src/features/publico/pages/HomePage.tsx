@@ -80,6 +80,15 @@ export function HomePage() {
       )}
 
       <RevealGroup>
+        {/* Bloque «Lo que viene» (F4/US7, ux.md §4.10): **primera sección** de la
+            portada, inmediatamente después del hero y antes de «quiénes somos»
+            (ajuste del 2026-10-12). Es la **única excepción** a «ocultar
+            secciones vacías»: se pinta siempre, con su mensaje cuando no hay
+            ítems. `from="right"` conserva la alternancia y deja intactas las
+            direcciones de entrada de las secciones de F3. */}
+        <Reveal key="proximamente" from="right">
+          <ProximamenteBlock />
+        </Reveal>
         {about && (
           <Reveal key="quienes-somos" from="left">
             <WhoWeAreSection about={about} />
@@ -90,14 +99,6 @@ export function HomePage() {
             <ScheduleSection items={schedule} />
           </Reveal>
         )}
-        {/* Bloque «Lo que viene» (F4/US7, ux.md §4.10 ⟲ D-24): entre el horario
-            («cuándo nos reunimos») y WhatsApp. Es la **única excepción** a
-            «ocultar secciones vacías»: se pinta siempre, con su mensaje cuando
-            no hay ítems. `from="right"` conserva la alternancia y deja intactas
-            las direcciones de entrada de las secciones de F3. */}
-        <Reveal key="proximamente" from="right">
-          <ProximamenteBlock />
-        </Reveal>
         {whatsapp && whatsapp.length > 0 && (
           <Reveal key="whatsapp" from="left">
             <WhatsAppSection items={whatsapp} />
