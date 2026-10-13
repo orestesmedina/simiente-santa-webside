@@ -95,6 +95,15 @@ export const LINK_UNSAFE =
 export const PHONE_INVALID =
   'Ese número no parece un celular. Revisa los dígitos (y el + opcional del país).';
 export const EMAIL_INVALID = 'Ese correo no parece un correo. Revísalo, por favor.';
+/**
+ * El contacto exige el nombre del encargado (regla del servidor: `leader_phone`/
+ * `leader_email` con `CHECK` de nombre). `ux.md` §7.1 no trae un texto exacto
+ * para esta regla —solo la leyenda del interruptor (`LEGEND_NEEDS_NAME`, que
+ * habla de *publicar* la ficha)—, así que aquí se dice en las mismas palabras
+ * del equipo qué falta para poder **guardar**.
+ */
+export const REQUIRED_LEADER_NAME_FOR_CONTACT =
+  'Escribe primero el nombre del encargado para poder guardar su contacto.';
 export const DUPLICATE =
   'Ya existe un ministerio igual (mismo nombre, misma descripción, mismo encargado y mismo enlace). Edita el que ya tienes o cambia algún dato.';
 export const SHARED_LINK_NOTICE =

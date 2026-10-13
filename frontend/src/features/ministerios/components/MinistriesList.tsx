@@ -9,6 +9,7 @@ import { StatusPill } from '../../../components/StatusPill';
 import { Table, type Column } from '../../../components/Table';
 import { useDeleteMinistry } from '../hooks/useDeleteMinistry';
 import { useUpdateMinistry } from '../hooks/useUpdateMinistry';
+import { MinistryForm } from './MinistryForm';
 import {
   ADD,
   DELETED,
@@ -26,6 +27,7 @@ import {
   RETIRE_ACTION,
   RETIRE_CANCEL,
   RETIRE_CONFIRM_TITLE,
+  SHARED_LINK_NOTICE,
   UNPUBLISHED,
   deleteConfirmDescription,
   emptyModuleMessage,
@@ -36,6 +38,7 @@ interface Feedback {
   variant: NoticeVariant;
   message: string;
   draft?: boolean;
+  sharedLink?: boolean;
 }
 
 export interface MinistriesListProps {
@@ -76,6 +79,13 @@ export function MinistriesList({ ministries }: MinistriesListProps) {
   const nonePublished =
     ministries.length > 0 &&
     ministries.every((ministry) => ministry.publicationState !== 'published');
+
+  /** Cierra el editor y deja el aviso de éxito (con sus matices) en el listado. */
+  const handleDone = (result: { message: string; draft?: boolean; sharedLink?: boolean }) => {
+    setCreating(false);
+    setEditing(null);
+    setFeedback({ variant: 'success', ...result });
+  };
 
   const columns: Column<MinisterioAdmin>[] = [
     { key: 'sortOrder', header: 'Orden', render: (ministry) => String(ministry.sortOrder) },
@@ -160,6 +170,7 @@ export function MinistriesList({ ministries }: MinistriesListProps) {
     <div className="space-y-3">
       {feedback && <Notice variant={feedback.variant}>{feedback.message}</Notice>}
       {feedback?.draft && <Notice variant="info">{DRAFT_NOTICE}</Notice>}
+      {feedback?.sharedLink && <Notice variant="info">{SHARED_LINK_NOTICE}</Notice>}
       {nonePublished && <Notice variant="warning">{NOTHING_PUBLISHED}</Notice>}
 
       {ministries.length === 0 ? (
@@ -195,8 +206,11 @@ export function MinistriesList({ ministries }: MinistriesListProps) {
         </>
       )}
 
-      {/* El alta y la edición montan `MinistryForm` en un `Dialog` (T631), que se
-          abre desde los botones «Agregar ministerio» y «Editar» de arriba. */}
+      {/* El alta y la edición montan `MinistryForm` en un `Dialog`. */}
+      {creating && <MinistryForm onDone={handleDone} onCancel={() => setCreating(false)} />}
+      {editing && (
+        <MinistryForm ministry={editing} onDone={handleDone} onCancel={() => setEditing(null)} />
+      )}
       {deleting && (
         <ConfirmDialog
           title={DELETE_CONFIRM_TITLE}

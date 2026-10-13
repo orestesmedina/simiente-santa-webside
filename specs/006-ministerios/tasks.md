@@ -970,7 +970,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
   - **Criterio de terminado**: `quickstart.md` §2/§8 ejecutables en el panel (US3).
   - **Commit sugerido**: `feat(frontend): panel de ministerios con listado y acciones`
 
-- [ ] T631 · Panel: `MinistryForm`, `ContactoEncargado` y `ShowContactSwitch` · `[frontend]`
+- [X] T631 · Panel: `MinistryForm`, `ContactoEncargado` y `ShowContactSwitch` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/ministerios/components/MinistryForm.tsx`,
     `ContactoEncargado.tsx`, `ShowContactSwitch.tsx`, `validation.ts`, `errors.ts` y tests (NUEVOS).
