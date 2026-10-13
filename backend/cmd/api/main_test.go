@@ -1003,11 +1003,57 @@ func TestMinisteriosPermissionsSmoke(t *testing.T) {
 	})
 
 	t.Run("sin ministerios", func(t *testing.T) {
-		var actions []audit.Action
+		for _, permission := range []string{
+			agenda.PermissionEventos,
+			agenda.PermissionActividades,
+			agenda.PermissionCategorias,
+		} {
+			t.Run(permission, func(t *testing.T) {
+				var actions []audit.Action
+				deps := testDepsWith(testOptions{
+					sessions:        liveSessionStore{userID: userID},
+					resolver:        permissionsResolver{permissions: []string{permission}},
+					ministeriosRepo: stubMinisteriosRepo{actions: &actions},
+				}, fakeRepository{}, logger)
+
+				srv := httptest.NewServer(httpserver.NewHandler(
+					newMux(deps, logger),
+					logger,
+					middleware.Chain(logger, []string{"http://localhost:5173"})...,
+				))
+				t.Cleanup(srv.Close)
+				sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
+
+				resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/ministerios", "", sessionCookie)
+				if resp.Status != http.StatusForbidden {
+					t.Fatalf("GET ministerios con %s: status = %d, se esperaba 403 (%s)", permission, resp.Status, resp.Body)
+				}
+				if !strings.Contains(string(resp.Body), `"code":"forbidden"`) {
+					t.Errorf("cuerpo inesperado: %s", resp.Body)
+				}
+
+				resp = testutil.Do(t, srv, http.MethodPatch, "/api/v1/admin/ministerios/"+itemID.String(), "", sessionCookie)
+				if resp.Status != http.StatusForbidden {
+					t.Fatalf("PATCH ministerios con %s: status = %d, se esperaba 403 (%s)", permission, resp.Status, resp.Body)
+				}
+				if len(actions) != 1 {
+					t.Fatalf("denegaciones = %+v, se esperaba 1", actions)
+				}
+				action := actions[0]
+				if action.Code != audit.ActionMinistryUpdate || action.Result != audit.ResultDenied {
+					t.Errorf("acción = %+v, se esperaba ministry.update con result=denied", action)
+				}
+				if want := "Ministerios · " + itemID.String(); action.TargetLabel != want {
+					t.Errorf("targetLabel = %q, se esperaba %q", action.TargetLabel, want)
+				}
+			})
+		}
+	})
+
+	t.Run("y al revés: su propio módulo sigue funcionando", func(t *testing.T) {
 		deps := testDepsWith(testOptions{
-			sessions:        liveSessionStore{userID: userID},
-			resolver:        permissionsResolver{permissions: []string{agenda.PermissionEventos}},
-			ministeriosRepo: stubMinisteriosRepo{actions: &actions},
+			sessions: liveSessionStore{userID: userID},
+			resolver: permissionsResolver{permissions: []string{agenda.PermissionEventos}},
 		}, fakeRepository{}, logger)
 
 		srv := httptest.NewServer(httpserver.NewHandler(
@@ -1018,28 +1064,7 @@ func TestMinisteriosPermissionsSmoke(t *testing.T) {
 		t.Cleanup(srv.Close)
 		sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
 
-		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/ministerios", "", sessionCookie)
-		if resp.Status != http.StatusForbidden {
-			t.Fatalf("GET ministerios sin permiso: status = %d, se esperaba 403 (%s)", resp.Status, resp.Body)
-		}
-
-		resp = testutil.Do(t, srv, http.MethodPatch, "/api/v1/admin/ministerios/"+itemID.String(), "", sessionCookie)
-		if resp.Status != http.StatusForbidden {
-			t.Fatalf("PATCH ministerios sin permiso: status = %d, se esperaba 403 (%s)", resp.Status, resp.Body)
-		}
-		if len(actions) != 1 {
-			t.Fatalf("denegaciones = %+v, se esperaba 1", actions)
-		}
-		action := actions[0]
-		if action.Code != audit.ActionMinistryUpdate || action.Result != audit.ResultDenied {
-			t.Errorf("acción = %+v, se esperaba ministry.update con result=denied", action)
-		}
-		if want := "Ministerios · " + itemID.String(); action.TargetLabel != want {
-			t.Errorf("targetLabel = %q, se esperaba %q", action.TargetLabel, want)
-		}
-
-		// Y al revés: su propio módulo sigue funcionando.
-		resp = testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/eventos", "", sessionCookie)
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/eventos", "", sessionCookie)
 		if resp.Status != http.StatusOK {
 			t.Fatalf("GET eventos con su permiso: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
 		}
