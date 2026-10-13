@@ -745,7 +745,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 > composición según `ux.md` §6; las pantallas y textos siguen `ux.md`. Ningún `fetch` fuera del
 > cliente de API (regla F2); i18n solo en el sitio público (FR-018: el panel va en español).
 
-- [ ] T622 · `api/ministerios.ts` + hooks · `[frontend]`
+- [X] T622 · `api/ministerios.ts` + hooks · `[frontend]`
 
   - **Archivos**: `frontend/src/api/ministerios.ts` (NUEVO),
     `frontend/src/features/publico/ministerios/hooks/usePublicMinistries.ts`,
