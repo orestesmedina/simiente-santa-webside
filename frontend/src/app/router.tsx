@@ -8,6 +8,7 @@ import { CategoriesPage } from '../features/eventos/pages/CategoriesPage';
 import { EventsPage as PanelEventsPage } from '../features/eventos/pages/EventsPage';
 import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
+import { MinistriesPage } from '../features/ministerios/pages/MinistriesPage';
 import { PublicLayout } from '../features/publico/components/PublicLayout';
 import { EventsPage as PublicEventsPage } from '../features/publico/eventos/EventsPage';
 import { MinisteriosPage as PublicMinisteriosPage } from '../features/publico/ministerios/MinisteriosPage';
@@ -15,7 +16,14 @@ import { HomePage } from '../features/publico/pages/HomePage';
 import { RolesPage } from '../features/roles/pages/RolesPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
 import { UsersPage } from '../features/usuarios/pages/UsersPage';
-import { ACTIVIDADES, ADMIN_USERS_ROLES, CATEGORIAS, EVENTOS, PORTADA } from '../lib/permissions';
+import {
+  ACTIVIDADES,
+  ADMIN_USERS_ROLES,
+  CATEGORIAS,
+  EVENTOS,
+  MINISTERIOS,
+  PORTADA,
+} from '../lib/permissions';
 import { RequireAuth, RequirePasswordChange, RequirePermission } from './guards';
 import { AppLayout, PanelLayout, PanelSurfaceLayout } from './layout';
 
@@ -134,6 +142,12 @@ const appRoutes: RouteObject[] = [
                 // «eventos» ni «actividades» dan acceso a él (FR-012).
                 element: <RequirePermission code={CATEGORIAS} />,
                 children: [{ path: 'categorias', element: <CategoriesPage /> }],
+              },
+              {
+                // F6 usa el permiso **ya sembrado** por F2 (P6-6): no se crea
+                // ningún permiso nuevo y el catálogo sigue en 10.
+                element: <RequirePermission code={MINISTERIOS} />,
+                children: [{ path: 'ministerios', element: <MinistriesPage /> }],
               },
             ],
           },

@@ -945,7 +945,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     de eventos y antes de «quiénes somos»), y `quickstart.md` §14 ejecutable en navegador.
   - **Commit sugerido**: `feat(frontend): bloque de ministerios en la portada`
 
-- [ ] T630 · Panel: `MinistriesPage` + `MinistriesList` + ruta `/panel/ministerios` · `[frontend]`
+- [X] T630 · Panel: `MinistriesPage` + `MinistriesList` + ruta `/panel/ministerios` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/ministerios/pages/MinistriesPage.tsx`,
     `components/MinistriesList.tsx` y tests (NUEVOS), `frontend/src/app/router.tsx` (EDITADO:

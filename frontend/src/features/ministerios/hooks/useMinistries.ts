@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { ApiError } from '../../../api/client';
 import {
   listMinisterios,
@@ -36,10 +37,20 @@ export interface UseMinistriesOptions {
 export function useMinistries(options: UseMinistriesOptions = {}) {
   const { publicationState } = options;
 
-  return useQuery<MinisterioAdminList, ApiError>({
+  const query = useQuery<MinisterioAdminList, ApiError>({
     queryKey: [...MINISTRIES_ADMIN_QUERY_KEY, publicationState ?? 'all'],
     queryFn: () => listMinisterios({ limit: MINISTRIES_PAGE_LIMIT, publicationState }),
   });
+
+  // Última versión **válida** vista (mismo patrón que los hooks públicos de F3/F4,
+  // y estado exigido por ux.md §5.a: «error con contenido en caché»). El panel
+  // conserva el último listado y añade un aviso discreto en lugar de vaciarse.
+  const [retained, setRetained] = useState<MinisterioAdminList>();
+  if (query.data && query.data !== retained) {
+    setRetained(query.data);
+  }
+
+  return { ...query, data: query.data ?? retained };
 }
 
 /**
