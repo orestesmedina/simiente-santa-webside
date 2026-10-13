@@ -100,4 +100,45 @@ describe('InicioPage · accesos rápidos', () => {
     // El resto del panel sigue usable: "Mi cuenta" y el cambio de contraseña.
     expect(screen.getByRole('region', { name: 'Mi cuenta' })).toBeInTheDocument();
   });
+
+  it('muestra los tres accesos de agenda solo con sus permisos (F4, ux.md §4.2)', async () => {
+    useSession(makeSession({ permissions: ['eventos'] }));
+
+    renderInicio();
+
+    const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
+    expect(within(nav).getByRole('link', { name: 'Gestión de eventos' })).toHaveAttribute(
+      'href',
+      '/panel/eventos',
+    );
+    expect(within(nav).queryByRole('link', { name: 'Gestión de actividades' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Categorías' })).toBeNull();
+    // Ni «eventos» ni «actividades» dan acceso al catálogo (FR-012).
+    expect(within(nav).queryByRole('link', { name: 'Usuarios' })).toBeNull();
+  });
+
+  it('con solo el permiso «categorias» se ve solo esa tarjeta', async () => {
+    useSession(makeSession({ permissions: ['categorias'] }));
+
+    renderInicio();
+
+    const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
+    expect(within(nav).getByRole('link', { name: 'Categorías' })).toHaveAttribute(
+      'href',
+      '/panel/categorias',
+    );
+    expect(within(nav).queryByRole('link', { name: 'Gestión de eventos' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Gestión de actividades' })).toBeNull();
+  });
+
+  it('sin permisos de F4 no aparece ninguna tarjeta de agenda', async () => {
+    useSession(makeSession());
+
+    renderInicio();
+
+    const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
+    expect(within(nav).queryByRole('link', { name: 'Gestión de eventos' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Gestión de actividades' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Categorías' })).toBeNull();
+  });
 });

@@ -17,6 +17,11 @@ func TestActionCodesRegistry(t *testing.T) {
 		"home.whatsapp.create", "home.whatsapp.update", "home.whatsapp.delete",
 		"home.social.create", "home.social.update", "home.social.delete",
 		"home.image.upload", "home.publish", "home.unpublish",
+		"event.create", "event.update", "event.delete", "event.publish",
+		"event.unpublish", "event.image.upload",
+		"activity.create", "activity.update", "activity.delete", "activity.publish",
+		"activity.unpublish", "activity.image.upload",
+		"category.create", "category.update", "category.delete",
 	}
 	if len(ActionCodes) != len(want) {
 		t.Fatalf("ActionCodes tiene %d códigos, se esperaban %d", len(ActionCodes), len(want))
@@ -29,9 +34,82 @@ func TestActionCodesRegistry(t *testing.T) {
 			t.Errorf("ValidActionCode(%q) = false, se esperaba true", code)
 		}
 	}
-	for _, code := range []string{"", "user.delete", "role.password_reset", "USER.CREATE", "home.page.update"} {
+	for _, code := range []string{"", "user.delete", "role.password_reset", "USER.CREATE", "home.page.update", "event.archive", "activity.dup", "category.publish"} {
 		if ValidActionCode(code) {
 			t.Errorf("ValidActionCode(%q) = true, se esperaba false", code)
+		}
+	}
+}
+
+// TestF4ActionCodesValidate fija el registro cerrado de F4 (FR-017/R4-10): los
+// 15 códigos `event.*`, `activity.*` y `category.*` (los tres del catálogo de
+// categorías incluidos) se registran sobre un objetivo de contenido
+// (`target_kind = 'content'`), con `targetLabel` —nunca el cuerpo de la
+// petición— y sin FK de usuario ni de rol. Los códigos de F2/F3 siguen
+// intactos (regresión) y un código fuera de la lista falla.
+func TestF4ActionCodesValidate(t *testing.T) {
+	actor := uuid.New()
+
+	f4Codes := []string{
+		ActionEventCreate, ActionEventUpdate, ActionEventDelete, ActionEventPublish,
+		ActionEventUnpublish, ActionEventImageUpload,
+		ActionActivityCreate, ActionActivityUpdate, ActionActivityDelete,
+		ActionActivityPublish, ActionActivityUnpublish, ActionActivityImageUpload,
+		ActionCategoryCreate, ActionCategoryUpdate, ActionCategoryDelete,
+	}
+	if len(f4Codes) != 15 {
+		t.Fatalf("se esperaban 15 códigos de F4, hay %d", len(f4Codes))
+	}
+
+	labels := map[string]string{
+		ActionEventCreate:         "Eventos · Noche de aposentos",
+		ActionEventUpdate:         "Eventos · Noche de aposentos",
+		ActionEventDelete:         "Eventos · Noche de aposentos",
+		ActionEventPublish:        "Eventos · Noche de aposentos",
+		ActionEventUnpublish:      "Eventos · Noche de aposentos",
+		ActionEventImageUpload:    "Eventos · Imagen · img_11111111-1111-1111-1111-111111111111.jpg",
+		ActionActivityCreate:      "Actividades · Repartir comida",
+		ActionActivityUpdate:      "Actividades · Repartir comida",
+		ActionActivityDelete:      "Actividades · Repartir comida",
+		ActionActivityPublish:     "Actividades · Repartir comida",
+		ActionActivityUnpublish:   "Actividades · Repartir comida",
+		ActionActivityImageUpload: "Actividades · Imagen · img_22222222-2222-2222-2222-222222222222.png",
+		ActionCategoryCreate:      "Categorías · Acción social",
+		ActionCategoryUpdate:      "Categorías · Acción social",
+		ActionCategoryDelete:      "Categorías · Acción social",
+	}
+
+	for _, code := range f4Codes {
+		t.Run(code, func(t *testing.T) {
+			action := Action{
+				ActorUserID: &actor,
+				Code:        code,
+				TargetKind:  TargetContent,
+				TargetLabel: labels[code],
+				Result:      ResultSuccess,
+			}
+			if err := action.Validate(); err != nil {
+				t.Fatalf("Validate() = %v, se esperaba nil", err)
+			}
+			if !ValidActionCode(code) {
+				t.Fatalf("ValidActionCode(%q) = false", code)
+			}
+		})
+	}
+
+	// Los códigos de F2 y F3 siguen intactos (regresión del registro cerrado).
+	for _, code := range []string{ActionUserCreate, ActionUserPasswordReset, ActionRoleDelete,
+		ActionHomeIdentityUpdate, ActionHomeImageUpload, ActionHomePublish, ActionHomeUnpublish} {
+		if !ValidActionCode(code) {
+			t.Errorf("ValidActionCode(%q) = false: el código previo se perdió", code)
+		}
+	}
+
+	// Fuera del registro: los códigos nuevos son los de F4 y solo esos.
+	for _, code := range []string{"event.archive", "activity.schedule", "category.publish", "events.create"} {
+		action := Action{ActorUserID: &actor, Code: code, TargetKind: TargetContent, TargetLabel: "Eventos · X", Result: ResultSuccess}
+		if err := action.Validate(); !errors.Is(err, ErrUnknownActionCode) {
+			t.Fatalf("Validate(%q) = %v, se esperaba %v", code, err, ErrUnknownActionCode)
 		}
 	}
 }

@@ -208,44 +208,6 @@ func TestIntegrationSingletonsPublishPerSection(t *testing.T) {
 	}
 }
 
-func TestIntegrationIsHomeFilePublishedFollowsState(t *testing.T) {
-	repo, _ := newHomeRepo(t)
-	ctx := context.Background()
-
-	const file = "img_0123456789abcdef0123456789abcdef0123.png"
-	identity := publishedIdentity(StateDraft)
-	identity.LogoFile = ptr(file)
-	identity.LogoAltEs = ptr("Logotipo")
-
-	if _, err := repo.UpsertHomeIdentity(ctx, identity); err != nil {
-		t.Fatalf("UpsertHomeIdentity(draft): %v", err)
-	}
-	if published, err := repo.IsHomeFilePublished(ctx, file); err != nil || published {
-		t.Fatalf("IsHomeFilePublished(draft) = %v (%v), se esperaba false", published, err)
-	}
-
-	identity.PublicationState = StatePublished
-	if _, err := repo.UpsertHomeIdentity(ctx, identity); err != nil {
-		t.Fatalf("UpsertHomeIdentity(published): %v", err)
-	}
-	if published, err := repo.IsHomeFilePublished(ctx, file); err != nil || !published {
-		t.Fatalf("IsHomeFilePublished(published) = %v (%v), se esperaba true", published, err)
-	}
-
-	// Un archivo huérfano (no referenciado) nunca se sirve.
-	if published, err := repo.IsHomeFilePublished(ctx, "img_000000000000000000000000000000000000.jpg"); err != nil || published {
-		t.Fatalf("IsHomeFilePublished(huérfano) = %v (%v), se esperaba false", published, err)
-	}
-
-	identity.PublicationState = StateDraft
-	if _, err := repo.UpsertHomeIdentity(ctx, identity); err != nil {
-		t.Fatalf("UpsertHomeIdentity(retirar): %v", err)
-	}
-	if published, err := repo.IsHomeFilePublished(ctx, file); err != nil || published {
-		t.Fatalf("IsHomeFilePublished(retirado) = %v (%v), se esperaba false", published, err)
-	}
-}
-
 func TestIntegrationSingletonChecks(t *testing.T) {
 	repo, _ := newHomeRepo(t)
 	ctx := context.Background()

@@ -49,8 +49,8 @@ func TestIntegrationRoleNameLowerAndCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListPermissions: %v", err)
 	}
-	if len(permissions) != 9 {
-		t.Fatalf("catálogo de permisos = %d, se esperaban 9", len(permissions))
+	if len(permissions) != 10 {
+		t.Fatalf("catálogo de permisos = %d, se esperaban 10", len(permissions))
 	}
 
 	ids, err := repo.GetPermissionIDsByCodes(ctx, []string{"eventos", "no-existe"})

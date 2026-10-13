@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	gendb "simiente-santa/backend/internal/db"
 	"simiente-santa/backend/internal/platform/audit"
@@ -212,19 +211,6 @@ func (r *repository) GetHomeContactPublished(ctx context.Context) (Contact, bool
 		return Contact{}, false, wrap(err, "get home contact published", "", "")
 	}
 	return mapHomeContact(row), true, nil
-}
-
-// --- Archivos ---
-
-// IsHomeFilePublished indica si un nombre de archivo está referenciado por
-// contenido PUBLICADO (analyze C4): la descarga pública solo sirve estos
-// archivos (el resto responde 404, FR-013).
-func (r *repository) IsHomeFilePublished(ctx context.Context, fileName string) (bool, error) {
-	published, err := r.q.IsHomeFilePublished(ctx, pgtype.Text{String: fileName, Valid: fileName != ""})
-	if err != nil {
-		return false, wrap(err, "is home file published", "", "")
-	}
-	return published, nil
 }
 
 // --- Horario (servicios) ---

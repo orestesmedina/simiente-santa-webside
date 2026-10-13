@@ -9,6 +9,11 @@ export interface PublicButtonProps {
   href?: string;
   /** Abre el enlace en pestaña nueva sin acceso al opener (`target`/`rel`). */
   external?: boolean;
+  /**
+   * Nombre accesible completo cuando el texto visible no basta por sí solo
+   * (p. ej. «Ver ubicación de "{título}"», ⟲ D-20 de F4).
+   */
+  ariaLabel?: string;
   onClick?: () => void;
   type?: 'button' | 'submit';
   className?: string;
@@ -45,11 +50,16 @@ function classesFor(variant: PublicButtonVariant, className: string): string {
  * Botón/enlace de acción del sistema visual público (T1008): es el **único**
  * estilo de botón de acción del sitio (SC-011) y lo heredan las secciones de
  * F4–F9. Nunca aplica efectos sobre el logotipo (FR-002).
+ *
+ * F4 (T433) solo **añade** el prop opcional `ariaLabel` (⟲ D-20): el nombre
+ * accesible completo de «Ver ubicación de "{título}"» sin duplicar el estilo de
+ * botón. Sin él, el comportamiento es el de F10.
  */
 export function PublicButton({
   variant = 'primary',
   href,
   external = false,
+  ariaLabel,
   onClick,
   type = 'button',
   className = '',
@@ -63,6 +73,7 @@ export function PublicButton({
         href={href}
         className={classes}
         onClick={onClick}
+        aria-label={ariaLabel}
         {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       >
         {children}
@@ -71,7 +82,7 @@ export function PublicButton({
   }
 
   return (
-    <button type={type} className={classes} onClick={onClick}>
+    <button type={type} className={classes} onClick={onClick} aria-label={ariaLabel}>
       {children}
     </button>
   );

@@ -42,15 +42,18 @@ type TargetKind string
 const (
 	TargetUser TargetKind = "user"
 	TargetRole TargetKind = "role"
-	// TargetContent es un elemento de la portada (F3): identidad, «quiénes
-	// somos», contacto, un servicio del horario, un canal de WhatsApp o un
-	// enlace de red. No tiene FK (son seis tablas): ambas FK van en NULL y
-	// TargetLabel identifica el elemento (R3-11).
+	// TargetContent es un elemento de contenido: la portada (F3: identidad,
+	// «quiénes somos», contacto, un servicio del horario, un canal de WhatsApp o
+	// un enlace de red) o un elemento de agenda (F4: un evento, una actividad o
+	// una categoría). No tiene FK: ambas van en NULL y TargetLabel identifica el
+	// elemento (R3-11/R4-10).
 	TargetContent TargetKind = "content"
 )
 
 // Códigos de acción administrativa (FR-023). Son la lista cerrada de la tabla
-// admin_actions: los 8 de F2 y los 15 de F3 (`home.*`).
+// admin_actions: los 8 de F2, los 15 de F3 (`home.*`) y los 15 de F4
+// (`event.*`, `activity.*` y `category.*`); la migración 000008 fija ese mismo
+// registro cerrado en la base (§VI).
 const (
 	ActionUserCreate        = "user.create"
 	ActionUserUpdate        = "user.update"
@@ -77,6 +80,25 @@ const (
 	ActionHomeImageUpload    = "home.image.upload"
 	ActionHomePublish        = "home.publish"
 	ActionHomeUnpublish      = "home.unpublish"
+
+	// Códigos de F4 (R4-10): eventos, actividades y el catálogo de categorías.
+	ActionEventCreate      = "event.create"
+	ActionEventUpdate      = "event.update"
+	ActionEventDelete      = "event.delete"
+	ActionEventPublish     = "event.publish"
+	ActionEventUnpublish   = "event.unpublish"
+	ActionEventImageUpload = "event.image.upload"
+
+	ActionActivityCreate      = "activity.create"
+	ActionActivityUpdate      = "activity.update"
+	ActionActivityDelete      = "activity.delete"
+	ActionActivityPublish     = "activity.publish"
+	ActionActivityUnpublish   = "activity.unpublish"
+	ActionActivityImageUpload = "activity.image.upload"
+
+	ActionCategoryCreate = "category.create"
+	ActionCategoryUpdate = "category.update"
+	ActionCategoryDelete = "category.delete"
 )
 
 // ActionCodes es la lista cerrada de códigos válidos de FR-023, en el orden de
@@ -105,6 +127,21 @@ var ActionCodes = []string{
 	ActionHomeImageUpload,
 	ActionHomePublish,
 	ActionHomeUnpublish,
+	ActionEventCreate,
+	ActionEventUpdate,
+	ActionEventDelete,
+	ActionEventPublish,
+	ActionEventUnpublish,
+	ActionEventImageUpload,
+	ActionActivityCreate,
+	ActionActivityUpdate,
+	ActionActivityDelete,
+	ActionActivityPublish,
+	ActionActivityUnpublish,
+	ActionActivityImageUpload,
+	ActionCategoryCreate,
+	ActionCategoryUpdate,
+	ActionCategoryDelete,
 }
 
 // Errores de validación de los tipos de plumbing.

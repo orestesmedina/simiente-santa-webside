@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { SessionWarning } from '../features/auth/components/SessionWarning';
 import { useLogout } from '../features/auth/hooks/useLogout';
 import { useSessionQuery } from '../features/auth/hooks/useSession';
-import { ADMIN_USERS_ROLES, PORTADA, hasPermission } from '../lib/permissions';
+import {
+  ACTIVIDADES,
+  ADMIN_USERS_ROLES,
+  CATEGORIAS,
+  EVENTOS,
+  PORTADA,
+  hasPermission,
+} from '../lib/permissions';
 
 /**
  * Layout mínimo y semántico de la aplicación pública: encabezado con navegación
@@ -27,6 +34,27 @@ export function AppLayout() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+/**
+ * Superficie clara de las pantallas del panel que viven **fuera** de
+ * `PanelLayout` (acceso, cambio de contraseña, «sin permiso» y el 404): el panel
+ * es siempre claro y no cambia de tema (FR-016/P10-11), así que estas rutas
+ * fuerzan la **misma** superficie que `AppLayout`/`PanelLayout`
+ * (`bg-white text-slate-900`).
+ *
+ * Sin ella, el lienzo del navegador se ve por detrás: el script anti-FOUC de
+ * `index.html` fija `color-scheme: dark` en `<html>` cuando el tema es oscuro y
+ * el navegador pinta el fondo del documento en negro, dejando la pantalla
+ * ilegible (texto oscuro sobre negro). No se resuelve con un fondo global en
+ * `body`: el sitio público necesita su lienzo oscuro (su layout pinta encima).
+ */
+export function PanelSurfaceLayout({ children }: { children?: ReactNode }) {
+  return (
+    <div className="flex min-h-screen flex-col bg-white text-panel-ink">
+      {children ?? <Outlet />}
     </div>
   );
 }
@@ -58,6 +86,15 @@ export function PanelLayout() {
   const items: NavItem[] = [{ to: '/panel', label: 'Inicio', end: true }];
   if (hasPermission(session, PORTADA)) {
     items.push({ to: '/panel/informacion', label: 'Portada e información general' });
+  }
+  if (hasPermission(session, EVENTOS)) {
+    items.push({ to: '/panel/eventos', label: 'Gestión de eventos' });
+  }
+  if (hasPermission(session, ACTIVIDADES)) {
+    items.push({ to: '/panel/actividades', label: 'Gestión de actividades' });
+  }
+  if (hasPermission(session, CATEGORIAS)) {
+    items.push({ to: '/panel/categorias', label: 'Categorías' });
   }
   if (hasPermission(session, ADMIN_USERS_ROLES)) {
     items.push(

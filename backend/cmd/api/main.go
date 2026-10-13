@@ -13,6 +13,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"simiente-santa/backend/internal/agenda"
+	"simiente-santa/backend/internal/media"
 	"simiente-santa/backend/internal/platform/config"
 	"simiente-santa/backend/internal/platform/database"
 	"simiente-santa/backend/internal/platform/httpserver"
@@ -125,6 +127,33 @@ func main() {
 		Logger:         appLog,
 	})
 
+	// Dominio media (F4/R4-6): la descarga pública de archivos, promovida desde
+	// la portada. Comparte el almacén local y usa la zona del lugar (APP_TZ,
+	// T409) para el corte "publicado y próximo" de las imágenes de agenda.
+	mediaSvc := media.NewService(media.ServiceDeps{
+		Repository: media.NewRepository(pool),
+		Store:      portadaStore,
+		Location:   cfg.TimeZone,
+		Logger:     appLog,
+	})
+	mediaHandler := media.NewHandler(media.HandlerDeps{Service: mediaSvc, Logger: appLog})
+
+	// Dominio agenda (F4): eventos, actividades y el catálogo de categorías.
+	// Comparte el almacén de imágenes de F3 (misma política de subida) y usa la
+	// zona del lugar (APP_TZ) para la regla "próximo"; su service también es el
+	// audit.Recorder de los tres grupos de panel (T422).
+	agendaSvc := agenda.NewService(agenda.ServiceDeps{
+		Repository: agenda.NewRepository(pool),
+		Store:      portadaStore,
+		Location:   cfg.TimeZone,
+		Logger:     appLog,
+	})
+	agendaHandler := agenda.NewHandler(agenda.HandlerDeps{
+		Service:        agendaSvc,
+		MaxUploadBytes: cfg.UploadMaxBytes,
+		Logger:         appLog,
+	})
+
 	handler := usuarios.NewHandler(usuarios.HandlerDeps{
 		Access:     authSvc,
 		Setup:      initSvc,
@@ -180,6 +209,19 @@ func main() {
 				Logger:     appLog,
 			},
 		},
+		mediaHandler:  mediaHandler,
+		agendaHandler: agendaHandler,
+		agendaAdmin: agenda.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions: sessions,
+				Resolver: authSvc,
+				// El Recorder de los tres grupos es el service de F4 (T422):
+				// registra las denegaciones de `event.*`/`activity.*`/`category.*`.
+				Recorder:   agendaSvc,
+				CSRFSecret: cfg.SessionSecret,
+				Logger:     appLog,
+			},
+		},
 	}
 
 	srv := httpserver.New(newMux(deps, appLog),
@@ -204,11 +246,15 @@ type apiDeps struct {
 	admin          usuarios.AdminDeps
 	portadaHandler *portada.Handler
 	portadaAdmin   portada.AdminDeps
+	mediaHandler   *media.Handler
+	agendaHandler  *agenda.Handler
+	agendaAdmin    agenda.AdminDeps
 }
 
 // newMux compone el enrutador con las rutas de status y las de los dominios
-// usuarios (acceso y grupo de panel) y portada (superficie pública y panel).
-// Recibe las dependencias ya construidas.
+// usuarios (acceso y grupo de panel), portada (superficie pública y panel), media
+// (descarga pública de archivos) y agenda («lo que viene» y los tres grupos de
+// panel de F4). Recibe las dependencias ya construidas.
 func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	root := httpserver.NewMuxRegistrar(mux)
@@ -217,5 +263,8 @@ func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	usuarios.RegisterAdmin(root, deps.admin)
 	portada.RegisterPublic(root, deps.portadaHandler)
 	portada.RegisterAdmin(root, deps.portadaHandler, deps.portadaAdmin)
+	media.RegisterPublic(root, deps.mediaHandler)
+	agenda.RegisterPublic(root, deps.agendaHandler)
+	agenda.RegisterAdmin(root, deps.agendaHandler, deps.agendaAdmin)
 	return mux
 }

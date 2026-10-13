@@ -72,10 +72,11 @@ func TestRegisterPublicRoutes(t *testing.T) {
 		}
 	})
 
-	t.Run("media con nombre inválido responde 400", func(t *testing.T) {
+	t.Run("la descarga de imágenes ya no se publica desde la portada", func(t *testing.T) {
+		// F4/T415: vive en internal/media (misma ruta, otro dominio).
 		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/media/no-file", "", nil)
-		if resp.Status != http.StatusBadRequest {
-			t.Fatalf("status = %d, se esperaba 400 (%s)", resp.Status, resp.Body)
+		if resp.Status != http.StatusNotFound {
+			t.Fatalf("status = %d, se esperaba 404 sin el dominio media (%s)", resp.Status, resp.Body)
 		}
 	})
 }

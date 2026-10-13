@@ -153,7 +153,7 @@ export function ChangePasswordPage() {
   if (success) {
     return (
       <main className="mx-auto w-full max-w-md px-4 py-8">
-        <h1 className="text-2xl font-bold text-slate-900">Cambiar contraseña</h1>
+        <h1 className="text-2xl font-bold text-panel-ink">Cambiar contraseña</h1>
         <Notice variant="success" className="mt-4">
           {PASSWORD_CHANGED_MESSAGE}
         </Notice>
@@ -166,7 +166,7 @@ export function ChangePasswordPage() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900">Cambiar contraseña</h1>
+      <h1 className="text-2xl font-bold text-panel-ink">Cambiar contraseña</h1>
 
       {mandatory && (
         <Notice variant="warning" className="mt-4">

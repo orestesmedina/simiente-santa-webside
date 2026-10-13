@@ -20,7 +20,7 @@ export function emptyAuditMessage(hasFilters: boolean): string {
     : 'Todavía no hay registros de actividad. Aparecerán cuando alguien entre al panel o se gestione una cuenta o un rol.';
 }
 
-/** Etiquetas en español de las acciones administrativas (FR-023). */
+/** Etiquetas en español de las acciones administrativas (FR-023, ux.md §4.9). */
 export const ACTION_LABELS: Record<string, string> = {
   'user.create': 'Creó una cuenta',
   'user.update': 'Editó una cuenta',
@@ -30,6 +30,24 @@ export const ACTION_LABELS: Record<string, string> = {
   'role.create': 'Creó un rol',
   'role.update': 'Editó un rol',
   'role.delete': 'Eliminó un rol',
+  // F4 (migración `000008`, R4-10): 15 códigos de la agenda, para que el panel
+  // no muestre códigos crudos. Los `home.*` de F3 siguen sin etiqueta (deuda
+  // heredada, fuera del alcance de F4).
+  'event.create': 'Creó un evento',
+  'event.update': 'Modificó un evento',
+  'event.delete': 'Eliminó un evento',
+  'event.publish': 'Publicó un evento',
+  'event.unpublish': 'Retiró un evento',
+  'event.image.upload': 'Subió la imagen de un evento',
+  'activity.create': 'Creó una actividad',
+  'activity.update': 'Modificó una actividad',
+  'activity.delete': 'Eliminó una actividad',
+  'activity.publish': 'Publicó una actividad',
+  'activity.unpublish': 'Retiró una actividad',
+  'activity.image.upload': 'Subió la imagen de una actividad',
+  'category.create': 'Creó una categoría',
+  'category.update': 'Modificó una categoría',
+  'category.delete': 'Eliminó una categoría',
 };
 
 export function actionLabel(action: string): string {

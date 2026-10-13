@@ -16,7 +16,7 @@ import {
   REQUIRED_ABOUT,
   aboutLimitMessage,
 } from '../messages';
-import { PublishControls } from './PublishControls';
+import { PublishControls } from '../../../components/PublishControls';
 import { TextArea } from './TextArea';
 
 const MAX_ABOUT = 1000;

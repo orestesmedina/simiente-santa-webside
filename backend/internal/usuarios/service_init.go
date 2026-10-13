@@ -63,7 +63,7 @@ func NewInitService(deps InitServiceDeps) *initService {
 //
 //  1. comprueba que NO exista ninguna cuenta (CountUsers = 0); si ya hay, 409 y
 //     nada se crea (la acción es única, US2 esc. 2);
-//  2. crea el rol "Administrador" con los 9 permisos del catálogo;
+//  2. crea el rol "Administrador" con los 10 permisos del catálogo;
 //  3. crea la cuenta inicial activa, con el rol anterior; y
 //  4. registra `user.create` SIN actor —el único caso permitido (FR-023)—.
 //

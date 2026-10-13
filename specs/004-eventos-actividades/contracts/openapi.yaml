@@ -1,0 +1,1698 @@
+# ============================================================================
+# DELTA DE DISEÑO — Spec Kit (fase /speckit.plan de F4, 2026-10-11)
+# Funcionalidad: Eventos y actividades (spec.md, Q1–Q6 resueltas por el humano
+# el 2026-10-11; decisiones firmes de la puerta 2 aplicadas el 2026-10-11)
+#
+# ESTE ARCHIVO ES UN DELTA, NO EL CONTRATO VIVO. Se fusiona (aditivamente) en
+# `backend/api/openapi.yaml` en la primera tarea de implementación (§8.1.5 de
+# docs/tecnico/arquitectura.md), que pasa de info.version 0.4.0 a 0.5.0.
+# Este snapshot de specs/ NO se vuelve a editar.
+#
+# DECISIONES DE LA PUERTA 2 que afectan a este contrato (2026-10-11):
+#   - El catálogo de categorías se autoriza con el permiso NUEVO `categorias`
+#     (10.º del catálogo de F2, sembrado por la migración
+#     `000009_seed_permission_categorias`; research R4-4). NO con `eventos` ni
+#     `actividades`, que son permisos independientes entre sí.
+#   - La ruta del SPA es `/eventos` (fijada por el humano; NO
+#     `/eventos-actividades`). El endpoint de la API NO cambia: sigue siendo
+#     `GET /api/v1/proximamente` ("lo que viene").
+#   - Sin contenido publicado y próximo, la página `/eventos` muestra un AVISO
+#     de sección vacía (sin redirigir); la API responde `200` con el objeto
+#     sin claves de bloque, como ya documenta este delta.
+#   - `endTime` exige `startTime`, borrado de categoría en uso → `409` y la
+#     imagen de un elemento vencido deja de servirse (vuelve con fecha
+#     próxima): decisiones firmes, ya reflejadas en las descripciones.
+#
+# ENMIENDA DEL 2026-10-12 (cambio de alcance Q8 de spec.md; US7, FR-025…FR-027,
+# SC-014/SC-015) — **refinada el mismo día** por el humano: la portada incluye el
+# bloque «Lo que viene» con HASTA **5** ítems próximos (eventos y actividades
+# juntos, los más cercanos por fecha, con **imagen** en cada tarjeta). Este
+# delta se amplía de forma ADITIVA con:
+#   - `GET /api/v1/portada/proximamente?lang=es|en` (extracto con tope 5
+#     FIRME en el servidor: sin parámetro de límite, sin paginación; **ventana
+#     temporal de 2 meses** — se prefieren los ítems dentro de los próximos 2
+#     meses y, si la ventana está vacía, se devuelven los siguientes próximos
+#     (respaldo) —; `items` vacío/omitido cuando no hay nada publicado y
+#     próximo: la portada muestra entonces el bloque con un mensaje).
+#   - Esquemas `PortadaProximamente` e `ItemProximoPortada` (con `image` +
+#     `alt` para las tarjetas compactas de la fila horizontal).
+# La fusión en `backend/api/openapi.yaml` sube `info.version` de 0.5.0 a
+# **0.6.0** (la versión 0.5.0 de este delta ya está fusionada; la enmienda aún
+# NO se ha fusionado, así que el refinamiento entra dentro de la misma 0.6.0).
+# No cambia nada de lo ya fusionado ni el registro de `error.code`. La portada
+# de F3 (`GET /api/v1/portada`) NO se toca: el bloque es un añadido, no un
+# rediseño.
+#
+# Se REUTILIZAN del documento vivo (definidos por F1/F2/F3, no se redefinen):
+#   - components/responses: NotFound, MethodNotAllowed, Invalid, Unauthenticated,
+#     Forbidden, Conflict, TooManyRequests, DatabaseUnavailable, Internal
+#   - components/schemas: ErrorEnvelope, ErrorBody, PublicationState,
+#     ImageUploadResult
+#   - components/securitySchemes: sessionCookie
+# El registro de `error.code` NO cambia: F4 emite `invalid`, `unauthenticated`,
+# `forbidden`, `not_found`, `conflict` e `internal`, todos ya en el enum.
+#
+# CAMBIOS EN ESQUEMAS/PROSA EXISTENTES (aplicar en la fusión; son aditivos):
+#   - AdminActionItem.action: el enum crece con los 15 códigos de F4 (research
+#     R4-10): event.create, event.update, event.delete, event.publish,
+#     event.unpublish, event.image.upload, activity.create, activity.update,
+#     activity.delete, activity.publish, activity.unpublish,
+#     activity.image.upload, category.create, category.update, category.delete.
+#     Regla exacta: el alta usa `*.create` aunque nazca publicada; `*.publish`/
+#     `*.unpublish` SOLO registran cambios de estado; la subida de imagen se
+#     audita con `*.image.upload`. `targetKind` NO cambia (los elementos de F4
+#     son `content`, como los de F3: `targetId` null y `targetLabel`
+#     "Eventos · <título>" / "Actividades · <título>" / "Categorías · <nombre>").
+#   - GET /api/v1/media/{fileName}: solo cambia la PROSA (el comportamiento es
+#     el mismo): ahora también sirve las imágenes de eventos y actividades y la
+#     comprobación de publicación exige contenido publicado **y próximo** para
+#     F4 (research R4-6; el servicio de archivos pasa al dominio `media`).
+#   - Prosa del catálogo de permisos (F2): `GET /api/v1/admin/permisos` pasa de
+#     describir "9 permisos" a **10** (se añade `categorias`) y el init de F2
+#     (`POST /api/v1/initialize`, "los 9 permisos del catálogo") a **10**. El
+#     catálogo NO se modela como enum: se lee de la BD (dinámico).
+#
+# NORMALIZACIÓN DE CAMPOS `*En` (patrón I6 de F3): todo campo `*En` acepta ""
+# o solo espacios y el servidor lo guarda como `null` (trim antes de persistir).
+# `null`/"" significan "sin traducción" y disparan el fallback `en → es` del
+# servidor (FR-008).
+#
+# Formato uniforme (F1): 2xx → el DTO de la operación; 4xx/5xx → ErrorEnvelope.
+# Salvedad ya documentada en el contrato vivo: GET /api/v1/media/{fileName}
+# responde un binario de imagen (200) y usa ErrorEnvelope solo en error.
+#
+# Convenciones: operaciones en inglés (camelCase), segmentos de URL en español
+# donde el dominio lo pide (arquitectura.md §5.1), campos en camelCase con
+# sufijo Es/En para lo traducible (R3-1 de F3), additionalProperties: false.
+#
+# Fechas y horas (research R4-3): `date` es una fecha de calendario local
+# "YYYY-MM-DD" y `startTime`/`endTime` son horas "HH:MM" de 24 h del lugar.
+# NO son timestamps: no se convierten de zona horaria. El cliente presenta el
+# formato localizado ("viernes 17 de octubre, 7:00 p. m." / "Friday, October
+# 17, 7:00 PM") según el idioma activo sin alterar el valor.
+#
+# Idioma (R3-2 de F3): la superficie pública se resuelve por `?lang=es|en`
+# (por defecto `es`, idioma base) con fallback por campo `en → es` en el server:
+# NUNCA sale un campo vacío por falta de traducción (FR-008/SC-006).
+#
+# Borradores y vencidos (FR-002/FR-006/FR-013, research R4-2): este contrato NO
+# tiene ninguna operación pública que devuelva contenido en `draft` ni un
+# elemento cuya fecha ya pasó: el filtro "publicado y próximo" vive en el
+# servidor. La clave de bloque (`events`/`activities`) se OMITE cuando está
+# vacía (SC-012: sin secciones vacías; la navegación oculta la entrada).
+# ============================================================================
+openapi: 3.1.0
+info:
+  title: API — Iglesia Simiente Santa
+  version: 0.6.0
+  description: |
+    Delta de F4 (eventos y actividades) sobre el contrato vivo. La enmienda del
+    2026-10-12 (cambio de alcance Q8) lo amplía con el extracto de la portada
+    y sube la versión del contrato vivo de 0.5.0 a **0.6.0**.
+
+    ## Nuevos en este delta
+
+    - **Extracto de la portada** `GET /api/v1/portada/proximamente?lang=es|en`
+    (enmienda del 2026-10-12 — US7/FR-025…FR-027, **refinada el mismo día**):
+    bloque **«Lo que viene»** de la portada con **hasta 5 ítems** próximos
+    —eventos y actividades **juntos** (cada uno identificado con `kind`,
+    Decisión 3), los **más cercanos por fecha**— tomados solo de lo publicado y
+    próximo (misma regla que la sección) y **con imagen** (`image` + `alt`)
+    para las tarjetas compactas de la fila horizontal. **Ventana temporal de 2
+    meses**: se prefieren los ítems dentro de los próximos 2 meses y, si la
+    ventana está vacía, se devuelven los siguientes próximos (respaldo). El
+    tope de **5 es firme** (FR-025): sin parámetro de límite ni paginación. Sin
+    ítems publicados y próximos la respuesta viene **sin `items`** (o vacía) y
+    la portada muestra el bloque con un mensaje. `Cache-Control: no-store`.
+    - **"Lo que viene" público** `GET /api/v1/proximamente?lang=es|en` (FR-001…
+    FR-009): los próximos **eventos** (encuentros periódicos) y las próximas
+    **actividades** (acciones puntuales) como **dos bloques separados**
+    (Decisión 3/Q5), con categoría, lugar, detalle e imagen — **solo contenido
+    publicado y con fecha desde hoy en adelante** (FR-002/FR-006) y **ya
+    localizado** al idioma pedido con fallback `en → es` (FR-008). Orden
+    cronológico por la próxima fecha (FR-003), sin filtros ni paginación
+    (FR-003). `Cache-Control: no-store`.
+    - **Gestión de eventos** bajo `/api/v1/admin/eventos` (FR-010/FR-018),
+    protegida con el permiso del catálogo de F2 `eventos` verificado **en el
+    servidor** junto con la sesión y el CSRF (FR-012): CRUD con su lista de
+    fechas concretas (cada una con hora de inicio/fin opcionales) y texto
+    opcional de frecuencia, versión es (obligatoria) y en (opcional) y
+    publicación por elemento (FR-013).
+    - **Gestión de actividades** bajo `/api/v1/admin/actividades` (FR-011/FR-019),
+    con el permiso `actividades` (independiente del anterior) y una única fecha
+    con su horario.
+    - **Catálogo de categorías** bajo `/api/v1/admin/categorias` (Q6): CRUD
+    del catálogo compartido por ambos módulos, accesible **solo** con el
+    permiso nuevo `categorias` (10.º del catálogo de F2, sembrado en la
+    migración `000009`; research R4-4, cambio de alcance aprobado el
+    2026-10-11 — **no** con `eventos` ni con `actividades`).
+    - **Subida de imágenes** `POST /api/v1/admin/{eventos|actividades}/imagenes`
+    (multipart; solo JPEG/PNG/WebP por firma binaria, máx. 8 MB — R3-8 de F3).
+    - Toda operación queda registrada en la auditoría de F2 (FR-017): ver los
+    cambios de `AdminActionItem` más arriba.
+
+    ## Códigos que F4 puede devolver (no añade ninguno nuevo)
+
+    | HTTP | `error.code` | Cuándo |
+    |---|---|---|
+    | 400 | `invalid` | datos inválidos/incompletos con `details` por campo (título/detalle/lugar en español vacío o largo, fecha mal formada o inexistente, hora fuera de `HH:MM`, `endTime` ≤ `startTime` o sin `startTime`, sin ninguna fecha en el evento, más de 50 fechas, fecha repetida, `mapUrl` mal formada, `imageFile` sin `imageAltEs`, `categoryId` desconocido, `lang` fuera de `es/en`, archivo con tipo/tamaño no permitido) |
+    | 401 | `unauthenticated` | sin sesión válida en operaciones del panel |
+    | 403 | `forbidden` | sin el permiso del módulo (`eventos`, `actividades` o `categorias` según la superficie; los tres son independientes entre sí), o cuenta con cambio de contraseña pendiente |
+    | 404 | `not_found` | evento, actividad o categoría inexistente (`{id}`), o archivo de imagen inexistente/no publicado |
+    | 409 | `conflict` | duplicado exacto dentro del mismo módulo (actividad con el mismo título, fecha y lugar; evento con el mismo título, lugar y una fecha en común; categoría con el mismo nombre) o categoría en uso al eliminarla |
+    | 500 | `internal` | error inesperado (mensaje genérico) |
+
+  contact:
+    name: Equipo del proyecto
+servers:
+  - url: http://localhost:8080
+    description: Entorno local de desarrollo (Docker Compose)
+tags:
+  - name: proximamente
+    description: "Lo que viene: próximos eventos y próximas actividades (visitante, sin autenticación; solo publicado y próximo)"
+  - name: eventos-admin
+    description: Gestión de eventos desde el panel (permiso `eventos` de F2)
+  - name: actividades-admin
+    description: Gestión de actividades desde el panel (permiso `actividades` de F2)
+  - name: categorias-admin
+    description: Catálogo de categorías (permiso nuevo `categorias`, 10.º del catálogo de F2 — research R4-4)
+paths:
+  /api/v1/proximamente:
+    get:
+      tags: [proximamente]
+      operationId: getProximamente
+      summary: "Lo que viene: próximos eventos y próximas actividades publicados"
+      description: |
+        Devuelve los dos bloques de la sección pública (FR-001, Q5): `events`
+        (encuentros periódicos, cada uno con la lista de sus **próximas** fechas
+        — la primera es "la próxima fecha" de FR-004 — y el texto de frecuencia
+        si existe) y `activities` (acciones puntuales con su fecha única). Solo
+        contenido **publicado** (FR-013/SC-002) y **con fecha desde hoy en
+        adelante** según la regla del servidor (FR-002/FR-006/SC-009): un
+        elemento cuya fecha pasó no aparece — se retira solo — y un evento sin
+        ninguna fecha próxima tampoco aparece (hasta que se cargue una).
+
+        Cada bloque va **ordenado cronológicamente** por la próxima fecha (los
+        eventos por su primera fecha próxima; las actividades por su fecha), con
+        desempate estable (`title`, `id`) (FR-003). Los campos traducibles
+        vienen ya resueltos a `lang` con fallback `en → es` (FR-008): nunca un
+        campo vacío por falta de traducción. La **categoría** (opcional) viene
+        resuelta también (Q6).
+
+        Sin autenticación, sin filtros ni paginación (FR-003: el visitante no
+        hace nada para ver lo inmediato). Cada bloque viene acotado por una
+        **constante de seguridad del servidor: máximo 200 elementos por bloque**
+        (RG4-8 del plan, `maxBlockItems`); si el volumen real la superara, se
+        sirven los 200 primeros ya ordenados y un "ver más"/paginación sería el
+        ajuste futuro acordado con el humano. **Claves omitidas cuando están
+        vacías** (SC-012): si `events` y `activities` están ambas ausentes, no
+        hay nada publicado y próximo y la navegación del sitio oculta la sección
+        (FR-022). `Cache-Control: no-store`.
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8).
+          schema:
+            type: string
+            enum: [es, en]
+            default: es
+      responses:
+        "200":
+          description: "Lo que viene, resuelto a `lang` (puede no traer ninguna clave si no hay nada publicado y próximo)."
+          headers:
+            Cache-Control:
+              description: Siempre `no-store` (SC-003: los cambios guardados se ven en la primera carga posterior).
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProximamentePublica"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/portada/proximamente:
+    get:
+      tags: [proximamente]
+      operationId: getPortadaProximamente
+      summary: "Bloque «Lo que viene» de la portada: hasta 5 ítems próximos (eventos y actividades juntos, con imagen)"
+      description: |
+        Extracto de la agenda para el bloque **«Lo que viene»** de la portada
+        (US7/FR-025…FR-027, cambio de alcance del 2026-10-12/Q8, **refinado el
+        mismo día**). Devuelve **hasta 5 ítems** —eventos y actividades
+        **mezclados** (Decisión 3: cada ítem lleva `kind` para identificarlo),
+        los **más cercanos por fecha**— tomados únicamente de lo **publicado** y
+        **próximo** (misma regla R4-2 que el resto del público: sin borradores,
+        sin vencidos y sin eventos sin fecha próxima). El tope de **5 es firme**
+        (FR-025): no hay parámetro de límite ni paginación.
+
+        **Ventana temporal de 2 meses** (regla exacta): el servidor calcula
+        `today`/`now_time` en `APP_TZ` (research R4-2) y `window_end =
+        today + 2 meses calendario` (p. ej. `2026-10-12` → `2026-12-12`). Si
+        **al menos un ítem** tiene su próxima fecha dentro de la ventana
+        (`today ≤ date ≤ window_end`, con la regla "próximo" de R4-2 para el día
+        en curso), se devuelven **solo** ítems de la ventana (hasta 5, los más
+        cercanos). Si la ventana está **vacía**, se aplica el **respaldo**: se
+        devuelven los **siguientes próximos** sin límite de ventana (hasta 5,
+        los más cercanos). Nunca se mezclan ítems de dentro y de fuera de la
+        ventana.
+
+        Cada ítem trae lo que la tarjeta compacta muestra (FR-025): `title`, la
+        **próxima** fecha con su horario opcional, `place` y su `image` (`url` +
+        `alt`), ya resueltos a `lang` con fallback `en → es` (FR-008). Sin
+        `detail`, categoría ni lista completa de fechas: esos datos viven en
+        `GET /api/v1/proximamente` y en la sección `/eventos` (el botón «Ver más
+        eventos» del bloque enlaza a ella; FR-026).
+
+        `items` va ordenado por cercanía (`date` y `startTime` ascendentes, con
+        desempate estable `title`, `id` — FR-003). Cuando **no hay ningún ítem**
+        publicado y próximo la respuesta viene **sin `items`** (clave omitida,
+        equivalente a vacía y nunca `null`, §8.1.2): la portada entonces **sí
+        muestra el bloque**, con el mensaje «Por el momento no hay eventos ni
+        actividades» (FR-026). `Cache-Control: no-store`.
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8).
+          schema:
+            type: string
+            enum: [es, en]
+            default: es
+      responses:
+        "200":
+          description: "Extracto de la portada resuelto a `lang`. Sin ítems publicados y próximos la respuesta viene sin `items` (clave omitida/vacía): la portada muestra el bloque con su mensaje."
+          headers:
+            Cache-Control:
+              description: Siempre `no-store` (los cambios guardados y el retiro automático se reflejan en la primera carga).
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortadaProximamente"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/eventos:
+    get:
+      tags: [eventos-admin]
+      operationId: listEventos
+      summary: Lista de eventos para el panel (incluye borradores y pasados)
+      description: |
+        Listado paginado **completo** del módulo: borradores, publicados y con
+        cualquier fecha (este lado es el único que los ve; exige el permiso
+        `eventos`). Cada fila trae `dates` (todas sus fechas, cada una con
+        `isPast`), `nextDate` (la primera fecha próxima, `null` si no hay — el
+        panel señala entonces que falta cargar la próxima fecha) y `isPast`.
+        Orden: `created_at DESC, id DESC` (§8.1.7). Filtro opcional por estado.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListOffset"
+        - name: publicationState
+          in: query
+          required: false
+          description: Filtra por estado de publicación (FR-013). Sin valor: todos.
+          schema:
+            $ref: "#/components/schemas/PublicationState"
+      responses:
+        "200":
+          description: Listado paginado de eventos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventoAdminList"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    post:
+      tags: [eventos-admin]
+      operationId: createEvento
+      summary: Crea un evento (con su lista de fechas)
+      description: |
+        Alta de un evento (FR-010/FR-018): título, **al menos una fecha**
+        concreta (≤50) con hora de inicio/fin opcionales, texto opcional de
+        frecuencia, lugar + enlace de mapa opcional, detalle, imagen opcional
+        con texto alternativo, organizador opcional y categoría opcional (Q6) —
+        español obligatorio, inglés opcional (FR-007). Las fechas pasadas están
+        permitidas (el equipo puede cargar lo que ya ocurrió) pero el elemento
+        solo será público con una fecha próxima (FR-002/FR-006).
+
+        `publicationState` opcional (por defecto `draft`): un alta publicada
+        registra `event.create` (no `event.publish`, research R4-10). Guardado
+        atómico (datos + fechas + auditoría en una transacción; nunca cambios
+        parciales, FR-015). Un duplicado exacto del módulo (mismo título, lugar
+        y una fecha en común) responde `409` (R4-9).
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventoInput"
+      responses:
+        "201":
+          description: Evento creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventoAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/eventos/{id}:
+    get:
+      tags: [eventos-admin]
+      operationId: getEvento
+      summary: Detalle de un evento (ambos idiomas, todas sus fechas)
+      description: Ficha completa para el formulario de edición (incluye borradores; exige el permiso `eventos`).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      responses:
+        "200":
+          description: Evento con todos sus datos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventoAdmin"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    patch:
+      tags: [eventos-admin]
+      operationId: updateEvento
+      summary: Edita un evento (los campos presentes)
+      description: |
+        Actualización parcial (FR-010): solo se tocan los campos presentes. Si
+        viene `dates`, **reemplaza la lista completa** de fechas (reemplazo
+        atómico; R4-11). Si el evento ya estaba publicado, los cambios guardados
+        son visibles de inmediato (FR-014: se publica al guardar); `publicationState`
+        cambia el estado por elemento (FR-013). Auditoría: un cambio de datos
+        registra `event.update`; solo de estado, `event.publish`/`event.unpublish`;
+        ambos a la vez, **dos filas** (R4-10).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventoPatch"
+      responses:
+        "200":
+          description: Evento actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventoAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    delete:
+      tags: [eventos-admin]
+      operationId: deleteEvento
+      summary: Elimina un evento (definitivo, con confirmación en la interfaz)
+      description: |
+        Borrado físico con sus fechas (FK `ON DELETE CASCADE`); sin papelera ni
+        recuperación (default revisable de la spec, coherente con F3). La
+        eliminación queda registrada (`event.delete`) y el elemento desaparece
+        también del sitio público de inmediato (SC-003). La interfaz pide
+        confirmación explicando que no se puede deshacer.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      responses:
+        "204":
+          description: Evento eliminado.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/eventos/imagenes:
+    post:
+      tags: [eventos-admin]
+      operationId: uploadEventoImage
+      summary: Sube una imagen para un evento (JPEG/PNG/WebP, ≤8 MB)
+      description: |
+        Multipart (`file`), mismas reglas que la subida de F3 (R3-8): tipo
+        detectado por **firma binaria** (sin SVG ni GIF), tope 8 MB
+        (`UPLOAD_MAX_BYTES`), nombre generado por el servidor
+        (`img_<uuid>.<ext>`) y respuesta con la referencia a incluir en
+        `imageFile`. La imagen se sirve con `GET /api/v1/media/{fileName}` solo
+        mientras esté referenciada por un evento **publicado y próximo** (R4-6).
+        Auditoría: `event.image.upload` (fail-closed: si el registro falla, la
+        subida se aborta y el archivo se elimina).
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Archivo de imagen (JPEG, PNG o WebP por firma; máx. 8 MB).
+              additionalProperties: false
+      responses:
+        "201":
+          description: Imagen subida.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUploadResult"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/actividades:
+    get:
+      tags: [actividades-admin]
+      operationId: listActividades
+      summary: Lista de actividades para el panel (incluye borradoras y pasadas)
+      description: |
+        Listado paginado completo (exige el permiso `actividades`): cada fila
+        trae su fecha única con `isPast` y el `isPast` del elemento. Orden:
+        `created_at DESC, id DESC` (§8.1.7). Filtro opcional por estado.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/ListLimit"
+        - $ref: "#/components/parameters/ListOffset"
+        - name: publicationState
+          in: query
+          required: false
+          description: Filtra por estado de publicación (FR-013). Sin valor: todos.
+          schema:
+            $ref: "#/components/schemas/PublicationState"
+      responses:
+        "200":
+          description: Listado paginado de actividades.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActividadAdminList"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    post:
+      tags: [actividades-admin]
+      operationId: createActividad
+      summary: Crea una actividad (fecha única, sin periodicidad)
+      description: |
+        Alta de una actividad puntual (FR-011/FR-019, Decisión 3): título, **una
+        fecha** con hora de inicio/fin opcionales (un día concreto; sin
+        periodicidad), lugar + enlace de mapa opcional, detalle, imagen
+        opcional con texto alternativo, organizador opcional y categoría
+        opcional (Q6) — español obligatorio, inglés opcional. Auditoría
+        `activity.create` (aunque nazca publicada). Duplicado exacto del módulo
+        (mismo título, fecha y lugar) → `409` (R4-9).
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActividadInput"
+      responses:
+        "201":
+          description: Actividad creada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActividadAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/actividades/{id}:
+    get:
+      tags: [actividades-admin]
+      operationId: getActividad
+      summary: Detalle de una actividad (ambos idiomas)
+      description: Ficha completa para el formulario de edición (incluye borradoras; exige el permiso `actividades`).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      responses:
+        "200":
+          description: Actividad con todos sus datos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActividadAdmin"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    patch:
+      tags: [actividades-admin]
+      operationId: updateActividad
+      summary: Edita una actividad (los campos presentes)
+      description: |
+        Actualización parcial (FR-011) con la misma regla de publicación que los
+        eventos (FR-013/FR-014): `publicationState` por elemento y "se publica al
+        guardar". Auditoría `activity.update` / `activity.publish` /
+        `activity.unpublish` (dos filas si cambian datos y estado a la vez).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActividadPatch"
+      responses:
+        "200":
+          description: Actividad actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActividadAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    delete:
+      tags: [actividades-admin]
+      operationId: deleteActividad
+      summary: Elimina una actividad (definitiva, con confirmación en la interfaz)
+      description: Borrado físico (sin papelera), registrado con `activity.delete`; desaparece del público de inmediato.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      responses:
+        "204":
+          description: Actividad eliminada.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/actividades/imagenes:
+    post:
+      tags: [actividades-admin]
+      operationId: uploadActividadImage
+      summary: Sube una imagen para una actividad (JPEG/PNG/WebP, ≤8 MB)
+      description: |
+        Igual que `POST /api/v1/admin/eventos/imagenes` (mismas reglas R3-8),
+        tras el permiso `actividades`. Auditoría `activity.image.upload`.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Archivo de imagen (JPEG, PNG o WebP por firma; máx. 8 MB).
+              additionalProperties: false
+      responses:
+        "201":
+          description: Imagen subida.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUploadResult"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/categorias:
+    get:
+      tags: [categorias-admin]
+      operationId: listCategorias
+      summary: Catálogo de categorías (compartido por eventos y actividades)
+      description: |
+        Catálogo completo para los selectores de los formularios y su gestión
+        (Q6). Exige el permiso **`categorias`** (10.º del catálogo de F2,
+        sembrado en la migración `000009`; research R4-4 — cambio de alcance
+        aprobado el 2026-10-11: **no** basta `eventos` ni `actividades`).
+        Listado acotado en el servidor (≤100, `ORDER BY sortOrder, id`),
+        sin paginación: es un catálogo pequeño (§8.1.3, misma excepción
+        documentada que las colecciones de F3).
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Catálogo de categorías.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriaAdminList"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    post:
+      tags: [categorias-admin]
+      operationId: createCategoria
+      summary: Crea una categoría del catálogo
+      description: |
+        Alta en el catálogo (Q6): nombre en español obligatorio y en inglés
+        opcional, con `sortOrder` opcional. Nombre duplicado → `409`. Requiere
+        el permiso `categorias`. Auditoría `category.create`.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaInput"
+      responses:
+        "201":
+          description: Categoría creada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriaAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/categorias/{id}:
+    patch:
+      tags: [categorias-admin]
+      operationId: updateCategoria
+      summary: Edita una categoría (los campos presentes)
+      description: |
+        Actualización parcial del catálogo (Q6). Renombrar está permitido y el
+        cambio se hace visible de inmediato en los elementos publicados que la
+        usan (es un dato del elemento, como cualquier otro). Nombre duplicado →
+        `409`. Requiere el permiso `categorias`. Auditoría `category.update`.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoriaPatch"
+      responses:
+        "200":
+          description: Categoría actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriaAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    delete:
+      tags: [categorias-admin]
+      operationId: deleteCategoria
+      summary: Elimina una categoría del catálogo
+      description: |
+        Borrado físico con confirmación en la interfaz. Si hay eventos o
+        actividades usando la categoría responde `409 conflict` (FK `ON DELETE
+        RESTRICT`, R4-5 — **decisión firme** de la puerta 2: la categoría en
+        uso no se desliga automáticamente): primero hay que quitarles la
+        categoría. Requiere el permiso `categorias`. Auditoría
+        `category.delete`.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/AgendaItemId"
+      responses:
+        "204":
+          description: Categoría eliminada.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+components:
+  parameters:
+    AgendaItemId:
+      name: id
+      in: path
+      required: true
+      description: Identificador (UUID) del elemento de agenda (evento, actividad o categoría).
+      schema:
+        type: string
+        format: uuid
+    ListLimit:
+      name: limit
+      in: query
+      required: false
+      description: Tamaño de página (por defecto 20, máximo 100; §8.1.3).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ListOffset:
+      name: offset
+      in: query
+      required: false
+      description: Desplazamiento (mínimo 0; §8.1.3).
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  schemas:
+    # ------------------------------------------------------------ comunes
+    Date:
+      type: string
+      pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      description: |
+        Fecha de calendario del lugar ("YYYY-MM-DD"). No es un timestamp: no se
+        convierte de zona horaria (FR-009: el día real del elemento no cambia).
+        El formato visible lo localiza el cliente.
+    ClockTime:
+      type: string
+      pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+      description: |
+        Hora "HH:MM" de 24 h del lugar. El formato a.m./p.m. es presentación del
+        cliente (patrón de F3).
+    CategoriaPublica:
+      type: object
+      required: [id, name]
+      description: Categoría publicada del elemento, ya localizada a `lang` (Q6).
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 120
+      additionalProperties: false
+    ImagenPublica:
+      type: object
+      required: [url, alt]
+      description: Imagen opcional del elemento con su texto alternativo accesible (FR-020).
+      properties:
+        url:
+          type: string
+          description: URL relativa al origen de la API (`/api/v1/media/<file>`).
+        alt:
+          type: string
+          maxLength: 300
+          description: Texto alternativo (FR-020); resuelto a `lang` con fallback.
+      additionalProperties: false
+    OcurrenciaPublica:
+      type: object
+      required: [date]
+      description: |
+        Fecha concreta de un evento con su horario opcional (Q2). Solo fechas
+        **próximas** viajan en la respuesta pública (FR-002/FR-006).
+      properties:
+        date:
+          $ref: "#/components/schemas/Date"
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+          description: Hora de inicio opcional (`null`/ausente = sin hora).
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+          description: Hora de fin opcional; **exige `startTime`** (decisión firme de la puerta 2) y siempre es posterior a él.
+      additionalProperties: false
+
+    # ------------------------------------------------------------- público
+    PortadaProximamente:
+      type: object
+      required: [lang]
+      description: |
+        Extracto «Lo que viene» de la portada (US7, enmienda del 2026-10-12,
+        **refinada el mismo día**): hasta **5** ítems próximos, eventos y
+        actividades juntos y ordenados por cercanía (ventana de 2 meses con
+        respaldo; ver la descripción de la operación). `items` está presente
+        **solo** si hay ítems; vacío/ausente significa "no hay nada publicado y
+        próximo" y la portada muestra el bloque con su mensaje (FR-026). Nunca
+        es `null` (§8.1.2) y nunca supera los 5 elementos (FR-025, tope firme
+        del servidor: no es configurable desde la API).
+      properties:
+        lang:
+          type: string
+          enum: [es, en]
+          description: Idioma en el que se resolvieron los contenidos.
+        items:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/ItemProximoPortada"
+      additionalProperties: false
+    ItemProximoPortada:
+      type: object
+      required: [kind, id, title, date, place]
+      description: |
+        Ítem del bloque de la portada: **solo** lo que la tarjeta compacta de la
+        fila horizontal muestra (FR-025) — identificación como evento o
+        actividad (Decisión 3), título, **próxima** fecha con su horario
+        opcional, lugar e **imagen** con su texto alternativo, todo ya localizado
+        a `lang` (FR-008). Sin `detail`, categoría ni lista de fechas: el
+        detalle vive en la sección `/eventos` (el botón «Ver más eventos» lleva
+        a ella; FR-026). La composición visual de la fila y las tarjetas la fija
+        `ux.md`.
+      properties:
+        kind:
+          type: string
+          enum: [event, activity]
+          description: |
+            Concepto del ítem (Decisión 3): `event` (encuentro periódico) o
+            `activity` (acción puntual). El cliente lo usa para etiquetar el
+            ítem y para enlazar al bloque correspondiente de `/eventos`.
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 160
+        date:
+          allOf:
+            - $ref: "#/components/schemas/Date"
+          description: |
+            Próxima fecha del ítem (`YYYY-MM-DD`): la primera fecha próxima del
+            evento o la fecha única de la actividad. Siempre es una fecha
+            **próxima** según la regla del servidor (R4-2).
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+          description: Hora de inicio opcional (`null`/ausente = sin hora).
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+          description: Hora de fin opcional; **exige `startTime`** y siempre es posterior a él.
+        place:
+          type: string
+          maxLength: 200
+        image:
+          $ref: "#/components/schemas/ImagenPublica"
+          description: |
+            Imagen opcional del elemento con su texto alternativo (FR-020) para
+            la tarjeta compacta; misma URL relativa `/api/v1/media/<file>` y
+            misma regla de publicación que la sección (solo contenido publicado
+            y próximo). Ausente si el elemento no tiene imagen.
+      additionalProperties: false
+
+    ProximamentePublica:
+      type: object
+      required: [lang]
+      description: |
+        "Lo que viene" publicado y con fecha desde hoy en adelante, resuelto a
+        `lang` (fallback `en → es` por campo, FR-008). Las claves de bloque están
+        presentes **solo** si tienen elementos (SC-012); si están presentes, sus
+        arrays nunca son `null` (§8.1.2) y están acotados a **200 elementos**
+        cada uno (constante de seguridad del servidor, RG4-8 del plan).
+        `events` va ordenado por la primera
+        fecha próxima de cada evento; `activities` por su fecha (FR-003).
+      properties:
+        lang:
+          type: string
+          enum: [es, en]
+          description: Idioma en el que se resolvieron los contenidos.
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventoPublico"
+        activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActividadPublica"
+      additionalProperties: false
+    EventoPublico:
+      type: object
+      required: [id, title, dates, place, detail]
+      description: |
+        Evento publicado con **al menos una fecha próxima** (FR-004): `dates[0]`
+        es "la próxima fecha" que el visitante identifica; el resto son las
+        siguientes cargadas. `frequency` es el texto opcional de frecuencia (p.
+        ej. «todos los viernes»); el sistema **no** calcula recurrencias.
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 160
+        frequency:
+          type: string
+          maxLength: 160
+          description: Texto opcional de frecuencia, ya localizado (puede provenir del español por fallback).
+        dates:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OcurrenciaPublica"
+        place:
+          type: string
+          maxLength: 200
+        mapUrl:
+          type: string
+          maxLength: 500
+          description: Enlace de mapa/ubicación opcional (solo se valida el formato; no se verifica el destino).
+        detail:
+          type: string
+          maxLength: 2000
+          description: Detalle/descripción, texto plano (≤2.000 caracteres), ya localizado.
+        organizer:
+          type: string
+          maxLength: 160
+          description: Organizador/encargado opcional (texto).
+        category:
+          $ref: "#/components/schemas/CategoriaPublica"
+        image:
+          $ref: "#/components/schemas/ImagenPublica"
+      additionalProperties: false
+    ActividadPublica:
+      type: object
+      required: [id, title, date, place, detail]
+      description: |
+        Actividad publicada con **fecha única** (Decisión 3/FR-005): un día
+        concreto con hora de inicio y hora de fin opcionales (un solo valor de
+        hora o ninguno también es válido).
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 160
+        date:
+          $ref: "#/components/schemas/Date"
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        place:
+          type: string
+          maxLength: 200
+        mapUrl:
+          type: string
+          maxLength: 500
+        detail:
+          type: string
+          maxLength: 2000
+        organizer:
+          type: string
+          maxLength: 160
+        category:
+          $ref: "#/components/schemas/CategoriaPublica"
+        image:
+          $ref: "#/components/schemas/ImagenPublica"
+      additionalProperties: false
+
+    # ------------------------------------------------------------- panel
+    EventoAdminList:
+      type: object
+      required: [items, total, limit, offset]
+      description: Listado paginado de eventos del panel (§8.1.2/§8.1.3).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventoAdmin"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    ActividadAdminList:
+      type: object
+      required: [items, total, limit, offset]
+      description: Listado paginado de actividades del panel (§8.1.2/§8.1.3).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActividadAdmin"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    CategoriaAdminList:
+      type: object
+      required: [items]
+      description: Catálogo completo (acotado en el servidor, ≤100; sin paginación).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoriaAdmin"
+      additionalProperties: false
+    FechaAdmin:
+      type: object
+      required: [id, date, isPast]
+      description: Fecha concreta del evento en el panel, con su horario opcional y su marca de pasado (Q4).
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          $ref: "#/components/schemas/Date"
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        isPast:
+          type: boolean
+          description: |
+            `true` cuando la fecha ya no es "próxima" según la regla del servidor
+            (R4-2): el panel muestra el elemento como pasado sin tocar su estado.
+      additionalProperties: false
+    EventoAdmin:
+      type: object
+      required:
+        [id, titleEs, detailEs, placeEs, publicationState, dates, nextDate, isPast, createdAt, updatedAt]
+      description: |
+        Evento completo del panel: ambos idiomas (es obligatorio, en opcional),
+        todas sus fechas (próximas y pasadas) y su estado de publicación (FR-010,
+        US4 esc. 7).
+      properties:
+        id:
+          type: string
+          format: uuid
+        titleEs:
+          type: string
+          maxLength: 160
+        titleEn:
+          type: [string, "null"]
+          maxLength: 160
+        frequencyEs:
+          type: [string, "null"]
+          maxLength: 160
+          description: Texto opcional de frecuencia en español (Q1).
+        frequencyEn:
+          type: [string, "null"]
+          maxLength: 160
+        detailEs:
+          type: string
+          maxLength: 2000
+        detailEn:
+          type: [string, "null"]
+          maxLength: 2000
+        placeEs:
+          type: string
+          maxLength: 200
+        placeEn:
+          type: [string, "null"]
+          maxLength: 200
+        mapUrl:
+          type: [string, "null"]
+          maxLength: 500
+        organizerEs:
+          type: [string, "null"]
+          maxLength: 160
+        organizerEn:
+          type: [string, "null"]
+          maxLength: 160
+        categoryId:
+          type: [string, "null"]
+          format: uuid
+        imageFile:
+          type: [string, "null"]
+          pattern: "^img_[0-9a-f-]{36}\\.(jpg|png|webp)$"
+        imageAltEs:
+          type: [string, "null"]
+          maxLength: 300
+        imageAltEn:
+          type: [string, "null"]
+          maxLength: 300
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        dates:
+          type: array
+          items:
+            $ref: "#/components/schemas/FechaAdmin"
+          description: Fechas del evento en orden ascendente (próximas y pasadas).
+        nextDate:
+          type: [string, "null"]
+          description: |
+            **Siempre presente en la respuesta** (no es un campo opcional: está
+            en `required` y solo su **valor** puede ser nulo). Primera fecha
+            próxima (`YYYY-MM-DD`) o `null` cuando el elemento no tiene ninguna:
+            el panel señala entonces que falta cargar la próxima fecha (default
+            revisable). El cliente distingue así "sin próxima fecha" (`null`) de
+            cualquier otra cosa.
+        isPast:
+          type: boolean
+          description: "`true` cuando el evento no tiene ninguna fecha próxima (Q4)."
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    FechaInput:
+      type: object
+      required: [date]
+      description: Fecha concreta que se guarda para un evento (con horario opcional).
+      properties:
+        date:
+          $ref: "#/components/schemas/Date"
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+      additionalProperties: false
+    EventoInput:
+      type: object
+      required: [titleEs, detailEs, placeEs, dates]
+      description: |
+        Alta de evento (FR-015). `dates` lleva entre 1 y 50 fechas sin repetir
+        (una por día). `publicationState` opcional (por defecto `draft`).
+      properties:
+        titleEs:
+          type: string
+          minLength: 1
+          maxLength: 160
+        titleEn:
+          type: [string, "null"]
+          maxLength: 160
+        frequencyEs:
+          type: [string, "null"]
+          maxLength: 160
+        frequencyEn:
+          type: [string, "null"]
+          maxLength: 160
+        detailEs:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        detailEn:
+          type: [string, "null"]
+          maxLength: 2000
+        placeEs:
+          type: string
+          minLength: 1
+          maxLength: 200
+        placeEn:
+          type: [string, "null"]
+          maxLength: 200
+        mapUrl:
+          type: [string, "null"]
+          maxLength: 500
+          description: URL https válida (tag `url` de `platform/validate`); solo formato.
+        organizerEs:
+          type: [string, "null"]
+          maxLength: 160
+        organizerEn:
+          type: [string, "null"]
+          maxLength: 160
+        categoryId:
+          type: [string, "null"]
+          format: uuid
+          description: Categoría del catálogo (Q6); desconocida → `400 invalid`. `null` = sin categoría.
+        imageFile:
+          type: [string, "null"]
+          pattern: "^img_[0-9a-f-]{36}\\.(jpg|png|webp)$"
+          description: Nombre devuelto por `POST /api/v1/admin/eventos/imagenes`.
+        imageAltEs:
+          type: [string, "null"]
+          maxLength: 300
+          description: Obligatorio si hay `imageFile` (FR-020).
+        imageAltEn:
+          type: [string, "null"]
+          maxLength: 300
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        dates:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/FechaInput"
+      additionalProperties: false
+    EventoPatch:
+      type: object
+      description: |
+        Edición parcial: solo los campos presentes se modifican. Si `dates`
+        viene, **reemplaza la lista completa** (mínimo 1 fecha). Un campo con
+        `null` explícito borra su valor opcional (p. ej. `mapUrl`, `categoryId`,
+        `imageFile`).
+      properties:
+        titleEs:
+          type: string
+          minLength: 1
+          maxLength: 160
+        titleEn:
+          type: [string, "null"]
+          maxLength: 160
+        frequencyEs:
+          type: [string, "null"]
+          maxLength: 160
+        frequencyEn:
+          type: [string, "null"]
+          maxLength: 160
+        detailEs:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        detailEn:
+          type: [string, "null"]
+          maxLength: 2000
+        placeEs:
+          type: string
+          minLength: 1
+          maxLength: 200
+        placeEn:
+          type: [string, "null"]
+          maxLength: 200
+        mapUrl:
+          type: [string, "null"]
+          maxLength: 500
+        organizerEs:
+          type: [string, "null"]
+          maxLength: 160
+        organizerEn:
+          type: [string, "null"]
+          maxLength: 160
+        categoryId:
+          type: [string, "null"]
+          format: uuid
+        imageFile:
+          type: [string, "null"]
+          pattern: "^img_[0-9a-f-]{36}\\.(jpg|png|webp)$"
+        imageAltEs:
+          type: [string, "null"]
+          maxLength: 300
+        imageAltEn:
+          type: [string, "null"]
+          maxLength: 300
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        dates:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/FechaInput"
+      additionalProperties: false
+    ActividadAdmin:
+      type: object
+      required:
+        [id, titleEs, detailEs, placeEs, date, publicationState, isPast, createdAt, updatedAt]
+      description: Actividad completa del panel (ambos idiomas, fecha única y estado; FR-011).
+      properties:
+        id:
+          type: string
+          format: uuid
+        titleEs:
+          type: string
+          maxLength: 160
+        titleEn:
+          type: [string, "null"]
+          maxLength: 160
+        detailEs:
+          type: string
+          maxLength: 2000
+        detailEn:
+          type: [string, "null"]
+          maxLength: 2000
+        placeEs:
+          type: string
+          maxLength: 200
+        placeEn:
+          type: [string, "null"]
+          maxLength: 200
+        mapUrl:
+          type: [string, "null"]
+          maxLength: 500
+        organizerEs:
+          type: [string, "null"]
+          maxLength: 160
+        organizerEn:
+          type: [string, "null"]
+          maxLength: 160
+        categoryId:
+          type: [string, "null"]
+          format: uuid
+        imageFile:
+          type: [string, "null"]
+          pattern: "^img_[0-9a-f-]{36}\\.(jpg|png|webp)$"
+        imageAltEs:
+          type: [string, "null"]
+          maxLength: 300
+        imageAltEn:
+          type: [string, "null"]
+          maxLength: 300
+        date:
+          $ref: "#/components/schemas/Date"
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        isPast:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ActividadInput:
+      type: object
+      required: [titleEs, detailEs, placeEs, date]
+      description: Alta de actividad puntual (FR-015): una fecha única, sin periodicidad.
+      properties:
+        titleEs:
+          type: string
+          minLength: 1
+          maxLength: 160
+        titleEn:
+          type: [string, "null"]
+          maxLength: 160
+        detailEs:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        detailEn:
+          type: [string, "null"]
+          maxLength: 2000
+        placeEs:
+          type: string
+          minLength: 1
+          maxLength: 200
+        placeEn:
+          type: [string, "null"]
+          maxLength: 200
+        mapUrl:
+          type: [string, "null"]
+          maxLength: 500
+        organizerEs:
+          type: [string, "null"]
+          maxLength: 160
+        organizerEn:
+          type: [string, "null"]
+          maxLength: 160
+        categoryId:
+          type: [string, "null"]
+          format: uuid
+        imageFile:
+          type: [string, "null"]
+          pattern: "^img_[0-9a-f-]{36}\\.(jpg|png|webp)$"
+        imageAltEs:
+          type: [string, "null"]
+          maxLength: 300
+        imageAltEn:
+          type: [string, "null"]
+          maxLength: 300
+        date:
+          $ref: "#/components/schemas/Date"
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+      additionalProperties: false
+    ActividadPatch:
+      type: object
+      description: Edición parcial de una actividad (solo los campos presentes; `null` borra lo opcional).
+      properties:
+        titleEs:
+          type: string
+          minLength: 1
+          maxLength: 160
+        titleEn:
+          type: [string, "null"]
+          maxLength: 160
+        detailEs:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        detailEn:
+          type: [string, "null"]
+          maxLength: 2000
+        placeEs:
+          type: string
+          minLength: 1
+          maxLength: 200
+        placeEn:
+          type: [string, "null"]
+          maxLength: 200
+        mapUrl:
+          type: [string, "null"]
+          maxLength: 500
+        organizerEs:
+          type: [string, "null"]
+          maxLength: 160
+        organizerEn:
+          type: [string, "null"]
+          maxLength: 160
+        categoryId:
+          type: [string, "null"]
+          format: uuid
+        imageFile:
+          type: [string, "null"]
+          pattern: "^img_[0-9a-f-]{36}\\.(jpg|png|webp)$"
+        imageAltEs:
+          type: [string, "null"]
+          maxLength: 300
+        imageAltEn:
+          type: [string, "null"]
+          maxLength: 300
+        date:
+          $ref: "#/components/schemas/Date"
+        startTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        endTime:
+          allOf:
+            - $ref: "#/components/schemas/ClockTime"
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+      additionalProperties: false
+    CategoriaAdmin:
+      type: object
+      required: [id, nameEs, sortOrder, createdAt, updatedAt]
+      description: Categoría del catálogo (Q6): nombre es obligatorio, en opcional.
+      properties:
+        id:
+          type: string
+          format: uuid
+        nameEs:
+          type: string
+          maxLength: 120
+        nameEn:
+          type: [string, "null"]
+          maxLength: 120
+        sortOrder:
+          type: integer
+          description: Orden de presentación del catálogo (por defecto 0).
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    CategoriaInput:
+      type: object
+      required: [nameEs]
+      description: Alta en el catálogo de categorías.
+      properties:
+        nameEs:
+          type: string
+          minLength: 1
+          maxLength: 120
+        nameEn:
+          type: [string, "null"]
+          maxLength: 120
+        sortOrder:
+          type: integer
+      additionalProperties: false
+    CategoriaPatch:
+      type: object
+      description: Edición parcial de una categoría (solo los campos presentes).
+      properties:
+        nameEs:
+          type: string
+          minLength: 1
+          maxLength: 120
+        nameEn:
+          type: [string, "null"]
+          maxLength: 120
+        sortOrder:
+          type: integer
+      additionalProperties: false

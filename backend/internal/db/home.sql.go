@@ -437,28 +437,6 @@ func (q *Queries) InsertHomeWhatsappChannel(ctx context.Context, arg InsertHomeW
 	return i, err
 }
 
-const isHomeFilePublished = `-- name: IsHomeFilePublished :one
-
-SELECT EXISTS (
-    SELECT 1
-    FROM home_identity
-    WHERE publication_state = 'published'
-      AND $1 IN (logo_file, cover_image_file)
-) AS published
-`
-
-// ---------------------------------------------------- archivos de imagen
-// ¿El nombre de archivo está referenciado por contenido PUBLICADO? (analyze C4)
-// `TRUE` solo si la identidad publicada lo usa como logo o imagen de portada;
-// `FALSE` cuando no existe referencia, la identidad está en borrador o el
-// archivo es huérfano. F4–F9 amplían esta consulta con sus tablas.
-func (q *Queries) IsHomeFilePublished(ctx context.Context, fileName pgtype.Text) (bool, error) {
-	row := q.db.QueryRow(ctx, isHomeFilePublished, fileName)
-	var published bool
-	err := row.Scan(&published)
-	return published, err
-}
-
 const listHomeServices = `-- name: ListHomeServices :many
 SELECT id, day_of_week, start_time, end_time, name_es, name_en,
        description_es, description_en, place_es, place_en,

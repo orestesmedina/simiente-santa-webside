@@ -1,12 +1,26 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Button } from './Button';
 
+/** Ancho del panel del diálogo (QA Bug 3). */
+export type DialogSize = 'md' | 'wide';
+
 export interface DialogProps {
   title: string;
   description?: string;
+  /**
+   * Ancho máximo del panel: `md` es el de siempre (32 rem; confirmaciones) y
+   * `wide` da aire a los formularios con rejillas —el editor de fechas de la
+   * agenda— a partir de `sm` (42 rem), sin encoger los diálogos de confirmación.
+   */
+  size?: DialogSize;
   onClose: () => void;
   children: ReactNode;
 }
+
+const SIZE_CLASSES: Record<DialogSize, string> = {
+  md: 'max-w-lg',
+  wide: 'max-w-lg sm:max-w-2xl',
+};
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -21,8 +35,12 @@ const FOCUSABLE_SELECTOR = [
  * Diálogo modal accesible: `role="dialog"` con `aria-modal`, título asociado,
  * cierre con `Esc`, trampa de foco y devolución del foco al elemento que lo
  * abrió (ux.md §6). Es la base de `ConfirmDialog` y de los formularios en modal.
+ *
+ * El panel desplaza **solo** en vertical (`overflow-x-hidden`, QA Bug 3): el
+ * `overflow-y-auto` a solas convierte el eje horizontal en desplazable y un
+ * contenido ancho —el editor de fechas— sacaba una barra horizontal.
  */
-export function Dialog({ title, description, onClose, children }: DialogProps) {
+export function Dialog({ title, description, size = 'md', onClose, children }: DialogProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
@@ -84,7 +102,7 @@ export function Dialog({ title, description, onClose, children }: DialogProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className="max-h-full w-full max-w-lg overflow-y-auto rounded bg-white p-6 shadow-xl"
+        className={`max-h-full w-full ${SIZE_CLASSES[size]} overflow-y-auto overflow-x-hidden rounded bg-white p-6 shadow-xl`}
       >
         <div className="flex items-start justify-between gap-4">
           <h2 id={titleId} className="text-xl font-bold text-slate-900">

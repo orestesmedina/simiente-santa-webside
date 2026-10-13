@@ -23,7 +23,7 @@ import {
   UNPUBLISHED,
   deleteConfirmDescription,
 } from '../messages';
-import { PublishControls } from './PublishControls';
+import { PublishControls } from '../../../components/PublishControls';
 import { ServiceForm } from './ServiceForm';
 
 interface Feedback {

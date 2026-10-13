@@ -2,13 +2,10 @@ package portada
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"simiente-santa/backend/internal/platform/apperr"
-	"simiente-santa/backend/internal/platform/storage"
 )
 
 // service_public.go implementa la cara pública de la portada (T318): resuelve el
@@ -167,37 +164,6 @@ func (s *service) GetPortada(ctx context.Context, lang string) (PublicPortada, e
 	}
 
 	return portada, nil
-}
-
-// OpenMedia aplica la política de descarga de imágenes (analyze C4/M6): un
-// nombre que no cumple el patrón generado por el servidor es `400 invalid`; un
-// nombre válido pero inexistente o NO referenciado por contenido publicado es
-// `404 not_found`; solo entonces se abre el archivo del Store.
-func (s *service) OpenMedia(ctx context.Context, fileName string) (io.ReadCloser, error) {
-	if !storage.ValidName(fileName) {
-		return nil, apperr.Invalid(
-			"El nombre del archivo no es válido",
-			apperr.WithDetails(map[string]any{"fileName": "formato no reconocido"}),
-		)
-	}
-	published, err := s.repository.IsHomeFilePublished(ctx, fileName)
-	if err != nil {
-		return nil, fmt.Errorf("comprobar si la imagen está publicada: %w", err)
-	}
-	if !published {
-		return nil, apperr.NotFound("La imagen no está disponible")
-	}
-	if s.store == nil {
-		return nil, apperr.NotFound("La imagen no está disponible")
-	}
-	reader, err := s.store.Open(ctx, fileName)
-	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
-			return nil, apperr.NotFound("La imagen no está disponible")
-		}
-		return nil, fmt.Errorf("abrir la imagen: %w", err)
-	}
-	return reader, nil
 }
 
 // --- Localización (fallback en → es por campo, R3-2) ---

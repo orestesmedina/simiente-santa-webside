@@ -20,7 +20,10 @@ import (
 // todos los handlers del dominio (patrón de la capa de acceso de F2, arq.
 // §5.4): decodificación del cuerpo con validación de forma y extracción de la
 // identidad resuelta por authn. Los handlers concretos viven en
-// handler_public.go, handler_admin.go, handler_images.go y handler_media.go.
+// handler_public.go, handler_admin.go y handler_images.go.
+//
+// La descarga pública de imágenes ya no vive aquí: con F4 se promovió al dominio
+// `internal/media/` (R4-6), que sirve el mismo `GET /api/v1/media/{fileName}`.
 //
 // Es una capa fina: no conoce SQL ni las reglas de negocio (constitución §II).
 // Decodifica, valida y delega en el puerto `Service`; cualquier error se deriva
@@ -52,9 +55,6 @@ type PortadaService interface {
 	// GetPortada devuelve la portada publicada resuelta al idioma pedido
 	// (FR-001/FR-008/FR-009).
 	GetPortada(ctx context.Context, lang string) (PublicPortada, error)
-	// OpenMedia aplica la política de descarga pública de imágenes (analyze
-	// C4/M6) y abre el archivo del almacén.
-	OpenMedia(ctx context.Context, fileName string) (io.ReadCloser, error)
 	// UploadImage guarda una imagen subida desde el panel y la audita con
 	// `home.image.upload` (fail-closed, analyze I8).
 	UploadImage(ctx context.Context, actorID uuid.UUID, data []byte) (ImageUploadResult, error)

@@ -6,6 +6,7 @@ import { Reveal } from '../motion/Reveal';
 import { RevealGroup } from '../motion/RevealGroup';
 import { ContactSection } from '../components/ContactSection';
 import { IdentityHero } from '../components/IdentityHero';
+import { ProximamenteBlock } from '../eventos/ProximamenteBlock';
 import { ScheduleSection } from '../components/ScheduleSection';
 import { SectionSkeleton } from '../components/SectionSkeleton';
 import { SocialSection } from '../components/SocialSection';
@@ -79,6 +80,15 @@ export function HomePage() {
       )}
 
       <RevealGroup>
+        {/* Bloque «Lo que viene» (F4/US7, ux.md §4.10): **primera sección** de la
+            portada, inmediatamente después del hero y antes de «quiénes somos»
+            (ajuste del 2026-10-12). Es la **única excepción** a «ocultar
+            secciones vacías»: se pinta siempre, con su mensaje cuando no hay
+            ítems. `from="right"` conserva la alternancia y deja intactas las
+            direcciones de entrada de las secciones de F3. */}
+        <Reveal key="proximamente" from="right">
+          <ProximamenteBlock />
+        </Reveal>
         {about && (
           <Reveal key="quienes-somos" from="left">
             <WhoWeAreSection about={about} />

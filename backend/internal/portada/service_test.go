@@ -30,8 +30,7 @@ type fakeRepository struct {
 	channels []WhatsappChannel
 	socials  []SocialLink
 
-	publishedFiles map[string]bool
-	actions        []audit.Action
+	actions []audit.Action
 
 	getErr      error
 	mutationErr error
@@ -40,7 +39,7 @@ type fakeRepository struct {
 }
 
 func newFakeRepository() *fakeRepository {
-	return &fakeRepository{publishedFiles: map[string]bool{}}
+	return &fakeRepository{}
 }
 
 func (f *fakeRepository) record(actions []audit.Action) {
@@ -187,17 +186,6 @@ func (f *fakeRepository) UpsertHomeContact(_ context.Context, in Contact, action
 	f.contact = &in
 	f.record(actions)
 	return in, nil
-}
-
-// --- Archivos ---
-
-func (f *fakeRepository) IsHomeFilePublished(_ context.Context, fileName string) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.getErr != nil {
-		return false, f.getErr
-	}
-	return f.publishedFiles[fileName], nil
 }
 
 // --- Horario ---

@@ -42,7 +42,7 @@ function renderRoles() {
 
 describe('RolesPage · listado', () => {
   it('muestra el resumen de permisos, el sello de módulo reservado y las cuentas asignadas', async () => {
-    const role = makeRole({ permissions: ['eventos', 'admin_usuarios_roles'], userCount: 2 });
+    const role = makeRole({ permissions: ['noticias', 'admin_usuarios_roles'], userCount: 2 });
     server.use(
       http.get(rolesUrl, () =>
         HttpResponse.json({ items: [role], total: 1, limit: 20, offset: 0 }),
@@ -54,9 +54,35 @@ describe('RolesPage · listado', () => {
     const table = await screen.findByRole('table');
 
     expect(within(table).getByText('Editores')).toBeInTheDocument();
-    expect(await within(table).findByText('Eventos')).toBeInTheDocument();
+    expect(await within(table).findByText('Noticias y galería')).toBeInTheDocument();
     expect(within(table).getByText(/Disponible más adelante/)).toBeInTheDocument();
     expect(within(table).getByText('2 cuentas')).toBeInTheDocument();
+  });
+
+  it('los permisos de agenda (F4) ya no llevan el sello «Disponible más adelante»', async () => {
+    const role = makeRole({ permissions: ['eventos', 'actividades', 'categorias'] });
+    server.use(
+      http.get(rolesUrl, () =>
+        HttpResponse.json({ items: [role], total: 1, limit: 20, offset: 0 }),
+      ),
+      http.get(permissionsUrl, () =>
+        HttpResponse.json({
+          items: [
+            { code: 'eventos', label: 'Eventos' },
+            { code: 'actividades', label: 'Actividades' },
+            { code: 'categorias', label: 'Categorías de agenda' },
+          ],
+        }),
+      ),
+    );
+
+    renderRoles();
+    const table = await screen.findByRole('table');
+
+    expect(await within(table).findByText('Eventos')).toBeInTheDocument();
+    expect(within(table).getByText('Actividades')).toBeInTheDocument();
+    expect(within(table).getByText('Categorías de agenda')).toBeInTheDocument();
+    expect(within(table).queryByText(/Disponible más adelante/)).toBeNull();
   });
 
   it('sin roles muestra el estado vacío con la acción de crear', async () => {

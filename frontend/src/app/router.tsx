@@ -3,16 +3,20 @@ import { Link, useRoutes, type RouteObject } from 'react-router-dom';
 import { ChangePasswordPage } from '../features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { AuditPage } from '../features/auditoria/pages/AuditPage';
+import { ActivitiesPage } from '../features/eventos/pages/ActivitiesPage';
+import { CategoriesPage } from '../features/eventos/pages/CategoriesPage';
+import { EventsPage as PanelEventsPage } from '../features/eventos/pages/EventsPage';
 import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
 import { PublicLayout } from '../features/publico/components/PublicLayout';
+import { EventsPage as PublicEventsPage } from '../features/publico/eventos/EventsPage';
 import { HomePage } from '../features/publico/pages/HomePage';
 import { RolesPage } from '../features/roles/pages/RolesPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
 import { UsersPage } from '../features/usuarios/pages/UsersPage';
-import { ADMIN_USERS_ROLES, PORTADA } from '../lib/permissions';
+import { ACTIVIDADES, ADMIN_USERS_ROLES, CATEGORIAS, EVENTOS, PORTADA } from '../lib/permissions';
 import { RequireAuth, RequirePasswordChange, RequirePermission } from './guards';
-import { AppLayout, PanelLayout } from './layout';
+import { AppLayout, PanelLayout, PanelSurfaceLayout } from './layout';
 
 /**
  * Pantalla provisional de `/sin-permiso` (T244). Las páginas de panel (`/panel`,
@@ -22,7 +26,7 @@ import { AppLayout, PanelLayout } from './layout';
 function PendingPage({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold">{title}</h1>
+      <h1 className="text-2xl font-bold text-panel-ink">{title}</h1>
       {children}
     </section>
   );
@@ -47,7 +51,7 @@ function ForbiddenPending() {
 function NotFoundPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-bold">Página no encontrada</h1>
+      <h1 className="text-2xl font-bold text-panel-ink">Página no encontrada</h1>
       <p className="mt-2 text-slate-700">
         La página que buscas no existe.{' '}
         <Link to="/panel" className="underline underline-offset-4">
@@ -63,19 +67,35 @@ const appRoutes: RouteObject[] = [
   {
     path: '/',
     element: <PublicLayout />,
-    children: [{ index: true, element: <HomePage /> }],
+    children: [
+      { index: true, element: <HomePage /> },
+      // La sección de agenda es una **ruta real** (⟲ D-1), no un ancla de la portada.
+      { path: 'eventos', element: <PublicEventsPage /> },
+    ],
   },
   {
     path: '/health',
     element: <AppLayout />,
     children: [{ index: true, element: <StatusPage /> }],
   },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/sin-permiso', element: <ForbiddenPending /> },
+  // Pantallas del panel **sin su chrome** (acceso, «sin permiso», cambio de
+  // contraseña y 404): comparten la superficie clara del panel para que el
+  // lienzo del navegador (oscuro con el tema del dispositivo) no se vea por
+  // detrás (bug del fondo negro, F4).
+  {
+    element: <PanelSurfaceLayout />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/sin-permiso', element: <ForbiddenPending /> },
+    ],
+  },
   {
     element: <RequireAuth />,
     children: [
-      { path: '/cambiar-contrasena', element: <ChangePasswordPage /> },
+      {
+        element: <PanelSurfaceLayout />,
+        children: [{ path: '/cambiar-contrasena', element: <ChangePasswordPage /> }],
+      },
       {
         element: <RequirePasswordChange />,
         children: [
@@ -96,13 +116,34 @@ const appRoutes: RouteObject[] = [
                 element: <RequirePermission code={PORTADA} />,
                 children: [{ path: 'informacion', element: <InformationPage /> }],
               },
+              {
+                element: <RequirePermission code={EVENTOS} />,
+                children: [{ path: 'eventos', element: <PanelEventsPage /> }],
+              },
+              {
+                element: <RequirePermission code={ACTIVIDADES} />,
+                children: [{ path: 'actividades', element: <ActivitiesPage /> }],
+              },
+              {
+                // El catálogo se autoriza con su permiso propio (⟲ D-6): ni
+                // «eventos» ni «actividades» dan acceso a él (FR-012).
+                element: <RequirePermission code={CATEGORIAS} />,
+                children: [{ path: 'categorias', element: <CategoriesPage /> }],
+              },
             ],
           },
         ],
       },
     ],
   },
-  { path: '*', element: <NotFoundPage /> },
+  {
+    path: '*',
+    element: (
+      <PanelSurfaceLayout>
+        <NotFoundPage />
+      </PanelSurfaceLayout>
+    ),
+  },
 ];
 
 export function AppRoutes() {

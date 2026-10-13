@@ -109,7 +109,7 @@ describe('HomePage · secciones publicadas (US1, SC-012)', () => {
     expect(within(nav).queryByRole('link', { name: 'Contacto' })).toBeNull();
   });
 
-  it('con la respuesta vacía no pinta ninguna sección (SC-012)', async () => {
+  it('con la respuesta vacía no pinta ninguna sección de F3; el bloque de F4 sí (SC-012)', async () => {
     responder({ lang: 'es' });
 
     renderHome();
@@ -117,7 +117,80 @@ describe('HomePage · secciones publicadas (US1, SC-012)', () => {
     expect(
       await screen.findByRole('navigation', { name: 'Secciones de la portada' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+    // El bloque «Lo que viene» es la **única excepción** a «ocultar secciones
+    // vacías» (Q8/FR-026): se pinta siempre, con su mensaje cuando no hay ítems.
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Lo que viene' }),
+    ).toBeInTheDocument();
+    // Espera al dato: el mensaje solo aparece cuando la consulta se resuelve.
+    expect(
+      await screen.findByText('Por el momento no hay eventos ni actividades.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(['Lo que viene']);
+  });
+
+  it('pone el bloque «Lo que viene» tras el hero y antes de «quiénes somos» sin alterar F3 (F4/US7)', async () => {
+    responder(completa);
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/portada/proximamente`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [
+            {
+              kind: 'event',
+              id: 'ev-1',
+              title: 'Vigilia de viernes',
+              date: '2026-10-17',
+              startTime: '19:00',
+              place: 'Templo central',
+            },
+            {
+              kind: 'activity',
+              id: 'ac-1',
+              title: 'Repartir comida',
+              date: '2026-10-18',
+              place: 'Comedor',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderHome();
+
+    await screen.findByRole('link', { name: 'Evento: Vigilia de viernes' });
+
+    // Ubicación (ajuste del 2026-10-12): inmediatamente después del hero y
+    // **antes** de «quiénes somos»; el resto del orden de F3 no cambia.
+    const hero = screen.getByRole('heading', { level: 1, name: 'Iglesia Simiente Santa' });
+    const bloque = screen.getByRole('heading', { level: 2, name: 'Lo que viene' });
+    const quienesSomos = screen.getByRole('heading', { level: 2, name: 'Quiénes somos' });
+    const horario = screen.getByRole('heading', { level: 2, name: 'Horario de servicios' });
+    expect(hero.compareDocumentPosition(bloque)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(bloque.compareDocumentPosition(quienesSomos)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(quienesSomos.compareDocumentPosition(horario)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    // Los ítems del extracto, etiquetados y enlazados a su bloque de /eventos.
+    expect(screen.getByText('Evento')).toBeInTheDocument();
+    expect(screen.getByText('Actividad')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Actividad: Repartir comida' })).toHaveAttribute(
+      'href',
+      '/eventos#actividades',
+    );
+    // Botón único «paso 2» del bloque (SC-015).
+    expect(screen.getByRole('link', { name: 'Ver más eventos' })).toHaveAttribute(
+      'href',
+      '/eventos',
+    );
+
+    // Las secciones de F3 siguen renderizándose igual que antes.
+    expect(screen.getByText(/Línea uno\s+Línea dos/)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Escribir por WhatsApp/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'hola@ejemplo.com' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Ver en Facebook/ })).toBeInTheDocument();
   });
 });
 

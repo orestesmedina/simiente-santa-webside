@@ -10,6 +10,28 @@ export const ADMIN_USERS_ROLES = 'admin_usuarios_roles';
  */
 export const PORTADA = 'portada';
 
+/**
+ * Permisos de los módulos de agenda (F4, FR-012): **independientes entre sí**.
+ * Tener «eventos» no da acceso a las actividades ni al catálogo, y el catálogo
+ * se autoriza con su permiso propio `categorias` (10.º del catálogo de F2, ⟲ D-6).
+ */
+export const EVENTOS = 'eventos';
+export const ACTIVIDADES = 'actividades';
+export const CATEGORIAS = 'categorias';
+
+/**
+ * Permisos de módulo construidos hasta hoy (F2, F3 y F4). Lo usa el inicio del
+ * panel para decidir si hay algún acceso rápido que ofrecer y la lista de roles
+ * para saber qué módulos existen de verdad (FR-015 de F2/FR-012 de F4).
+ */
+export const MODULE_PERMISSIONS = [
+  ADMIN_USERS_ROLES,
+  PORTADA,
+  EVENTOS,
+  ACTIVIDADES,
+  CATEGORIAS,
+] as const;
+
 /** Forma mínima de sesión que necesita la comprobación de permisos. */
 export interface SessionLike {
   permissions: readonly string[];

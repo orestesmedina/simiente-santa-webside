@@ -20,7 +20,7 @@ import {
   REQUIRED_PHONE,
 } from '../messages';
 import { isValidEmail, isValidPhone } from '../validation';
-import { PublishControls } from './PublishControls';
+import { PublishControls } from '../../../components/PublishControls';
 import { TextArea } from './TextArea';
 
 const LANGUAGE_TABS: TabItem[] = [

@@ -21,6 +21,70 @@ type AdminAction struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
+type AgendaActivity struct {
+	ID               pgtype.UUID
+	TitleEs          string
+	TitleEn          pgtype.Text
+	DetailEs         string
+	DetailEn         pgtype.Text
+	PlaceEs          string
+	PlaceEn          pgtype.Text
+	MapUrl           pgtype.Text
+	OrganizerEs      pgtype.Text
+	OrganizerEn      pgtype.Text
+	CategoryID       pgtype.UUID
+	ImageFile        pgtype.Text
+	ImageAltEs       pgtype.Text
+	ImageAltEn       pgtype.Text
+	ActivityDate     pgtype.Date
+	StartTime        pgtype.Text
+	EndTime          pgtype.Text
+	PublicationState string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type AgendaCategory struct {
+	ID        pgtype.UUID
+	NameEs    string
+	NameEn    pgtype.Text
+	SortOrder int32
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type AgendaEvent struct {
+	ID               pgtype.UUID
+	TitleEs          string
+	TitleEn          pgtype.Text
+	FrequencyEs      pgtype.Text
+	FrequencyEn      pgtype.Text
+	DetailEs         string
+	DetailEn         pgtype.Text
+	PlaceEs          string
+	PlaceEn          pgtype.Text
+	MapUrl           pgtype.Text
+	OrganizerEs      pgtype.Text
+	OrganizerEn      pgtype.Text
+	CategoryID       pgtype.UUID
+	ImageFile        pgtype.Text
+	ImageAltEs       pgtype.Text
+	ImageAltEn       pgtype.Text
+	PublicationState string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type AgendaEventDate struct {
+	ID        pgtype.UUID
+	EventID   pgtype.UUID
+	EventDate pgtype.Date
+	StartTime pgtype.Text
+	EndTime   pgtype.Text
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type HomeAbout struct {
 	ID               pgtype.UUID
 	Singleton        bool

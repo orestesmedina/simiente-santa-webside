@@ -461,8 +461,8 @@ func TestListPermissionsReturnsCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListPermissions: %v", err)
 	}
-	if len(list.Items) != 9 {
-		t.Fatalf("catálogo = %d permisos, se esperaban 9 (FR-015)", len(list.Items))
+	if len(list.Items) != 10 {
+		t.Fatalf("catálogo = %d permisos, se esperaban 10 (FR-015)", len(list.Items))
 	}
 	if list.Items[0].Code == "" || list.Items[0].Label == "" {
 		t.Errorf("una entrada del catálogo va sin código o etiqueta: %+v", list.Items[0])
