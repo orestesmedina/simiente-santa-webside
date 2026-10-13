@@ -232,7 +232,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     contra la skill `postgres-db`) y el «oculto por defecto» está garantizado por la BD.
   - **Commit sugerido**: `feat(db): tabla ministries con ficha del encargado oculta por defecto (000010)`
 
-- [ ] T602 · Migración `000011_extend_admin_actions_for_ministries` · `[db]` `[P]` (P1)
+- [X] T602 · Migración `000011_extend_admin_actions_for_ministries` · `[db]` `[P]` (P1)
 
   - **Archivos**: `backend/migrations/000011_extend_admin_actions_for_ministries.up.sql` y
     `.down.sql` (NUEVOS).
