@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (PR aprobado por el humano; **costo cerrado**; pendiente el merge) |
+| Fase | **Terminada** (F4 fusionada en `main`; PR [#8](https://github.com/orestesmedina/simiente-santa-webside/pull/8) aprobado y mergeado el 2026-10-13) |
 | Ciclo de corrección | 2/3 (cerrado: los tres roles aprobaron el 2026-10-12) |
-| Próximo paso | El humano hace el **merge**; al confirmarlo, F4 → **terminada** en el roadmap |
+| Próximo paso | F4 cerrada y **costo congelado** (596.7 M ≈ $9.70). Siguiente pendiente del roadmap: **F5 (grupos de conexión)**. Despliegue a producción pendiente de decisión |
 | Bloqueado por | — |
 | Actualizado | 2026-10-12 |
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-12 | v1: "apruebo la spec"; v2 (permiso «categorías»): "Re-apruebo la spec"; v3 (Q8, bloque en la portada): "Re-apruebo la spec" |
 | Plan | aprobado | humano | 2026-10-12 | v1: "Apruebo el plan"; v2 (bloque de portada Q8): "Apruebo el plan" (con las decisiones firmes: APP_TZ=America/Costa_Rica, ruta /eventos, aviso sin redirigir, permiso «categorías», endTime exige startTime, borrado de categoría en uso 409; bloque de portada con 5 ítems y ventana de 2 meses) |
-| PR / merge | aprobado | humano | 2026-10-13 | "El pr pasó las pruebas del CI creo que puedes hacer el cierre para poder yo poder hacer el merge" (pendiente el merge) |
+| PR / merge | aprobado | humano | 2026-10-13 | "El pr pasó las pruebas del CI creo que puedes hacer el cierre para poder yo poder hacer el merge" · PR [#8](https://github.com/orestesmedina/simiente-santa-webside/pull/8) **fusionado** (2026-10-13) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -48,6 +48,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
+
+- 2026-10-13 — **F4 TERMINADA**: el humano fusionó el PR [#8](https://github.com/orestesmedina/simiente-santa-webside/pull/8) en `main` (merge `97de640`). Costo **congelado** (596.7 M ≈ $9.70). Roadmap: F4 → **terminada**. Siguiente pendiente: **F5 (grupos de conexión)**. Despliegue a producción pendiente de decisión.
 
 - 2026-10-12 — **Tanda 2: bug del login y reorden del bloque.** (1) **Bug**: `/login`, `/cambiar-contrasena`, `/sin-permiso` y el 404 se veían **negros** en tema oscuro — hueco previo de **F10** (`color-scheme: dark` global sin fondo en esas rutas); corregido con `PanelSurfaceLayout` (`bg-white`, sin depender del tema) y e2e de regresión con `colorScheme: dark`. (2) **Ajuste Q8**: el bloque «Lo que viene» pasa a ser la **primera sección tras el hero, antes de «quiénes somos»** (D-24 confirmada). **Re-validación: APROBADO por los tres roles** (46 e2e en 4 tandas, Vitest 530, Go unit+integración 87,0 %). `plan.md` realineado con D-24 y `Status` de la spec a «Aprobada v3». Consolidado en `revision-2026-10-12-tanda2.md`. **PR pendiente de abrir por el humano**.
 
