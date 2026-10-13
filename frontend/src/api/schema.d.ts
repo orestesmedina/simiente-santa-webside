@@ -474,14 +474,18 @@ export interface paths {
         };
         /**
          * Descarga pública de una imagen subida desde el panel
-         * @description Sirve el archivo de imagen (logo o imagen de portada de F3, o la imagen de
-         *     un evento o una actividad de F4) cuyo nombre generó el servidor en la
+         * @description Sirve el archivo de imagen (logo o imagen de portada de F3, la imagen de
+         *     un evento o una actividad de F4, o la imagen de un ministerio de F6) cuyo
+         *     nombre generó el servidor en la
          *     subida (`img_<uuid>.<ext>`, research R3-8). **Política de publicación
-         *     (FR-013/SC-002, analyze C4; R4-6 de F4)**: solo se sirven archivos
-         *     **referenciados por contenido publicado y visible hoy** — la identidad
-         *     `published` de la portada, o un evento/actividad `published` **con una
-         *     fecha próxima** (la misma regla del servidor que
-         *     `GET /api/v1/proximamente`, R4-2) —. Un archivo que no esté referenciado
+         *     (FR-013/SC-002, analyze C4; R4-6 de F4 y R6-7 de F6)**: solo se sirven
+         *     archivos **referenciados por contenido publicado y visible hoy** — la
+         *     identidad `published` de la portada, un evento/actividad `published`
+         *     **con una fecha próxima** (la misma regla del servidor que
+         *     `GET /api/v1/proximamente`, R4-2), o un ministerio `published` (F6: el
+         *     ministerio en borrador **no** sirve su imagen; el archivo no se borra y
+         *     la misma URL vuelve a responder `200` al publicarlo) —. Un archivo que no
+         *     esté referenciado
          *     por contenido publicado y próximo (elemento retirado a borrador, elemento
          *     cuya fecha ya pasó, subida huérfana o inexistente) responde `404
          *     not_found`, y el nombre que no cumple el patrón responde `400 invalid`
@@ -1163,6 +1167,230 @@ export interface paths {
         patch: operations["updateCategoria"];
         trace?: never;
     };
+    "/api/v1/ministerios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ministerios publicados (sección pública completa)
+         * @description Devuelve el listado de **ministerios publicados** en el **orden manual**
+         *     del módulo (`sortOrder`, `id`; FR-004/FR-016) — sin autenticación, sin
+         *     filtros ni paginación (FR-004: el visitante no hace nada para verlos
+         *     todos). Cada ministerio trae `name` y `description` siempre (FR-002) y,
+         *     **solo cuando existen**, `schedule` y `place` (textos libres, Q6/FR-024:
+         *     el sistema nunca calcula fechas ni recurrencias a partir de ellos),
+         *     `image` (FR-020), `whatsappUrl` (Q2/FR-015) y la ficha `leader`
+         *     (FR-025).
+         *
+         *     **Privacidad (FR-026/SC-014)**: la clave `leader` (nombre y, si existe,
+         *     un único medio de contacto) **solo está presente** cuando el equipo
+         *     publicó la ficha (`leaderVisible` activo) **y** hay encargado con
+         *     nombre. Con el interruptor desactivado la respuesta **no contiene** el
+         *     nombre ni el celular/correo del encargado **en ninguna forma** (ni como
+         *     campo, ni en `leader`, ni como cadena): es una garantía del servidor, no
+         *     de la interfaz. Un ministerio sin enlace **no** trae `whatsappUrl` y no
+         *     debe mostrar botón de unión (FR-003/SC-009); un ministerio sin encargado
+         *     mostrable **no** trae `leader` (SC-017: sin líneas vacías).
+         *
+         *     Los campos traducibles vienen ya resueltos a `lang` con fallback
+         *     `en → es` (FR-008): nunca un campo vacío por falta de traducción. Solo
+         *     contenido **publicado** (FR-012/SC-002): un borrador no aparece por
+         *     ninguna vía. Cada lista viene acotada por una **constante de seguridad
+         *     del servidor: máximo 200 ministerios** (`maxPublicItems`, RG6-12 del
+         *     plan); si el volumen real la superara, se sirven los 200 primeros ya
+         *     ordenados.
+         *
+         *     La clave `items` viene **omitida cuando está vacía** (SC-010): si no hay
+         *     ningún ministerio publicado, la navegación oculta la entrada
+         *     «Ministerios» y la portada no renderiza el bloque (FR-005/FR-028). En
+         *     ese caso la ruta SPA `/ministerios` **redirige a la portada**
+         *     (decisión del cliente 2026-10-13, distinta a propósito de `/eventos` de
+         *     F4), pero **este contrato no cambia**: la operación sigue respondiendo
+         *     `200` con `items` omitida —un `3xx` rompería el sobre `{lang, items?}`
+         *     y a sus consumidores; la redirección es una decisión de presentación
+         *     del frontend—. `Cache-Control: no-store`.
+         */
+        get: operations["getMinisterios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portada/ministerios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bloque de ministerios de la portada: hasta 5 ítems publicados (con imagen)
+         * @description Extracto de ministerios para el bloque de la portada (US6/FR-027…FR-029,
+         *     Q7). Devuelve **hasta 5 ministerios** publicados —tope **firme del
+         *     servidor** (FR-027): no hay parámetro de límite ni paginación— en el
+         *     **orden manual del módulo** (`sortOrder`, `id`), cada uno con `id`,
+         *     `name`, `schedule`/`place` opcionales e `image` (`url` + `alt`) para la
+         *     tarjeta compacta (composición según `ux.md` §4.9); el detalle
+         *     (descripción, encargado y enlace) vive en la sección `GET
+         *     /api/v1/ministerios` y en `/ministerios` (el botón del bloque lleva
+         *     allí; FR-027).
+         *
+         *     **Privacidad (FR-026)**: este DTO **no tiene campos de encargado** en
+         *     absoluto; con `leaderVisible` desactivado no hay nada que filtrar.
+         *
+         *     Con menos de 5 publicados se devuelven exactos los que hay (sin huecos
+         *     ni marcadores, SC-016); con más, los 5 primeros. Cuando **no hay ningún
+         *     ministerio publicado** la respuesta viene **sin `items`** (clave
+         *     omitida, equivalente a vacía y nunca `null`) y la portada **no
+         *     renderiza el bloque en absoluto** (FR-028/SC-010: a diferencia del
+         *     bloque «Lo que viene» de F4, aquí no hay mensaje de sección vacía).
+         *     `Cache-Control: no-store`.
+         */
+        get: operations["getPortadaMinisterios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ministerios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lista de ministerios para el panel (incluye borradores y fichas ocultas)
+         * @description Listado paginado **completo** del módulo (exige el permiso
+         *     `ministerios`): incluye borradores y los datos del encargado aunque su
+         *     ficha no esté publicada (este lado es el único que los ve). Orden:
+         *     `sortOrder`, `id` (el mismo que ve el visitante, US2 esc. 9). Filtro
+         *     opcional por estado de publicación. Cada fila incluye
+         *     `whatsappUrlShared` (`true` si **otro** ministerio usa el mismo enlace:
+         *     un aviso no bloqueante, R6-11).
+         */
+        get: operations["listMinisterios"];
+        put?: never;
+        /**
+         * Crea un ministerio
+         * @description Alta (FR-010/FR-015). Solo `nameEs` y `descriptionEs` son obligatorios:
+         *     encargado, contacto, enlace, horario, lugar e imagen son **opcionales**
+         *     (Q1/Q2/Q4/Q6/Q8). `publicationState` opcional (por defecto `draft`) y
+         *     `sortOrder` opcional (por defecto 0). Validación completa en el
+         *     servidor (FR-014): español por campo (`*En` exige su `*Es`), celular **o**
+         *     correo (nunca ambos; el contacto exige nombre de encargado),
+         *     `whatsappUrl` solo `https` válido y seguro (FR-015/Q3: sin restricción
+         *     de dominios; se rechazan `javascript:`, `data:`, `vbscript:` y cualquier
+         *     esquema distinto de `https`), `imageAltEs` obligatorio si hay
+         *     `imageFile` y textos dentro de sus límites. Ante datos inválidos:
+         *     `400 invalid` con `details` por campo y **sin guardado parcial**.
+         *
+         *     **Privacidad**: `leaderVisible` decide si la ficha del encargado
+         *     —nombre y contacto— se publica; no cambia lo que se guarda. **Por
+         *     defecto `false`** —«Oculto por defecto», decisión del humano
+         *     2026-10-13—: si la clave falta, el ministerio nace con la ficha del
+         *     encargado **no publicada** (privacidad por defecto; publicar un celular
+         *     o correo personales exige encender el interruptor de forma expresa).
+         *     Auditoría: en el alta se registra **solo `ministry.create`** (también
+         *     con `publicationState: published` y `leaderVisible: true`); los códigos
+         *     `ministry.publish`/`ministry.unpublish` y `ministry.leader.show`/
+         *     `ministry.leader.hide` solo registran **cambios sobre un ministerio
+         *     existente** (operaciones de `PATCH`), nunca el alta (A6-10).
+         */
+        post: operations["createMinisterio"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ministerios/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detalle de un ministerio (ambos idiomas y ficha del encargado completa)
+         * @description Ficha completa para el formulario de edición (incluye borradores y la
+         *     ficha del encargado aunque no esté publicada; exige el permiso
+         *     `ministerios`).
+         */
+        get: operations["getMinisterio"];
+        put?: never;
+        post?: never;
+        /**
+         * Elimina un ministerio (definitivo, con confirmación en la interfaz)
+         * @description Borrado definitivo (default revisable: sin papelera ni recuperación, como
+         *     F3/F4). Desaparece de lo público de inmediato (sección, bloque de la
+         *     portada e imágenes). La interfaz pide confirmación explícita antes de
+         *     llamar (US2 esc. 5). Auditoría: `ministry.delete`.
+         */
+        delete: operations["deleteMinisterio"];
+        options?: never;
+        head?: never;
+        /**
+         * Edita un ministerio (los campos presentes)
+         * @description Actualización parcial (FR-010): solo se tocan los campos presentes; un
+         *     campo con `null` explícito borra su valor opcional (p. ej. `whatsappUrl`,
+         *     `imageFile`, `leaderPhone`). La transacción del guardado escribe **la
+         *     fila completa ya fusionada** —el `PATCH` **fusiona los campos presentes
+         *     sobre la fila actual** y los campos ausentes no cambian—: última
+         *     escritura completa gana (P6-20/R6-16, A6-3). Si el ministerio ya estaba publicado, los
+         *     cambios guardados son visibles de inmediato (FR-013: se publica al
+         *     guardar); `publicationState` cambia el estado por elemento (FR-012) y
+         *     `leaderVisible` la publicación de la ficha del encargado (FR-025/FR-026:
+         *     apagarlo y guardar **conserva** nombre y contacto; activarlo de nuevo los
+         *     publica sin reescribirlos).
+         *
+         *     `sortOrder` reordena el módulo (FR-016): el visitante ve exactamente ese
+         *     orden (sección y bloque de la portada). Validaciones del alta, iguales.
+         *     Auditoría: un cambio de datos registra `ministry.update`; solo de estado,
+         *     `ministry.publish`/`ministry.unpublish`; solo de visibilidad de la ficha
+         *     del encargado, `ministry.leader.show`/`ministry.leader.hide`; varios a la
+         *     vez, **una fila por operación** (R6-12).
+         */
+        patch: operations["updateMinisterio"];
+        trace?: never;
+    };
+    "/api/v1/admin/ministerios/imagenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sube una imagen para un ministerio (JPEG/PNG/WebP, ≤8 MB)
+         * @description Multipart (`file`), mismas reglas que la subida de F3/F4 (R3-8): tipo
+         *     detectado por **firma binaria** (sin SVG ni GIF), tope 8 MB
+         *     (`UPLOAD_MAX_BYTES`), nombre generado por el servidor
+         *     (`img_<uuid>.<ext>`) y respuesta con la referencia a incluir en
+         *     `imageFile` (con `imageAltEs` obligatorio, FR-020). La imagen se sirve
+         *     con `GET /api/v1/media/{fileName}` solo mientras esté referenciada por
+         *     un ministerio **publicado** (R6-7). Auditoría: `ministry.image.upload`
+         *     (fail-closed: si el registro falla, la subida se aborta y el archivo se
+         *     elimina).
+         */
+        post: operations["uploadMinisterioImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1540,17 +1768,31 @@ export interface components {
              *     publicado; `*.publish`/`*.unpublish` registran **solo** cambios de
              *     estado (datos y estado a la vez → dos filas); la subida de una imagen
              *     se audita con `event.image.upload`/`activity.image.upload`.
+             *
+             *     F6 (FR-017) añade los 8 códigos `ministry.*` con la **misma** regla
+             *     (R6-12): el alta registra **solo `ministry.create`** —también con
+             *     `publicationState: published` y `leaderVisible: true`—;
+             *     `ministry.publish`/`ministry.unpublish` registran **solo** cambios de
+             *     estado; `ministry.leader.show`/`ministry.leader.hide` registran
+             *     **solo** el cambio de visibilidad de la ficha del encargado (nombre y
+             *     contacto) sobre un ministerio **existente** —nunca el alta—;
+             *     `ministry.update` cualquier otro cambio de datos (incluido
+             *     `sortOrder`); datos y estado/visibilidad en el mismo guardado → una
+             *     fila por operación; la subida de una imagen se audita con
+             *     `ministry.image.upload`.
              * @enum {string}
              */
-            action: "user.create" | "user.update" | "user.activate" | "user.deactivate" | "user.password_reset" | "role.create" | "role.update" | "role.delete" | "home.identity.update" | "home.about.update" | "home.contact.update" | "home.schedule.create" | "home.schedule.update" | "home.schedule.delete" | "home.whatsapp.create" | "home.whatsapp.update" | "home.whatsapp.delete" | "home.social.create" | "home.social.update" | "home.social.delete" | "home.image.upload" | "home.publish" | "home.unpublish" | "event.create" | "event.update" | "event.delete" | "event.publish" | "event.unpublish" | "event.image.upload" | "activity.create" | "activity.update" | "activity.delete" | "activity.publish" | "activity.unpublish" | "activity.image.upload" | "category.create" | "category.update" | "category.delete";
+            action: "user.create" | "user.update" | "user.activate" | "user.deactivate" | "user.password_reset" | "role.create" | "role.update" | "role.delete" | "home.identity.update" | "home.about.update" | "home.contact.update" | "home.schedule.create" | "home.schedule.update" | "home.schedule.delete" | "home.whatsapp.create" | "home.whatsapp.update" | "home.whatsapp.delete" | "home.social.create" | "home.social.update" | "home.social.delete" | "home.image.upload" | "home.publish" | "home.unpublish" | "event.create" | "event.update" | "event.delete" | "event.publish" | "event.unpublish" | "event.image.upload" | "activity.create" | "activity.update" | "activity.delete" | "activity.publish" | "activity.unpublish" | "activity.image.upload" | "category.create" | "category.update" | "category.delete" | "ministry.create" | "ministry.update" | "ministry.delete" | "ministry.publish" | "ministry.unpublish" | "ministry.leader.show" | "ministry.leader.hide" | "ministry.image.upload";
             /**
              * @description Sobre qué se hizo: una cuenta (`user`), un rol (`role`) o un elemento
-             *     de contenido (`content`, F3 para la portada y F4 para eventos,
-             *     actividades y categorías de agenda). Para `content`, `targetId` es
+             *     de contenido (`content`, F3 para la portada, F4 para eventos,
+             *     actividades y categorías de agenda y F6 para ministerios). Para
+             *     `content`, `targetId` es
              *     `null` (los elementos de contenido no tienen FK en `admin_actions`) y
              *     `targetLabel` identifica el elemento
              *     (`Portada · <Sección> · <nombre>`, `Eventos · <título>`,
-             *     `Actividades · <título>`, `Categorías · <nombre>`).
+             *     `Actividades · <título>`, `Categorías · <nombre>`,
+             *     `Ministerios · <nombre>`).
              * @enum {string}
              */
             targetKind: "user" | "role" | "content";
@@ -1560,7 +1802,7 @@ export interface components {
              *     (p. ej. una creación rechazada por duplicado) o cuando el rol ya fue
              *     eliminado (FR-017): el registro se conserva igualmente (FR-025) y su
              *     `targetLabel` sigue diciendo sobre qué fue. En las acciones con
-             *     `targetKind: content` (F3/F4) es siempre `null`: el elemento de
+             *     `targetKind: content` (F3/F4/F6) es siempre `null`: el elemento de
              *     contenido se identifica por su `targetLabel`.
              */
             targetId: string | null;
@@ -1568,7 +1810,9 @@ export interface components {
              * @description Etiqueta del objetivo en el momento de la acción (correo de la cuenta,
              *     nombre del rol o, en las acciones de contenido, `Portada · <Sección>
              *     · <nombre del elemento>` (F3), `Eventos · <título>`,
-             *     `Actividades · <título>` o `Categorías · <nombre>` (F4)). Se conserva
+             *     `Actividades · <título>` o `Categorías · <nombre>` (F4)) y
+             *     `Ministerios · <nombre>` / `Ministerios · Imagen · <fileName>` (F6).
+             *     Se conserva
              *     aunque después se edite o elimine.
              */
             targetLabel: string | null;
@@ -2333,6 +2577,255 @@ export interface components {
             nameEn?: string | null;
             sortOrder?: number;
         };
+        /**
+         * @description Enlace al grupo de WhatsApp (Q2/FR-015): **opcional**; cuando existe es
+         *     **cualquier `https` válido y seguro**, sin restricción de dominios (Q3).
+         *     El servidor rechaza `javascript:`, `data:`, `vbscript:` y cualquier
+         *     esquema distinto de `https`, y **no transforma** el valor: el enlace
+         *     mostrado es exactamente el guardado. Su vigencia no se verifica.
+         */
+        WhatsappUrl: string;
+        /**
+         * @description Ministerios publicados, resueltos a `lang` (FR-002/FR-008). `items` está
+         *     presente **solo** si hay ministerios publicados; vacío/ausente significa
+         *     "no hay nada publicado" y la navegación oculta la entrada, la portada no
+         *     renderiza el bloque y la ruta SPA `/ministerios` redirige a la portada
+         *     (FR-005/FR-028/SC-010; la redirección es del frontend — P6-21 del plan —
+         *     y este documento sigue siendo `200` con `items` omitida). Nunca es
+         *     `null` (§8.1.2) y está acotada a **200** elementos (constante de
+         *     seguridad del servidor). Orden: `sortOrder`, `id` (FR-004).
+         */
+        MinisteriosPublicos: {
+            /**
+             * @description Idioma en el que se resolvieron los contenidos.
+             * @enum {string}
+             */
+            lang: "es" | "en";
+            items?: components["schemas"]["MinisterioPublico"][];
+        };
+        /**
+         * @description Ministerio **publicado** para el visitante (FR-002). `name` y
+         *     `description` están siempre; el resto de claves son **opcionales y se
+         *     omiten cuando el dato no existe** (SC-010/SC-017: sin líneas vacías ni
+         *     botones rotos). `leader` **solo aparece** cuando el equipo publicó la
+         *     ficha del encargado (`leaderVisible`) y hay encargado con nombre
+         *     (FR-025/FR-026): con la ficha no publicada, esta respuesta **no contiene**
+         *     el nombre ni el celular/correo del encargado en ninguna forma.
+         *     `whatsappUrl` solo aparece si existe (el visitante no debe ver un botón
+         *     de unión vacío: FR-003/SC-009).
+         */
+        MinisterioPublico: {
+            /** Format: uuid */
+            id: string;
+            /** @description Nombre del ministerio, ya localizado a `lang` (puede provenir del español por fallback). */
+            name: string;
+            /** @description Descripción, texto plano multilínea (≤2.000 caracteres), ya localizada. */
+            description: string;
+            /**
+             * @description Horario como **texto libre** (Q6/FR-024; p. ej. «Todos los viernes,
+             *     7:00 p. m.», «Una vez al mes, fecha variable»). No es una fecha ni
+             *     una recurrencia: el sistema no calcula nada a partir de él. Ya
+             *     localizado. Ausente si no existe.
+             */
+            schedule?: string;
+            /** @description Lugar como texto libre, ya localizado. Ausente si no existe. */
+            place?: string;
+            /**
+             * @description Ficha del encargado (nombre y, cuando existe, su único medio de
+             *     contacto). **Solo presente si `leaderVisible` y hay encargado**:
+             *     con la ficha no publicada, esta clave no existe y ningún dato del
+             *     encargado viaja en la respuesta (FR-026/SC-014).
+             */
+            leader?: components["schemas"]["LiderPublico"];
+            /** @description Enlace al grupo de WhatsApp para unirse (FR-003). Ausente si el ministerio no tiene enlace. */
+            whatsappUrl?: components["schemas"]["WhatsappUrl"];
+            /** @description Imagen opcional con su texto alternativo (FR-020); misma URL relativa `/api/v1/media/<file>`. */
+            image?: components["schemas"]["ImagenPublica"];
+        };
+        /**
+         * @description Ficha **publicada** del encargado (FR-025/Q1/Q8/Q9): nombre y, como
+         *     mucho, **un** medio de contacto (celular **o** correo). Si el encargado
+         *     se guardó solo con nombre, esta ficha trae solo `name` y no es un error
+         *     (Q8). Solo se construye cuando `leaderVisible` está activo (FR-026).
+         */
+        LiderPublico: {
+            /** @description Nombre del encargado, ya localizado a `lang`. */
+            name: string;
+            /** @description Número de celular (único medio de contacto si existe). Nunca viaja junto a `email`. */
+            phone?: string;
+            /** @description Correo electrónico (único medio de contacto si existe). Nunca viaja junto a `phone`. */
+            email?: string;
+        };
+        /**
+         * @description Bloque de ministerios de la portada (US6, FR-027…FR-029): hasta **5**
+         *     ítems publicados en el orden manual (tope firme del servidor).
+         *     `items` está presente **solo** si hay ministerios publicados; sin
+         *     ninguno la portada **no renderiza el bloque** (FR-028: sin mensaje, a
+         *     diferencia del bloque «Lo que viene» de F4). Nunca es `null`.
+         */
+        PortadaMinisterios: {
+            /**
+             * @description Idioma en el que se resolvieron los contenidos.
+             * @enum {string}
+             */
+            lang: "es" | "en";
+            items?: components["schemas"]["ItemMinisterioPortada"][];
+        };
+        /**
+         * @description Ítem del bloque de la portada: **solo** lo que la tarjeta compacta
+         *     muestra (FR-027 y `ux.md` §4.9: imagen + nombre, con `schedule`/`place`
+         *     cuando existen; el detalle —descripción, encargado y enlace— vive en
+         *     `/ministerios`). **No tiene campos de encargado**: la privacidad de
+         *     FR-026 es estructural en esta ruta. `image`, `schedule` y `place` se
+         *     omiten si el ministerio no los tiene (la tarjeta se compone sin huecos —
+         *     SC-016/SC-017 —).
+         */
+        ItemMinisterioPortada: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @description Horario como texto libre, ya localizado (Q6/FR-024). Ausente si no existe. */
+            schedule?: string;
+            /** @description Lugar como texto libre, ya localizado. Ausente si no existe. */
+            place?: string;
+            image?: components["schemas"]["ImagenPublica"];
+        };
+        /** @description Listado paginado de ministerios del panel (§8.1.2/§8.1.3). */
+        MinisterioAdminList: {
+            items: components["schemas"]["MinisterioAdmin"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        /**
+         * @description Ministerio completo del panel (FR-010/FR-019): ambos idiomas (es
+         *     obligatorio por campo relleno, en opcional), la ficha del encargado
+         *     **íntegra aunque no esté publicada** (dato guardado ≠ dato publicado) y
+         *     el estado. `whatsappUrlShared` señala —sin bloquear— que otro ministerio
+         *     usa el mismo enlace (R6-11).
+         */
+        MinisterioAdmin: {
+            /** Format: uuid */
+            id: string;
+            nameEs: string;
+            nameEn?: string | null;
+            descriptionEs: string;
+            descriptionEn?: string | null;
+            /** @description Nombre del encargado en español (opcional; Q1). */
+            leaderNameEs?: string | null;
+            leaderNameEn?: string | null;
+            /** @description Celular del encargado (opcional; **nunca** junto a `leaderEmail`, Q8). */
+            leaderPhone?: string | null;
+            /** @description Correo del encargado (opcional; **nunca** junto a `leaderPhone`, Q8). */
+            leaderEmail?: string | null;
+            /**
+             * @description Interruptor de publicación de la ficha del encargado (FR-025/Q9;
+             *     equivale al `showContact` de la spec): `false` = nombre y contacto
+             *     **no publicados** (no salen del servidor hacia el público, FR-026),
+             *     `true` = la ficha se publica tal cual. No borra ni edita los datos.
+             *     Un ministerio nuevo nace con `false` («Oculto por defecto»,
+             *     decisión del humano 2026-10-13). Es un interruptor **propio de F6**
+             *     (F3/F4 no lo tienen).
+             */
+            leaderVisible: boolean;
+            whatsappUrl?: components["schemas"]["WhatsappUrl"];
+            /**
+             * @description `true` si **otro** ministerio usa el mismo `whatsappUrl` (grupo
+             *     compartido). Es un aviso **no bloqueante** (R6-11): el guardado
+             *     procede y la interfaz lo señala.
+             */
+            whatsappUrlShared: boolean;
+            /** @description Horario en texto libre (Q6/FR-024); sin fechas ni recurrencia. */
+            scheduleEs?: string | null;
+            scheduleEn?: string | null;
+            placeEs?: string | null;
+            placeEn?: string | null;
+            imageFile?: string | null;
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            publicationState: components["schemas"]["PublicationState"];
+            /** @description Valor de orden del módulo (Q5/FR-004/FR-016); el visitante ve `sortOrder`, `id`. */
+            sortOrder: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /**
+         * @description Alta de ministerio (FR-014/FR-019): **solo `nameEs` y `descriptionEs`
+         *     son obligatorios** (Q1/Q2/Q6/Q8: encargado, contacto, enlace, horario,
+         *     lugar e imagen son opcionales). `publicationState` por defecto `draft`;
+         *     `sortOrder` por defecto 0. Reglas por campo: `*En` exige su `*Es`;
+         *     `leaderPhone` y `leaderEmail` nunca juntos y exigen `leaderNameEs`;
+         *     `imageAltEs` obligatorio si hay `imageFile`; `whatsappUrl` solo `https`
+         *     (FR-015). `leaderVisible` por defecto **`false`** («Oculto por defecto»,
+         *     decisión del humano 2026-10-13: privacidad por defecto).
+         */
+        MinisterioInput: {
+            nameEs: string;
+            nameEn?: string | null;
+            descriptionEs: string;
+            descriptionEn?: string | null;
+            leaderNameEs?: string | null;
+            leaderNameEn?: string | null;
+            /** @description Celular del encargado (tag `phone`: formato de teléfono, ≥7 dígitos). Nunca con `leaderEmail`. */
+            leaderPhone?: string | null;
+            /** @description Correo del encargado (tag `email`). Nunca con `leaderPhone`. */
+            leaderEmail?: string | null;
+            /**
+             * @description Publica (o no) la ficha del encargado —nombre y contacto—
+             *     (FR-025/FR-026). **Por defecto `false`** («Oculto por defecto»,
+             *     decisión del humano 2026-10-13): si falta la clave, la ficha nace
+             *     **no publicada** y ningún dato del encargado sale hacia el público.
+             * @default false
+             */
+            leaderVisible: boolean;
+            /** @description Enlace opcional al grupo de WhatsApp (Q2); solo `https` (FR-015). */
+            whatsappUrl?: components["schemas"]["WhatsappUrl"];
+            scheduleEs?: string | null;
+            scheduleEn?: string | null;
+            placeEs?: string | null;
+            placeEn?: string | null;
+            /** @description Nombre devuelto por `POST /api/v1/admin/ministerios/imagenes`. */
+            imageFile?: string | null;
+            /** @description Obligatorio si hay `imageFile` (FR-020). */
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            publicationState?: components["schemas"]["PublicationState"];
+            /** @description Valor de orden (por defecto 0; Q5). */
+            sortOrder?: number;
+        };
+        /**
+         * @description Edición parcial: solo los campos presentes se modifican. Un campo con
+         *     `null` explícito borra su valor opcional (p. ej. `whatsappUrl`,
+         *     `imageFile`, `leaderPhone`, `scheduleEs`). Las mismas reglas de
+         *     coherencia que el alta se aplican sobre el resultado (el servidor
+         *     valida el ministerio **ya fusionado**): `*En` exige su `*Es`, contacto
+         *     sin nombre inválido, celular y correo nunca juntos, `imageAltEs` con
+         *     imagen, enlace solo `https`. `leaderVisible` publica u oculta la ficha
+         *     sin tocar los datos (US2 esc. 10–11).
+         */
+        MinisterioPatch: {
+            nameEs?: string;
+            nameEn?: string | null;
+            descriptionEs?: string;
+            descriptionEn?: string | null;
+            leaderNameEs?: string | null;
+            leaderNameEn?: string | null;
+            leaderPhone?: string | null;
+            leaderEmail?: string | null;
+            leaderVisible?: boolean;
+            whatsappUrl?: components["schemas"]["WhatsappUrl"];
+            scheduleEs?: string | null;
+            scheduleEn?: string | null;
+            placeEs?: string | null;
+            placeEn?: string | null;
+            imageFile?: string | null;
+            imageAltEs?: string | null;
+            imageAltEn?: string | null;
+            publicationState?: components["schemas"]["PublicationState"];
+            sortOrder?: number;
+        };
     };
     responses: {
         /** @description Ruta no documentada. El fallback del router responde este sobre (la stdlib respondería texto). */
@@ -2567,6 +3060,8 @@ export interface components {
         PortadaItemId: string;
         /** @description Identificador (UUID) del elemento de agenda (evento, actividad o categoría). */
         AgendaItemId: string;
+        /** @description Identificador (UUID) del ministerio. */
+        MinisterioItemId: string;
     };
     requestBodies: never;
     headers: never;
@@ -4166,6 +4661,247 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    getMinisterios: {
+        parameters: {
+            query?: {
+                /** @description Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8). */
+                lang?: "es" | "en";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ministerios publicados, resueltos a `lang` (puede venir sin `items` si no hay ninguno publicado: la respuesta es siempre `200` y la ruta SPA `/ministerios` redirige a la portada en ese caso). */
+            200: {
+                headers: {
+                    /** @description Siempre `no-store` (SC-003: los cambios guardados se ven en la primera carga posterior). */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinisteriosPublicos"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    getPortadaMinisterios: {
+        parameters: {
+            query?: {
+                /** @description Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8). */
+                lang?: "es" | "en";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Extracto de la portada resuelto a `lang`. Sin ministerios publicados la respuesta viene sin `items`: la portada no pinta el bloque. */
+            200: {
+                headers: {
+                    /** @description Siempre `no-store` (los cambios guardados y las retiradas se reflejan en la primera carga). */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortadaMinisterios"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    listMinisterios: {
+        parameters: {
+            query?: {
+                /** @description Tamaño de página (por defecto 20, tope 100). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Filas a saltar (por defecto 0). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Filtra por estado de publicación (FR-012). Sin valor: todos. */
+                publicationState?: components["schemas"]["PublicationState"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado de ministerios. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinisterioAdminList"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    createMinisterio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MinisterioInput"];
+            };
+        };
+        responses: {
+            /** @description Ministerio creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinisterioAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    getMinisterio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del ministerio. */
+                id: components["parameters"]["MinisterioItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ministerio con todos sus datos. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinisterioAdmin"];
+                };
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    deleteMinisterio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del ministerio. */
+                id: components["parameters"]["MinisterioItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ministerio eliminado. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    updateMinisterio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador (UUID) del ministerio. */
+                id: components["parameters"]["MinisterioItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MinisterioPatch"];
+            };
+        };
+        responses: {
+            /** @description Ministerio actualizado. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinisterioAdmin"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            500: components["responses"]["Internal"];
+            503: components["responses"]["DatabaseUnavailable"];
+        };
+    };
+    uploadMinisterioImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Archivo de imagen (JPEG, PNG o WebP por firma; máx. 8 MB).
+                     */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Imagen subida. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageUploadResult"];
+                };
+            };
+            400: components["responses"]["Invalid"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
             500: components["responses"]["Internal"];
             503: components["responses"]["DatabaseUnavailable"];
         };

@@ -328,7 +328,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     frontend (T605).
   - **Commit sugerido**: `docs(api): fusionar delta de F6 en el contrato vivo (0.7.0)`
 
-- [ ] T605 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
+- [X] T605 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/schema.d.ts` (GENERADO y commiteado).
   - **Qué hace**: ejecuta `make api-gen` (o `npm run api:gen`) contra **`backend/api/openapi.yaml`**
