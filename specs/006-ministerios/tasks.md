@@ -483,7 +483,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 
 ## Fase 5 — Dominio `ministerios`: servicios
 
-- [ ] T612 · `ministerios`: `service.go` — invariantes, validación y constantes · `[backend]`
+- [X] T612 · `ministerios`: `service.go` — invariantes, validación y constantes · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/service.go` y `service_test.go` (NUEVOS).
   - **Qué hace**: interfaz `Repository` (definida por quien la consume, R3), constantes revisables
