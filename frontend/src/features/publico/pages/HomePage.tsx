@@ -7,6 +7,7 @@ import { RevealGroup } from '../motion/RevealGroup';
 import { ContactSection } from '../components/ContactSection';
 import { IdentityHero } from '../components/IdentityHero';
 import { ProximamenteBlock } from '../eventos/ProximamenteBlock';
+import { MinisteriosBlock } from '../ministerios/MinisteriosBlock';
 import { ScheduleSection } from '../components/ScheduleSection';
 import { SectionSkeleton } from '../components/SectionSkeleton';
 import { SocialSection } from '../components/SocialSection';
@@ -88,6 +89,15 @@ export function HomePage() {
             direcciones de entrada de las secciones de F3. */}
         <Reveal key="proximamente" from="right">
           <ProximamenteBlock />
+        </Reveal>
+        {/* Bloque «Ministerios» (F6/US6, ux.md §4.9): **una sola inserción**
+            inmediatamente después del bloque de eventos y antes de «quiénes
+            somos» (FR-027/FR-029). Se oculta por completo sin publicados —sin
+            mensaje, a diferencia del bloque de F4—. `from="left"` es la
+            dirección propuesta por `ux.md` §3 (decisión menor de implementación;
+            las demás secciones no se tocan). */}
+        <Reveal key="ministerios" from="left">
+          <MinisteriosBlock />
         </Reveal>
         {about && (
           <Reveal key="quienes-somos" from="left">

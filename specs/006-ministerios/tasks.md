@@ -914,7 +914,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     superficies (SC-010).
   - **Commit sugerido**: `feat(frontend): navegacion con /ministerios condicional en barra, menu y pie`
 
-- [ ] T629 · `MinisteriosBlock` + `MinistryItem` en la portada · `[frontend]` `[P]` (P4)
+- [X] T629 · `MinisteriosBlock` + `MinistryItem` en la portada · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/ministerios/MinisteriosBlock.tsx`, `MinistryItem.tsx`
     y `*.test.tsx` (NUEVOS), `frontend/src/features/publico/pages/HomePage.tsx` (EDITADO: **una

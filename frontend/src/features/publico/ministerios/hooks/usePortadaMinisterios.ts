@@ -32,6 +32,15 @@ export function usePortadaMinisterios() {
     queryKey: [...PORTADA_MINISTERIOS_QUERY_KEY, lang],
     queryFn: () => getPortadaMinisterios(lang),
     placeholderData: keepPreviousData,
+    // El documento del bloque lo consumen **dos** superficies que no montan a la
+    // vez: el chrome público (`useSiteLinks`: barra, menú y pie) y el propio
+    // `MinisteriosBlock`, que entra cuando la portada ya resolvió su consulta
+    // (P6-9/T628/T629). Con `staleTime` corto el segundo montaje **reutiliza** el
+    // documento recién traído en lugar de repetir la petición: una sola petición
+    // paga bloque + barra + menú + pie, como fija el plan. Las mutaciones del
+    // panel invalidan la clave (T622), así que publicar sigue viéndose al
+    // instante en la primera carga posterior.
+    staleTime: 30_000,
   });
 
   const [retained, setRetained] = useState<PortadaMinisterios>();
