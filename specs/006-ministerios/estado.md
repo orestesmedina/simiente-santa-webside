@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 006-ministerios |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar — documentos escritos; **puerta 2 pendiente** |
+| Fase | 2/9 · Planificar — **completa (plan aprobado)** · siguiente: 3/9 · Tareas y coherencia |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Puerta 2: el humano responde (a) el **default del interruptor `leaderVisible`**, (b) si `/ministerios` sin nada publicado muestra **aviso sin redirigir** (patrón de F4) y (c) **aprueba el plan**; después, Fase 3 (`tasks` + `analyze`) |
+| Próximo paso | Fase 3: `tasks` con `arquitecto` y `analyze` con `revisor-codigo`. Antes, el humano confirma si la redirección a la portada lleva un aviso breve o es silenciosa (única marca `[NECESITA ACLARACIÓN]` abierta) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-13 |
 
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
 | Spec | **aprobado** | humano | 2026-10-13 | v1: «Apruebo la spec» respondiendo las aclaraciones Q1–Q7 (la v2 amplió el alcance y se pidió re-aprobación, como en F4). v2: **«Re-apruebo la spec v2»**, respondiendo las aclaraciones nuevas Q8 (el medio de contacto es opcional aunque haya encargado) y Q9 (el interruptor de visibilidad oculta también el nombre del encargado) |
-| Plan | pendiente | | | |
+| Plan | **aprobado** | humano | 2026-10-13 | **«Apruebo el plan»**, con dos decisiones propias en la puerta 2: el interruptor de la ficha del encargado nace **«Oculto por defecto»** y `/ministerios` sin publicados **«Redirigir a la portada»** |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
@@ -49,6 +49,7 @@ Nuevos puntos abiertos derivados: **Q8** (¿un solo medio de contacto y obligato
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-13 — **Puerta 2 superada: plan aprobado** con **dos decisiones propias del humano**: (a) el interruptor de la ficha del encargado nace **«Oculto por defecto»** (privacidad por defecto: publicar es un acto expreso; `leader_visible BOOLEAN NOT NULL DEFAULT FALSE`) y (b) **`/ministerios` sin publicados redirige a la portada**, **distinto a propósito** del aviso sin redirigir de F4 en `/eventos` (no unificar). Aplicado en `spec.md`, `plan.md` (nueva P6-21 y RG6-13), `research.md`, `data-model.md`, `contracts/openapi.yaml`, `quickstart.md` y `ux.md` (D-13, D-14). Quedan aceptados los defaults revisables del plan (duplicado exacto 409, enlace compartido como aviso, reordenar auditado como `ministry.update`, eliminación definitiva, límites y tope de 200 públicos). Puntos señalados por el arquitecto y **no** implementados por no estar en la spec: anuncio `aria-live` al redirigir (queda anotado como deuda).
 - 2026-10-13 — **Fase 2 (planificar): documentos escritos.** `plan.md`, `research.md`, `data-model.md`, `contracts/openapi.yaml` y `quickstart.md` por `arquitecto`; `ux.md` por `disenador-ux`, en paralelo y coherentes entre sí. Claves: una tabla `ministries` (encargado como columnas del ministerio, sin tabla de personas), migraciones **`000010_create_ministries`** y **`000011_extend_admin_actions_for_ministries`** (**sin** migración de permisos: «ministerios» ya existe), `sort_order` + `ORDER BY sort_order, id`, contrato **0.6.0 → 0.7.0**, endpoints `GET /api/v1/ministerios`, `GET /api/v1/portada/ministerios` (tope 5) y el módulo del panel tras `AdminChain("ministerios")`, **privacidad del encargado en tres capas** (DTO, consulta pública y bloque de portada) con pruebas de «0 apariciones», **0 dependencias nuevas**. Puerta 2 pendiente.
 - 2026-10-13 — **Puerta 1 superada: spec v2 aprobada.** El humano resolvió Q1–Q9 (Q8: el medio de contacto es opcional aunque haya encargado; Q9: el interruptor de visibilidad oculta también el nombre), confirmó el horario como texto libre y el tope de 5 ítems en el bloque de la portada, y dijo: **«Re-apruebo la spec v2»**. La spec queda cerrada con 6 US, 29 FR y 17 SC y **sin marcas `[NECESITA ACLARACIÓN]`**. Roadmap: decisión 19. Arranca la Fase 2 (plan técnico). Commit `4e4fa0f` (v2) y el de este ajuste.
 - 2026-10-13 — Inicio de la funcionalidad F6 (ministerios): rama `006-ministerios` creada desde `main` (`0797d3d`), `spec.md` desde la plantilla de Spec Kit. Fase 1 (especificar). Roadmap: F6 → **en curso**.

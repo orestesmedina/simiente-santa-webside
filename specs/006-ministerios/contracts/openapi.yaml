@@ -26,6 +26,17 @@
 #     (Q3/FR-015): sin restricción de dominios; se rechazan `javascript:`,
 #     `data:`, `vbscript:` y cualquier esquema distinto de `https`. El valor se
 #     sirve exactamente como se guardó.
+#   - INTERRUPTOR DE LA FICHA DEL ENCARGADO «OCULTO POR DEFECTO» (decisión del
+#     humano 2026-10-13, puerta 2; research R6-3): `leaderVisible` tiene
+#     `default: false` — la ficha del encargado (nombre y contacto) NO se
+#     publica hasta que el equipo la enciende (privacidad por defecto). Es un
+#     interruptor PROPIO de F6 (F3/F4 no lo tienen).
+#   - `/ministerios` SIN NADA PUBLICADO → REDIRIGE A LA PORTADA (decisión del
+#     humano 2026-10-13, puerta 2; research R6-13/P6-21). Es una decisión del
+#     FRONTEND (elemento de ruta del SPA): el contrato NO CAMBIA — `GET
+#     /api/v1/ministerios` sigue respondiendo 200 con `items` omitida — y es
+#     DISTINTA A PROPÓSITO del patrón de F4 en `/eventos` (aviso sin redirir),
+#     que no se toca. La entrada de navegación sigue oculta sin publicados.
 #   - Encargado OPCIONAL con un solo medio de contacto opcional (celular O
 #     correo, nunca ambos; Q8); horario y lugar como textos libres opcionales
 #     (Q6/FR-024: sin fechas ni recurrencia); imagen opcional (Q4).
@@ -87,8 +98,9 @@
 # Borradores (FR-012/SC-002): este contrato NO tiene ninguna operación pública
 # que devuelva un ministerio en `draft` ni, con `leaderVisible` desactivado,
 # dato alguno del encargado. La clave `items` se OMITE cuando está vacía
-# (SC-010: sin secciones vacías; la navegación oculta la entrada y la portada
-# no renderiza el bloque).
+# (SC-010: sin secciones vacías; la navegación oculta la entrada, la portada
+# no renderiza el bloque y la ruta SPA `/ministerios` redirige a la portada —
+# decisión del frontend, no de este contrato —).
 # ============================================================================
 openapi: 3.1.0
 info:
@@ -197,8 +209,13 @@ paths:
 
         La clave `items` viene **omitida cuando está vacía** (SC-010): si no hay
         ningún ministerio publicado, la navegación oculta la entrada
-        «Ministerios» y la portada no renderiza el bloque (FR-005/FR-028).
-        `Cache-Control: no-store`.
+        «Ministerios» y la portada no renderiza el bloque (FR-005/FR-028). En
+        ese caso la ruta SPA `/ministerios` **redirige a la portada**
+        (decisión del cliente 2026-10-13, distinta a propósito de `/eventos` de
+        F4), pero **este contrato no cambia**: la operación sigue respondiendo
+        `200` con `items` omitida —un `3xx` rompería el sobre `{lang, items?}`
+        y a sus consumidores; la redirección es una decisión de presentación
+        del frontend—. `Cache-Control: no-store`.
       security: []
       parameters:
         - name: lang
@@ -211,7 +228,7 @@ paths:
             default: es
       responses:
         "200":
-          description: "Ministerios publicados, resueltos a `lang` (puede venir sin `items` si no hay ninguno publicado)."
+          description: "Ministerios publicados, resueltos a `lang` (puede venir sin `items` si no hay ninguno publicado: la respuesta es siempre `200` y la ruta SPA `/ministerios` redirige a la portada en ese caso)."
           headers:
             Cache-Control:
               description: Siempre `no-store` (SC-003: los cambios guardados se ven en la primera carga posterior).
@@ -343,11 +360,15 @@ paths:
         `imageFile` y textos dentro de sus límites. Ante datos inválidos:
         `400 invalid` con `details` por campo y **sin guardado parcial**.
 
-        **Privacidad**: `leaderVisible` (por defecto según la decisión de la
-        puerta 2) decide si la ficha del encargado —nombre y contacto— se
-        publica; no cambia lo que se guarda. Auditoría: `ministry.create`
-        (aunque nazca publicada) y `ministry.leader.show`/`ministry.leader.hide`
-        si el guardado cambia la visibilidad junto con los datos (dos filas).
+        **Privacidad**: `leaderVisible` decide si la ficha del encargado
+        —nombre y contacto— se publica; no cambia lo que se guarda. **Por
+        defecto `false`** —«Oculto por defecto», decisión del humano
+        2026-10-13—: si la clave falta, el ministerio nace con la ficha del
+        encargado **no publicada** (privacidad por defecto; publicar un celular
+        o correo personales exige encender el interruptor de forma expresa).
+        Auditoría: `ministry.create` (aunque nazca publicada) y
+        `ministry.leader.show`/`ministry.leader.hide` si el guardado cambia la
+        visibilidad junto con los datos (dos filas).
       security:
         - sessionCookie: []
       requestBody:
@@ -563,10 +584,12 @@ components:
       description: |
         Ministerios publicados, resueltos a `lang` (FR-002/FR-008). `items` está
         presente **solo** si hay ministerios publicados; vacío/ausente significa
-        "no hay nada publicado" y la navegación oculta la entrada mientras la
-        portada no renderiza el bloque (FR-005/FR-028/SC-010). Nunca es `null`
-        (§8.1.2) y está acotada a **200** elementos (constante de seguridad del
-        servidor). Orden: `sortOrder`, `id` (FR-004).
+        "no hay nada publicado" y la navegación oculta la entrada, la portada no
+        renderiza el bloque y la ruta SPA `/ministerios` redirige a la portada
+        (FR-005/FR-028/SC-010; la redirección es del frontend — P6-21 del plan —
+        y este documento sigue siendo `200` con `items` omitida). Nunca es
+        `null` (§8.1.2) y está acotada a **200** elementos (constante de
+        seguridad del servidor). Orden: `sortOrder`, `id` (FR-004).
       properties:
         lang:
           type: string
@@ -771,6 +794,9 @@ components:
             equivale al `showContact` de la spec): `false` = nombre y contacto
             **no publicados** (no salen del servidor hacia el público, FR-026),
             `true` = la ficha se publica tal cual. No borra ni edita los datos.
+            Un ministerio nuevo nace con `false` («Oculto por defecto»,
+            decisión del humano 2026-10-13). Es un interruptor **propio de F6**
+            (F3/F4 no lo tienen).
         whatsappUrl:
           allOf:
             - $ref: "#/components/schemas/WhatsappUrl"
@@ -824,7 +850,8 @@ components:
         `sortOrder` por defecto 0. Reglas por campo: `*En` exige su `*Es`;
         `leaderPhone` y `leaderEmail` nunca juntos y exigen `leaderNameEs`;
         `imageAltEs` obligatorio si hay `imageFile`; `whatsappUrl` solo `https`
-        (FR-015). `leaderVisible` por defecto según la decisión de la puerta 2.
+        (FR-015). `leaderVisible` por defecto **`false`** («Oculto por defecto»,
+        decisión del humano 2026-10-13: privacidad por defecto).
       properties:
         nameEs:
           type: string
@@ -856,7 +883,12 @@ components:
           description: Correo del encargado (tag `email`). Nunca con `leaderPhone`.
         leaderVisible:
           type: boolean
-          description: Publica (o no) la ficha del encargado —nombre y contacto— (FR-025/FR-026).
+          default: false
+          description: |
+            Publica (o no) la ficha del encargado —nombre y contacto—
+            (FR-025/FR-026). **Por defecto `false`** («Oculto por defecto»,
+            decisión del humano 2026-10-13): si falta la clave, la ficha nace
+            **no publicada** y ningún dato del encargado sale hacia el público.
         whatsappUrl:
           allOf:
             - $ref: "#/components/schemas/WhatsappUrl"

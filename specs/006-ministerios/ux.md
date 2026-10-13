@@ -2,7 +2,8 @@
 
 > Documento de diseño para `disenador-ux`. Fuentes: `spec.md` de F6 (v2 aprobada el 2026-10-13: 6 US, 29 FR, 17 SC, aclaraciones Q1–Q9 cerradas), `ux.md` de F4 (modelo de formato, tarjetas, bloque de portada y patrones de panel), `ux.md` de F3 (fallback, estados, textos) y `ux.md` de F10 («Marea Turquesa», sistema ya entregado), más el código actual de `frontend/src/` (React 19 + Tailwind 4; componentes de F2/F3/F4/F10 ya construidos y verificados en este repositorio).
 > No es código: lo implementa el `dev-frontend`. Rutas y contratos los fija el `arquitecto`; aquí se proponen y los supuestos van marcados.
-> **Decisiones de UX a revisar por el humano**: ver §9 (resumen). Cada una lleva su marca ⟲ (pendiente). Reutilizo los patrones ya aprobados de F4 (D-1 ruta propia, D-13 aviso sin redirigir, D-25 extracto con chip, D-28 sin carrusel) y aquí solo marco lo nuevo de F6.
+> **Decisiones de UX a revisar por el humano**: ver §9 (resumen). Cada una lleva su marca ⟲ (pendiente). Reutilizo los patrones ya aprobados de F4 (D-1 ruta propia, D-25 extracto con chip, D-28 sin carrusel) y aquí solo marco lo nuevo de F6.
+> **Ajuste 2026-10-13 (decisiones del humano, ya resueltas)**: (a) el interruptor «mostrar la ficha del encargado» inicia **APAGADO por defecto** — «Oculto por defecto» (D-13); (b) `/ministerios` sin ningún ministerio publicado **redirige a la portada**, no muestra el aviso de F4 — «Redirigir a la portada» (D-14). Ambas están aplicadas en todo el documento. D-3 también quedó resuelta por el humano ese día.
 > F6 **aplica** el sistema de F10 y los patrones de F2/F3/F4; **no redefine** tokens, navegación, selector de idioma, modo oscuro ni el rediseño del panel (F10B).
 
 ---
@@ -13,9 +14,9 @@
 2. **Un ministerio no es un evento ni un taller — y se nota.** El horario es **texto libre** del equipo («Todos los viernes, 7:00 p. m.», «Una vez al mes, fecha variable»), **no una fecha** (Q6): F6 no usa `DateBadge`, ni `<time datetime>`, ni calendarios, ni retiro automático (FR-001, FR-024). La sección tampoco mezcla conceptos: solo ministerios, con una sola lista y un solo rótulo (nada de bloques por «tipo»).
 3. **La ficha se sostiene sola.** Sin enlace → **sin botón de unirse** (ni vacío ni roto, FR-003); sin encargado publicado → **sin línea de encargado ni de contacto** (ni vacía, ni con solo el nombre, Q9); sin imagen → sin hueco ni reserva; sin horario o lugar → sin esa línea (FR-002, FR-024). Cero campos en blanco en el 100 % de los casos.
 4. **Unirse es un paso.** Con enlace publicado, el visitante abre WhatsApp o la invitación del grupo con **un solo toque**, desde el mismo lugar de siempre: el botón verde del CTA de WhatsApp del sitio (FR-003). Sin enlace, la puerta es el encargado **cuando el equipo decide publicar su contacto** (FR-025).
-5. **Privacidad de alguien real, no de un campo.** El encargado es una persona: su ficha (nombre + contacto) solo es pública si el equipo enciende el interruptor — y al apagarlo **ni el nombre ni el celular/correo salen del servidor**, no solo se tapan en la pantalla (FR-026, SC-014). El panel SIEMPRE explica, en palabras del equipo, qué se hará público.
+5. **Privacidad de alguien real, no de un campo.** El encargado es una persona: su ficha (nombre + contacto) solo es pública si el equipo enciende el interruptor — que además **inicia apagado**: guardar un encargado nunca lo publica por sí solo (D-13); y al apagarlo **ni el nombre ni el celular/correo salen del servidor**, no solo se tapan en la pantalla (FR-026, SC-014). El panel SIEMPRE explica, en palabras del equipo, qué se hará público.
 6. **Apto para todas las edades.** Cuerpo 18 px, objetivos ≥ 44 px, iconos siempre con texto, `prefers-reduced-motion` intacto, 0 desplazamiento horizontal a 320 px (FR-022, FR-023, idea.md §7: adultos mayores que saben lo básico de internet).
-7. **Solo lo publicado existe.** Sin ningún ministerio publicado, la sección **no existe** — ni en la barra, ni en el menú, ni en el mapa del sitio — y si alguien la abre a mano ve una página mínima (patrón D-13 de F4); **el bloque de la portada desaparece por completo, sin mensaje** (FR-005, FR-028). Cero secciones vacías, cero enlaces huérfanos.
+7. **Solo lo publicado existe.** Sin ningún ministerio publicado, la sección **no existe** — ni en la barra, ni en el menú, ni en el mapa del sitio — y si alguien abre `/ministerios` a mano es **redirigido a la portada** de forma limpia, sin aviso y sin parpadeo (D-14; **distinto a propósito** de F4, que mantenía al visitante en una página mínima); **el bloque de la portada desaparece por completo, sin mensaje** (FR-005, FR-028). Cero secciones vacías, cero enlaces huérfanos.
 8. **El panel hereda F2/F3/F4 tal cual.** Título + banda de ayuda, `Table`/tarjetas, `StatusPill`, `Dialog`, `ConfirmDialog`, `Notice`, validación con Zod y mensajes en español: cero estilos nuevos (FR-011, FR-018).
 
 ---
@@ -63,7 +64,7 @@
 
 1. Inicia sesión → **Inicio** del panel: un acceso nuevo en `AccesosRapidos` — **«Gestión de ministerios»** (con permiso «ministerios») → `/panel/ministerios`. Cuenta sin el permiso: no ve el acceso y la ruta está protegida.
 2. En la página (título «Gestión de ministerios» + banda de ayuda) ve el listado: tabla (desktop) / tarjetas (móvil) con **Orden** (el número que definió), **Nombre**, **Horario / Lugar**, **Encargado** (con marca «Ficha oculta» si el interruptor está apagado), **Estado** (`Borrador`/`Publicado`) y acciones.
-3. Toca **«Agregar ministerio»** → `Dialog` con `Tabs` de idioma **Español / English (opcional)**: nombre y descripción (obligatorios en español), horario y lugar (textos libres opcionales), encargado (opcional) con **un solo medio de contacto** (celular o correo, opcional: Q8) y su **interruptor de visibilidad** — «Mostrar la ficha del encargado en el sitio público» —, enlace de WhatsApp (opcional, `https` válido), imagen con texto alternativo (opcional) y **Orden** (número con 0 por defecto, Q5).
+3. Toca **«Agregar ministerio»** → `Dialog` con `Tabs` de idioma **Español / English (opcional)**: nombre y descripción (obligatorios en español), horario y lugar (textos libres opcionales), encargado (opcional) con **un solo medio de contacto** (celular o correo, opcional: Q8) y su **interruptor de visibilidad** — «Mostrar la ficha del encargado en el sitio público» — que inicia **apagado**: la ficha no se publica hasta que el equipo la encienda expresamente (D-13), enlace de WhatsApp (opcional, `https` válido), imagen con texto alternativo (opcional) y **Orden** (número con 0 por defecto, Q5).
 4. Guarda → queda **Borrador**: visible en el panel, invisible al público; aviso «Quedó en borrador…».
 5. Toca **«Publicar»** en su fila (sin confirmación) → píldora «Publicado» + aviso. El visitante YA lo ve (sección y, si entra en los primeros 5, bloque de portada).
 6. **Edita un ministerio publicado** y guarda → aviso **«Cambios guardados: ya visibles en la sección.»** (patrón F3, FR-013). No hay paso intermedio.
@@ -75,7 +76,7 @@
 
 - **Borrador** → nadie lo ve fuera del panel (FR-012).
 - **Publicado** → visible en `/ministerios` en el orden definido y, si está entre los primeros 5, en el bloque de la portada (FR-027).
-- Sin **ningún** publicado → la sección entera desaparece de la navegación (barra, menú, mapa) **y** el bloque de la portada no se dibuja (FR-005, FR-028).
+- Sin **ningún** publicado → la sección entera desaparece de la navegación (barra, menú, mapa), el bloque de la portada no se dibuja (FR-005, FR-028) **y** `/ministerios` redirige a la portada (D-14).
 - El listado del panel muestra SIEMPRE el estado real al público hoy (US3 esc. 7); no hay estados intermedios («Pasado» de F4 no existe aquí: nada vence).
 
 ### 2.5 Errores del equipo
@@ -131,7 +132,7 @@ Panel (patrón F2/F3/F4, sin rediseño):
 - **`/ministerios` es una ruta real, como `/eventos`** (mismo patrón aprobado por el humano en F4, D-1). Se añade como **ruta** al final de la **única lista de enlaces** de F10 — después de «Eventos y actividades» — en `useSiteLinks.ts`: `SiteLinkId` se extiende con el id nuevo (propuesta: `'ministries'`; el nombre exacto lo fija el arquitecto) y el vocabulario con la clave i18n `nav.sections.ministries`. El `<nav>` sigue siendo una sola lista en DOM (la congelada de F10/MobileMenu funciona sin cambios); no se toca `nav.label`. ⟲ D-1
 - **Presencia en la navegación** (D-23 de F4): la entrada «Ministerios» existe **solo** si la consulta pública del módulo (la misma que pinta `/ministerios`) trae al menos un ministerio publicado; se deduce de la respuesta compartida por `queryClient`, sin pedir el módulo dos veces. Sin publicados: ni barra, ni `MobileMenu`, ni pie (FR-005).
 - **Mapa del sitio del pie**: «Ministerios» entra en el grupo **Explorar** (no se abre columna nueva), mismo criterio D-7 de F4.
-- **Sección oculta abierta a mano**: `/ministerios` con 0 publicados muestra la **página mínima** de `HiddenNotice` (H1 + aviso de interfaz, sin datos), sin redirigir — patrón D-13 de F4 ya aprobado.
+- **Sección oculta abierta a mano**: `/ministerios` con 0 publicados **redirige a la portada** (D-14, decisión del humano 2026-10-13). Es **distinto a propósito** de `/eventos` de F4 (que muestra `HiddenNotice` sin redirigir): no unificar los dos comportamientos. Mecánica sin parpadeo: ver la fila «Sección oculta» de §4.1.
 - **Permission code**: el módulo se autoriza con el permiso existente **`ministerios`** de F2 (`RequirePermission`); el código técnico exacto lo confirma el arquitecto frente al catálogo sembrado de F2 (FR-011). No hay permiso nuevo.
 - **Portada**: el bloque se inserta en la secuencia de `HomePage` entre `<Reveal key="proximamente">` y `<Reveal key="quienes-somos">` (FR-027). Dirección de entrada propuesta: `from="left"` (mantener la alternancia hacia «quiénes somos» puede forzar dos «left» seguidos: decisión menor de implementación, sin tocar las demás secciones).
 
@@ -152,7 +153,7 @@ Panel (patrón F2/F3/F4, sin rediseño):
 
 **Composición de una ficha (`MinistryCard`, `Card solid` del sistema)** — de arriba a abajo, **cada elemento solo existe si tiene dato**:
 
-- **Imagen** (si hay): a sangre del marco superior, 16:9, `object-cover` al centro, con el `alt` del equipo (obligatorio en español, en opcional) — **misma pieza** `CardImage` de F4 (`features/publico/eventos/ItemCardParts.tsx`): sin imagen no hay hueco ni reserva, y si falla un `onError` la retira sin quebrar el layout (FR-020). ⟲ D-3 (promoción de la pieza, ver §6.3)
+- **Imagen** (si hay): a sangre del marco superior, 16:9, `object-cover` al centro, con el `alt` del equipo (obligatorio en español, en opcional) — **misma pieza** `CardImage` de F4 (`features/publico/eventos/ItemCardParts.tsx`): sin imagen no hay hueco ni reserva, y si falla un `onError` la retira sin quebrar el layout (FR-020). ✅ D-3 (resuelta por el humano 2026-10-13; promoción de la pieza, ver §6.3)
 - **Nombre** (h3, Poppins 600 1.25rem — como el h3 de F3/F4; **no** es Bebas grande: no compite con el H1).
 - **Descripción**: texto plano multilínea con saltos preservados, cuerpo Poppins 18 px; se muestra **completa** (sin «Ver más», mismo criterio D-3 de F4); hasta 2.000 caracteres acomodados sin romper (FR-019).
 - **Horario** (si hay): línea con icono 🕒 + el texto tal como el equipo lo escribió («Todos los viernes, 7:00 p. m.», «Una vez al mes, fecha variable»), en Poppins normal — **no** hay `DateBadge`, ni `<time>`, ni recalcular nada (FR-024). Texto largo: se envuelve con `text-wrap: balance`, conservando tildes, ñ, ¿ ¡ y emojis.
@@ -200,7 +201,7 @@ Casos «sin dato» que se resuelven solos (misma grilla, sin huecos):
 |---|---|
 | Carga (primera) | Esqueleto con medidas reales: H1 + grilla de `Card` fantasma (imagen 16:9 + tres líneas), patrón `SectionSkeleton` de F10; la barra, el idioma y el tema ya visibles; cero brincos de layout. |
 | Éxito | Grilla completa con las fichas en el orden manual; cada ficha muestra solo lo que tiene. |
-| **Sección oculta** (0 publicados; Q7) | La entrada **no existe en la barra, ni en el menú, ni en el mapa del pie** (FR-005). Si alguien abre `/ministerios` a mano: **página mínima** de `HiddenNotice` — H1 «Ministerios» + «Ahora mismo no hay nada publicado en esta sección. Vuelve pronto.» / («There's nothing published here right now. Check back soon.») — sin datos, sin borradores, sin redirigir (patrón D-13 de F4). |
+| **Sección oculta** (0 publicados; Q7) | La entrada **no existe en la barra, ni en el menú, ni en el mapa del pie** (FR-005). Si alguien abre `/ministerios` a mano — enlace guardado o URL tecleada — **redirige a la portada** con `<Navigate to="/" replace>` (D-14): **nunca se pinta una sección vacía**. Mecánica sin parpadeo: la decisión usa la **misma consulta pública compartida** que alimenta la navegación (`queryClient`, D-23 de F4); si el dato ya está en caché (caso típico), la redirección ocurre **en el primer render**, sin esqueleto, sin H1 y sin grilla; si aún no llegó, la página muestra **solo el esqueleto estándar de carga** mientras se decide — jamás `HiddenNotice`, jamás la grilla vacía, jamás un mensaje de error. Al confirmarse 0 publicados, la redirección ocurre **en el mismo ciclo de render** en que llega el dato, con `replace` para no dejar `/ministerios` en el historial. La persona llega a la portada **sin sentir que algo falló**: sin errores, sin texto de aviso, sin saltos de contenido. **Distinto a propósito de `/eventos` de F4**, que mantiene al visitante con `HiddenNotice`: no unificar. |
 | Error de carga sin nada | H1 + mensaje bilingüe claro: «No pudimos cargar los ministerios. Revisa tu conexión y vuelve a intentarlo.» + botón «Volver a intentar» (patrón F3/F10). |
 | Error con caché previa | Se mantiene el último contenido válido y un aviso discreto: «No pudimos actualizar; ves la última versión disponible.» (F3 §4.1). |
 | Imagen rota o sin imagen | La ficha conserva nombre, descripción, horario/lugar, encargado y botón; `onError` retira la imagen sin mover el layout. |
@@ -269,19 +270,20 @@ Todo junto y con la explicación textual en el momento:
    - «Número de celular (opcional)» — dígitos y `+` opcional (formato por defecto, revisable; el detalle lo fija el arquitecto).
    - «Correo electrónico (opcional)» — formato de correo.
    - Al cambiar el tipo, el valor anterior se reemplaza por el nuevo campo vacío (ayuda si hay dato: «Al cambiar el tipo se borra el contacto anterior»), nunca se guardan los dos (Q8: «nunca ambos»). Ayuda general: «Si el ministerio ya tiene su grupo de WhatsApp, quizá te sea útil el enlace en lugar de tu celular.»
-3. **Interruptor de visibilidad** (nuevo `ShowContactSwitch`, §6.4; `role="switch"`): etiqueta clara **«Mostrar la ficha del encargado en el sitio público»**, ENCENDIDO por defecto cuando la persona añade un encargado durante la creación (Q1: «escoja mostrar la info o no» — el equipo decide desde el primer día). Enciende y apaga **la ficha completa**: nombre y contacto juntos.
-   - Con encargado y ficha visible: leyenda de tono verde «Se publicará: el nombre y (si existe) el contacto del encargado aparecerán en la página de Ministerios.»
-   - Con el interruptor apagado y encargado con datos: **`Notice` warning claramente visible** (no margen fino): «La ficha del encargado quedará oculta: el público **no** verá ni su nombre ni su contacto, en ningún lugar del sitio. Tus datos quedan guardados aquí; puedes activar el interruptor otra vez cuando quieras publicarlos.»
+3. **Interruptor de visibilidad** (nuevo `ShowContactSwitch`, §6.4; `role="switch"`): etiqueta clara **«Mostrar la ficha del encargado en el sitio público»**, **APAGADO por defecto** al crear (D-13, decisión del humano 2026-10-13: «Oculto por defecto»): la ficha del encargado **no se publica hasta que el equipo la encienda expresamente** — guardar un encargado no lo publica por sí solo. Enciende y apaga **la ficha completa**: nombre y contacto juntos.
+   - Ayuda fija del interruptor, en palabras del equipo: «La ficha del encargado está oculta hasta que actives este interruptor. Empieza apagado para que seas tú quien decida cuándo hacer pública su información.»
+   - Con el interruptor apagado (el estado por defecto al crear) y encargado con datos: **`Notice` warning claramente visible** (no margen fino): «La ficha del encargado quedará oculta: el público **no** verá ni su nombre ni su contacto, en ningún lugar del sitio. Tus datos quedan guardados aquí; puedes activar el interruptor otra vez cuando quieras publicarlos.»
+   - Con encargado y ficha visible (interruptor encendido expresamente): leyenda de tono verde «Se publicará: el nombre y (si existe) el contacto del encargado aparecerán en la página de Ministerios.»
    - Con el interruptor apagado y encargado sin datos: la leyenda avisa igualmente (el dato no existe, la ficha siempre estará vacía si se activa).
    - Si el encargado no tiene nombre y el interruptor está ENCENDIDO, ayuda breve: «Para publicar la ficha, escribe primero el nombre.» (la ficha pública en ese caso queda vacía de facto — válido, no es error).
 4. El contacto se valida **solo por formato** cuando existe; nunca cambia la decisión de visibilidad: el interruptor es la única llave (US2 esc. 10–11; FR-026 aplica en el servidor, no aquí).
 
-**En el listado** (§4.3), el encargado con ficha oculta lleva la etiqueta «Ficha oculta» y al ver el listado en móvil la marca va junto al nombre. El panel **siempre** muestra los datos guardados (dato guardado ≠ dato publicado): editar vuelve a cargar el interruptor con la última decisión. ⟲ D-8 (textos y ubicación de la leyenda)
+**En el listado** (§4.3), el encargado con ficha oculta lleva la etiqueta «Ficha oculta» y al ver el listado en móvil la marca va junto al nombre. El panel **siempre** muestra los datos guardados (dato guardado ≠ dato publicado): editar vuelve a cargar el interruptor con la última decisión; el default **apagado solo aplica a la creación** (un ministerio nuevo nunca publica su ficha sin gesto expreso: D-13). ⟲ D-8 (textos y ubicación de la leyenda)
 
 ### 4.6 Pantalla de estado vacío (módulo del panel)
 
 - «Todavía no hay ministerios. Agrega el primero para que el público lo vea.» + `EmptyState` con botón «Agregar ministerio».
-- Si hay ministerios pero **ninguno publicado**: aviso destacado «Nada está publicado ahora: el público no ve esta sección ni el bloque de la portada hasta que publiques al menos un ministerio.» (nota la portada, por ser parte de la spec de F6: FR-005 + FR-028).
+- Si hay ministerios pero **ninguno publicado**: aviso destacado «Nada está publicado ahora: el público no ve esta sección ni el bloque de la portada, y `/ministerios` redirige a la portada, hasta que publiques al menos un ministerio.» (FR-005 + FR-028 + D-14).
 
 ### 4.7 Texto largo, sin datos, muchos ministerios
 
@@ -358,7 +360,7 @@ Todo junto y con la explicación textual en el momento:
 
 ### b. El formulario (`MinistryForm` en `Dialog`)
 
-- Precargado al editar (incluida la última decisión del interruptor); vacío al crear con interruptor **encendido** por defecto (Q1: el equipo decide desde la creación).
+- Precargado al editar (incluida la última decisión del interruptor); vacío al crear con interruptor **apagado** por defecto (D-13, decisión del humano 2026-10-13: la ficha no se publica hasta que el equipo la encienda expresamente).
 - Guardando: `Button` loading; modal sin cerrarse; `Esc` con aviso si hay cambios (D-18 de F4).
 - Éxito: cierre + `Notice` en el listado (con el texto específico de ficha del encargado cuando cambió).
 - Errores de campo con los textos del §7, junto al campo y resumen arriba (patrón F2), foco al primer error.
@@ -405,13 +407,13 @@ Todo junto y con la explicación textual en el momento:
 | `Reveal` / `RevealGroup` | Entrada del listado y del bloque de portada (alternada, stagger suave). |
 | `SectionSkeleton` | Cargando la sección pública. |
 | `FooterSiteMap`, `BrandLogo`, `GradientBlobs`, `SocialIcon` | Pie, chrome y fondo intactos. |
-| `HiddenNotice` (de `features/publico/eventos/`) | Página mínima de `/ministerios` sin publicados (D-13 de F4, con textos propios). |
+| `HiddenNotice` (de `features/publico/eventos/`) | **No se usa en F6.** El humano decidió (D-14, 2026-10-13) que `/ministerios` sin publicados **redirige a la portada** en lugar de mostrar el aviso de F4. El componente queda solo para `/eventos`, tal cual. |
 
 ### 6.3 Nuevos del sitio público (`frontend/src/features/publico/ministerios/`)
 
 | Componente / hook | Responsabilidad |
 |---|---|
-| `MinisteriosPage` | Composición de H1 + subtítulo + grilla a partir de la consulta pública; decide estados de carga/error/oculta (usa `HiddenNotice`), igual arquitectura que `EventsPage` de F4. |
+| `MinisteriosPage` | Composición de H1 + subtítulo + grilla a partir de la consulta pública; decide carga/error/**redirección a la portada con 0 publicados** (D-14: `<Navigate to="/" replace>`, sin parpadeo — ver §4.1; **no usa `HiddenNotice`**, diferencia deliberada con `EventsPage` de F4). |
 | `MinistryCard` | Ficha pública completa: `CardImage` (imagen opcional), nombre, descripción, líneas de horario/lugar/encargado solo con dato, `WhatsappJoinButton` solo con enlace. |
 | `WhatsappJoinButton` | Enlace externo en forma de botón verde con icono + texto («Unirse al grupo de WhatsApp»), `target="_blank" rel="noopener"`, nombre accesible completo por ministerio. |
 | `EncargadoLine` | Bloque de ficha del encargado (nombre + contacto) **solo con datos**; presentación de celular/correo con su icono; sin lógica de visibilidad (el servidor ya no manda el dato si está oculto). |
@@ -421,7 +423,7 @@ Todo junto y con la explicación textual en el momento:
 | `usePublicMinistries` | TanStack Query sobre el endpoint público del módulo (contrato del arquitecto): alimenta la página **y** la presencia en `useSiteLinks` (D-23 de F4). **Supuesto**: nombre del hook y del endpoint (`GET /api/v1/ministerios?lang=es|en`) al contrato. |
 | `usePortadaMinisterios` | TanStack Query para el bloque de la portada: `GET /api/v1/portada/ministerios?lang=es|en` (propuesta, FR-027), DTO mínimo, tope 5 en servidor, `no-store`; nunca consume la consulta de `/ministerios`. |
 
-**Nota** (⟲ D-3): `CardImage` vive hoy dentro de `features/publico/eventos/ItemCardParts.tsx`. F6 la reutiliza tal cual (import por feature o promoción a una pieza común de `features/publico/components/` — decisión del arquitecto; su comportamiento exacto ya está probado y no cambia).
+**Nota** (✅ D-3, resuelta 2026-10-13): `CardImage` vive hoy dentro de `features/publico/eventos/ItemCardParts.tsx`. F6 la reutiliza tal cual (import por feature o promoción a una pieza común de `features/publico/components/` — decisión del arquitecto; su comportamiento exacto ya está probado y no cambia).
 
 ### 6.4 Nuevos del panel (`frontend/src/features/ministerios/`)
 
@@ -436,7 +438,7 @@ Todo junto y con la explicación textual en el momento:
 | `messages.ts` | Textos del módulo en español (FR-018) — catálogo del §7.1. |
 | Hooks TanStack Query | `useMinistries`, `useCreateMinistry`, `useUpdateMinistry`, `useDeleteMinistry`, y el par de edición cubre publicar/retirar/visibilidad (patrón `useUpdate*` de F3/F4). Ningún `fetch` en componentes (regla F2). |
 
-**Pruebas esperadas** (Vitest + Testing Library + MSW): composición pública con casos 0/1/5/>5 publicados y con cada caso «sin dato» (0 botones vacíos, 0 líneas de encargado/horario vacías — SC-017), orden estable `sort_order, id`, la vista de sección oculta actualiza nav/mapa sin huérfanos + `HiddenNotice` sin datos, fallback de contenido sin inglés (por campo), bloque de portada oculto en 0 ítems y con 0 líneas de aviso, chip/no chip del extracto, validaciones del formulario (obligatorios, https estricto, contacto por tipo con un solo medio, inglés sin español por campo, límites, duplicado exacto, mismo enlace con aviso), ciclo publicar/retirar/eliminar con auditoría, permisos cruzados con «ministerios», y **0 apariciones del encargado oculto en cualquier vía** (SC-014: HTML y JSON público con el interruptor apagado, incluidas respuestas forzadas sin sesión).
+**Pruebas esperadas** (Vitest + Testing Library + MSW): composición pública con casos 0/1/5/>5 publicados y con cada caso «sin dato» (0 botones vacíos, 0 líneas de encargado/horario vacías — SC-017), orden estable `sort_order, id`, **la vista con 0 publicados: redirección a la portada sin parpadeo** (con la consulta en caché, redirige en el primer render sin pintar H1 ni grilla; sin caché, solo el esqueleto mientras se decide; y `/eventos` conserva su `HiddenNotice` — comportamientos deliberadamente distintos, D-14), default del interruptor **apagado** al crear (D-13) y con él apagado 0 datos del encargado en público (SC-014), fallback de contenido sin inglés (por campo), bloque de portada oculto en 0 ítems y con 0 líneas de aviso, chip/no chip del extracto, validaciones del formulario (obligatorios, https estricto, contacto por tipo con un solo medio, inglés sin español por campo, límites, duplicado exacto, mismo enlace con aviso), ciclo publicar/retirar/eliminar con auditoría, permisos cruzados con «ministerios», y **0 apariciones del encargado oculto en cualquier vía** (SC-014: HTML y JSON público con el interruptor apagado, incluidas respuestas forzadas sin sesión).
 
 ---
 
@@ -470,8 +472,9 @@ Todo junto y con la explicación textual en el momento:
 | Mismo enlace en dos ministerios (aviso, no bloqueante) | «Otro ministerio ya usa este mismo enlace de WhatsApp. Revísalo si no es intencional; el ministerio sí se guardó.» |
 | Leyenda de la ficha visible | «Se publicará: el nombre y (si existe) el contacto del encargado aparecerán en la página de Ministerios.» |
 | Leyenda de la ficha oculta (warning) | «La ficha del encargado quedará oculta: el público no verá ni su nombre ni su contacto, en ningún lugar del sitio. Tus datos quedan guardados aquí; puedes activar el interruptor otra vez cuando quieras publicarlos.» |
+| Ayuda del interruptor de la ficha (siempre visible junto al control) | «La ficha del encargado está oculta hasta que actives este interruptor. Empieza apagado para que seas tú quien decida cuándo hacer pública su información.» |
 | Ficha visible sin nombre | «Para publicar la ficha, escribe primero el nombre del encargado.» |
-| Sección sin publicados | «Nada está publicado ahora: el público no ve esta sección ni el bloque de la portada hasta que publiques al menos un ministerio.» |
+| Sección sin publicados | «Nada está publicado ahora: el público no ve esta sección ni el bloque de la portada, y `/ministerios` redirige a la portada, hasta que publiques al menos un ministerio.» |
 | Error del sistema al guardar | «No se pudo completar la operación. Tus escritos están a salvo; vuelve a intentarlo en unos minutos.» |
 | Sin permiso (servidor) | «No tienes acceso a esta sección. Pide a quien administra el panel que revise tu rol.» (F2) |
 | Ayuda del orden | «Los ministerios se muestran en orden: menor número primero. Con empate, el más antiguo va antes.» |
@@ -493,7 +496,6 @@ Todo junto y con la explicación textual en el momento:
 | `ministries.leader.label` | Encargado | Led by |
 | `ministries.join` | Unirse al grupo de WhatsApp | Join the WhatsApp group |
 | `a11y.ministries.join` | Unirse al grupo de WhatsApp de {nombre} | Join the WhatsApp group of {name} |
-| `ministries.empty.hidden` | «Ahora mismo no hay nada publicado en esta sección. Vuelve pronto.» (copia canónica §4.1, patrón D-13 de F4). | «There's nothing published here right now. Check back soon.» |
 | `ministries.loading` | Cargando… | Loading… |
 | `ministries.error.load` | No pudimos cargar los ministerios. Revisa tu conexión y vuelve a intentarlo. | We couldn't load the ministries. Check your connection and try again. |
 | `ministries.error.retry` | Volver a intentar | Try again |
@@ -506,6 +508,7 @@ Todo junto y con la explicación textual en el momento:
 | `a11y.home.ministries.heading` | Ministerios de la iglesia: mira el resumen y entra a la sección completa | Church ministries: quick look and link to the full section |
 
 > El `alt` de las imágenes es obligatorio en el panel (español, inglés opcional): no existe cadena de fallback automática en el público.
+> La redirección de la sección oculta (D-14) **no añade ninguna cadena**: no hay aviso que mostrar; si la consulta tarda, la única palabra en pantalla es `ministries.loading` («Cargando…» / «Loading…») sobre el esqueleto. La antigua clave `ministries.empty.hidden` de F4 no se replica aquí.
 
 ---
 
@@ -537,7 +540,7 @@ Todo junto y con la explicación textual en el momento:
 ### 8.3 Privacidad del encargado — cómo se verifica y quién la garantiza (FR-026, SC-014)
 
 - **La garantía es del servidor**: con el interruptor apagado, el DTO público del ministerio **no trae** nombre ni contacto (null + omisión de la clave), y el HTML SSR/JSON de cualquier vía (sección, bloque de portada, API forzada sin sesión, metadatos) no los contiene. **El frontend no implementa la ocultación ni como refuerzo de seguridad** — solo presenta lo que llega: si el DTO no tiene encargado, `EncargadoLine` no se monta y no hay línea.
-- Lo que el panel hace es **explicarlo**: leyendas del §4.5 y etiqueta «Ficha oculta» del listado, de modo que el equipo nunca confunda «guardar un encargado» con «publicarlo». Esa es la nota explícita de garantía que pide la spec (FR-025: dato guardado ≠ dato publicado).
+- Lo que el panel hace es **explicarlo**: leyendas del §4.5 y etiqueta «Ficha oculta» del listado, de modo que el equipo nunca confunda «guardar un encargado» con «publicarlo». Con el default **apagado** (D-13) esta separación es además estructural: un encargado recién guardado nunca es público; publicarlo es siempre un acto expreso del equipo (reactivar el interruptor). Esa es la nota explícita de garantía que pide la spec (FR-025: dato guardado ≠ dato publicado).
 - **Criterio QA/seguridad**: con el interruptor apagado, una búsqueda exacta del nombre y del celular/correo en el HTML y el JSON del sitio público debe dar **0 resultados** (inspección de red, respuestas forzadas). Está en §10 como punto de prueba.
 
 ---
@@ -548,7 +551,7 @@ Todo junto y con la explicación textual en el momento:
 |---|---|---|
 | D-1 ⟲ | «Ministerios» es una **ruta real** al final de la única lista de enlaces de F10, después de «Eventos y actividades» (mismo patrón aprobado de F4 D-1; la posición al final respeta la secuencia de la portada: bloques ruta al final). | Entrada junto a los anclas de portada (dejaría la mezcla en otro orden) o dos entradas (descartado: una sola navegación). |
 | D-2 ⟲ | Subtítulo de `/ministerios` como **cadena de interfaz fija** (no campo del panel). | Que el equipo lo escriba en el panel (más contenido que administrar). |
-| D-3 ⟲ | Reutilizar `CardImage` de F4 (con posible **promoción a pieza común**) para la imagen 16:9 de fichas y extracto. | Copiar la pieza en `features/publico/ministerios/` (duplicaría comportamiento ya probado). |
+| D-3 ✅ | Reutilizar `CardImage` de F4 (con posible **promoción a pieza común**) para la imagen 16:9 de fichas y extracto — **resuelta por el humano el 2026-10-13** (el detalle de la promoción sigue siendo del arquitecto). | Copiar la pieza en `features/publico/ministerios/` (duplicaría comportamiento ya probado). |
 | D-4 ⟲ | El **contacto del encargado se muestra como texto** (celular/correo con su icono), sin `tel:`/`mailto:`. | Enlaces de llamada/correo (añaden semántica útil pero activan apps sin decisión del equipo; el texto es copiable igualmente). Reabrible si el humano lo quiere. |
 | D-5 ⟲ | Botón de unirse en **verde de WhatsApp** (`PublicButton` variante propia del CTA verde del sistema) y **solo con enlace** (Q2). Siempre el mismo verde del CTA de WhatsApp del sitio. | Botón secundario neutro (más apagado) o enlace de texto (menos descubrible; FR-003 pide «claramente identificado»). |
 | D-6 ⟲ | Reordenamiento por **campo numérico «Orden»** en el formulario + columna en el listado (precedente `sort_order` de F3/F4; sin drag & drop ni flechas). | Editor de flechas/bajar-subir en la fila (más toques, requiere otro patrón no existente) o drag & drop (innecesario para listas cortas). |
@@ -558,13 +561,17 @@ Todo junto y con la explicación textual en el momento:
 | D-10 ⟲ | Error **sin caché** en el bloque de portada: el bloque **no se dibuja** (regla general de F3), sin estado de error propio — distinto de F4, cuyo estado vacío con mensaje es la excepción ya firmada. | Reproducir el estado de error de `ProximamenteBlock` (mostraría un título + aviso de error en la portada por un fallo de red: necesidad discutible y es la vía que FR-028 evita). |
 | D-11 ⟲ | Chip «Ministerio» en el extracto de portada, neutral (patrón F4 D-25/D-2). | Sin chip (la tarjeta se confundiría con las de eventos en una portada con dos bloques contiguos del mismo patrón). |
 | D-12 ⟲ | El extracto **no lleva ni encargado ni botón de unirse**: tarjeta con imagen + chip + título-enlace + horario/lugar; la acción de unirse vive en la sección. | Botón de unirse por tarjeta (más alegría inmediata, pero duplica el CTA y rompe la simetría con el bloque de F4, donde el extracto también solo enlaza). |
+| D-13 ✅ | La ficha del encargado inicia **APAGADA por defecto**: no se publica en el sitio hasta que el equipo encienda el interruptor expresamente. Decisión literal del humano 2026-10-13 («Oculto por defecto»), que cierra el default de Q1 (antes propuesto encendido). El formulario lo dice con claridad: Notice warning al apagado (caso de fábrica) + ayuda fija del interruptor + leyenda verde solo al encender. | Encendido por defecto (propuesta original de este documento; descartada por el humano). |
+| D-14 ✅ | `/ministerios` con 0 publicados **redirige a la portada** (`<Navigate to="/" replace>`, sin aviso, sin parpadeo — §4.1). Decisión literal del humano 2026-10-13 («Redirigir a la portada»). Es **distinto a propósito** de `/eventos` de F4 (que muestra `HiddenNotice` sin redirigir): no unificar los dos comportamientos. | Aviso sin redirigir (patrón D-13 de F4, lo propuesto originalmente en este documento; descartado por el humano). |
 
 ---
 
 ## 10. Notas para el `dev-frontend` / `qa-tester`
 
 - **El bloque de portada usa su propio hook/endpoint** (`usePortadaMinisterios` → propuesta `GET /api/v1/portada/ministerios?lang=es|en`): tope 5 en servidor, orden manual, DTO mínimo, `no-store`. Del cliente solo llegan la presentación, el esqueleto y el aviso parcial; el tope y el corte `sort_order, id` son lógica del servidor. Pruebas contadas: 1, 2, 3, 4, 5 y **0 ítems** (bloque ausente, sin mensaje ni título — SC-016).
-- **`/ministerios` alimenta la presencia en la navegación con la misma consulta** compartida (`queryClient`): una sola petición paga página + barra + pie (patrón D-23 de F4); con 0 publicados **ninguna superficie enlaza la sección** y la ruta directa muestra `HiddenNotice` (FR-005, SC-010).
+- **`/ministerios` alimenta la presencia en la navegación con la misma consulta** compartida (`queryClient`): una sola petición paga página + barra + pie (patrón D-23 de F4); con 0 publicados **ninguna superficie enlaza la sección** y la ruta directa **redirige a la portada** (FR-005, SC-010, D-14).
+- **D-13 (default del interruptor, crítico)**: al crear un ministerio con encargado, el interruptor llega **apagado**; con él apagado el público no recibe nada del encargado (SC-014) y el `Notice` warning del §4.5 también es el primer texto que ve el equipo; al encenderlo y guardar se republica sin reescribir (US2 esc. 10–11); editar nunca cambia el default (la última decisión manda).
+- **D-14 (redirección, crítica)**: `/ministerios` con 0 publicados → redirección limpia a `/` con `replace`: **sin parpadeo** — nunca se pinta `HiddenNotice`, ni H1, ni grilla vacía, ni mensaje de error (con la consulta ya en caché, redirige en el primer render; sin caché, solo el esqueleto estándar mientras se decide); el historial queda limpio (no queda `/ministerios` tras la portada en *Volver*); y QA confirma que **`/eventos` conserva su `HiddenNotice`**: los dos comportamientos son deliberadamente distintos (D-14), no se «unifican».
 - **SC-014 (crítico)**: QA verifica **0 apariciones** del nombre y del contacto del encargado con el interruptor apagado: HTML de `/ministerios`, HTML/JSON de la portada, JSON público del módulo y del bloque, y una respuesta forzada sin sesión; también que el panel conserva los datos y que reactivar el interruptor los republica sin reescribirlos (US2 esc. 10–11). El frontend no oculta nada por su cuenta: si el DTO trae el dato, se muestra (así el diseño nunca esconde un bug del backend — el test de seguridad lo detecta).
 - **SC-017 (casos sin dato)**: listado de combinaciones a probar en público — sin enlace (0 botones), sin encargado publicado (0 líneas), ficha visible sin contacto (solo nombre), sin imagen / imagen fallida (0 huecos, layout estable), sin horario/lugar (0 líneas), combinación total «solo nombre + descripción». Cero «—», cero líneas vacías, cero botones deshabilitados por vacío.
 - **SC-013 (concepto)**: la sección y el bloque no contienen nada del modelo de F4/F5 (FR-001): ni `DateBadge`, ni fechas calculadas, ni contenido de agenda; el horario aparece exactamente como texto del equipo.
@@ -583,9 +590,9 @@ Todo junto y con la explicación textual en el momento:
 
 | US / FR | Pantalla / componente | § |
 |---|---|---|
-| US1 · FR-002 · FR-003 · FR-004 · FR-005 · FR-006 | `/ministerios` (MinisteriosPage, MinistryCard, WhatsappJoinButton, EncargadoLine) — fichas completas, orden manual, unirse en un toque, sección oculta sin publicados | §4.1, §2.1 |
+| US1 · FR-002 · FR-003 · FR-004 · FR-005 · FR-006 | `/ministerios` (MinisteriosPage, MinistryCard, WhatsappJoinButton, EncargadoLine) — fichas completas, orden manual, unirse en un toque; 0 publicados → redirección a la portada sin parpadeo (D-14) | §4.1, §2.1 |
 | US2 · FR-010 · FR-011 («ministerios») · FR-014 · FR-016 · FR-018 · FR-019 | `/panel/ministerios` (MinistriesPage, MinistriesList, MinistryForm con ContactoEncargado y ShowContactSwitch), InicioPage accesos, orden numérico | §4.2, §4.3, §4.4, §4.5, §5, §2.3 |
-| US3 · FR-012 · FR-013 · FR-017 | PublishControls por ministerio, ConfirmDialog, sección oculta (nav+mapa+HiddenNotice) y bloque de portada oculto, auditoría | §2.4, §4.3, §4.8, §5.c |
+| US3 · FR-012 · FR-013 · FR-017 | PublishControls por ministerio, ConfirmDialog, sin publicados: barra+mapa sin la entrada y `/ministerios` redirige a la portada (D-14), bloque de portada oculto, auditoría | §2.4, §4.3, §4.8, §5.c |
 | US4 · FR-007 · FR-008 · FR-009 | LanguageSwitcher (F10), contenido con fallback por campo (encargado/horario/lugar incluidos), enlace no traducible | §2.2, §7.2, §8.2 |
 | US5 · FR-021 · FR-022 · FR-023 | Sistema F10 completo en sección y bloque, teclado/lector, 320 px, 200 %, reduce-motion, 18 px y 44 px | §4.1, §4.9, §8.1 |
 | FR-024 (horario/lugar texto) | Líneas de texto en ficha (sin `DateBadge`, sin calendario), formulario con ayuda y contadores | §4.1, §4.4 |

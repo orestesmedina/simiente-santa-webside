@@ -74,14 +74,16 @@ CREATE TABLE ministries (
     -- opcional (celular O correo). leader_visible gobierna solo la PUBLICACIÓN
     -- de la ficha (nombre y contacto juntos, Q9/FR-026): el dato guardado se
     -- conserva en la fila mientras el encargado exista.
-    -- DEFAULT TRUE = "visible": default revisable pendiente de confirmación en
-    -- la puerta 2 (research R6-3). Si el humano elige privacidad por defecto,
-    -- cambia solo esta línea (la migración aún no se aplica en ningún entorno).
+    -- DEFAULT FALSE = "Oculto por defecto" (decisión del humano 2026-10-13,
+    -- puerta 2, research R6-3): la ficha del encargado —nombre y contacto— NO
+    -- se publica hasta que el equipo encienda el interruptor (privacidad por
+    -- defecto: publicar un celular/correo personal exige un acto afirmativo).
+    -- El interruptor es propio de F6 (F3/F4 no lo tienen).
     leader_name_es    TEXT NULL CHECK (char_length(leader_name_es) BETWEEN 1 AND 160),
     leader_name_en    TEXT NULL CHECK (char_length(leader_name_en) BETWEEN 1 AND 160),
     leader_phone      TEXT NULL CHECK (char_length(leader_phone) BETWEEN 7 AND 32),
     leader_email      TEXT NULL CHECK (char_length(leader_email) BETWEEN 3 AND 254),
-    leader_visible    BOOLEAN NOT NULL DEFAULT TRUE,
+    leader_visible    BOOLEAN NOT NULL DEFAULT FALSE,
 
     -- Enlace OPCIONAL al grupo de WhatsApp (Q2): cualquier https válido y
     -- seguro, sin restricción de dominios (Q3/FR-015). No traducible (FR-008).
@@ -215,7 +217,11 @@ ALTER TABLE admin_actions ADD CONSTRAINT admin_actions_action_check CHECK (actio
 - **`leader_visible` y la privacidad**: la columna guarda la decisión del equipo; la **no
   publicación** se garantiza en la lectura (consultas públicas con `CASE WHEN leader_visible`,
   R6-2), no escondiendo la columna. Con el interruptor apagado, el panel sigue viendo
-  `leader_name_*` y `leader_phone`/`leader_email` (dato guardado ≠ dato publicado).
+  `leader_name_*` y `leader_phone`/`leader_email` (dato guardado ≠ dato publicado). **Nace
+  apagado** (`DEFAULT FALSE`, «Oculto por defecto», decisión del humano 2026-10-13): un ministerio
+  nuevo **no publica** la ficha del encargado hasta que el equipo la enciende; el `DEFAULT` cubre
+  también los `INSERT` que omitan la columna. El interruptor es **propio de F6** (F3/F4 no lo
+  tienen).
 - **`leader_phone`/`leader_email`**: dos columnas anulables mutuamente excluyentes (CHECK) en vez
   de un par `kind`/`value`, para validar con los tags `phone`/`email` ya existentes (R6-4).
 - **`whatsapp_url`**: sin `UNIQUE` — dos ministerios **pueden** compartir grupo (Q: "se señala
@@ -281,6 +287,7 @@ sobre `admin_actions` (solo lectura, FR-025 de F2).
 | Celular **o** correo, nunca ambos (Q8) | `CHECK (leader_phone IS NULL OR leader_email IS NULL)` + `400 invalid` con `details` en el service |
 | El contacto exige nombre del encargado | `CHECK (leader_name_es IS NOT NULL OR (leader_phone IS NULL AND leader_email IS NULL))` |
 | **FR-026: con `leader_visible = FALSE` ningún dato del encargado sale al público** | Consultas públicas con `CASE WHEN leader_visible` (la fila sale con `NULL`) + DTO público sin campos del encargado oculto + bloque sin campos de encargado + pruebas "0 apariciones" (service/handler/repository/e2e) |
+| **«Oculto por defecto»: un ministerio nuevo nace con la ficha del encargado NO publicada** (decisión del humano 2026-10-13, puerta 2) | `leader_visible BOOLEAN NOT NULL DEFAULT FALSE` en `000010` (también para `INSERT` que omitan la columna) + `leaderVisible` con `default: false` en `MinisterioInput` (el service aplica `false` si falta) + interruptor apagado al crear + pruebas del default en las cuatro capas |
 | Enlace solo `https` seguro (FR-015/Q3) | Tag `url` + regla de dominio (sin espacios ni control) en el service + `CHECK '^https://[^[:space:]]+$'` + prueba de `javascript:`/`data:`/`vbscript:` |
 | El enlace se sirve tal cual (sin transformar el destino) | Sin normalización del valor en el service; prueba de igualdad `href` = valor guardado |
 | Horario y lugar son **textos**: sin fechas ni recurrencia (Q6/FR-024) | No hay columnas de fecha ni tablas hijas: solo `TEXT`; ninguna consulta calcula fechas |
@@ -309,6 +316,10 @@ sobre `admin_actions` (solo lectura, FR-025 de F2).
    - `CHECK` de imagen: `image_file` sin `image_alt_es` falla;
    - `CHECK` del enlace: `http://…`, `javascript:alert(1)` y un valor con espacio fallan;
      `https://chat.whatsapp.com/…` y `https://ejemplo.com/grupo` (dominio no de WhatsApp) pasan;
+   - **«Oculto por defecto»** (decisión del humano 2026-10-13): un `INSERT` que omite
+     `leader_visible` guarda `FALSE` (prueba del `DEFAULT` de `000010`); una fila con nombre y
+     contacto de encargado y el interruptor en su default sale **sin** datos del encargado en la
+     lectura pública y el service devuelve `leaderVisible: false`;
    - `ListPublishedMinistries`: **nunca** devuelve borradores; con `leader_visible = FALSE` las
      columnas del encargado salen **`NULL`** aunque la fila tenga datos (R6-2, la prueba más
      importante del módulo); el orden es `sort_order, id` y el `LIMIT` se respeta (5 en el bloque);

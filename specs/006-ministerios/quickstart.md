@@ -8,7 +8,9 @@ Recorrido manual de las US1–US6 y sus criterios de aceptación (el bloque de l
 F4. Al final, §15 ejecuta las pruebas automatizadas y §16 mapea cada criterio a su sección.
 
 Los dos casos que la spec hace críticos tienen sección propia: **la ficha del encargado oculta**
-(§7, SC-014) y **el ministerio sin enlace y sin encargado** (§7, SC-017).
+(§7, SC-014) y **el ministerio sin enlace y sin encargado** (§7, SC-017). La **redirección de
+`/ministerios` sin nada publicado** y el default **«Oculto por defecto»** del interruptor se
+comprueban en §1/§8/§11 (SC-010) y en §3/§7 (SC-014).
 
 ## 0. Preparar el entorno
 
@@ -42,14 +44,19 @@ curl -s "$API/api/v1/ministerios?lang=es" | jq
   FR-004), con `name` y `description` siempre, y con `schedule`, `place`, `image`, `whatsappUrl` y
   `leader` **solo cuando existen** (FR-002: las claves opcionales se **omiten**, nunca vacías).
 - Con la base recién migrada verás `{"lang":"es"}`: es correcto (el equipo carga el contenido desde
-  el panel) y así se comprueba la regla de **clave omitida** (SC-010).
+  el panel) y así se comprueba la regla de **clave omitida** (SC-010). La API **no** redirige:
+  `GET /api/v1/ministerios` sigue siendo **`200` con `items` omitida** (el contrato no cambia; la
+  redirección de la ruta SPA es una decisión del frontend, P6-21).
 - **Ninguna respuesta pública contiene** `publicationState`, borradores, traducciones sin resolver
   ni datos del encargado oculto (SC-002/SC-006/SC-014).
 
 En el navegador: **`$WEB/ministerios`** es la sección (una entrada de navegación «Ministerios» en
 barra, menú hamburguesa y mapa del sitio, FR-006). Con la base vacía **no verás la entrada** y la
-URL escrita a mano muestra la página con el **aviso de sección vacía**, **sin redirigir** (patrón
-firme de F4, research R6-13): es el comportamiento esperado.
+URL escrita a mano **redirige a la portada** (`$WEB/`) —decisión del cliente del 2026-10-13,
+**distinta a propósito** de F4 en `/eventos`, que muestra su aviso sin redirigir (no se unifican;
+P6-21)—: verás la portada completa, **sin ningún destello** de la sección vacía (estado de carga →
+redirección limpia) y el botón «Atrás» no te devuelve a la URL muerta. Con al menos un ministerio
+publicado, la URL muestra la sección con normalidad.
 
 ## 2. Rol y cuentas con el permiso «ministerios» (US2, FR-011)
 
@@ -104,6 +111,11 @@ curl -s -b /tmp/mi.jar -X POST "$API/api/v1/admin/ministerios" \
 - `201` con el DTO del panel (`MinisterioAdmin`) y `whatsappUrlShared: false` (§5 explica ese
   aviso). El ministerio publicado **ya es visible** en la sección (SC-004: crear y publicar en
   menos de 2 minutos).
+- **`leaderVisible: true` va explícito a propósito**: el default es **`false`** —«**Oculto por
+  defecto**», decisión del humano 2026-10-13 (P6-3)—. Si **omitieras** la clave (o enviaras
+  `false`), el ministerio nacería con la ficha del encargado **oculta** y el público no vería ni el
+  nombre ni el contacto (§7 los comprueba). En el navegador, el interruptor «Mostrar la ficha del
+  encargado en el sitio público» **nace apagado** al crear.
 - **Campos inválidos → `400 invalid` con `details` por campo y sin guardar nada** (FR-014):
 
 | Qué envías | Qué ves |
@@ -224,6 +236,10 @@ curl -s "$API/api/v1/ministerios?lang=es" | jq '.items[] | select(.name=="Minist
 #    - La ficha del ministerio se ve completa SIN línea de encargado (ni vacía ni solo con nombre).
 ```
 
+- **El default «Oculto por defecto»** (P6-3): crea un ministerio con `leaderNameEs` y
+  `leaderPhone` **sin enviar `leaderVisible`** → la respuesta del panel trae `leaderVisible:
+  false`, la ficha se conserva guardada y el público **no** recibe `leader` (mismos `grep` del
+  paso 3 → `0`): no hay que ocultar nada para que no se publique.
 - **Al volver a activar el interruptor** (`"leaderVisible": true`), la ficha se publica de nuevo
   **sin reescribir nada** (US2 esc. 11).
 - **Ministerio sin enlace** (§3: «Ministerio de matrimonios»): en `$WEB/ministerios` **no hay botón
@@ -251,8 +267,9 @@ curl -s "$API/api/v1/ministerios?lang=es" | jq   # primera carga posterior: ya c
   `GET /api/v1/portada/ministerios` no encuentra el borrador; su imagen tampoco se sirve
   (`GET /api/v1/media/<file>` → `404`, R6-7).
 - **Sin ningún publicado**: la entrada «Ministerios» desaparece de barra, menú hamburguesa y mapa
-  del sitio, `/ministerios` muestra el **aviso** (sin redirigir) y la portada **no pinta el bloque**
-  (SC-010/SC-016).
+  del sitio, la URL escrita a mano **redirige a la portada** (sin destello de sección vacía —
+  P6-21; **distinta a propósito** de F4, que muestra su aviso sin redirigir —) y la portada **no
+  pinta el bloque** (SC-010/SC-016). La API sigue respondiendo `200` con `items` omitida.
 
 ## 9. Bilingüe: selector es/en y fallback (US4, FR-007…FR-009, SC-006)
 
@@ -298,6 +315,9 @@ Checklist manual sobre `$WEB/ministerios` **y** el bloque de la portada (mismo n
 - [ ] Contraste suficiente y texto ampliable al **200 %** sin perder información, en **tema claro y
       oscuro** (F10) (SC-008).
 - [ ] Botón «Unirse al grupo» y enlaces tocables con tamaño suficiente (≥ 44 px).
+- [ ] Con la base vacía, la URL directa `$WEB/ministerios` **redirige a la portada** sin destellos
+      de contenido vacío (el estado de carga no muestra la sección vacía) y sin dejar el foco
+      perdido en un callejón (P6-21/SC-010).
 
 ## 12. Sin permiso: todo denegado (US2, FR-011, SC-005)
 
@@ -377,7 +397,7 @@ corresponde a `qa-tester`, `revisor-codigo` y `seguridad` (quien escribe no apru
 | SC-007 (320 px sin scroll) | §11 |
 | SC-008 (accesibilidad, claro y oscuro) | §11 |
 | SC-009 (enlaces seguros; 0 botones vacíos) | §5, §7 |
-| SC-010 (0 secciones vacías; nav sin enlaces rotos) | §1, §8 |
+| SC-010 (0 secciones vacías; nav sin enlaces rotos; `/ministerios` redirige a la portada) | §1, §8, §11 |
 | SC-011 (auditoría completa, solo lectura) | §13 |
 | SC-012 (usabilidad con personas ≥ 90 %) | §11 (protocolo; informe `pruebas-usabilidad-SC-012.md`) |
 | SC-013 (solo ministerios; horario sin fechas) | §1, §4 |

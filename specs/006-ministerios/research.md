@@ -6,8 +6,12 @@ Q1–Q9 resueltas) · **Plan**: [plan.md](./plan.md)
 > **Notas de partida.** (1) La spec v2 ya cerró Q1–Q9 y el humano **confirmó además, el
 > 2026-10-13** (estado.md), la lectura de Q6 (horario y lugar como **textos libres**, sin
 > recurrencia ni calendario) y el **tope de 5** del bloque de la portada: este documento las da por
-> firmes y solo las reseña. (2) El único punto que este research **no** decide es el **default del
-> interruptor de visibilidad del encargado** al crear (R6-3): se eleva a la puerta 2.
+> firmes y solo las reseña. (2) Los dos puntos que este research elevó a la puerta 2 los **resolvió
+> el humano el 2026-10-13** y este documento queda realineado a ellos: el **default del interruptor
+> de visibilidad del encargado** es **`FALSE` —«Oculto por defecto»—** (R6-3: privacidad por
+> defecto, **aunque la recomendación de este research era la contraria**) y **`/ministerios` sin
+> nada publicado redirige a la portada** (R6-13: decisión del cliente, **distinta a propósito** del
+> patrón de F4 en `/eventos`, que muestra aviso sin redirigir).
 
 Este documento resuelve las decisiones técnicas abiertas de F6 con alternativas y motivos. La
 numeración es **R6-1…R6-17**, propia de esta funcionalidad, para no colisionar con R4-1…R4-16 de
@@ -139,22 +143,44 @@ nace un ministerio con encargado?
   `ministry.leader.hide` (R6-12) — así el registro de solo lectura responde "quién ocultó o mostró
   la ficha del encargado", que es exactamente la operación que FR-017 enumera aparte.
 
-**Default al crear — PUNTO ABIERTO para la puerta 2 (no lo decido yo).** La spec no fija si un
-ministerio nuevo con encargado nace **visible** u **oculto** y es la única decisión de este plan que
-queda al humano (ver [plan.md](./plan.md) → "Puntos que necesitaban aprobación humana"):
+**Default al crear — RESUELTO por el humano el 2026-10-13: (b) `FALSE`, «Oculto por defecto».**
+La spec no fijaba si un ministerio nuevo con encargado nace **visible** u **oculto**; este research
+propuso tres opciones y **recomendó (a)**, y el humano eligió la contraria:
 
-- **(a) `TRUE` (visible) por defecto** — recomendado: el equipo pone el encargado para que el
-  visitante sepa a quién acercarse (US1/FR-002) y el patrón del sitio es "se publica al guardar";
-  el interruptor está en el formulario **desde la creación** (Q1), así que ocultar es una decisión
-  consciente de una sola acción.
-- **(b) `FALSE` (oculto) por defecto** — privacidad por defecto: la publicación de un celular o
-  correo personal exige un acto afirmativo; protege al equipo que llena el formulario rápido.
-- **(c) Sin default**: el formulario exige elegir («¿Mostrar la ficha del encargado al público?
-  Sí/No») y el DTO requiere `leaderVisible` explícito cuando hay encargado.
+- **(a) `TRUE` (visible) por defecto** — *la recomendación de este research* (**descartada por el
+  humano el 2026-10-13**): el equipo pone el encargado para que el visitante sepa a quién
+  acercarse (US1/FR-002) y el patrón del sitio es "se publica al guardar"; el interruptor está en
+  el formulario **desde la creación** (Q1), así que ocultar es una decisión consciente de una sola
+  acción.
+- **(b) `FALSE` (oculto) por defecto** — **LA ELEGIDA (2026-10-13)**: **privacidad por defecto**.
+  La ficha del encargado —nombre y contacto— **no se publica hasta que el equipo la encienda**:
+  publicar un celular o un correo personales exige un **acto afirmativo** y protege al equipo que
+  rellena el formulario rápido. Es coherente con el espíritu de FR-026 (la privacidad como regla,
+  no como excepción) y con Q9 (la ficha entera solo se publica por decisión expresa).
+- **(c) Sin default** (el formulario exige elegir): descartada — añade fricción sin ganancia; el
+  interruptor **nace apagado** y una sola acción lo enciende.
 
-La migración `000010` escribe de momento `DEFAULT TRUE` con un comentario que remite a esta puerta:
-si el humano elige (b) o (c), cambia **una línea** de la migración (todavía no aplicada en ningún
-entorno) y la validación del DTO.
+**Cómo se implementa** (una sola regla, sin excepciones):
+
+- Migración `000010`: `leader_visible BOOLEAN NOT NULL DEFAULT FALSE` (**una línea**, la que este
+  research marcó como revisable; ver [data-model.md](./data-model.md)). El `DEFAULT FALSE` cubre
+  también los `INSERT` forzados que omitan la columna.
+- **DTO de entrada** (`MinisterioInput.leaderVisible`): opcional con **`default: false`** en el
+  contrato; el service aplica `false` cuando la clave falta. El DTO público **no cambia** (la ficha
+  solo existe con `leaderVisible` activo y nombre, R6-2).
+- **Formulario del panel** (`ShowContactSwitch`): **apagado** al crear y precargado con su última
+  decisión al editar; encenderlo es el acto de publicar la ficha. Leyendas de privacidad visibles
+  (`ux.md` §4.5).
+- **Pruebas**: el default se fija en las cuatro capas —service (un alta sin `leaderVisible` nace
+  oculto y el DTO público no trae `leader` aunque haya nombre y contacto guardados), handler (el
+  JSON de respuesta trae `leaderVisible: false`), repository (el `INSERT` sin la columna nace con
+  `FALSE`) y e2e (alta desde el formulario con el interruptor apagado → 0 apariciones en público)—.
+- El interruptor es **propio de F6** (F3/F4 no lo tienen): `ShowContactSwitch` nace en la feature y
+  solo se promociona al inventario único si otra funcionalidad lo necesita más adelante.
+
+La decisión del humano **anula la recomendación (a)** y se implementa literalmente: prima que
+ningún dato de contacto personal se publique sin que el equipo lo haya decidido de forma
+afirmativa.
 
 ---
 
@@ -307,7 +333,10 @@ decide si la sección existe** (entrada de navegación y mapa del sitio)?
   mapa del sitio a la vez, fuente única). Es **equivalente** a mirar la sección porque ambos
   miran el **mismo predicado "publicado"** (el bloque es el mismo listado recortado a 5): 0
   peticiones extra en la portada —la página más visitada— y ninguna forma de que la navegación
-  prometa una sección vacía (RG6-2 documenta la coherencia).
+  prometa una sección vacía (RG6-2 documenta la coherencia). **Criterio técnico confirmado por el
+  humano en la puerta 2 (2026-10-13)** frente a la propuesta de `ux.md` §3/D-23 (deducirla del
+  documento completo de la sección): son equivalentes y cambiar de una a otra es un hook, no toca
+  la API.
 - **Sin paginación ni filtros públicos** (FR-004: el visitante no hace nada para verlo todo); el
   público se acota con la constante de seguridad del service `maxPublicItems = 200` (misma idea que
   `maxBlockItems` de F4, RG6-12). El panel **sí** pagina (`limit`/`offset` de `platform/paginate`,
@@ -443,7 +472,7 @@ sensible); `target_kind` nuevo (los elementos de contenido ya son `content`).
 
 ---
 
-## R6-13. Publicación por elemento y sección sin contenido: aviso, **sin redirigir**
+## R6-13. Publicación por elemento y sección sin contenido: la URL directa **redirige a la portada**
 
 Patrón R3-3/R4-12 sin cambios: `publication_state TEXT CHECK IN ('draft','published')` por
 ministerio; consultas `…Published` separadas para el público (la única función que ve borradores es
@@ -452,17 +481,48 @@ la del panel, protegida); el `PATCH` sobre un ministerio publicado guarda y **co
 
 **Sección sin nada publicado** (FR-005/SC-010): la entrada «Ministerios» **no existe** en la barra,
 el menú hamburguesa ni el mapa del sitio (R6-8, fuente única `useSiteLinks`) y el bloque de la
-portada **no se renderiza** (FR-028). **La URL directa `/ministerios`** aplicará el patrón firme
-que F4 ya cerró para `/eventos` (R4-13, puerta 2 de F4: **aviso de sección vacía sin redirigir**,
-`HiddenNotice`, con el sitio completo alrededor): es la red de seguridad para una URL tecleada o
-guardada en favoritos y evita "pantallas sin explicación". *Es un punto que se reseña al humano en
-la puerta 2 porque la spec de F6 no lo describe literalmente; la alternativa (404 o redirección a
-`/`) quedó descartada en F4 por el mismo motivo.*
+portada **no se renderiza** (FR-028). **La URL directa `/ministerios` redirige a la portada (`/`)**:
+decisión literal del humano del **2026-10-13** (puerta 2), **distinta a propósito** del patrón que
+F4 cerró para `/eventos` (R4-13: aviso de sección vacía **sin redirigir**). F6 **no** aplica el
+patrón de F4 y F4 **no** se toca: cada sección conserva su regla, por decisión del cliente.
 
-**Alternativas descartadas.** Redirigir a `/` (descartado en F4: una URL que "no lleva a ninguna
-parte" sin explicación confunde, sobre todo a adultos mayores); página vacía sin mensaje
-(contradice SC-010: 0 pantallas sin explicación); renderizar borradores para previsualizar
-(FR-012: "por ninguna vía").
+**Dónde vive la decisión y cómo se evita el parpadeo** (detalle en **P6-21** de
+[plan.md](./plan.md)): en el **frontend**, en el elemento de ruta de `/ministerios` (no en el
+backend ni en el contrato):
+
+1. Mientras `usePublicMinistries` está en vuelo se renderiza **`SectionSkeleton`** (estado de carga
+   real de F10, el mismo de `EventsPage`): **nunca** se pinta la grilla vacía ni aviso alguno.
+2. Solo cuando la consulta termina **con éxito** y el documento viene **sin `items`** se redirige
+   con `<Navigate to="/" replace />`; `replace` evita que «Atrás» devuelva a la URL muerta y genere
+   un bucle.
+3. **Ante un error NO se redirige** (un fallo transitorio de la API no debe expulsar al visitante):
+   se muestra el estado de error con «Volver a intentar» (patrón de `EventsPage`); con caché previa
+   se conserva el último contenido y un aviso discreto.
+
+**Accesibilidad**: el destino es la portada —una página completa con toda la navegación—, de modo
+que quien llega por un enlace guardado **no queda en un callejón** (esa es la razón de redirigir en
+lugar de responder `404` o pintar una página vacía). *Requisito que la spec no cubre hoy* (se
+señala al `analista-producto`, sin inventarlo aquí): un anuncio breve (`aria-live`) al redirigir
+ayudaría a quien usa lector de pantalla a entender el salto; tocaría superficies de F3/F10 y
+FR-021 limita el contenido de F6 en la portada al bloque, por lo que **no se implementa** sin una
+línea en la spec.
+
+**El contrato no cambia**: `GET /api/v1/ministerios` sigue respondiendo **`200`** con
+`{"lang":…}` y la clave `items` **omitida** cuando no hay publicados (mismo sobre
+`{lang, items?}` que el bloque de la portada y que F3/F4). Un `3xx` desde la API rompería el
+contrato JSON y a sus consumidores (la presencia de la navegación y las pruebas); la redirección es
+una **decisión de presentación del SPA** y así queda documentada en la prosa del contrato.
+
+**Alternativas descartadas.**
+
+| Alternativa | Por qué no |
+|---|---|
+| Aviso de sección vacía sin redirigir (`HiddenNotice`, patrón F4/R4-13) | Era la propuesta de este research; **el humano la descartó para F6 el 2026-10-13** (F4 la conserva: no se unifican) |
+| `404` | Un código de error para algo normal (una sección aún sin contenido) |
+| Página vacía sin mensaje | Contradice SC-010 (0 pantallas sin explicación) |
+| Redirigir desde el backend o con `302` en el contrato | El backend sirve JSON y las rutas del SPA las decide el frontend; rompería el sobre `{lang, items?}` y a los consumidores |
+| Redirigir también ante un **error** de la API | Un fallo transitorio no debe sacar al visitante: el estado de error con reintento es el patrón de `EventsPage` |
+| Renderizar borradores para previsualizar | FR-012: "por ninguna vía" |
 
 ---
 
@@ -522,7 +582,9 @@ F6 **aplica** el sistema de diseño y movimiento de F10 (tokens, modo claro/oscu
 
 - **Sección pública `/ministerios`** en `features/publico/ministerios/` (mismo reparto que
   `features/publico/eventos/` de F4), con los nombres de pieza de `ux.md` §6.3:
-  `MinisteriosPage` (H1 + grilla de fichas), `MinistryCard` (imagen con `CardImage`, nombre,
+  `MinisteriosPage` (H1 + grilla de fichas; estados: **esqueleto** de carga, **error con
+  «Volver a intentar»** y **redirección a la portada sin publicados** — R6-13/P6-21, nunca un aviso
+  de sección vacía—), `MinistryCard` (imagen con `CardImage`, nombre,
   descripción completa, líneas de horario/lugar/encargado **solo con dato**, ficha del encargado
   **solo si viene en la respuesta**), `EncargadoLine` (nombre + contacto cuando existen),
   `WhatsappJoinButton` (**solo si hay `whatsappUrl`**, FR-003), `MinisteriosBlock` (bloque de la
@@ -545,11 +607,14 @@ F6 **aplica** el sistema de diseño y movimiento de F10 (tokens, modo claro/oscu
   paginación visible).
 - **Inventario único** (regla de F2/T242): F6 **reutiliza** `Field`, `TextArea`,
   `Select`, `Button`, `Notice`, `ConfirmDialog`, `Dialog`, `EmptyState`, `Table`, `Tabs`,
-  `StatusPill`, `ImageUploader`, `PublishControls` y hace **dos promociones** de piezas que hoy
-  viven en `features/publico/eventos/` y que F6 comparte: **`CardImage`** (de `ItemCardParts.tsx`)
-  e **`HiddenNotice`**, ambas a `src/components/publico/` (mismo gesto que F4 hizo con
-  `ImageUploader`/`PublishControls`). `ShowContactSwitch` nace en la feature (si F3/F4/F7 lo
-  necesitan algún día, se promueve entonces).
+  `StatusPill`, `ImageUploader`, `PublishControls` y hace **una promoción** de una pieza que hoy
+  vive en `features/publico/eventos/` y que F6 comparte: **`CardImage`** (de `ItemCardParts.tsx`)
+  a `src/components/publico/` (mismo gesto que F4 hizo con `ImageUploader`/`PublishControls`).
+  **`HiddenNotice` NO se promueve**: F6 ya no pinta un aviso de sección vacía (la URL directa
+  redirige a la portada, R6-13/P6-21) y la pieza se queda en `features/publico/eventos/`, donde
+  F4 la sigue usando para `/eventos`. `ShowContactSwitch` nace en la feature (si F3/F4/F7 lo
+  necesitan algún día, se promueve entonces); el interruptor es **propio de F6** (F3/F4 no lo
+  tienen).
 - **Permisos de F2 en el frontend**: `MINISTERIOS` en `lib/permissions.ts` (+ `MODULE_PERMISSIONS`),
   `RequirePermission(MINISTERIOS)` en `/panel/ministerios`, tarjeta «Gestión de ministerios» en
   `AccesosRapidos` de `InicioPage` y `ACTION_LABELS` con las 8 etiquetas de auditoría (R6-12).
@@ -595,7 +660,7 @@ cualquier dependencia de UI nueva (el inventario de F10/F2/F3/F4 cubre la ficha 
 |---|---|---|
 | R6-1 | Modelo | Una tabla `ministries`; el encargado son **campos del ministerio** (sin tabla `leaders`, sin fichas compartidas) |
 | R6-2 | **Privacidad (FR-026)** | Tres capas: DTO público sin campos del encargado oculto + consultas públicas que devuelven `NULL` (`CASE WHEN leader_visible`) + pruebas "0 apariciones" (service/handler/repository/e2e); inventario de vías públicas para `seguridad` |
-| R6-3 | Interruptor | `leaderVisible` (equivale al `showContact` de la spec): gobierna solo la publicación, no el guardado; códigos de auditoría propios; **default al crear → puerta 2** |
+| R6-3 | Interruptor | `leaderVisible` (equivale al `showContact` de la spec): gobierna solo la publicación, no el guardado; códigos de auditoría propios; **default `FALSE` —«Oculto por defecto»— (decisión del humano 2026-10-13, que descarta la recomendación (a))**: privacidad por defecto |
 | R6-4 | Contacto (Q8) | `leader_phone` **o** `leader_email` (nunca ambos: `CHECK` + service), tags `phone`/`email` existentes, contacto exige nombre, validación solo de formato |
 | R6-5 | Enlace (FR-015/Q3) | Tag `url` (https + host, sin dominios) + sin espacios/control + `CHECK '^https://[^[:space:]]+$'`; el valor se sirve tal cual |
 | R6-6 | Permisos | `AdminChain("ministerios")`; permiso `ministerios` **ya sembrado** en `000002`; **sin migración de permisos y sin tocar F2** |
@@ -605,8 +670,8 @@ cualquier dependencia de UI nueva (el inventario de F10/F2/F3/F4 cubre la ficha 
 | R6-10 | Validación | Tags existentes + reglas de dominio; límites: nombre/encargado 160, descripción 2.000, horario/lugar 200, enlace 500, alt 300; `400 invalid` con `details`, sin guardado parcial |
 | R6-11 | Duplicados | Exacto (nombre+descripción+encargado+enlace normalizados) → `409`; enlace compartido → **aviso** (`whatsappUrlShared`) sin bloquear |
 | R6-12 | Auditoría | 8 códigos `ministry.*` (migración `000011`), transaccional fail-closed, `target_kind='content'`; visibilidad = `ministry.leader.show/hide`; reordenar = `ministry.update` |
-| R6-13 | Publicación | `publication_state` por elemento, "se publica al guardar"; sección vacía → entrada oculta + `/ministerios` con **aviso sin redirigir** (patrón F4 R4-13) |
+| R6-13 | Publicación | `publication_state` por elemento, "se publica al guardar"; sección vacía → entrada oculta + **`/ministerios` redirige a la portada** (decisión del humano 2026-10-13, **distinta a propósito** del patrón F4 R4-13: F4 conserva su aviso sin redirigir); esqueleto → redirección limpia sin parpadeo, `200` sin `items` en la API |
 | R6-14 | Bloque de portada | `GET /api/v1/portada/ministerios` con **tope 5 en el servidor**, orden `sort_order, id`, tarjetas imagen+nombre (+horario/lugar según `ux.md` §4.9), botón a `/ministerios`, **oculto por completo sin publicados** (a diferencia del bloque de F4) |
-| R6-15 | Frontend | F10 aplicado; `/ministerios` + `/panel/ministerios` (nombres de pieza según `ux.md`); `MINISTERIOS` en permisos; `CardImage` y `HiddenNotice` promovidos al inventario; `ACTION_LABELS` +8 |
+| R6-15 | Frontend | F10 aplicado; `/ministerios` + `/panel/ministerios` (nombres de pieza según `ux.md`); `MINISTERIOS` en permisos; **solo `CardImage` promovido** (`HiddenNotice` no: F6 redirige en vez de avisar); `ACTION_LABELS` +8 |
 | R6-16 | Concurrencia | Última escritura completa gana (transacción única + auditoría) |
 | R6-17 | Dependencias | **Ninguna nueva** en backend ni frontend |
