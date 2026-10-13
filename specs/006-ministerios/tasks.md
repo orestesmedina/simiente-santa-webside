@@ -786,7 +786,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
   - **Criterio de terminado**: una sola copia de `CardImage` en el inventario y F4 sin regresión.
   - **Commit sugerido**: `refactor(frontend): promover CardImage al inventario publico`
 
-- [ ] T624 · i18n público y textos del panel · `[frontend]` `[P]` (P3)
+- [X] T624 · i18n público y textos del panel · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/features/publico/i18n/{messages,es,en}.ts` (EDITADOS: claves
     tipadas de `ux.md` §7.2 — entrada de navegación «Ministerios»/«Ministries», H1 y subtítulo de la

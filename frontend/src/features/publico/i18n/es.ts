@@ -12,6 +12,7 @@ export const es: PublicMessages = {
   'nav.sections.contact': 'Contacto',
   'nav.sections.social': 'Redes sociales',
   'nav.sections.events': 'Eventos y actividades',
+  'nav.sections.ministries': 'Ministerios',
   'home.upcoming.title': 'Lo que viene',
   'home.upcoming.subtitle': 'Lo más próximo de nuestra agenda',
   'home.upcoming.seeAll': 'Ver más eventos',
@@ -36,6 +37,20 @@ export const es: PublicMessages = {
     'No pudimos cargar los eventos y actividades. Revisa tu conexión y vuelve a intentarlo.',
   'events.error.retry': 'Volver a intentar',
   'events.error.partial': 'No pudimos actualizar; ves la última versión disponible.',
+  'ministries.page.title': 'Ministerios',
+  'ministries.page.subtitle':
+    'Las áreas de servicio de nuestra iglesia: conoce cada una y cómo participar.',
+  'ministries.leader.label': 'Encargado',
+  'ministries.join': 'Unirse al grupo de WhatsApp',
+  'ministries.loading': 'Cargando…',
+  'ministries.error.load':
+    'No pudimos cargar los ministerios. Revisa tu conexión y vuelve a intentarlo.',
+  'ministries.error.retry': 'Volver a intentar',
+  'ministries.error.partial': 'No pudimos actualizar; ves la última versión disponible.',
+  'home.ministries.title': 'Ministerios',
+  'home.ministries.subtitle': 'Las áreas donde puedes servir',
+  'home.ministries.seeAll': 'Ver más ministerios',
+  'home.ministries.badge': 'Ministerio',
   'footer.sitemap.label': 'Mapa del sitio',
   'footer.sitemap.explore': 'Explorar',
   'footer.sitemap.contact': 'Contacto',
@@ -84,5 +99,9 @@ export const es: PublicMessages = {
   'a11y.logo': 'Logotipo de la iglesia Simiente Santa',
   'a11y.hero': 'Imagen de la portada de la iglesia',
   'a11y.events.heading': 'Eventos y actividades de la iglesia',
+  'a11y.ministries.heading': 'Ministerios de la iglesia',
+  'a11y.ministries.join': 'Unirse al grupo de WhatsApp de {nombre}',
   'a11y.home.upcoming.heading': 'Lo que viene: próximos eventos y actividades de la iglesia',
+  'a11y.home.ministries.heading':
+    'Ministerios de la iglesia: mira el resumen y entra a la sección completa',
 };
