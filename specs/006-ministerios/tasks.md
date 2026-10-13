@@ -832,7 +832,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     `ministerios` y la auditoría no muestra códigos crudos de F6 (`ux.md` §4.8).
   - **Commit sugerido**: `feat(frontend): permiso ministerios, accesos del panel y etiquetas de auditoria`
 
-- [ ] T626 · Actualización **acotada** de las 4 pruebas que fijan permisos/accesos · `[frontend]` *(cambio acotado documentado, RG6-6)*
+- [X] T626 · Actualización **acotada** de las 4 pruebas que fijan permisos/accesos · `[frontend]` *(cambio acotado documentado, RG6-6)*
 
   - **Archivos** (SOLO estos 4): `frontend/src/lib/permissions.test.ts`,
     `frontend/src/features/roles/permissions.test.ts`, `frontend/src/features/roles/roles.test.tsx`

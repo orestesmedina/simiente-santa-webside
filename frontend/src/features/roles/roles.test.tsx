@@ -59,8 +59,8 @@ describe('RolesPage · listado', () => {
     expect(within(table).getByText('2 cuentas')).toBeInTheDocument();
   });
 
-  it('los permisos de agenda (F4) ya no llevan el sello «Disponible más adelante»', async () => {
-    const role = makeRole({ permissions: ['eventos', 'actividades', 'categorias'] });
+  it('los permisos de agenda (F4) y de ministerios (F6) ya no llevan el sello «Disponible más adelante»', async () => {
+    const role = makeRole({ permissions: ['eventos', 'actividades', 'categorias', 'ministerios'] });
     server.use(
       http.get(rolesUrl, () =>
         HttpResponse.json({ items: [role], total: 1, limit: 20, offset: 0 }),
@@ -71,6 +71,7 @@ describe('RolesPage · listado', () => {
             { code: 'eventos', label: 'Eventos' },
             { code: 'actividades', label: 'Actividades' },
             { code: 'categorias', label: 'Categorías de agenda' },
+            { code: 'ministerios', label: 'Ministerios' },
           ],
         }),
       ),
@@ -82,6 +83,8 @@ describe('RolesPage · listado', () => {
     expect(await within(table).findByText('Eventos')).toBeInTheDocument();
     expect(within(table).getByText('Actividades')).toBeInTheDocument();
     expect(within(table).getByText('Categorías de agenda')).toBeInTheDocument();
+    // El permiso `ministerios` (ya sembrado por F2) se ofrece sin sello (FR-011).
+    expect(within(table).getByText('Ministerios')).toBeInTheDocument();
     expect(within(table).queryByText(/Disponible más adelante/)).toBeNull();
   });
 
