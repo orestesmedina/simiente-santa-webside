@@ -1060,7 +1060,7 @@ que añade `GET /api/v1/portada/proximamente`) · `ux.md` (pantallas, componente
 
 ## Fase 10 — Cierre
 
-- [ ] T440 · Verificación de cierre · `[infra]` *(re-ejecución: enmienda Q8 añade US7/SC-014/SC-015)*
+- [X] T440 · Verificación de cierre · `[infra]` *(re-ejecución: enmienda Q8 añade US7/SC-014/SC-015)*
 
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit.

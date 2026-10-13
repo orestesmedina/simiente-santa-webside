@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 004-eventos-actividades |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar — correcciones: 3 bugs (`equipo-bug`) + bloque de portada (T443–T449) |
-| Ciclo de corrección | 1/3 (validación de F4 cerrada; pendiente re-validar bugs + bloque) |
-| Próximo paso | T447–T449 `[frontend]` bloque «Lo que viene» en la portada → `dev-frontend`; luego re-validar (bugs + bloque) |
+| Fase | 7/9 · Validar (re-validación: 3 bugs corregidos + bloque de portada) |
+| Ciclo de corrección | 2/3 |
+| Próximo paso | Re-validar con `qa-tester`/`revisor-codigo`/`seguridad`; luego CHANGELOG y PR |
 | Bloqueado por | — |
 | Actualizado | 2026-10-12 |
 
@@ -54,6 +54,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-12 — **T440 re-verificada tras la enmienda Q8 y las 3 correcciones de bugs** (`devops`): **`make ci`** completo en verde (lint, Go unitarias + `-tags=integration` contra PostgreSQL real, **vitest 78 archivos / 528 pruebas**, govulncheck 0, npm audit 0); **e2e en las 3 tandas documentadas** (imagen Docker `mcr.microsoft.com/playwright:v1.63.0-jammy`, `--network host`, `--workers=1`): tanda 1 (F2) 2 casos, tanda 2 (`agenda-`, T438–T442) 5 casos y tanda 3 (`portada- diseno- movimiento navegacion- tema- qa- status`, **incluido `portada-proximamente` de T449** y `qa-bugs-004`) 38 casos — **45/45 pasados**; **cobertura `internal/agenda/service*.go` = 89,4 %** (service.go 95,5 %, admin 87,5 %, audit 100 %, public 88,0 %); **`sqlc-verify` y `api-gen` sin deriva**; **migraciones `000007`–`000009` up→down→up** sobre una BD desechable en el contenedor (down llega a versión 6, re-up a 9 y catálogo **10** con `categorias`); backend Docker reconstruido a la fecha del último commit del dominio (endpoint `/api/v1/portada/proximamente` responde `200` con el bloque — SC-014/SC-015 —); `/healthz` 200, ruta inexistente `404` con `ErrorEnvelope`, `/eventos` y `/` 200 en el frontend; **sin cambios pendientes de F4 en `.env.example`, docker-compose.yml, Dockerfiles ni `.github/`**. Pendiente registrado: **SC-010** (manual con el humano y `qa-tester`). Sin PR ni despliegue.
 - 2026-10-11 — **Fase 5 (Validar) — ciclo 2: APROBADO por los tres roles.** El ciclo de corrección 1 (`1714e2b`, `3ec0b2d`, `53c7007`, `8b03db3`) cerró I1 (consultas por lote, sin N+1) y M1–M3. Re-validación: `qa-tester` APROBADO, `revisor-codigo` APROBADO, `seguridad` APROBADO. Consolidado en `revision-2026-10-11-ciclo2.md`. Quedan solo sugerencias no bloqueantes (S1 deriva documental, S2, S3) y deuda aceptada. Arranca la convergencia (Fase 8).
 
 - 2026-10-11 — **Fase 5 (Validar) — ciclo 1**: `qa-tester` **APROBADO** (US1–US6 y SC-001…SC-013 cubiertos; SC-010 y lector de pantalla quedan manuales), `seguridad` **APROBADO** (0 críticos/altos/medios; 3 bajos + 3 informativos), `revisor-codigo` **APROBADO con cambios menores** (1 IMPORTANTE: N+1 en `GetProximamente`/`ListEventos`/`ListActividades`; 5 menores). Consolidado en `revision-2026-10-11.md`. El orquestador abre **ciclo de corrección 1** para I1 + M1–M3.
