@@ -54,7 +54,9 @@
 #     Forbidden, Conflict, TooManyRequests, DatabaseUnavailable, Internal
 #   - components/schemas: ErrorEnvelope, ErrorBody, PublicationState,
 #     ImageUploadResult, ImagenPublica
-#   - components/parameters: ListLimit, ListOffset
+#   - components/parameters: Limit, Offset (los reutilizables REALES del
+#     contrato vivo, `backend/api/openapi.yaml`; A6-2: el delta NUNCA usa
+#     `ListLimit`/`ListOffset`, que no existen allí)
 #   - components/securitySchemes: sessionCookie
 # El registro de `error.code` NO cambia: F6 emite `invalid`, `unauthenticated`,
 # `forbidden`, `not_found`, `conflict` e `internal`, todos ya en el enum.
@@ -63,12 +65,15 @@
 #   - AdminActionItem.action: el enum crece con los 8 códigos de F6 (research
 #     R6-12): ministry.create, ministry.update, ministry.delete,
 #     ministry.publish, ministry.unpublish, ministry.leader.show,
-#     ministry.leader.hide, ministry.image.upload. Regla exacta: el alta usa
-#     `ministry.create` aunque nazca publicada; `ministry.publish`/
-#     `ministry.unpublish` SOLO registran cambios de estado; `ministry.leader.
+#     ministry.leader.hide, ministry.image.upload. Regla exacta: el alta
+#     registra **SOLO `ministry.create`** —también con `publicationState:
+#     published` y `leaderVisible: true` (A6-10)—; `ministry.publish`/
+#     `ministry.unpublish` SOLO registran cambios de estado y `ministry.leader.
 #     show`/`ministry.leader.hide` SOLO registran cambios del interruptor de
-#     visibilidad de la ficha del encargado (nombre y contacto); la subida de
-#     imagen se audita con `ministry.image.upload`. `targetKind` NO cambia
+#     visibilidad de la ficha del encargado (nombre y contacto), todos sobre un
+#     ministerio YA EXISTENTE (operaciones de `PATCH`): el alta nunca emite
+#     `publish`/`unpublish`/`leader.show`/`leader.hide`; la subida de imagen se
+#     audita con `ministry.image.upload`. `targetKind` NO cambia
 #     (los ministerios son `content`: `targetId` null y `targetLabel`
 #     "Ministerios · <nombre>" / "Ministerios · Imagen · <fileName>").
 #   - GET /api/v1/media/{fileName}: solo cambia la PROSA (el comportamiento es
@@ -318,8 +323,8 @@ paths:
       security:
         - sessionCookie: []
       parameters:
-        - $ref: "#/components/parameters/ListLimit"
-        - $ref: "#/components/parameters/ListOffset"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
         - name: publicationState
           in: query
           required: false
@@ -366,9 +371,11 @@ paths:
         2026-10-13—: si la clave falta, el ministerio nace con la ficha del
         encargado **no publicada** (privacidad por defecto; publicar un celular
         o correo personales exige encender el interruptor de forma expresa).
-        Auditoría: `ministry.create` (aunque nazca publicada) y
-        `ministry.leader.show`/`ministry.leader.hide` si el guardado cambia la
-        visibilidad junto con los datos (dos filas).
+        Auditoría: en el alta se registra **solo `ministry.create`** (también
+        con `publicationState: published` y `leaderVisible: true`); los códigos
+        `ministry.publish`/`ministry.unpublish` y `ministry.leader.show`/
+        `ministry.leader.hide` solo registran **cambios sobre un ministerio
+        existente** (operaciones de `PATCH`), nunca el alta (A6-10).
       security:
         - sessionCookie: []
       requestBody:
@@ -434,7 +441,10 @@ paths:
       description: |
         Actualización parcial (FR-010): solo se tocan los campos presentes; un
         campo con `null` explícito borra su valor opcional (p. ej. `whatsappUrl`,
-        `imageFile`, `leaderPhone`). Si el ministerio ya estaba publicado, los
+        `imageFile`, `leaderPhone`). La transacción del guardado escribe **la
+        fila completa ya fusionada** —el `PATCH` **fusiona los campos presentes
+        sobre la fila actual** y los campos ausentes no cambian—: última
+        escritura completa gana (P6-20/R6-16, A6-3). Si el ministerio ya estaba publicado, los
         cambios guardados son visibles de inmediato (FR-013: se publica al
         guardar); `publicationState` cambia el estado por elemento (FR-012) y
         `leaderVisible` la publicación de la ficha del encargado (FR-025/FR-026:

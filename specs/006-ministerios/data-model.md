@@ -130,7 +130,13 @@ CREATE TABLE ministries (
     CHECK (leader_name_es = btrim(leader_name_es)),
     CHECK (schedule_es = btrim(schedule_es)),
     CHECK (place_es = btrim(place_es)),
-    CHECK (whatsapp_url IS NULL OR whatsapp_url = btrim(whatsapp_url))
+    CHECK (whatsapp_url IS NULL OR whatsapp_url = btrim(whatsapp_url)),
+    -- Normalización de F2 (P13): el dato normalizado es el que se guarda.
+    -- Precedente literal de 000005 (home_contact: CHECK (email = btrim(email))
+    -- y CHECK (phone = btrim(phone))); aquí leader_phone/leader_email son
+    -- anulables y por eso van con IS NULL OR (A6-9).
+    CHECK (leader_phone IS NULL OR leader_phone = btrim(leader_phone)),
+    CHECK (leader_email IS NULL OR leader_email = btrim(leader_email))
 );
 
 -- Orden de presentación (Q5/FR-004): sort_order, id, como home_services y
@@ -231,6 +237,17 @@ ALTER TABLE admin_actions ADD CONSTRAINT admin_actions_action_check CHECK (actio
   campo más del `PATCH` y el visitante ve exactamente ese orden (US2 esc. 9).
 - **Sin `deleted_at`**: la eliminación es definitiva, con confirmación y registrada (default
   revisable de la spec, igual que F3/F4).
+- **`CHECK` de `btrim` (A6-9)**: los textos se guardan ya recortados (normalización de F2/P13,
+  «el dato normalizado es el que se guarda»), con el mismo gesto que el precedente real
+  `000005_create_home_content` (`home_contact`: `CHECK (email = btrim(email))`,
+  `CHECK (phone = btrim(phone))`); como `leader_phone`/`leader_email` aquí son **anulables**, sus
+  `CHECK` van con `IS NULL OR … = btrim(…)` (igual que `whatsapp_url`). El `down` **no** necesita
+  cambios: tira la tabla entera y los `CHECK` desaparecen con ella.
+- **Ciclo de vida del archivo de imagen (A6-11)**: eliminar un ministerio **no borra el archivo**
+  — deja de servirse porque `IsFilePublished` ya no lo encuentra (T610) y puede volver a
+  referenciarse —; la imagen **reemplazada o quitada** (`imageFile: null` o con otro archivo) se
+  limpia del disco en **best-effort**, como en `portada` (`deleteFile`/`deleteReplacedImage`,
+  R3-8): si la limpieza falla, la operación procede igual.
 
 ---
 
@@ -248,7 +265,7 @@ borradores y datos ocultos del encargado es la del panel (FR-012/FR-026).
 | `ListMinistries` (`:limit`, `:offset`, `sqlc.narg('publication_state')`) | Panel paginado: **todo** (incluidos borradores y fichas ocultas), `ORDER BY sort_order, id` (el mismo orden que ve el visitante, US2 esc. 9), filtro opcional por estado |
 | `CountMinistries` (`sqlc.narg('publication_state')`) | Total del listado del panel (sobre de paginación) |
 | `GetMinistryByID` | Panel (detalle y respuestas de escritura): todas las columnas + `whatsapp_url_shared BOOLEAN` calculado con `EXISTS (SELECT 1 FROM ministries m2 WHERE m2.whatsapp_url = ministries.whatsapp_url AND m2.id <> ministries.id AND ministries.whatsapp_url IS NOT NULL)` — el "aviso" de enlace compartido (R6-11) |
-| `InsertMinistry` / `UpdateMinistry` / `DeleteMinistry` | Mutaciones del panel (el `Update` escribe el DTO completo; los opcionales van como `NULL` cuando se borran) |
+| `InsertMinistry` / `UpdateMinistry` / `DeleteMinistry` | Mutaciones del panel (el `Update` escribe **la fila completa ya fusionada por el service** — los campos presentes del `PATCH` sobre la fila actual, los ausentes intactos y los opcionales como `NULL` cuando se borran: A6-3/P6-20) |
 | `ExistsMinistryDuplicate` | Duplicado exacto (nombre + descripción + encargado + enlace, **normalizados**: `btrim` + minúsculas, con `IS NOT DISTINCT FROM` en los opcionales) → `409 conflict` (R6-11) |
 
 ### `backend/internal/db/queries/media.sql` (dominio `media`, **editado** — R6-7)
@@ -269,10 +286,12 @@ sobre `admin_actions` (solo lectura, FR-025 de F2).
   `target_label` = `Ministerios · <nameEs>` / `Ministerios · Imagen · <fileName>` (máx. 254,
   `CHECK` de F2).
 - `action` ∈ los 8 códigos nuevos (regla exacta en research R6-12): `ministry.create` en el alta
-  aunque nazca publicado; `ministry.publish`/`ministry.unpublish` **solo** para cambios de estado;
-  `ministry.leader.show`/`ministry.leader.hide` **solo** para cambios del interruptor;
-  `ministry.update` para cualquier otro cambio de datos (incluido `sortOrder`); datos + estado /
-  visibilidad en el mismo guardado → **dos filas**; `ministry.image.upload` en la subida.
+  —**una sola fila**, también con `publicationState: published` y `leaderVisible: true` (A6-10: el
+  alta **nunca** emite `ministry.publish`/`unpublish` ni `ministry.leader.show`/`hide`, que solo
+  registran cambios sobre un ministerio **existente**)—; `ministry.publish`/`ministry.unpublish`
+  **solo** para cambios de estado; `ministry.leader.show`/`ministry.leader.hide` **solo** para
+  cambios del interruptor; `ministry.update` para cualquier otro cambio de datos (incluido
+  `sortOrder`); datos + estado / visibilidad en la **edición** → **dos filas**; `ministry.image.upload` en la subida.
   `result`: `success` en la transacción, `failure` en rechazos y `denied` en denegaciones
   (best-effort).
 - `actor_user_id` siempre la cuenta del panel que ejecutó (el `CHECK` de F2 sigue vigente).
@@ -292,6 +311,8 @@ sobre `admin_actions` (solo lectura, FR-025 de F2).
 | El enlace se sirve tal cual (sin transformar el destino) | Sin normalización del valor en el service; prueba de igualdad `href` = valor guardado |
 | Horario y lugar son **textos**: sin fechas ni recurrencia (Q6/FR-024) | No hay columnas de fecha ni tablas hijas: solo `TEXT`; ninguna consulta calcula fechas |
 | Imagen opcional con alt obligatorio si hay imagen (FR-020) | `CHECK (image_file IS NULL OR image_alt_es IS NOT NULL)` + validación condicional en el DTO |
+| Textos recortados (`btrim`, normalización de F2/P13, precedente `000005`) | `CHECK (campo = btrim(campo))` en `name_es`, `leader_name_es`, `schedule_es`, `place_es` y `whatsapp_url`; en `leader_phone`/`leader_email` con `IS NULL OR … = btrim(…)` (A6-9) + trim en el service |
+| El archivo de la imagen **no** se borra al eliminar el ministerio; la imagen reemplazada o quitada se limpia **best-effort** (A6-11) | `IsFilePublished` deja de encontrar el archivo tras el borrado (T610) + limpieza best-effort como en `portada` (R3-8) + pruebas en T608/T615 |
 | Solo lo publicado es visible al visitante (FR-012) | Consultas `…Published` (única vía pública) + `IsFilePublished` para imágenes + pruebas "0 borradores expuestos" |
 | Orden manual `sort_order, id` en sección y bloque (FR-004/FR-016/FR-027) | `ORDER BY sort_order, id` en `ListPublishedMinistries` + índice `ministries_sort_order_id_idx` + prueba de orden |
 | Tope **5** del bloque, resuelto en el servidor (FR-027) | `maxPortadaItems = 5` (constante del service, con prueba) + `LIMIT :limit` en SQL; sin parámetro de límite en el contrato |
@@ -316,6 +337,8 @@ sobre `admin_actions` (solo lectura, FR-025 de F2).
    - `CHECK` de imagen: `image_file` sin `image_alt_es` falla;
    - `CHECK` del enlace: `http://…`, `javascript:alert(1)` y un valor con espacio fallan;
      `https://chat.whatsapp.com/…` y `https://ejemplo.com/grupo` (dominio no de WhatsApp) pasan;
+   - `CHECK` de `btrim` (A6-9): `leader_phone`/`leader_email` con espacios sobrantes fallan en la
+     BD (ídem el resto de textos con `CHECK` de `btrim`);
    - **«Oculto por defecto»** (decisión del humano 2026-10-13): un `INSERT` que omite
      `leader_visible` guarda `FALSE` (prueba del `DEFAULT` de `000010`); una fila con nombre y
      contacto de encargado y el interruptor en su default sale **sin** datos del encargado en la

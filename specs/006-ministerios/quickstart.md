@@ -18,7 +18,7 @@ comprueban en §1/§8/§11 (SC-010) y en §3/§7 (SC-014).
 make up                      # docker compose up -d (db, redis, backend, frontend)
 make db-migrate              # aplica 000010 y 000011 sobre la BD levantada
 cd backend  && make sqlc     # solo si cambiaste queries/ (código generado commiteado)
-cd frontend && npm install && npm run api-gen && npm test -- --run
+cd frontend && npm install && npm run api:gen && npm test -- --run
 ```
 
 **Sin variables de entorno nuevas** (F6 no añade ninguna; `APP_TZ` de F4 sigue como está).
@@ -128,8 +128,8 @@ curl -s -b /tmp/mi.jar -X POST "$API/api/v1/admin/ministerios" \
 | `imageFile` sin `imageAltEs` | `details.imageAltEs` (FR-020) |
 
 También en el navegador: **`$WEB/panel/ministerios`** con el formulario completo (en español,
-FR-018), que muestra el interruptor «Mostrar la ficha del encargado al público» desde la creación
-(Q1).
+FR-018), que muestra el interruptor «Mostrar la ficha del encargado en el sitio público» desde la
+creación (Q1; etiqueta fuente `ux.md` §4.5/§7.1, A6-7).
 
 ## 4. Campos opcionales: encargado, horario y lugar (US2, Q1/Q6/Q8, FR-024/FR-025)
 
@@ -245,8 +245,10 @@ curl -s "$API/api/v1/ministerios?lang=es" | jq '.items[] | select(.name=="Minist
 - **Ministerio sin enlace** (§3: «Ministerio de matrimonios»): en `$WEB/ministerios` **no hay botón
   de unirse** (ni vacío ni roto, SC-009) y la ficha se ve completa con su horario y lugar.
 - **Ministerio sin encargado mostrable y sin enlace** (el caso SC-017): la ficha muestra nombre +
-  descripción (+ horario/lugar si existen), **0 botones vacíos, 0 líneas vacías, 0 huecos**, y el
-  bloque de la portada lo presenta igual.
+  descripción (+ horario/lugar si existen), **0 botones vacíos, 0 líneas vacías, 0 huecos**. En el
+  **bloque de la portada** el mismo caso se lee así (**A6-4**): «completo y coherente» = **imagen +
+  nombre + horario/lugar cuando existen + chip, sin descripción** (Q7/D-12: el detalle vive en
+  `/ministerios`); **la descripción es exigible solo a la ficha de la sección**.
 
 ## 8. Publicar y retirar por elemento (US3, FR-012/FR-013, SC-002, SC-003, SC-010)
 
@@ -303,6 +305,10 @@ curl -i "$API/api/v1/media/img_<uuid>.jpg"        # 200 con la imagen
 
 - Un ministerio **sin imagen** se presenta completo (SC-017: sin huecos); un archivo inválido (GIF,
   SVG, > 8 MB) → `400` con `details.file` y **el ministerio se conserva sin imagen**.
+- **Archivos de imagen (A6-11)**: al **eliminar** un ministerio su archivo **no se borra** del
+  disco — deja de servirse (`GET /api/v1/media/…` → `404`, `IsFilePublished`) y puede volver a
+  referenciarse —; la imagen **reemplazada o quitada** se limpia del disco en **best-effort** (como
+  en `portada`): si la limpieza falla, la operación procede igual.
 
 ## 11. Responsividad y accesibilidad (US5, FR-022/FR-023, SC-007/SC-008)
 
@@ -350,6 +356,9 @@ curl -s -b /tmp/ss.jar "$API/api/v1/admin/auditoria/acciones?limit=20" | jq
   `ministry.leader.show`/`ministry.leader.hide` (solo cambios del interruptor),
   `ministry.image.upload` y `ministry.delete`.
 - Datos **y** estado/visibilidad en el mismo guardado → **una fila por operación** (R6-12).
+- El alta deja **solo `ministry.create`** —también con `publicationState: published` y
+  `leaderVisible: true`—; `ministry.publish`/`unpublish` y `ministry.leader.show`/`hide` solo
+  registran **cambios sobre un ministerio existente** (A6-10).
 - El registro es de **solo lectura**: ninguna operación del API lo edita ni lo borra (SC-011).
 
 ## 14. Bloque de ministerios de la portada (US6, FR-027…FR-029, SC-016)
@@ -388,7 +397,7 @@ corresponde a `qa-tester`, `revisor-codigo` y `seguridad` (quien escribe no apru
 
 | Criterio | Sección |
 |---|---|
-| SC-001 (ver todo sin cuenta, unirse en < 30 s) | §1, §5, §10 |
+| SC-001 (ver todo sin cuenta, unirse en < 30 s) | §1, §5, §10 (el umbral < 30 s se **cronometra** en el protocolo SC-012 de §11/T637) |
 | SC-002 (0 borradores en público) | §8 |
 | SC-003 (cambio visible en la primera carga) | §6, §8 |
 | SC-004 (crear y publicar en < 2 min) | §3 |

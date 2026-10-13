@@ -126,7 +126,8 @@ nace un ministerio con encargado?
 **Decisión.**
 
 - **Nombre**: `leaderVisible` (columna `leader_visible BOOLEAN NOT NULL`), con etiqueta de
-  interfaz «Mostrar la ficha del encargado al público». La spec llama al interruptor `showContact`
+  interfaz **«Mostrar la ficha del encargado en el sitio público»** (texto fuente: `ux.md`
+  §4.5/§7.1; A6-7 unifica la etiqueta en todos los documentos). La spec llama al interruptor `showContact`
   "o el nombre que fije el arquitecto" (FR-025); se elige `leaderVisible` porque desde Q9 el
   interruptor gobierna **nombre y contacto** (la ficha entera), y `showContact` sería engañoso.
   **Equivalencia documentada**: `showContact` de la spec = `leaderVisible` del contrato y del
@@ -300,6 +301,11 @@ subida multipart validada (firma binaria, JPEG/PNG/WebP, ≤ 8 MB, nombre genera
 3. `image_alt_es` es **obligatorio si hay imagen** (`CHECK` en la BD + validación condicional en el
    DTO) y `image_alt_en` opcional con fallback; quitar la imagen = `imageFile: null` (y se limpia el
    alt en la misma validación de dominio).
+4. **Ciclo de vida del archivo (A6-11)**: eliminar un ministerio **no borra el archivo** — deja de
+   servirse porque `IsFilePublished` ya no lo encuentra (y puede volver a referenciarse) —; la
+   imagen **reemplazada o quitada** se limpia del disco **best-effort**, como hace `portada`
+   (`deleteFile`/`deleteReplacedImage`, R3-8): si la limpieza falla, la operación procede igual y
+   el huérfano queda en disco sin romper nada.
 
 **Alternativas descartadas.** Un servicio de archivos nuevo para F6 (duplicaría la regla "solo
 contenido publicado" y el volumen); servir todas las imágenes subidas (rompe FR-012); un endpoint
@@ -404,7 +410,8 @@ Toda validación en el **backend** (§IV, CWE-20) aunque el formulario también 
 - **Imagen**: `imageFile` con el patrón del nombre generado; `imageAltEs` obligatorio si hay
   imagen (y al quitar la imagen se limpia el alt).
 - **Ante datos inválidos**: `400 invalid` con `details` por campo y **sin guardado parcial** (el
-  `PATCH` es un solo `UPDATE` en una transacción con su auditoría).
+  `PATCH` es un solo `UPDATE` **de la fila ya fusionada** —campos presentes sobre la fila actual,
+  A6-3— en una transacción con su auditoría).
 - Contenido tratado **siempre como datos** (§IV, CWE-79): texto plano multilínea, emojis y tildes
   intactos, sin HTML interpretado.
 
@@ -456,8 +463,12 @@ se aplica**), `target_kind='content'`, `target_label` descriptivo y registro **c
 | Borrado | `ministry.delete` | Eliminó un ministerio |
 | Subida de imagen | `ministry.image.upload` | Subió la imagen de un ministerio |
 
-Regla exacta (misma que F4, analyze M5): **datos y estado/visibilidad en el mismo guardado → dos
-filas** (`ministry.update` + `ministry.publish`/`unpublish` y/o `ministry.leader.show`/`hide`);
+Regla exacta (misma que F4, analyze M5): **el alta registra solo `ministry.create`** —una sola
+fila, **también** con `publicationState: published` y `leaderVisible: true` (precisión A6-10: el
+alta **nunca** emite `ministry.publish`/`unpublish` ni `ministry.leader.show`/`hide`, que solo
+registran **cambios sobre un ministerio existente** (operaciones de `PATCH`)—; en la **edición**,
+**datos y estado/visibilidad en el mismo guardado → dos filas** (`ministry.update` +
+`ministry.publish`/`unpublish` y/o `ministry.leader.show`/`hide`);
 **reordenar solo** se registra como `ministry.update` (el orden es un dato del elemento, igual que
 en F3/F4 — `home.schedule.update` no tenía código de reorden—; si el humano prefiere un
 `ministry.reorder` propio, es un código más en la misma lista). `target_label` =
@@ -630,13 +641,17 @@ catálogo de i18n (las claves van en `features/publico/i18n/`, tipadas).
 
 ---
 
-## R6-16. Concurrencia: gana la última escritura completa
+## R6-16. Concurrencia: gana la última escritura completa (sobre la fila ya fusionada)
 
-Igual que F3/F4 (R3-17/R4-11): cada guardado escribe el ministerio entero (incluidos `sortOrder` y
-`leaderVisible`) en una sola transacción con su auditoría; dos guardados simultáneos se serializan
-en la BD y queda el conjunto completo de un mismo formulario. Sin control optimista (`version`/
-`If-Match`) ni historial (fuera de alcance; si el humano lo pide, es una columna + `409`). Un
-`PATCH` solo cambia los campos presentes y `null` explícito borra lo opcional (patrón F4).
+Igual que F3/F4 (R3-17/R4-11): el `PATCH` **fusiona los campos presentes** sobre la fila actual
+(los campos ausentes **no cambian** y `null` explícito borra lo opcional, patrón F4) y la
+transacción del guardado escribe **la fila completa ya fusionada** —incluidos `sortOrder` y
+`leaderVisible`— con su auditoría; dos guardados simultáneos se serializan en la BD y queda el
+conjunto completo de un mismo formulario (**última escritura completa gana**). Sin control
+optimista (`version`/`If-Match`) ni historial (fuera de alcance; si el humano lo pide, es una
+columna + `409`). *Precisión (A6-3)*: «escribir el ministerio entero» describe la **escritura**
+(la fila completa tras la fusión), **no** el cuerpo del `PATCH`: un `PATCH` con un solo campo es
+válido y deja el resto intacto.
 
 ---
 
