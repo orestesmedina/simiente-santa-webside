@@ -287,7 +287,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 
 ## Fase 2 — Contrato OpenAPI y tipos
 
-- [ ] T604 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.7.0) · `[backend]` `[P]` (P1)
+- [X] T604 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.7.0) · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO). *No* se toca
     `specs/006-ministerios/contracts/openapi.yaml` (snapshot inmutable, P6-18).
