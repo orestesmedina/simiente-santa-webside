@@ -672,7 +672,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
   - **Criterio de terminado**: `quickstart.md` §14 es ejecutable tal cual por API (US6).
   - **Commit sugerido**: `feat(ministerios): endpoint publico del bloque de la portada`
 
-- [ ] T619 · `handler_admin.go` — CRUD de `/api/v1/admin/ministerios` · `[backend]`
+- [X] T619 · `handler_admin.go` — CRUD de `/api/v1/admin/ministerios` · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/handler_admin.go` y `handler_admin_test.go`
     (NUEVOS).
