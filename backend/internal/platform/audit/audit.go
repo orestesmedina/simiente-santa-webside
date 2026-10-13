@@ -44,16 +44,16 @@ const (
 	TargetRole TargetKind = "role"
 	// TargetContent es un elemento de contenido: la portada (F3: identidad,
 	// «quiénes somos», contacto, un servicio del horario, un canal de WhatsApp o
-	// un enlace de red) o un elemento de agenda (F4: un evento, una actividad o
-	// una categoría). No tiene FK: ambas van en NULL y TargetLabel identifica el
-	// elemento (R3-11/R4-10).
+	// un enlace de red), un elemento de agenda (F4: un evento, una actividad o
+	// una categoría) o un ministerio (F6). No tiene FK: ambas van en NULL y
+	// TargetLabel identifica el elemento (R3-11/R4-10/R6-12).
 	TargetContent TargetKind = "content"
 )
 
 // Códigos de acción administrativa (FR-023). Son la lista cerrada de la tabla
-// admin_actions: los 8 de F2, los 15 de F3 (`home.*`) y los 15 de F4
-// (`event.*`, `activity.*` y `category.*`); la migración 000008 fija ese mismo
-// registro cerrado en la base (§VI).
+// admin_actions: los 8 de F2, los 15 de F3 (`home.*`), los 15 de F4
+// (`event.*`, `activity.*` y `category.*`) y los 8 de F6 (`ministry.*`); la
+// migración 000011 fija ese mismo registro cerrado en la base (§VI).
 const (
 	ActionUserCreate        = "user.create"
 	ActionUserUpdate        = "user.update"
@@ -99,6 +99,20 @@ const (
 	ActionCategoryCreate = "category.create"
 	ActionCategoryUpdate = "category.update"
 	ActionCategoryDelete = "category.delete"
+
+	// Códigos de F6 (R6-12): ministerios. `ministry.leader.show`/`hide`
+	// registran **solo** el cambio de visibilidad de la ficha del encargado
+	// (nombre y contacto) sobre un ministerio existente; el alta registra
+	// únicamente `ministry.create` aunque nazca publicado y con la ficha
+	// visible (A6-10). El alta de la auditoría es la misma de F2.
+	ActionMinistryCreate      = "ministry.create"
+	ActionMinistryUpdate      = "ministry.update"
+	ActionMinistryDelete      = "ministry.delete"
+	ActionMinistryPublish     = "ministry.publish"
+	ActionMinistryUnpublish   = "ministry.unpublish"
+	ActionMinistryLeaderShow  = "ministry.leader.show"
+	ActionMinistryLeaderHide  = "ministry.leader.hide"
+	ActionMinistryImageUpload = "ministry.image.upload"
 )
 
 // ActionCodes es la lista cerrada de códigos válidos de FR-023, en el orden de
@@ -142,6 +156,14 @@ var ActionCodes = []string{
 	ActionCategoryCreate,
 	ActionCategoryUpdate,
 	ActionCategoryDelete,
+	ActionMinistryCreate,
+	ActionMinistryUpdate,
+	ActionMinistryDelete,
+	ActionMinistryPublish,
+	ActionMinistryUnpublish,
+	ActionMinistryLeaderShow,
+	ActionMinistryLeaderHide,
+	ActionMinistryImageUpload,
 }
 
 // Errores de validación de los tipos de plumbing.

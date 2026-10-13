@@ -346,7 +346,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 
 ## Fase 3 — Núcleo de plataforma (`backend/internal/platform/`)
 
-- [ ] T606 · `platform/audit`: 8 códigos `ministry.*` · `[backend]` `[P]` (P1)
+- [X] T606 · `platform/audit`: 8 códigos `ministry.*` · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/internal/platform/audit/audit.go` y `audit_test.go` (EDITADOS).
   - **Qué hace**: amplía el registro cerrado del plumbing de F2 (R6-12) con los **8 códigos**
