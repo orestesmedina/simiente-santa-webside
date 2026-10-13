@@ -85,6 +85,69 @@ func localizeMinistry(ministry Ministry, lang string) MinisterioPublico {
 	return public
 }
 
+// PortadaMinisterios es el bloque de ministerios de la portada (contrato
+// `PortadaMinisterios`, US6/FR-027): hasta 5 ítems publicados —tope **firme del
+// servidor**, sin parámetro de límite— y `items` omitida sin publicados
+// (FR-028: la portada no dibuja el bloque **ni muestra mensaje**, a diferencia
+// del bloque «Lo que viene» de F4).
+type PortadaMinisterios struct {
+	Lang  string                  `json:"lang"`
+	Items []ItemMinisterioPortada `json:"items,omitempty"`
+}
+
+// ItemMinisterioPortada es la tarjeta compacta del bloque (FR-027 y `ux.md`
+// §4.9): imagen + nombre, con el horario y el lugar cuando existen. **No tiene
+// campos de encargado ni botón de unión** (P6-2/D-12: el detalle vive en la
+// sección): la privacidad de FR-026 es estructural en esta ruta —con el
+// interruptor apagado no hay nada que filtrar—.
+type ItemMinisterioPortada struct {
+	ID       string         `json:"id"`
+	Name     string         `json:"name"`
+	Schedule *string        `json:"schedule,omitempty"`
+	Place    *string        `json:"place,omitempty"`
+	Image    *ImagenPublica `json:"image,omitempty"`
+}
+
+// GetPortadaMinisterios devuelve el extracto del bloque de la portada resuelto a
+// `lang` (FR-027/FR-028): los mismos ministerios publicados que la sección —mismo
+// predicado y mismo fallback `en → es` por campo— acotados al tope `maxPortadaItems`
+// (5) en el orden manual del módulo (`sortOrder`, `id`). Sin publicados, `items`
+// queda omitida y la portada no renderiza el bloque; el tope se aplica en el
+// servidor, así que la respuesta no admite ningún parámetro de límite.
+func (s *service) GetPortadaMinisterios(ctx context.Context, lang string) (PortadaMinisterios, error) {
+	lang, err := normalizeLang(lang)
+	if err != nil {
+		return PortadaMinisterios{}, err
+	}
+
+	ministries, err := s.repository.ListPublishedMinistries(ctx, maxPortadaItems)
+	if err != nil {
+		return PortadaMinisterios{}, fmt.Errorf("listar los ministerios publicados: %w", err)
+	}
+
+	out := PortadaMinisterios{Lang: lang}
+	if len(ministries) > 0 {
+		out.Items = make([]ItemMinisterioPortada, 0, len(ministries))
+		for _, ministry := range ministries {
+			out.Items = append(out.Items, localizePortadaItem(ministry, lang))
+		}
+	}
+	return out, nil
+}
+
+// localizePortadaItem traduce un ministerio publicado a la tarjeta del bloque:
+// solo lo que la tarjeta muestra (la descripción, el encargado y el enlace se
+// quedan en la sección).
+func localizePortadaItem(ministry Ministry, lang string) ItemMinisterioPortada {
+	return ItemMinisterioPortada{
+		ID:       ministry.ID.String(),
+		Name:     pickString(ministry.NameEs, ministry.NameEn, lang),
+		Schedule: pickOptional(ministry.ScheduleEs, ministry.ScheduleEn, lang),
+		Place:    pickOptional(ministry.PlaceEs, ministry.PlaceEn, lang),
+		Image:    publicImage(ministry.ImageFile, ministry.ImageAltEs, ministry.ImageAltEn, lang),
+	}
+}
+
 // --- Localización (fallback en → es por campo, FR-008) ---
 
 // pickString resuelve un campo obligatorio en español: si se pide inglés y hay

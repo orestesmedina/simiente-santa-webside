@@ -539,7 +539,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     service; cobertura medida (`go test -cover`, ≥ 80 % al cierre).
   - **Commit sugerido**: `feat(ministerios): seccion publica con privacidad del encargado`
 
-- [ ] T614 · `ministerios`: `service_public.go` — `GetPortadaMinisterios` (tope 5) · `[backend]`
+- [X] T614 · `ministerios`: `service_public.go` — `GetPortadaMinisterios` (tope 5) · `[backend]`
 
   - **Archivos**: `backend/internal/ministerios/service_public.go` (EDITADO) y
     `service_public_test.go` (AMPLIADO).

@@ -344,3 +344,180 @@ func TestPublicImageRequiresAlt(t *testing.T) {
 		t.Errorf("imagen = %+v", got)
 	}
 }
+
+// --- Bloque de la portada (T614, US6/FR-027/FR-028) ---
+
+// TestGetPortadaMinisteriosCapsAtFiveAndKeepsOrder fija FR-027/SC-016: el tope 5
+// es del servidor (no hay parámetro de límite), el orden es el manual del módulo
+// y con más publicados salen exactamente los 5 primeros.
+func TestGetPortadaMinisteriosCapsAtFiveAndKeepsOrder(t *testing.T) {
+	repo := newFakeRepository()
+	for i := 0; i < 8; i++ {
+		ministry := publishedMinistry("Ministerio")
+		ministry.SortOrder = i
+		repo.seed(ministry)
+	}
+
+	out, err := newTestService(repo).GetPortadaMinisterios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMinisterios = %v", err)
+	}
+	if len(out.Items) != maxPortadaItems {
+		t.Fatalf("items = %d, se esperaban %d (tope firme del servidor)", len(out.Items), maxPortadaItems)
+	}
+	if got := repo.publicLimits; len(got) != 1 || got[0] != maxPortadaItems {
+		t.Errorf("topes consultados = %v, se esperaba [%d]", got, maxPortadaItems)
+	}
+	// Los 3 restantes no aparecen ni por paginación: la respuesta no tiene
+	// parámetros de límite ni de página.
+	raw := mustJSON(t, out)
+	if strings.Contains(raw, "sortOrder") || strings.Contains(raw, "offset") || strings.Contains(raw, "limit") {
+		t.Errorf("el bloque expone parámetros de paginación: %s", raw)
+	}
+	if maxPortadaItems != 5 {
+		t.Errorf("maxPortadaItems = %d, se esperaban 5 (FR-027)", maxPortadaItems)
+	}
+}
+
+// TestGetPortadaMinisteriosReturnsExactlyWhatExists fija SC-016: con menos de 5
+// publicados se devuelven exactos los que hay, sin huecos ni marcadores.
+func TestGetPortadaMinisteriosReturnsExactlyWhatExists(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(publishedMinistry("Alabanza"))
+	draft := publishedMinistry("Borrador")
+	draft.PublicationState = StateDraft
+	repo.seed(draft)
+
+	out, err := newTestService(repo).GetPortadaMinisterios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMinisterios = %v", err)
+	}
+	if len(out.Items) != 1 || out.Items[0].Name != "Alabanza" {
+		t.Fatalf("items = %+v, se esperaba solo el publicado", out.Items)
+	}
+}
+
+// TestGetPortadaMinisteriosOmitsItemsWhenEmpty fija FR-028/SC-010: sin
+// publicados la clave `items` se omite (nunca `null`) y la portada no dibuja el
+// bloque; la API sigue respondiendo 200 y no redirige (P6-21).
+func TestGetPortadaMinisteriosOmitsItemsWhenEmpty(t *testing.T) {
+	out, err := newTestService(newFakeRepository()).GetPortadaMinisterios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMinisterios = %v", err)
+	}
+	if out.Items != nil {
+		t.Errorf("items = %+v, se esperaba nil", out.Items)
+	}
+	if raw := mustJSON(t, out); raw != `{"lang":"es"}` {
+		t.Errorf("JSON = %s, se esperaba solo lang", raw)
+	}
+}
+
+// TestGetPortadaMinisteriosHasNoLeaderFields fija la privacidad estructural del
+// extracto (P6-2/D-12): el DTO del bloque no tiene campos de encargado, así que
+// con la ficha publicada tampoco viaja ningún dato del encargado ni el botón de
+// unión.
+func TestGetPortadaMinisteriosHasNoLeaderFields(t *testing.T) {
+	const (
+		name  = "Ana Pérez"
+		phone = "+58 412 000 0000"
+	)
+	repo := newFakeRepository()
+	ministry := publishedMinistry("Alabanza")
+	ministry.ID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	ministry.LeaderNameEs = textOf(name)
+	ministry.LeaderPhone = textOf(phone)
+	ministry.LeaderVisible = true
+	ministry.WhatsappURL = textOf("https://chat.whatsapp.com/abc")
+	ministerySchedule := "Todos los viernes"
+	ministry.ScheduleEs = &ministerySchedule
+	repo.seed(ministry)
+
+	out, err := newTestService(repo).GetPortadaMinisterios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMinisterios = %v", err)
+	}
+	item := out.Items[0]
+	if item.Name != "Alabanza" || item.Schedule == nil || *item.Schedule != "Todos los viernes" {
+		t.Errorf("item = %+v", item)
+	}
+	if item.Image != nil {
+		t.Errorf("image = %+v, se esperaba sin imagen", item.Image)
+	}
+
+	raw := mustJSON(t, out)
+	for _, forbidden := range []string{name, "412", "leader", "whatsappUrl", "description", "publicationState"} {
+		if strings.Contains(raw, forbidden) {
+			t.Errorf("el extracto contiene %q: %s", forbidden, raw)
+		}
+	}
+}
+
+// TestGetPortadaMinisteriosFallbackAndImage fija el fallback `en → es` por campo
+// y que la imagen (con su alt) solo viaja cuando el ministerio la tiene.
+func TestGetPortadaMinisteriosFallbackAndImage(t *testing.T) {
+	repo := newFakeRepository()
+	withImage := publishedMinistry("Alabanza")
+	withImage.NameEn = textOf("Worship")
+	withImage.PlaceEs = textOf("Templo")
+	withImage.ImageFile = textOf("img_aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.webp")
+	withImage.ImageAltEs = textOf("Grupo de alabanza")
+	withImage.ImageAltEn = textOf("Worship team")
+	other := publishedMinistry("Jóvenes")
+	other.SortOrder = 5
+	repo.seed(withImage, other)
+
+	svc := newTestService(repo)
+
+	es, err := svc.GetPortadaMinisterios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMinisterios(es) = %v", err)
+	}
+	if es.Items[0].Image == nil {
+		t.Fatalf("el ministerio con imagen no la lleva: %+v", es.Items[0])
+	}
+	if es.Items[0].Image.Alt != "Grupo de alabanza" {
+		t.Errorf("image es alt = %q", es.Items[0].Image.Alt)
+	}
+	if got := es.Items[0].Image.URL; got != MediaPathPrefix+"img_aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.webp" {
+		t.Errorf("image es URL = %q", got)
+	}
+	if es.Items[1].Image != nil {
+		t.Errorf("el ministerio sin imagen lleva image: %+v", es.Items[1].Image)
+	}
+
+	en, err := svc.GetPortadaMinisterios(context.Background(), LangEN)
+	if err != nil {
+		t.Fatalf("GetPortadaMinisterios(en) = %v", err)
+	}
+	if en.Items[0].Name != "Worship" {
+		t.Errorf("name en = %q, se esperaba la traducción", en.Items[0].Name)
+	}
+	if en.Items[0].Place == nil || *en.Items[0].Place != "Templo" {
+		t.Errorf("place en = %v, se esperaba el fallback al español", en.Items[0].Place)
+	}
+	if en.Items[0].Image == nil || en.Items[0].Image.Alt != "Worship team" {
+		t.Errorf("image en = %+v", en.Items[0].Image)
+	}
+}
+
+// TestGetPortadaMinisteriosInvalidLang fija el 400 invalid con details.lang.
+func TestGetPortadaMinisteriosInvalidLang(t *testing.T) {
+	_, err := newTestService(newFakeRepository()).GetPortadaMinisterios(context.Background(), "fr")
+	details := detailsOf(t, err)
+	if _, ok := details["lang"]; !ok {
+		t.Fatalf("details = %v, se esperaba la clave lang", details)
+	}
+}
+
+// TestGetPortadaMinisteriosRepositoryError fija que un fallo de datos no se
+// disfraza.
+func TestGetPortadaMinisteriosRepositoryError(t *testing.T) {
+	repo := newFakeRepository()
+	repo.readErr = errors.New("boom")
+
+	_, err := newTestService(repo).GetPortadaMinisterios(context.Background(), LangES)
+	if err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("err = %v, se esperaba el error del repositorio", err)
+	}
+}
