@@ -1115,7 +1115,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 
 ## Fase 9 — Cierre
 
-- [ ] T637 · Verificación de cierre · `[infra]`
+- [X] T637 · Verificación de cierre · `[infra]`
 
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit. `.env.example`: **sin cambios** (F6 no añade variables — P6: `APP_TZ` es de F4
