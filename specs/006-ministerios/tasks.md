@@ -1073,7 +1073,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     servidor y la privacidad del interruptor probada en el flujo real.
   - **Commit sugerido**: `test(e2e): gestion de ministerios en el panel y privacidad del encargado`
 
-- [ ] T635 · E2E Playwright `ministerios-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
+- [X] T635 · E2E Playwright `ministerios-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/ministerios-accesibilidad.spec.ts` (NUEVO; patrón de
     `portada-accesibilidad.spec.ts`).
