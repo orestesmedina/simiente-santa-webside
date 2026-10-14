@@ -5093,8 +5093,15 @@ components:
             decisión del humano 2026-10-13). Es un interruptor **propio de F6**
             (F3/F4 no lo tienen).
         whatsappUrl:
-          allOf:
-            - $ref: "#/components/schemas/WhatsappUrl"
+          type: [string, "null"]
+          maxLength: 500
+          pattern: "^https://[^\\s]+$"
+          description: |
+            Enlace al grupo de WhatsApp (Q2/FR-015): `null` cuando el
+            ministerio no tiene enlace (el panel recibe la clave siempre, de
+            forma explícita). Cuando existe es **cualquier `https` válido y
+            seguro**, sin restricción de dominios (Q3); el valor se sirve tal
+            cual, sin transformar.
         whatsappUrlShared:
           type: boolean
           description: |
@@ -5185,9 +5192,14 @@ components:
             decisión del humano 2026-10-13): si falta la clave, la ficha nace
             **no publicada** y ningún dato del encargado sale hacia el público.
         whatsappUrl:
-          allOf:
-            - $ref: "#/components/schemas/WhatsappUrl"
-          description: Enlace opcional al grupo de WhatsApp (Q2); solo `https` (FR-015).
+          type: [string, "null"]
+          maxLength: 500
+          pattern: "^https://[^\\s]+$"
+          description: |
+            Enlace opcional al grupo de WhatsApp (Q2/FR-015); solo `https`
+            válido y seguro, sin restricción de dominios (Q3). `null` (o
+            ausente) = sin enlace: el servidor normaliza `""`/espacios a
+            `null`.
         scheduleEs:
           type: [string, "null"]
           maxLength: 200
@@ -5219,6 +5231,7 @@ components:
       additionalProperties: false
     MinisterioPatch:
       type: object
+      minProperties: 1
       description: |
         Edición parcial: solo los campos presentes se modifican. Un campo con
         `null` explícito borra su valor opcional (p. ej. `whatsappUrl`,
@@ -5258,8 +5271,13 @@ components:
         leaderVisible:
           type: boolean
         whatsappUrl:
-          allOf:
-            - $ref: "#/components/schemas/WhatsappUrl"
+          type: [string, "null"]
+          maxLength: 500
+          pattern: "^https://[^\\s]+$"
+          description: |
+            Enlace al grupo de WhatsApp (Q2/FR-015); solo `https` válido y
+            seguro, sin restricción de dominios (Q3). Un `null` explícito lo
+            borra; ausente no lo toca.
         scheduleEs:
           type: [string, "null"]
           maxLength: 200

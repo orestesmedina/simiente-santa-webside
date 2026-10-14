@@ -2728,7 +2728,14 @@ export interface components {
              *     (F3/F4 no lo tienen).
              */
             leaderVisible: boolean;
-            whatsappUrl?: components["schemas"]["WhatsappUrl"];
+            /**
+             * @description Enlace al grupo de WhatsApp (Q2/FR-015): `null` cuando el
+             *     ministerio no tiene enlace (el panel recibe la clave siempre, de
+             *     forma explícita). Cuando existe es **cualquier `https` válido y
+             *     seguro**, sin restricción de dominios (Q3); el valor se sirve tal
+             *     cual, sin transformar.
+             */
+            whatsappUrl?: string | null;
             /**
              * @description `true` si **otro** ministerio usa el mismo `whatsappUrl` (grupo
              *     compartido). Es un aviso **no bloqueante** (R6-11): el guardado
@@ -2780,8 +2787,13 @@ export interface components {
              * @default false
              */
             leaderVisible: boolean;
-            /** @description Enlace opcional al grupo de WhatsApp (Q2); solo `https` (FR-015). */
-            whatsappUrl?: components["schemas"]["WhatsappUrl"];
+            /**
+             * @description Enlace opcional al grupo de WhatsApp (Q2/FR-015); solo `https`
+             *     válido y seguro, sin restricción de dominios (Q3). `null` (o
+             *     ausente) = sin enlace: el servidor normaliza `""`/espacios a
+             *     `null`.
+             */
+            whatsappUrl?: string | null;
             scheduleEs?: string | null;
             scheduleEn?: string | null;
             placeEs?: string | null;
@@ -2815,7 +2827,12 @@ export interface components {
             leaderPhone?: string | null;
             leaderEmail?: string | null;
             leaderVisible?: boolean;
-            whatsappUrl?: components["schemas"]["WhatsappUrl"];
+            /**
+             * @description Enlace al grupo de WhatsApp (Q2/FR-015); solo `https` válido y
+             *     seguro, sin restricción de dominios (Q3). Un `null` explícito lo
+             *     borra; ausente no lo toca.
+             */
+            whatsappUrl?: string | null;
             scheduleEs?: string | null;
             scheduleEn?: string | null;
             placeEs?: string | null;
