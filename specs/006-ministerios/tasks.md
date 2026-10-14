@@ -1093,7 +1093,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     `make e2e` junto a las otras specs.
   - **Commit sugerido**: `test(e2e): accesibilidad por teclado de ministerios (SC-008)`
 
-- [ ] T636 · E2E Playwright `portada-ministerios.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T636 · E2E Playwright `portada-ministerios.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/portada-ministerios.spec.ts` (NUEVO).
   - **Qué hace**: bloque de la portada (US6, SC-016) según `quickstart.md` §14: con 8 publicados
