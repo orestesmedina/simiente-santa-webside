@@ -99,3 +99,21 @@ func TestContractPatchAllowsNullWhatsappURL(t *testing.T) {
 		t.Errorf("MinisterioInput.whatsappUrl.type = %v, se esperaba que admitiera null", got)
 	}
 }
+
+// TestContractSortOrderIsBounded fija M1: el contrato acota `sortOrder` al rango
+// de la columna `INTEGER` (int32) que valida el servidor, para que un valor
+// fuera de rango no se trunque en silencio al guardar.
+func TestContractSortOrderIsBounded(t *testing.T) {
+	schemas := loadContractSchemas(t)
+	for _, name := range []string{"MinisterioInput", "MinisterioPatch"} {
+		field, ok := schemas[name].Properties["sortOrder"]
+		if !ok {
+			t.Fatalf("%s no declara sortOrder", name)
+		}
+		if field.Minimum == nil || field.Maximum == nil ||
+			*field.Minimum != MinSortOrder || *field.Maximum != MaxSortOrder {
+			t.Errorf("%s.sortOrder = [%v, %v], se esperaba [%d, %d]",
+				name, field.Minimum, field.Maximum, MinSortOrder, MaxSortOrder)
+		}
+	}
+}

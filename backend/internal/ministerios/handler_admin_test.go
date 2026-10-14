@@ -180,6 +180,11 @@ func TestCreateMinisterioHandlerInvalid(t *testing.T) {
 		},
 		{name: "campo desconocido", body: `{"nameEs":"A","descriptionEs":"D","otro":"x"}`, detail: ""},
 		{name: "estado fuera del registro", body: `{"nameEs":"A","descriptionEs":"D","publicationState":"archived"}`, detail: "publicationState"},
+		{
+			name:   "orden fuera del rango de la columna",
+			body:   `{"nameEs":"A","descriptionEs":"D","sortOrder":4294967296}`,
+			detail: "sortOrder",
+		},
 	}
 
 	for _, tt := range tests {
@@ -342,6 +347,12 @@ func TestUpdateMinisterioHandlerRejections(t *testing.T) {
 			wantStatus: http.StatusBadRequest, detail: "whatsappUrl",
 		},
 		{name: "id inválido", id: "no-es-uuid", body: `{"nameEs":"A"}`, wantStatus: http.StatusBadRequest, detail: "id"},
+		{
+			name:       "orden fuera del rango de la columna",
+			id:         "11111111-1111-1111-1111-111111111111",
+			body:       `{"sortOrder":-4294967296}`,
+			wantStatus: http.StatusBadRequest, detail: "sortOrder",
+		},
 		{name: "inexistente", id: uuid.New().String(), body: `{"nameEs":"A"}`, wantStatus: http.StatusNotFound},
 	}
 

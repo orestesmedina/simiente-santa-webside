@@ -5227,7 +5227,12 @@ components:
           $ref: "#/components/schemas/PublicationState"
         sortOrder:
           type: integer
-          description: Valor de orden (por defecto 0; Q5).
+          minimum: -2147483648
+          maximum: 2147483647
+          description: |
+            Valor de orden (por defecto 0; Q5). Acotado al rango de la columna
+            `INTEGER` (int32): un valor fuera de rango → `400` con
+            `details.sortOrder` (el servidor no lo trunca en silencio).
       additionalProperties: false
     MinisterioPatch:
       type: object
@@ -5303,6 +5308,8 @@ components:
           $ref: "#/components/schemas/PublicationState"
         sortOrder:
           type: integer
+          minimum: -2147483648
+          maximum: 2147483647
       additionalProperties: false
 
   responses:

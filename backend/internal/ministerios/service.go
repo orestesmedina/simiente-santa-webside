@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"regexp"
 	"strings"
 	"unicode"
@@ -60,6 +61,13 @@ const (
 	MaxURLLength = 500
 	// MaxImageAltLength es el límite del texto alternativo por idioma (FR-020).
 	MaxImageAltLength = 300
+	// MinSortOrder y MaxSortOrder acotan el orden manual (Q5/FR-004) al rango de
+	// la columna `sort_order INTEGER` (int32): un valor fuera de rango se rechaza
+	// con `400` (`details.sortOrder`) en vez de truncarse en silencio al guardar
+	// (hallazgo M1 de la revisión de F6). El default del contrato y de la BD es 0.
+	MinSortOrder = math.MinInt32
+	// MaxSortOrder es el tope del orden manual.
+	MaxSortOrder = math.MaxInt32
 	// MediaPathPrefix es el prefijo público de las imágenes (contrato:
 	// `/api/v1/media/<fileName>`).
 	MediaPathPrefix = "/api/v1/media/"
@@ -276,7 +284,8 @@ func ministryFromInput(in MinisterioInput) (Ministry, error) {
 // Reglas: obligatorios en español, español por campo (`*En` exige su `*Es`; un
 // campo vacío no obliga a nada, Q6), contacto excluyente (celular **o** correo,
 // nunca ambos; el contacto exige nombre del encargado), enlace `https` seguro,
-// imagen con texto alternativo y límites de longitud.
+// imagen con texto alternativo, límites de longitud y rango del orden manual
+// (M1).
 func validateMinistry(ministry Ministry) error {
 	details := make(map[string]any)
 
@@ -348,6 +357,14 @@ func validateMinistry(ministry Ministry) error {
 		if ministry.ImageAltEs == nil {
 			details["imageAltEs"] = "toda imagen lleva su texto alternativo en español"
 		}
+	}
+
+	// 6) Orden manual (Q5/FR-004): la columna es `INTEGER` (int32) y el
+	// repository traduce el campo con `int32(...)`; un valor fuera de rango se
+	// truncaría en silencio al guardar, así que se rechaza aquí (M1). El default
+	// 0 queda intacto.
+	if ministry.SortOrder < MinSortOrder || ministry.SortOrder > MaxSortOrder {
+		details["sortOrder"] = fmt.Sprintf("el orden admite valores entre %d y %d", MinSortOrder, MaxSortOrder)
 	}
 
 	if len(details) == 0 {

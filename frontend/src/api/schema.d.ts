@@ -2804,7 +2804,11 @@ export interface components {
             imageAltEs?: string | null;
             imageAltEn?: string | null;
             publicationState?: components["schemas"]["PublicationState"];
-            /** @description Valor de orden (por defecto 0; Q5). */
+            /**
+             * @description Valor de orden (por defecto 0; Q5). Acotado al rango de la columna
+             *     `INTEGER` (int32): un valor fuera de rango → `400` con
+             *     `details.sortOrder` (el servidor no lo trunca en silencio).
+             */
             sortOrder?: number;
         };
         /**

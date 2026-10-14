@@ -432,6 +432,48 @@ func TestUpdateMinisterioNullExplicitFromJSON(t *testing.T) {
 	}
 }
 
+// TestSortOrderOutOfRangeIsRejected fija M1: el orden manual se acota al rango
+// de la columna `INTEGER` (int32) en el servidor, tanto en el alta como en el
+// `PATCH`, con un `400` y su motivo por campo —en vez de truncarse en silencio
+// al guardar—. Los extremos del rango son válidos.
+func TestSortOrderOutOfRangeIsRejected(t *testing.T) {
+	repo := newFakeRepository()
+	current := storedMinistry("Alabanza")
+	current.SortOrder = 2
+	repo.seed(current)
+	svc := newAdminService(repo, nil)
+
+	_, err := svc.CreateMinisterio(context.Background(), actorID(), MinisterioInput{
+		NameEs:        "Alabanza",
+		DescriptionEs: "Grupo de alabanza",
+		SortOrder:     MaxSortOrder + 1,
+	})
+	if details := detailsOf(t, err); details["sortOrder"] == nil {
+		t.Errorf("alta: details = %v, se esperaba la clave sortOrder", details)
+	}
+	if len(repo.ministries) != 1 {
+		t.Errorf("el alta fuera de rango no debe guardar: %+v", repo.ministries)
+	}
+
+	_, err = svc.UpdateMinisterio(context.Background(), actorID(), current.ID, MinisterioPatch{
+		SortOrder: intPtr(MinSortOrder - 1),
+	})
+	if details := detailsOf(t, err); details["sortOrder"] == nil {
+		t.Errorf("PATCH: details = %v, se esperaba la clave sortOrder", details)
+	}
+	if got := repo.ministries[0].SortOrder; got != 2 {
+		t.Errorf("el PATCH fuera de rango no debe tocar la fila: sortOrder = %d", got)
+	}
+
+	for _, boundary := range []int{MinSortOrder, MaxSortOrder} {
+		if _, err := svc.UpdateMinisterio(context.Background(), actorID(), current.ID, MinisterioPatch{
+			SortOrder: intPtr(boundary),
+		}); err != nil {
+			t.Errorf("sortOrder = %d es un extremo válido del rango: %v", boundary, err)
+		}
+	}
+}
+
 // TestUpdateMinisterioLeaderToggleRegistersAndKeepsData fija FR-025/US2 esc.
 // 10–11 y R6-12: apagar y encender el interruptor deja su fila
 // (`leader.hide`/`leader.show`) y **conserva** nombre y contacto.

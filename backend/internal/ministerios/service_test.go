@@ -46,6 +46,8 @@ func TestLimitsAreTheSingleSourceOfTruth(t *testing.T) {
 		"MaxPlaceLength":       MaxPlaceLength,
 		"MaxURLLength":         MaxURLLength,
 		"MaxImageAltLength":    MaxImageAltLength,
+		"MinSortOrder":         MinSortOrder,
+		"MaxSortOrder":         MaxSortOrder,
 		"maxPublicItems":       maxPublicItems,
 		"maxPortadaItems":      maxPortadaItems,
 		"maxTargetLabel":       maxTargetLabel,
@@ -62,6 +64,8 @@ func TestLimitsAreTheSingleSourceOfTruth(t *testing.T) {
 		"MaxPlaceLength":       200,
 		"MaxURLLength":         500,
 		"MaxImageAltLength":    300,
+		"MinSortOrder":         -2147483648,
+		"MaxSortOrder":         2147483647,
 		"maxPublicItems":       200,
 		"maxPortadaItems":      5,
 		"maxTargetLabel":       254,
@@ -376,6 +380,16 @@ func TestValidateMinistryReportsEachField(t *testing.T) {
 			name:   "texto alternativo en inglés sin el español",
 			mutate: func(m *Ministry) { m.ImageAltEn = textOf("Worship team") },
 			field:  "imageAltEs",
+		},
+		{
+			name:   "orden por encima del rango de la columna",
+			mutate: func(m *Ministry) { m.SortOrder = MaxSortOrder + 1 },
+			field:  "sortOrder",
+		},
+		{
+			name:   "orden por debajo del rango de la columna",
+			mutate: func(m *Ministry) { m.SortOrder = MinSortOrder - 1 },
+			field:  "sortOrder",
 		},
 	}
 
