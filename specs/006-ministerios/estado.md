@@ -25,8 +25,8 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | **aprobado** | humano | 2026-10-13 | v1: «Apruebo la spec» respondiendo las aclaraciones Q1–Q7 (la v2 amplió el alcance y se pidió re-aprobación, como en F4). v2: **«Re-apruebo la spec v2»**, respondiendo las aclaraciones nuevas Q8 (el medio de contacto es opcional aunque haya encargado) y Q9 (el interruptor de visibilidad oculta también el nombre del encargado) |
-| Plan | **aprobado** | humano | 2026-10-13 | **«Apruebo el plan»**, con dos decisiones propias en la puerta 2: el interruptor de la ficha del encargado nace **«Oculto por defecto»** y `/ministerios` sin publicados **«Redirigir a la portada»** |
+| Spec | aprobado | humano | 2026-10-13 | v1: «Apruebo la spec» respondiendo las aclaraciones Q1–Q7 (la v2 amplió el alcance y se pidió re-aprobación, como en F4). v2: **«Re-apruebo la spec v2»**, respondiendo las aclaraciones nuevas Q8 (el medio de contacto es opcional aunque haya encargado) y Q9 (el interruptor de visibilidad oculta también el nombre del encargado) |
+| Plan | aprobado | humano | 2026-10-13 | **«Apruebo el plan»**, con dos decisiones propias en la puerta 2: el interruptor de la ficha del encargado nace **«Oculto por defecto»** y `/ministerios` sin publicados **«Redirigir a la portada»** |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
@@ -34,10 +34,15 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-2026-10-13.md`).
 
-- **(ninguno)** — el único hallazgo importante (**I1**, contrato de `whatsappUrl`) y la mejora **M1** (`sortOrder` acotado a `int32`) se corrigieron en el **ciclo 1** (`1e0d9e5`, `6328cff`, `2d75367`) y los **tres roles los re-validaron como cerrados**.
-- **Deuda aceptada (no bloquea el merge)**: M2 (`RecordAction` en `service.go`, precedente de F4) · M3 (`mergeInvalid` conserva el último motivo) · M4 (`setTimeout` en una prueba de portada) · M5 (el listado del panel se corta en 100 sin aviso de total) · M6 (promover `Optional[T]` a `platform/` con el cuarto consumidor) · S1 (redacción en la prosa del contrato) · S2 (los 3 fragmentos del snapshot de F6 superados por el ciclo 1: registrar, no editar) · B1 de seguridad (`imageFile` sin comprobar existencia en el almacén; imagen rota, no fuga) · B2 (contraseñas de prueba en e2e) · informativos I1–I3 de seguridad.
-- **Manual (no automatizable)**: **SC-012** (usabilidad con ≥ 6 personas y el cronómetro de los 30 s de SC-001), con protocolo en `pruebas-usabilidad-SC-012.md`, y **SC-008** (lector de pantalla real y pantalla táctil física).
-- **Ajeno a F6**: `frontend/e2e/qa-bugs-004.spec.ts` («Bug 1», scroll a `#whatsapp` desde `/eventos`) es **flaky preexistente de F3/F4** (~25 %). **Pendiente de decisión del humano**: abrir el flujo `equipo-bug` para F4 o dejarlo registrado.
+- (ninguno)
+
+El único hallazgo importante (**I1**, el contrato de `whatsappUrl`) y la mejora **M1** (`sortOrder` acotado a `int32`) se corrigieron en el **ciclo 1** (`1e0d9e5`, `6328cff`, `2d75367`) y los **tres roles los re-validaron como cerrados**.
+
+**Deuda aceptada (no bloquea el merge):** M2 (`RecordAction` en `service.go`, precedente de F4) · M3 (`mergeInvalid` conserva el último motivo) · M4 (`setTimeout` en una prueba de portada) · M5 (el listado del panel se corta en 100 sin aviso de total) · M6 (promover `Optional[T]` a `platform/` con el cuarto consumidor) · S1 (redacción en la prosa del contrato) · S2 (los 3 fragmentos del snapshot de F6 superados por el ciclo 1: registrar, no editar) · B1 de seguridad (`imageFile` sin comprobar existencia en el almacén; imagen rota, no fuga) · B2 (contraseñas de prueba en e2e) · informativos I1–I3 de seguridad.
+
+**Manual (no automatizable):** **SC-012** (usabilidad con ≥ 6 personas y el cronómetro de los 30 s de SC-001), con protocolo en `pruebas-usabilidad-SC-012.md`, y **SC-008** (lector de pantalla real y pantalla táctil física).
+
+**Ajeno a F6:** `frontend/e2e/qa-bugs-004.spec.ts` («Bug 1», scroll a `#whatsapp` desde `/eventos`) es **flaky preexistente de F3/F4** (~25 %). **Pendiente de decisión del humano**: abrir el flujo `equipo-bug` para F4 o dejarlo registrado.
 
 ## Decisiones y aclaraciones
 
