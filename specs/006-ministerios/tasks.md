@@ -1052,7 +1052,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     extremo a extremo con inspección de tráfico y de HTML.
   - **Commit sugerido**: `test(e2e): seccion publica de ministerios (privacidad, enlace y redireccion)`
 
-- [ ] T634 · E2E Playwright `ministerios-panel.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T634 · E2E Playwright `ministerios-panel.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/ministerios-panel.spec.ts` (NUEVO).
   - **Qué hace**: recorrido del panel (US2, US3) según `quickstart.md` §2–§6/§8/§12/§13: login con
