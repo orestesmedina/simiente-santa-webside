@@ -915,6 +915,62 @@
         }
       ],
       "hasta_ms": 1791907439007
+    },
+    {
+      "id": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "padre": null,
+      "titulo": "Continuando con la tarea pendiente",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T19:26:57Z",
+      "desde": "2026-10-14T04:00:21Z",
+      "hasta": "2026-10-14T04:01:10Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 3,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 888,
+            "output": 1409,
+            "reasoning": 551,
+            "cache_read": 656640,
+            "cache_write": 0
+          },
+          "costo": 0.003279,
+          "costo_opencode": 0.003279
+        }
+      ],
+      "hasta_ms": 1791950470528
+    },
+    {
+      "id": "ses_ec41f9d2fffe2su4uWVKqU2pvc",
+      "padre": null,
+      "titulo": "Retomando trabajo tras reinicio de PC",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T19:26:57Z",
+      "desde": "2026-10-14T19:25:24Z",
+      "hasta": "2026-10-14T19:25:24Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 1,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 12516,
+            "output": 94,
+            "reasoning": 60,
+            "cache_read": 0,
+            "cache_write": 0
+          },
+          "costo": 0.00197,
+          "costo_opencode": 0.00197
+        }
+      ],
+      "hasta_ms": 1792005924094
     }
   ],
   "totales": {
@@ -1042,16 +1098,16 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 97,
+        "respuestas": 101,
         "tokens": {
-          "input": 798995,
-          "output": 71532,
-          "reasoning": 21615,
-          "cache_read": 10867712,
+          "input": 812399,
+          "output": 73035,
+          "reasoning": 22226,
+          "cache_read": 11524352,
           "cache_write": 0
         },
-        "costo": 0.262162,
-        "costo_opencode": 0.20834,
+        "costo": 0.267411,
+        "costo_opencode": 0.213589,
         "sin_precio": false
       },
       {
@@ -1085,8 +1141,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 290509178,
-    "costo": 6.842209,
-    "costo_opencode": 6.608033
+    "tokens": 291181336,
+    "costo": 6.847458,
+    "costo_opencode": 6.613282
   }
 }
