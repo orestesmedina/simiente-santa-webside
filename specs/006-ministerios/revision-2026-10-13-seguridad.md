@@ -125,3 +125,52 @@ F6 guarda **nombre + celular/correo de una persona real** y un interruptor (`lea
 
 - El flaky `frontend/e2e/qa-bugs-004.spec.ts` es preexistente de F3/F4 y **no bloquea F6** (defecto conocido y ajeno a este diff).
 - El revisor **no modificó código**: el único archivo escrito por el revisor es este informe.
+
+---
+
+## Ciclo 1 — re-validación (2026-10-13)
+
+Tras este informe se aplicaron tres correcciones sobre superficies auditadas aquí: **1e0d9e5** (contrato: `whatsappUrl` anulable + `minProperties: 1` en `MinisterioPatch`), **6328cff** (frontend: el formulario manda `null`, nunca `""`) y **2d75367** (backend: `sortOrder` acotado a int32). Se re-auditó el diff de las tres y se re-verificó en vivo lo esencial contra el stack reconstruido con las correcciones (backend :8080, frontend :5173, PostgreSQL :5432). **Confirmado que el binario corriendo lleva el fix**: `sortOrder: 4294967296` → 400 con `details.sortOrder`, comportamiento que solo existe tras 2d75367.
+
+### Análisis de los tres diffs
+
+**1e0d9e5 — `whatsappUrl: [string, "null"]` + `minProperties: 1` (contrato). No abre vía nueva.**
+
+- El inline (`type: [string,"null"]` + `pattern: ^https://[^\s]+$` + `maxLength: 500`) es **equivalente o más estricto** que el `$ref: WhatsappUrl` que sustituye en `MinisterioInput`/`MinisterioPatch`/`MinisterioAdmin`: mismo patrón, misma longitud, y el `null` solo representa «sin enlace». La **superficie pública no se toca**: el DTO público (`MinisteriosPublicos`) sigue con el `$ref` estricto y la clave **se omite** cuando no hay enlace (`omitempty` sobre `*string`) — el visitante jamás recibe un `null` ni un enlace sin validar.
+- **`null` no puede transportar un enlace inseguro**: `null` no es cadena. En el alta, `encoding/json` decodifica `null` en el `string` del DTO como no-op (→ `""` → `normalizeOptional` → nil, «sin enlace»); en el PATCH, `Optional.UnmarshalJSON` marca set+null → `normalizeOptional("")` → nil (borra). El único camino hacia la columna es una **cadena** que debe pasar tres barreras intactas: el tag `url` del DTO (solo `https` con host), la regla 4 de `validateMinistry` (sobre la fila normalizada o **fusionada** tras el PATCH) y el `CHECK` de la BD (`whatsapp_url ~ '^https://[^[:space:]]+$'`, que deja pasar `NULL` — semántica SQL correcta para «sin enlace»). **Verificado en vivo**: `javascript:alert(1)`, `data:text/html,<script>`, `http://ejemplo.com`, `vbscript:`, `https://` sin host y enlace con espacio → **400** `details.whatsappUrl` en el alta; `javascript:` **por PATCH** → **400** (la revalidación de la fila fusionada sigue viva); `whatsappUrl: null` por alta → **201** sin enlace, y por PATCH → **200** borra el enlace.
+- **`minProperties: 1` no permite evadir validaciones**: es un mínimo (prohíbe el PATCH `{}`, no habilita nada). El servidor nunca confió en el contrato para esto: ya rechazaba el cuerpo vacío con 400 «No hay cambios que guardar» (`hasChanges()`, `service_admin.go:106-112,181-183`; **verificado en vivo**: PATCH `{}` → 400). Todo PATCH que pasa se fusiona y **revalida completo** (A6-3), así que no existe combinación «un solo campo» que deje fuera una regla. Nota de coherencia: los campos no anulables (`sortOrder`, `leaderVisible`) siguen como `*T`: un `null` explícito en ellos cuenta como ausente (→ 400 si va solo), consistente con el contrato que no los declara anulables.
+- `go.mod`: `gopkg.in/yaml.v3 v3.0.1` pasa de indirecta a directa — misma versión, ya estaba en el módulo; sin módulos ni versiones nuevos (`govulncheck` re-ejecutado: 0 alcanzables). El nuevo `contract_test.go` es código de prueba que solo lee el YAML del contrato.
+
+**6328cff — el formulario manda `null` (nunca `""`). No abre vía nueva.**
+
+- `nullable()` recorta y manda `null` cuando no hay valor — espejo exacto del `normalizeOptional` del servidor (antes mandaba `""`, que el servidor también normalizaba a nil: equivalente en persistencia). El valor **no vacío** viaja como cadena y sigue validado igual (tag `url` del DTO + regla 4 del service + `CHECK` de BD + `isSecureUrl` en el cliente, espejo del tag del servidor). Con el servidor reconstruido, el payload exacto del formulario se probó en vivo: POST `whatsappUrl: null` → **201** con `"whatsappUrl":null` (sin enlace); PATCH `{"whatsappUrl":null}` → **200** y el enlace queda borrado. Las pruebas nuevas (`ministryForm.test.tsx`, Vitest+MSW) no añaden credenciales (B2 intacto).
+
+**2d75367 — cota de `sortOrder` (int32). Restricción pura; cierra I4.**
+
+- `validateMinistry` añade la regla 6 (`MinSortOrder`/`MaxSortOrder` = rango int32), que cubre el alta (`ministryFromInput`) y el PATCH (fila fusionada) — antes un valor fuera de rango se **truncaba en silencio** al guardar (defecto de integridad de datos, no un hueco de seguridad: nunca se guardó fuera del rango de la columna). El contrato acota `minimum`/`maximum` espejo. **Verificado en vivo**: alta con `4294967296` → **400** `details.sortOrder`; PATCH con `9999999999` → **400**. La columna y la migración 000010 no cambian: cero superficie nueva.
+
+### Re-verificación en vivo (stack reconstruido, 2026-10-13)
+
+- **Permisos (A01)**: sin sesión → **401** en GET/POST `/admin/ministerios`, PATCH/DELETE `/admin/ministerios/{id}` y POST `/admin/ministerios/imagenes`. Cuenta con permiso ajeno (`actividades`) → **403** en GET/POST de ministerios («No tienes permiso para acceder a este módulo», genérico); cuenta `solo-ministerios` → **403** en `/admin/eventos` (cruce en ambas direcciones). **CSRF**: POST con sesión válida y sin `X-CSRF-Token` → **403**.
+- **Privacidad del encargado (FR-026/SC-014), con dato real sembrado por el revisor** (publicado, `leaderVisible=false`, `Roberta Telefono C1` / `+506 7777-7777`, con enlace https válido):
+  - `GET /api/v1/ministerios` (sin sesión): el ministerio aparece **sin clave `leader`**; **0 apariciones** del nombre y del celular en el cuerpo crudo; el enlace https se sirve tal cual.
+  - `GET /api/v1/portada/ministerios` (sin sesión): **0 apariciones** del contacto.
+  - `GET /` y `GET /ministerios` del frontend (:5173): **0 apariciones** en el HTML servido.
+  - Interruptor ON → `leader:{name,phone}` sí sale (mecanismo vivo, prueba no vacua); OFF → 0 de nuevo.
+  - Logs del backend durante las pruebas (627 líneas): **0 apariciones** del contacto (solo `request_id/method/path/code/status/duration_ms`).
+  - `admin_actions` de las operaciones de prueba: `target_label` siempre `Ministerios · <nombre del ministerio>`, **nunca** datos del encargado; los rechazos quedan como `ministry.update · failure` **sin cuerpo** (I3 re-verificado con filas propias del revisor).
+  - Limpieza: DELETE del ministerio de prueba → 204; 0 apariciones públicas y 0 filas en la BD tras la limpieza.
+- **Dependencias (A06)**: `govulncheck ./...` → **0 alcanzables** (1 informativa en módulo requerido no llamado, idéntica a I1); `npm audit --audit-level=high` → **0**. `go test ./internal/ministerios/...` → ok (incluidas las pruebas nuevas de contrato y de rango).
+
+### Estado de los hallazgos tras el ciclo 1
+
+- **B1 (enlace débil `imageFile`)**: sin cambios — los tres commits no tocan esa vía (la regla 5 de `validateMinistry` y `storage.ValidName` quedaron intactos). Sigue **Baja, «a verificar», no bloqueante**; la recomendación de deuda se mantiene.
+- **B2 (contraseñas efímeras de e2e)**: sin cambios; `ministryForm.test.tsx` no añade credenciales. Sigue **Baja (falso positivo probable)**.
+- **I1/I2/I3**: sin cambios (govulncheck re-ejecutado con el mismo resultado; las operaciones de prueba del revisor insertaron las filas de auditoría esperadas, sin datos del encargado).
+- **I4 (`sortOrder` sin cota)**: **cerrado** por 2d75367 — el servidor ahora rechaza el fuera de rango con 400 `details.sortOrder` y el contrato acota `minimum`/`maximum`. No cambia de severidad (ya era informativo): queda **resuelto**.
+
+### Veredicto del ciclo 1: **APROBADO (ratificado)**
+
+Las tres correcciones son de endurecimiento o pura coherencia de contrato — **ninguna relaja una barrera del servidor**, y todas las barreras auditadas (control de acceso, CSRF, https del enlace, validación de entrada, privacidad del encargado, auditoría, manejo de errores, dependencias) se re-verificaron en vivo intactas. B1/B2 siguen siendo bajos no bloqueantes. Sin hallazgos nuevos.
+
+*El revisor no modificó código: el único archivo escrito en este ciclo es esta sección del informe.*
