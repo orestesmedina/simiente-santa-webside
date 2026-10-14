@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
-| Fase | 1/9 · Especificar (spec v2 lista; pendiente la puerta 1) |
+| Fase | 2/9 · Planificar (plan técnico con `arquitecto` + `ux.md` con `disenador-ux`) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Aprobación humana de la spec v2 (puerta 1); luego fase 3/9: planificar con `arquitecto` (+ `disenador-ux` por el bloque de portada y la sección) |
+| Próximo paso | Puerta 2: aprobación humana del plan. Antes: `arquitecto` produce plan.md, research.md, data-model.md, contracts/ y quickstart.md; `disenador-ux` produce ux.md |
 | Bloqueado por | — |
 | Actualizado | 2026-10-14 |
 
@@ -25,7 +25,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | pendiente | | | |
+| Spec | aprobado | humano (cliente) | 2026-10-14 | "si" (aprueba la spec v2 de F7) |
 | Plan | pendiente | | | |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
@@ -47,6 +47,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-14 — Puerta 1: **spec v2 aprobada** por el humano. Fase 2 (planificar) iniciada.
 - 2026-10-14 — Fase 1 (clarify): las 11 preguntas resueltas y aplicadas; `spec.md` pasa a v2 sin marcas abiertas. Pendiente la puerta 1 (aprobación de la spec).
 - 2026-10-14 — Fase 1: rama `007-donaciones` creada y `spec.md` redactada por `analista-producto` (25 FR, 13 SC, 5 historias). 11 preguntas abiertas (Q1–Q11) para `clarify`.
 - 2026-10-14 — Inicio de la funcionalidad.
