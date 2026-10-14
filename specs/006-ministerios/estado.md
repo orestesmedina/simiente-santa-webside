@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 006-ministerios |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Entregar — implementación (T601–T637), validación y convergencia **completas**; **T638 hecha** (docs y borrador del PR). **PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto por el humano el 2026-10-14 con el CI en verde**; falta la aprobación del PR para cerrar el costo y el merge |
+| Fase | 7/9 · Entregar — implementación (T601–T637), validación y convergencia **completas**; **T638 hecha** (docs y borrador del PR). **PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto por el humano el 2026-10-14 con el CI en verde y APROBADO**; costo de la tarea **congelado**. Falta solo el **merge** |
 | Ciclo de corrección | 1/3 (cerrado: los tres roles aprobaron el 2026-10-13) |
-| Próximo paso | El humano **aprueba el PR #9** → `make costos CERRAR=1` y commit de `estado.md`/`costos.json` en la rama **antes del merge**; al confirmar el **merge**: roadmap → `terminada` y `estado.md` → fase 9. Queda manual SC-012 (usabilidad) y SC-008 (lector de pantalla) |
+| Próximo paso | El humano hace el **merge del PR #9** y me lo confirma → roadmap → `terminada` y `estado.md` → fase 9. Después: **F5 (grupos de conexión)**, el siguiente pendiente. Pendientes manuales (para después del despliegue, decisión del 2026-10-14): **SC-012** (usabilidad con ≥ 6 personas, protocolo en `pruebas-usabilidad-SC-012.md`) y **SC-008** (lector de pantalla real). Defecto conocido registrado, sin arreglar por ahora: el e2e flaky de F3/F4 `qa-bugs-004` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-13 |
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-13 | v1: «Apruebo la spec» respondiendo las aclaraciones Q1–Q7 (la v2 amplió el alcance y se pidió re-aprobación, como en F4). v2: **«Re-apruebo la spec v2»**, respondiendo las aclaraciones nuevas Q8 (el medio de contacto es opcional aunque haya encargado) y Q9 (el interruptor de visibilidad oculta también el nombre del encargado) |
 | Plan | aprobado | humano | 2026-10-13 | **«Apruebo el plan»**, con dos decisiones propias en la puerta 2: el interruptor de la ficha del encargado nace **«Oculto por defecto»** y `/ministerios` sin publicados **«Redirigir a la portada»** |
-| PR / merge | pendiente (PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto con el CI en verde el 2026-10-14) | | | |
+| PR / merge | aprobado (PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9)) | humano | 2026-10-14 | **«Apruebo el PR #9»** — el PR está abierto con el CI en verde; queda por confirmar el **merge** |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -52,6 +52,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 - 2026-10-13 — **Aclaraciones de F6 resueltas por el humano (Q1–Q7)**, en su mayoría **distintas de la opción recomendada**, con **ampliación de alcance** en tres puntos: **Q1** encargado **opcional** con nombre y un medio de contacto (celular o correo) y un **interruptor para decidir si el contacto se muestra**; **Q2** enlace de WhatsApp **opcional**; **Q3** se acepta **cualquier `https` válido y seguro** (sin restringir a dominios de WhatsApp); **Q4** imagen **opcional** cargada por el equipo; **Q5** orden **manual con una columna numérica** (precedente verificado: `sort_order` + `ORDER BY sort_order, id` en F3/F4); **Q6** **se añaden horario y lugar**, con el horario como **texto libre opcional sin recurrencia** (varía por ministerio y a veces no es un día fijo); **Q7** **sí**: **bloque de ministerios en la portada** con el patrón de F4, ubicado **después del bloque de eventos**. La spec pasó a **v2** (6 US, 29 FR, 17 SC).
 - 2026-10-13 — **Q8 y Q9 resueltas**: **Q8** el medio de contacto es **opcional aunque haya encargado** («si se pone encargado, es opcional el correo o celular»); **Q9** el interruptor **oculta también el nombre del encargado** («Oculta también el nombre»). El humano **re-aprobó la spec v2**, confirmó **Q6** como texto libre y el **tope de 5 ítems** del bloque de la portada.
 - 2026-10-13 — **Decisiones de la puerta 2**: interruptor **«Oculto por defecto»** (privacidad por defecto) y `/ministerios` sin publicados **«Redirigir a la portada»**; después, que la redirección sea **silenciosa** y que **no** se añada anuncio accesible para lectores de pantalla (queda como deuda anotada en el plan).
+- 2026-10-14 — **Cierre de F6 y pendientes (decisiones del humano en sesión).** El humano abrió el PR **#9** (CI en verde) y **lo aprobó** («Apruebo el PR #9»): se congeló el costo de la tarea. Los dos criterios **manuales** —**SC-012** (usabilidad con ≥ 6 personas) y **SC-008** (lector de pantalla real)— **quedan para después del despliegue**, con su protocolo ya escrito. El e2e **flaky preexistente de F3/F4** (`qa-bugs-004`, el scroll a `#whatsapp` desde `/eventos`, ~25 % de fallo) **queda registrado como defecto conocido sin arreglarse por ahora**.
 
 ## Bitácora
 

@@ -1,8 +1,8 @@
 {
   "rama": "006-ministerios",
-  "estado": "abierto",
+  "estado": "cerrado",
   "inicio": "2026-10-13T15:58:59Z",
-  "cerrado": null,
+  "cerrado": "2026-10-14T21:03:24Z",
   "moneda": "USD",
   "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
   "precios": [
@@ -999,6 +999,34 @@
         }
       ],
       "hasta_ms": 1792006147447
+    },
+    {
+      "id": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "padre": null,
+      "titulo": "Continuando con la tarea pendiente",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T21:03:24Z",
+      "desde": "2026-10-14T19:29:17Z",
+      "hasta": "2026-10-14T21:02:58Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 12,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 234934,
+            "output": 4745,
+            "reasoning": 1826,
+            "cache_read": 2574720,
+            "cache_write": 0
+          },
+          "costo": 0.046907,
+          "costo_opencode": 0.046907
+        }
+      ],
+      "hasta_ms": 1792011778689
     }
   ],
   "totales": {
@@ -1094,6 +1122,21 @@
         "sin_precio": false
       },
       {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 126,
+        "tokens": {
+          "input": 1274326,
+          "output": 80735,
+          "reasoning": 25686,
+          "cache_read": 16814976,
+          "cache_write": 0
+        },
+        "costo": 0.359268,
+        "costo_opencode": 0.305446,
+        "sin_precio": false
+      },
+      {
         "agente": "revisor-codigo",
         "modelo": "opencode-go/mimo-v2.6-pro",
         "respuestas": 142,
@@ -1106,21 +1149,6 @@
         },
         "costo": 0.358476,
         "costo_opencode": 0.358476,
-        "sin_precio": false
-      },
-      {
-        "agente": "orquestador",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 114,
-        "tokens": {
-          "input": 1039392,
-          "output": 75990,
-          "reasoning": 23860,
-          "cache_read": 14240256,
-          "cache_write": 0
-        },
-        "costo": 0.312361,
-        "costo_opencode": 0.258539,
         "sin_precio": false
       },
       {
@@ -1169,8 +1197,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 294128822,
-    "costo": 6.892408,
-    "costo_opencode": 6.658232
+    "tokens": 296945047,
+    "costo": 6.939315,
+    "costo_opencode": 6.705139
   }
 }
