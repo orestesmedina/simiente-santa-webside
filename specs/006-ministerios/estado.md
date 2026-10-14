@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 006-ministerios |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Entregar — implementación (T601–T637), validación y convergencia **completas**; **T638 hecha** (docs y borrador del PR). **PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto por el humano el 2026-10-14 con el CI en verde y APROBADO**; costo de la tarea **congelado**. Falta solo el **merge** |
+| Fase | **Terminada** (9/9) — F6 fusionada en `main` con el PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) el **2026-10-14** (squash `1d11d9a`); costo de la tarea congelado (296,9 M ≈ $6.94) |
 | Ciclo de corrección | 1/3 (cerrado: los tres roles aprobaron el 2026-10-13) |
-| Próximo paso | El humano hace el **merge del PR #9** y me lo confirma → roadmap → `terminada` y `estado.md` → fase 9. Después: **F5 (grupos de conexión)**, el siguiente pendiente. Pendientes manuales (para después del despliegue, decisión del 2026-10-14): **SC-012** (usabilidad con ≥ 6 personas, protocolo en `pruebas-usabilidad-SC-012.md`) y **SC-008** (lector de pantalla real). Defecto conocido registrado, sin arreglar por ahora: el e2e flaky de F3/F4 `qa-bugs-004` |
+| Próximo paso | F6 cerrada. Siguiente pendiente del roadmap: **F5 (grupos de conexión)**. Pendientes manuales **para después del despliegue** (decisión del 2026-10-14): **SC-012** (usabilidad con ≥ 6 personas, protocolo en `pruebas-usabilidad-SC-012.md`) y **SC-008** (lector de pantalla real). Defecto conocido registrado, sin arreglar por ahora: el e2e flaky de F3/F4 `qa-bugs-004` |
 | Bloqueado por | — |
 | Actualizado | 2026-10-13 |
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-13 | v1: «Apruebo la spec» respondiendo las aclaraciones Q1–Q7 (la v2 amplió el alcance y se pidió re-aprobación, como en F4). v2: **«Re-apruebo la spec v2»**, respondiendo las aclaraciones nuevas Q8 (el medio de contacto es opcional aunque haya encargado) y Q9 (el interruptor de visibilidad oculta también el nombre del encargado) |
 | Plan | aprobado | humano | 2026-10-13 | **«Apruebo el plan»**, con dos decisiones propias en la puerta 2: el interruptor de la ficha del encargado nace **«Oculto por defecto»** y `/ministerios` sin publicados **«Redirigir a la portada»** |
-| PR / merge | aprobado (PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9)) | humano | 2026-10-14 | **«Apruebo el PR #9»** — el PR está abierto con el CI en verde; queda por confirmar el **merge** |
+| PR / merge | aprobado | humano | 2026-10-14 | **«Apruebo el PR #9»** · PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) **fusionado en `main`** el 2026-10-14 (squash `1d11d9a`; el árbol de `main` quedó idéntico al de la rama) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -58,6 +58,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-14 — **F6 TERMINADA: PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) fusionado en `main`** (squash `1d11d9a`; el árbol de `main` quedó idéntico al de la rama, verificado). El humano **empujó los 2 commits del cierre** (costo congelado y estado) antes del merge, así que el squash incluye `costos.json` **cerrado** (2026-10-14T21:03Z). Costo de la tarea **296,9 M ≈ $6.94**. Roadmap: F6 → **terminada** (5/11 del roadmap siguen terminadas y F5–F9 + F10B pendientes). Cierre en `main` con `chore(cierre)`.
 - 2026-10-14 — **PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto por el humano con el CI en verde.** La rama `006-ministerios` está en `origin` (`c0aea94`). Roadmap: F6 → **en revisión** con el enlace al PR. Pendiente: la **aprobación explícita del PR** (para `make costos CERRAR=1` y el commit del costo **antes del merge**) y el **merge**.
 - 2026-10-13 — **Fase 7 (entregar) — documentación lista y PR pendiente de abrir.** `documentador` (T638): `CHANGELOG.md` **`[0.6.0]`**, `README.md`, notas de entrega `docs/entrega/F6-ministerios.md` y el borrador `specs/006-ministerios/pr.md`. **`gh` no está disponible** en el entorno, así que el PR lo abre el humano con ese borrador (igual que en F4). Commit del orquestador por el trabajo del documentador.
 - 2026-10-13 — **Fases 5 y 6 completas: validación APROBADA y convergencia.** Validación en paralelo: `qa-tester` **APROBADO**, `revisor-codigo` **APROBADO CON CAMBIOS MENORES** (1 importante I1 + 6 menores), `seguridad` **APROBADO** (2 bajos, 4 informativos). Consolidado en `revision-2026-10-13.md`. **Ciclo de corrección 1** por **I1** (contrato de `whatsappUrl`: ahora admite `null` y `MinisterioPatch` exige `minProperties: 1`) y **M1** (`sortOrder` acotado a `int32`): corregido en `1e0d9e5`, `6328cff` y `2d75367`, y **re-validado como cerrado por los tres roles**. Convergencia: las 38 tareas `[X]`, sin tareas nuevas → **Converged**.
