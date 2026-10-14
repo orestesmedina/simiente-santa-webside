@@ -971,6 +971,34 @@
         }
       ],
       "hasta_ms": 1792005924094
+    },
+    {
+      "id": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "padre": null,
+      "titulo": "Continuando con la tarea pendiente",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T19:29:40Z",
+      "desde": "2026-10-14T19:26:30Z",
+      "hasta": "2026-10-14T19:29:07Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 13,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 226993,
+            "output": 2955,
+            "reasoning": 1634,
+            "cache_read": 2715904,
+            "cache_write": 0
+          },
+          "costo": 0.04495,
+          "costo_opencode": 0.04495
+        }
+      ],
+      "hasta_ms": 1792006147447
     }
   ],
   "totales": {
@@ -1081,6 +1109,21 @@
         "sin_precio": false
       },
       {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 114,
+        "tokens": {
+          "input": 1039392,
+          "output": 75990,
+          "reasoning": 23860,
+          "cache_read": 14240256,
+          "cache_write": 0
+        },
+        "costo": 0.312361,
+        "costo_opencode": 0.258539,
+        "sin_precio": false
+      },
+      {
         "agente": "analista-producto",
         "modelo": "opencode-go/mimo-v2.6-pro",
         "respuestas": 66,
@@ -1093,21 +1136,6 @@
         },
         "costo": 0.302643,
         "costo_opencode": 0.302643,
-        "sin_precio": false
-      },
-      {
-        "agente": "orquestador",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 101,
-        "tokens": {
-          "input": 812399,
-          "output": 73035,
-          "reasoning": 22226,
-          "cache_read": 11524352,
-          "cache_write": 0
-        },
-        "costo": 0.267411,
-        "costo_opencode": 0.213589,
         "sin_precio": false
       },
       {
@@ -1141,8 +1169,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 291181336,
-    "costo": 6.847458,
-    "costo_opencode": 6.613282
+    "tokens": 294128822,
+    "costo": 6.892408,
+    "costo_opencode": 6.658232
   }
 }
