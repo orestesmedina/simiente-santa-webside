@@ -1,0 +1,1092 @@
+{
+  "rama": "006-ministerios",
+  "estado": "abierto",
+  "inicio": "2026-10-13T15:58:59Z",
+  "cerrado": null,
+  "moneda": "USD",
+  "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
+  "precios": [
+    {
+      "desde": "2026-10-14T04:00:48Z",
+      "modelos": {
+        "opencode-go/deepseek-v4.1-flash": {
+          "input": 0.15,
+          "output": 0.6,
+          "cache_read": 0.003,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3": {
+          "input": 1.4,
+          "output": 4.4,
+          "cache_read": 0.26,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3-flash": {
+          "input": 0.15,
+          "output": 0.5,
+          "cache_read": 0.03,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-flash": {
+          "input": 0.14,
+          "output": 0.28,
+          "cache_read": 0.0028,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-pro": {
+          "input": 0.435,
+          "output": 0.87,
+          "cache_read": 0.003625,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        }
+      }
+    }
+  ],
+  "sesiones": [
+    {
+      "id": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "padre": null,
+      "titulo": "Continuando con la tarea pendiente",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T16:26:03Z",
+      "hasta": "2026-10-14T04:00:06Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 88,
+          "respuestas_pico": 14,
+          "tokens": {
+            "input": 534681,
+            "output": 68035,
+            "reasoning": 19152,
+            "cache_read": 8736256,
+            "cache_write": 0
+          },
+          "costo": 0.212545,
+          "costo_opencode": 0.158723
+        }
+      ],
+      "hasta_ms": 1791950406461
+    },
+    {
+      "id": "ses_ec780b6f4ffeTnoLvVu55hcasl",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "T638 documentación de F6",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T03:40:28Z",
+      "hasta": "2026-10-14T03:58:33Z",
+      "consumo": [
+        {
+          "agente": "documentador",
+          "modelo": "opencode-go/mimo-v2.6-flash",
+          "respuestas": 76,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 152483,
+            "output": 23286,
+            "reasoning": 15999,
+            "cache_read": 6863616,
+            "cache_write": 0
+          },
+          "costo": 0.051566,
+          "costo_opencode": 0.051566
+        }
+      ],
+      "hasta_ms": 1791950313922
+    },
+    {
+      "id": "ses_ec7895a49ffeBVezvZpOR71rwT",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Re-check de seguridad ciclo 1",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T03:31:02Z",
+      "hasta": "2026-10-14T03:39:22Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 29,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 64165,
+            "output": 10706,
+            "reasoning": 18615,
+            "cache_read": 1161051,
+            "cache_write": 0
+          },
+          "costo": 0.520717,
+          "costo_opencode": 0.520717
+        }
+      ],
+      "hasta_ms": 1791949162436
+    },
+    {
+      "id": "ses_ec79e7cf1ffeF0ybrQZVhLeZVM",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Re-validar ciclo 1 (QA)",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T03:07:57Z",
+      "hasta": "2026-10-14T03:28:04Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 57,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 85572,
+            "output": 11600,
+            "reasoning": 5747,
+            "cache_read": 1791936,
+            "cache_write": 0
+          },
+          "costo": 0.075267,
+          "costo_opencode": 0.075267
+        }
+      ],
+      "hasta_ms": 1791948484578
+    },
+    {
+      "id": "ses_ec79e7cf2ffez0mAcuqD3R78Ma",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Re-validar ciclo 1 de F6",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T03:07:57Z",
+      "hasta": "2026-10-14T03:30:12Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 32,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 62372,
+            "output": 9119,
+            "reasoning": 14029,
+            "cache_read": 1243776,
+            "cache_write": 0
+          },
+          "costo": 0.051779,
+          "costo_opencode": 0.051779
+        }
+      ],
+      "hasta_ms": 1791948612826
+    },
+    {
+      "id": "ses_ec7a83599ffe8jj7VplPGkfDjT",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Alinear formulario con null",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T02:57:20Z",
+      "hasta": "2026-10-14T03:07:04Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 34,
+          "respuestas_pico": 34,
+          "tokens": {
+            "input": 133559,
+            "output": 7025,
+            "reasoning": 7494,
+            "cache_read": 1920896,
+            "cache_write": 0
+          },
+          "costo": 0.069016,
+          "costo_opencode": 0.034508
+        }
+      ],
+      "hasta_ms": 1791947224977
+    },
+    {
+      "id": "ses_ec7c7cb25ffeSwbV4535kqz8Yu",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Corregir I1 y M1",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T02:22:50Z",
+      "hasta": "2026-10-14T02:56:20Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 96,
+          "respuestas_pico": 96,
+          "tokens": {
+            "input": 255836,
+            "output": 20261,
+            "reasoning": 42994,
+            "cache_read": 10320640,
+            "cache_write": 0
+          },
+          "costo": 0.214581,
+          "costo_opencode": 0.10729
+        }
+      ],
+      "hasta_ms": 1791946580317
+    },
+    {
+      "id": "ses_ec7e8f355ffe06SEGz9P63uSBy",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Auditoría de seguridad F6",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T01:46:37Z",
+      "hasta": "2026-10-14T02:05:54Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 65,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 158287,
+            "output": 18594,
+            "reasoning": 16408,
+            "cache_read": 6433645,
+            "cache_write": 0
+          },
+          "costo": 2.048358,
+          "costo_opencode": 2.048358
+        }
+      ],
+      "hasta_ms": 1791943554349
+    },
+    {
+      "id": "ses_ec7e8f357ffe1XVgclBdCFpOFS",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Revisión de código de F6",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T01:46:37Z",
+      "hasta": "2026-10-14T02:16:39Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 70,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 167289,
+            "output": 15972,
+            "reasoning": 19862,
+            "cache_read": 7376256,
+            "cache_write": 0
+          },
+          "costo": 0.130685,
+          "costo_opencode": 0.130685
+        }
+      ],
+      "hasta_ms": 1791944199009
+    },
+    {
+      "id": "ses_ec7e8f359ffeT3YWr7Ec2ceBXS",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Validación QA de F6",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T01:46:37Z",
+      "hasta": "2026-10-14T02:21:33Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 113,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 205703,
+            "output": 40117,
+            "reasoning": 17655,
+            "cache_read": 9473216,
+            "cache_write": 0
+          },
+          "costo": 0.343938,
+          "costo_opencode": 0.343938
+        }
+      ],
+      "hasta_ms": 1791944493080
+    },
+    {
+      "id": "ses_ec8012c33ffeTmi93Pz2y7gZFw",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "F6 T637 verificación de cierre",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T01:20:09Z",
+      "hasta": "2026-10-14T01:44:14Z",
+      "consumo": [
+        {
+          "agente": "devops",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 82,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 144365,
+            "output": 14901,
+            "reasoning": 15563,
+            "cache_read": 5017856,
+            "cache_write": 0
+          },
+          "costo": 0.187422,
+          "costo_opencode": 0.187422
+        }
+      ],
+      "hasta_ms": 1791942254189
+    },
+    {
+      "id": "ses_ec83f9de0ffemx23B6XJ0b0tWd",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "F6 T632-T636 e2e",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-14T00:11:57Z",
+      "hasta": "2026-10-14T01:18:55Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 164,
+          "respuestas_pico": 30,
+          "tokens": {
+            "input": 195444,
+            "output": 60461,
+            "reasoning": 56241,
+            "cache_read": 28055424,
+            "cache_write": 0
+          },
+          "costo": 0.222059,
+          "costo_opencode": 0.183504
+        }
+      ],
+      "hasta_ms": 1791940735139
+    },
+    {
+      "id": "ses_ec888e82dffeSmQkjexL0AkU4R",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "F6 T627-T631 páginas y panel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T22:51:54Z",
+      "hasta": "2026-10-14T00:11:07Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 208,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 468327,
+            "output": 75287,
+            "reasoning": 51818,
+            "cache_read": 42395648,
+            "cache_write": 0
+          },
+          "costo": 0.273699,
+          "costo_opencode": 0.273699
+        }
+      ],
+      "hasta_ms": 1791936667793
+    },
+    {
+      "id": "ses_ec8ab4de3ffesRyWNMTp3jvEvD",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "F6 T605 y T622-T626 frontend base",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T22:14:20Z",
+      "hasta": "2026-10-13T22:51:19Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 112,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 262414,
+            "output": 44521,
+            "reasoning": 23190,
+            "cache_read": 19966464,
+            "cache_write": 0
+          },
+          "costo": 0.139888,
+          "costo_opencode": 0.139888
+        }
+      ],
+      "hasta_ms": 1791931879499
+    },
+    {
+      "id": "ses_ec8d6b101ffe42YRecJB2itzC0",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "F6 T612-T621 servicios y handlers",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T21:26:56Z",
+      "hasta": "2026-10-13T22:13:16Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 185,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 570361,
+            "output": 104964,
+            "reasoning": 45308,
+            "cache_read": 43047040,
+            "cache_write": 0
+          },
+          "costo": 0.304858,
+          "costo_opencode": 0.304858
+        }
+      ],
+      "hasta_ms": 1791929596936
+    },
+    {
+      "id": "ses_ec8eb7c0effefQXKlX5jOEDjSd",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "F6 T607-T611 repositorio",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T21:04:13Z",
+      "hasta": "2026-10-13T21:26:15Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 103,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 230420,
+            "output": 65068,
+            "reasoning": 39240,
+            "cache_read": 17129600,
+            "cache_write": 0
+          },
+          "costo": 0.148537,
+          "costo_opencode": 0.148537
+        }
+      ],
+      "hasta_ms": 1791926775940
+    },
+    {
+      "id": "ses_ec907db25ffev2fBwyh2Vpl2jq",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "F6 T601-T604, T606, T603",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T20:33:14Z",
+      "hasta": "2026-10-13T21:03:28Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 122,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 233753,
+            "output": 41205,
+            "reasoning": 27159,
+            "cache_read": 17714816,
+            "cache_write": 0
+          },
+          "costo": 0.129226,
+          "costo_opencode": 0.129226
+        }
+      ],
+      "hasta_ms": 1791925408917
+    },
+    {
+      "id": "ses_ec91c3188ffeimrQsVNnB4F115",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Corregir hallazgos ux A6-1 y A6-8",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T20:11:01Z",
+      "hasta": "2026-10-13T20:13:18Z",
+      "consumo": [
+        {
+          "agente": "disenador-ux",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 11,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 52115,
+            "output": 4053,
+            "reasoning": 4612,
+            "cache_read": 320960,
+            "cache_write": 0
+          },
+          "costo": 0.021779,
+          "costo_opencode": 0.021779
+        }
+      ],
+      "hasta_ms": 1791922398765
+    },
+    {
+      "id": "ses_ec91c3190ffe7dvgXtDsmnfwKs",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Corregir hallazgos A6 del analyze",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T20:11:01Z",
+      "hasta": "2026-10-13T20:30:38Z",
+      "consumo": [
+        {
+          "agente": "arquitecto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 55,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 208144,
+            "output": 18635,
+            "reasoning": 33448,
+            "cache_read": 8357632,
+            "cache_write": 0
+          },
+          "costo": 0.166151,
+          "costo_opencode": 0.166151
+        }
+      ],
+      "hasta_ms": 1791923438305
+    },
+    {
+      "id": "ses_ec9301cf0ffem1AanvMoSnZsox",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "analyze F6 spec-plan-tasks",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T19:49:16Z",
+      "hasta": "2026-10-13T20:07:26Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 40,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 251454,
+            "output": 11958,
+            "reasoning": 36791,
+            "cache_read": 6680704,
+            "cache_write": 0
+          },
+          "costo": 0.176012,
+          "costo_opencode": 0.176012
+        }
+      ],
+      "hasta_ms": 1791922046920
+    },
+    {
+      "id": "ses_ec9442247ffezblYPgNC81zk6H",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "tasks.md de F6",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T19:27:24Z",
+      "hasta": "2026-10-13T19:48:16Z",
+      "consumo": [
+        {
+          "agente": "arquitecto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 27,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 217686,
+            "output": 39864,
+            "reasoning": 35527,
+            "cache_read": 2751232,
+            "cache_write": 0
+          },
+          "costo": 0.170257,
+          "costo_opencode": 0.170257
+        }
+      ],
+      "hasta_ms": 1791920896683
+    },
+    {
+      "id": "ses_ec9442249ffeEKIIydHeeL6OOv",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Cerrar última aclaración spec",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T19:27:24Z",
+      "hasta": "2026-10-13T19:30:57Z",
+      "consumo": [
+        {
+          "agente": "analista-producto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 11,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 45531,
+            "output": 4912,
+            "reasoning": 4762,
+            "cache_read": 303872,
+            "cache_write": 0
+          },
+          "costo": 0.029324,
+          "costo_opencode": 0.029324
+        }
+      ],
+      "hasta_ms": 1791919857614
+    },
+    {
+      "id": "ses_ec96a69b7ffekOjK6Hjipx6qRa",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Alinear ux.md con puerta 2",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T18:45:35Z",
+      "hasta": "2026-10-13T18:51:33Z",
+      "consumo": [
+        {
+          "agente": "disenador-ux",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 36,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 73936,
+            "output": 10747,
+            "reasoning": 7323,
+            "cache_read": 1433984,
+            "cache_write": 0
+          },
+          "costo": 0.063145,
+          "costo_opencode": 0.063145
+        }
+      ],
+      "hasta_ms": 1791917493875
+    },
+    {
+      "id": "ses_ec96a69b9ffexMtbA57Ps8C8xt",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Alinear plan con puerta 2",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T18:45:35Z",
+      "hasta": "2026-10-13T19:13:11Z",
+      "consumo": [
+        {
+          "agente": "arquitecto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 79,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 191918,
+            "output": 33263,
+            "reasoning": 36553,
+            "cache_read": 10834176,
+            "cache_write": 0
+          },
+          "costo": 0.183498,
+          "costo_opencode": 0.183498
+        }
+      ],
+      "hasta_ms": 1791918791902
+    },
+    {
+      "id": "ses_ec96a69d4ffesXxgD9VqS2QSce",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Alinear spec con puerta 2",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T18:45:35Z",
+      "hasta": "2026-10-13T18:57:31Z",
+      "consumo": [
+        {
+          "agente": "analista-producto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 20,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 74865,
+            "output": 8883,
+            "reasoning": 19985,
+            "cache_read": 1019776,
+            "cache_write": 0
+          },
+          "costo": 0.061378,
+          "costo_opencode": 0.061378
+        }
+      ],
+      "hasta_ms": 1791917851168
+    },
+    {
+      "id": "ses_ec9aa29bcffeRI84rAbiNd92UI",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "ux.md de F6 ministerios",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T17:35:57Z",
+      "hasta": "2026-10-13T18:08:57Z",
+      "consumo": [
+        {
+          "agente": "disenador-ux",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 54,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 335507,
+            "output": 156166,
+            "reasoning": 11009,
+            "cache_read": 5452096,
+            "cache_write": 0
+          },
+          "costo": 0.297476,
+          "costo_opencode": 0.297476
+        }
+      ],
+      "hasta_ms": 1791914937923
+    },
+    {
+      "id": "ses_ec9aa29bdfferc5C9ssviwFp6z",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Plan técnico F6 ministerios",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T17:35:57Z",
+      "hasta": "2026-10-13T18:18:35Z",
+      "consumo": [
+        {
+          "agente": "arquitecto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 69,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 310171,
+            "output": 76483,
+            "reasoning": 44955,
+            "cache_read": 12942080,
+            "cache_write": 0
+          },
+          "costo": 0.28749,
+          "costo_opencode": 0.28749
+        }
+      ],
+      "hasta_ms": 1791915515557
+    },
+    {
+      "id": "ses_ec9b6d471ffe3zjQcZhLWFrKsd",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Aplicar Q8 y Q9 a la spec",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T17:22:07Z",
+      "hasta": "2026-10-13T17:34:02Z",
+      "consumo": [
+        {
+          "agente": "analista-producto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 16,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 85380,
+            "output": 11666,
+            "reasoning": 26889,
+            "cache_read": 957440,
+            "cache_write": 0
+          },
+          "costo": 0.074154,
+          "costo_opencode": 0.074154
+        }
+      ],
+      "hasta_ms": 1791912842544
+    },
+    {
+      "id": "ses_ec9d1ea23ffe6RjlLN93skoX0x",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Spec F6 Ministerios v2",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T16:52:32Z",
+      "hasta": "2026-10-13T17:06:12Z",
+      "consumo": [
+        {
+          "agente": "analista-producto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 8,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 89055,
+            "output": 27413,
+            "reasoning": 15361,
+            "cache_read": 343808,
+            "cache_write": 0
+          },
+          "costo": 0.077199,
+          "costo_opencode": 0.077199
+        }
+      ],
+      "hasta_ms": 1791911172366
+    },
+    {
+      "id": "ses_ec9e6fc82ffeopcFTi0kviEN50",
+      "padre": "ses_ec9ea2c23ffexFJZLQQQ3Mjfbm",
+      "titulo": "Redactar spec F6 ministerios",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T16:29:31Z",
+      "hasta": "2026-10-13T16:38:34Z",
+      "consumo": [
+        {
+          "agente": "analista-producto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 11,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 81051,
+            "output": 16087,
+            "reasoning": 11599,
+            "cache_read": 343168,
+            "cache_write": 0
+          },
+          "costo": 0.060588,
+          "costo_opencode": 0.060588
+        }
+      ],
+      "hasta_ms": 1791909514802
+    },
+    {
+      "id": "ses_ed385a2e0ffe15YgBBFKO37LVw",
+      "padre": null,
+      "titulo": "Continuar con F4",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-14T04:00:48Z",
+      "desde": "2026-10-13T16:01:58Z",
+      "hasta": "2026-10-13T16:03:59Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 9,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 264314,
+            "output": 3497,
+            "reasoning": 2463,
+            "cache_read": 2131456,
+            "cache_write": 0
+          },
+          "costo": 0.049617,
+          "costo_opencode": 0.049617
+        }
+      ],
+      "hasta_ms": 1791907439007
+    }
+  ],
+  "totales": {
+    "por_agente_modelo": [
+      {
+        "agente": "seguridad",
+        "modelo": "opencode-go/glm-5.3",
+        "respuestas": 94,
+        "tokens": {
+          "input": 222452,
+          "output": 29300,
+          "reasoning": 35023,
+          "cache_read": 7594696,
+          "cache_write": 0
+        },
+        "costo": 2.569075,
+        "costo_opencode": 2.569075,
+        "sin_precio": false
+      },
+      {
+        "agente": "arquitecto",
+        "modelo": "opencode-go/mimo-v2.6-pro",
+        "respuestas": 230,
+        "tokens": {
+          "input": 927919,
+          "output": 168245,
+          "reasoning": 150483,
+          "cache_read": 34885120,
+          "cache_write": 0
+        },
+        "costo": 0.807396,
+        "costo_opencode": 0.807396,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-backend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 506,
+        "tokens": {
+          "input": 1290370,
+          "output": 231498,
+          "reasoning": 154701,
+          "cache_read": 88212096,
+          "cache_write": 0
+        },
+        "costo": 0.797202,
+        "costo_opencode": 0.689911,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-frontend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 518,
+        "tokens": {
+          "input": 1059744,
+          "output": 187294,
+          "reasoning": 138743,
+          "cache_read": 92338432,
+          "cache_write": 0
+        },
+        "costo": 0.704662,
+        "costo_opencode": 0.631599,
+        "sin_precio": false
+      },
+      {
+        "agente": "qa-tester",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 170,
+        "tokens": {
+          "input": 291275,
+          "output": 51717,
+          "reasoning": 23402,
+          "cache_read": 11265152,
+          "cache_write": 0
+        },
+        "costo": 0.419205,
+        "costo_opencode": 0.419205,
+        "sin_precio": false
+      },
+      {
+        "agente": "disenador-ux",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 101,
+        "tokens": {
+          "input": 461558,
+          "output": 170966,
+          "reasoning": 22944,
+          "cache_read": 7207040,
+          "cache_write": 0
+        },
+        "costo": 0.3824,
+        "costo_opencode": 0.3824,
+        "sin_precio": false
+      },
+      {
+        "agente": "revisor-codigo",
+        "modelo": "opencode-go/mimo-v2.6-pro",
+        "respuestas": 142,
+        "tokens": {
+          "input": 481115,
+          "output": 37049,
+          "reasoning": 70682,
+          "cache_read": 15300736,
+          "cache_write": 0
+        },
+        "costo": 0.358476,
+        "costo_opencode": 0.358476,
+        "sin_precio": false
+      },
+      {
+        "agente": "analista-producto",
+        "modelo": "opencode-go/mimo-v2.6-pro",
+        "respuestas": 66,
+        "tokens": {
+          "input": 375882,
+          "output": 68961,
+          "reasoning": 78596,
+          "cache_read": 2968064,
+          "cache_write": 0
+        },
+        "costo": 0.302643,
+        "costo_opencode": 0.302643,
+        "sin_precio": false
+      },
+      {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 97,
+        "tokens": {
+          "input": 798995,
+          "output": 71532,
+          "reasoning": 21615,
+          "cache_read": 10867712,
+          "cache_write": 0
+        },
+        "costo": 0.262162,
+        "costo_opencode": 0.20834,
+        "sin_precio": false
+      },
+      {
+        "agente": "devops",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 82,
+        "tokens": {
+          "input": 144365,
+          "output": 14901,
+          "reasoning": 15563,
+          "cache_read": 5017856,
+          "cache_write": 0
+        },
+        "costo": 0.187422,
+        "costo_opencode": 0.187422,
+        "sin_precio": false
+      },
+      {
+        "agente": "documentador",
+        "modelo": "opencode-go/mimo-v2.6-flash",
+        "respuestas": 76,
+        "tokens": {
+          "input": 152483,
+          "output": 23286,
+          "reasoning": 15999,
+          "cache_read": 6863616,
+          "cache_write": 0
+        },
+        "costo": 0.051566,
+        "costo_opencode": 0.051566,
+        "sin_precio": false
+      }
+    ],
+    "tokens": 290509178,
+    "costo": 6.842209,
+    "costo_opencode": 6.608033
+  }
+}
