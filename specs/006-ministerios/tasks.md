@@ -1152,7 +1152,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
     evidencia.
   - **Commit sugerido**: — (sin cambios de código)
 
-- [ ] T638 · Documentación y PR · `[infra]`
+- [X] T638 · Documentación y PR · `[infra]`
 
   - **Archivos**: `README.md` y `docs/` (EDITADOS por `documentador`); PR en GitHub (creado por
     `devops`).
