@@ -1028,7 +1028,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
   - **Criterio de terminado**: fixtures listas y documentadas (qué caso cubre cada una).
   - **Commit sugerido**: `test(e2e): fixtures de ministerios`
 
-- [ ] T633 · E2E Playwright `ministerios-publica.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T633 · E2E Playwright `ministerios-publica.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/ministerios-publica.spec.ts` (NUEVO; usa `helpers.ts` y
     `ministeriosSeed.ts`).
