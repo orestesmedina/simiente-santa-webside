@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 006-ministerios |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Entregar — implementación (T601–T637), validación y convergencia **completas**; **T638 hecha** (docs y borrador del PR). **PR pendiente de abrir** |
+| Fase | 7/9 · Entregar — implementación (T601–T637), validación y convergencia **completas**; **T638 hecha** (docs y borrador del PR). **PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto por el humano el 2026-10-14 con el CI en verde**; falta la aprobación del PR para cerrar el costo y el merge |
 | Ciclo de corrección | 1/3 (cerrado: los tres roles aprobaron el 2026-10-13) |
-| Próximo paso | El humano abre el Pull Request con `specs/006-ministerios/pr.md` (`gh` no está disponible en este entorno, igual que en F4). Cuando **apruebe el PR**: `make costos CERRAR=1` + commit de `estado.md`/`costos.json` en la rama; al confirmar el **merge**: roadmap → `terminada`. Queda manual SC-012 (usabilidad) y SC-008 (lector de pantalla) |
+| Próximo paso | El humano **aprueba el PR #9** → `make costos CERRAR=1` y commit de `estado.md`/`costos.json` en la rama **antes del merge**; al confirmar el **merge**: roadmap → `terminada` y `estado.md` → fase 9. Queda manual SC-012 (usabilidad) y SC-008 (lector de pantalla) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-13 |
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano | 2026-10-13 | v1: «Apruebo la spec» respondiendo las aclaraciones Q1–Q7 (la v2 amplió el alcance y se pidió re-aprobación, como en F4). v2: **«Re-apruebo la spec v2»**, respondiendo las aclaraciones nuevas Q8 (el medio de contacto es opcional aunque haya encargado) y Q9 (el interruptor de visibilidad oculta también el nombre del encargado) |
 | Plan | aprobado | humano | 2026-10-13 | **«Apruebo el plan»**, con dos decisiones propias en la puerta 2: el interruptor de la ficha del encargado nace **«Oculto por defecto»** y `/ministerios` sin publicados **«Redirigir a la portada»** |
-| PR / merge | pendiente | | | |
+| PR / merge | pendiente (PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto con el CI en verde el 2026-10-14) | | | |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -57,6 +57,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-14 — **PR [#9](https://github.com/orestesmedina/simiente-santa-webside/pull/9) abierto por el humano con el CI en verde.** La rama `006-ministerios` está en `origin` (`c0aea94`). Roadmap: F6 → **en revisión** con el enlace al PR. Pendiente: la **aprobación explícita del PR** (para `make costos CERRAR=1` y el commit del costo **antes del merge**) y el **merge**.
 - 2026-10-13 — **Fase 7 (entregar) — documentación lista y PR pendiente de abrir.** `documentador` (T638): `CHANGELOG.md` **`[0.6.0]`**, `README.md`, notas de entrega `docs/entrega/F6-ministerios.md` y el borrador `specs/006-ministerios/pr.md`. **`gh` no está disponible** en el entorno, así que el PR lo abre el humano con ese borrador (igual que en F4). Commit del orquestador por el trabajo del documentador.
 - 2026-10-13 — **Fases 5 y 6 completas: validación APROBADA y convergencia.** Validación en paralelo: `qa-tester` **APROBADO**, `revisor-codigo` **APROBADO CON CAMBIOS MENORES** (1 importante I1 + 6 menores), `seguridad` **APROBADO** (2 bajos, 4 informativos). Consolidado en `revision-2026-10-13.md`. **Ciclo de corrección 1** por **I1** (contrato de `whatsappUrl`: ahora admite `null` y `MinisterioPatch` exige `minProperties: 1`) y **M1** (`sortOrder` acotado a `int32`): corregido en `1e0d9e5`, `6328cff` y `2d75367`, y **re-validado como cerrado por los tres roles**. Convergencia: las 38 tareas `[X]`, sin tareas nuevas → **Converged**.
 - 2026-10-13 — **Fase 4 (implementar) completa.** **T601–T637**: migraciones `000010`/`000011` (sin migración de permisos: «ministerios» ya existe, catálogo en 10), contrato vivo **0.7.0** sin `$ref` colgantes, paquete `backend/internal/ministerios/` completo (repositorio, servicios y handlers) con **privacidad del encargado en tres capas**, `media.IsFilePublished` ampliado sin regresión, frontend completo (`/ministerios`, navegación, bloque de portada, panel), **e2e 19/19** y verificación de cierre de `devops`: `make ci` verde, cobertura `service*.go` **96,83 %**, migraciones `up→down→up`, `sqlc`/contrato sin deriva, humo del despliegue y **sin cambios de infraestructura**.
