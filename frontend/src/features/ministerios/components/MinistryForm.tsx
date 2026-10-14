@@ -232,10 +232,11 @@ export function MinistryForm({ ministry, onDone, onCancel }: MinistryFormProps) 
       leaderPhone: contactKind === 'phone' ? nullable(contactValue) : null,
       leaderEmail: contactKind === 'email' ? nullable(contactValue) : null,
       leaderVisible,
-      // El contrato declara el enlace como cadena (sin `null`) en el alta y en el
-      // `PATCH`, pero el servidor normaliza `""`/espacios a `NULL` (analyze I6):
-      // vacío = sin enlace, también al editar y quitarlo.
-      whatsappUrl: fields.whatsappUrl.trim(),
+      // Sin enlace = `null` explícito, como el resto de opcionales (`nullable`):
+      // el contrato admite `null` en `MinisterioInput`/`MinisterioPatch` (analyze
+      // I1) y el `PATCH` lo interpreta como borrado. Nunca `""`: no cumple el
+      // `pattern` del esquema. Quitar el enlace al editar, por tanto, lo borra.
+      whatsappUrl: nullable(fields.whatsappUrl),
       sortOrder: Number.isNaN(order) ? 0 : order,
       imageFile,
       imageAltEs: imageFile ? nullable(imageAltEs) : null,

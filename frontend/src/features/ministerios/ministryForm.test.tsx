@@ -29,9 +29,9 @@ function makeMinisterio(overrides: Partial<MinisterioAdmin> = {}): MinisterioAdm
     leaderPhone: null,
     leaderEmail: null,
     leaderVisible: false,
-    // El contrato tipa el enlace como cadena (no admite `null` en los schemas de
-    // panel); ausente = sin enlace.
-    whatsappUrl: undefined,
+    // El contrato (analyze I1) admite `null` y el panel recibe la clave siempre:
+    // `null` = sin enlace.
+    whatsappUrl: null,
     whatsappUrlShared: false,
     scheduleEs: null,
     scheduleEn: null,
@@ -442,6 +442,84 @@ describe('MinistryForm · validación espejo (FR-014/FR-015)', () => {
     expect(within(dialog).getByLabelText(/^Descripción \(Español\)/)).toHaveValue(
       'Adoración en los cultos.',
     );
+  });
+});
+
+describe('MinistryForm · enlace de WhatsApp: vacío es `null`, nunca `""` (I1)', () => {
+  it('crear sin enlace manda `null` (no manda `""`, que no cumple el `pattern`)', async () => {
+    let cuerpo: Record<string, unknown> | undefined;
+    responderLista([]);
+    server.use(
+      http.post(listUrl, async ({ request }) => {
+        cuerpo = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeMinisterio(), { status: 201 });
+      }),
+    );
+
+    renderPage();
+    const dialog = await abrirAlta();
+    await completarObligatorios(dialog);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Agregar ministerio' }));
+
+    await waitFor(() => expect(cuerpo).toBeDefined());
+    // Sin enlace la clave viaja explícita en `null`; nunca como cadena vacía
+    // (analyze I1: el contrato declara `type: [string, "null"]` + `pattern`).
+    expect(cuerpo).toHaveProperty('whatsappUrl', null);
+    expect(cuerpo?.whatsappUrl).not.toBe('');
+  });
+
+  it('quitar el enlace al editar manda `null` (borrado explícito), nunca `""`', async () => {
+    let parche: Record<string, unknown> | undefined;
+    const enlace = 'https://chat.whatsapp.com/ABC123';
+    responderLista([makeMinisterio({ whatsappUrl: enlace, publicationState: 'published' })]);
+    server.use(
+      http.patch(`${listUrl}/min-1`, async ({ request }) => {
+        parche = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeMinisterio({ publicationState: 'published' }));
+      }),
+    );
+
+    renderPage();
+    const tabla = await screen.findByRole('table');
+    await userEvent.click(within(tabla).getByRole('button', { name: 'Editar' }));
+
+    const dialog = await screen.findByRole('dialog');
+    const campoEnlace = within(dialog).getByLabelText(/^Enlace del grupo de WhatsApp/);
+    expect(campoEnlace).toHaveValue(enlace);
+
+    // El equipo borra el enlace y guarda: el ministerio queda sin enlace, así
+    // que el sitio público deja de mostrar el botón de unirse (FR-003/SC-009).
+    await userEvent.clear(campoEnlace);
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Guardar cambios' }));
+
+    await waitFor(() => expect(parche).toBeDefined());
+    expect(parche).toHaveProperty('whatsappUrl', null);
+    expect(parche?.whatsappUrl).not.toBe('');
+  });
+
+  it('editar sin tocar el enlace lo conserva (no lo borra)', async () => {
+    let parche: Record<string, unknown> | undefined;
+    const enlace = 'https://chat.whatsapp.com/ABC123';
+    responderLista([makeMinisterio({ whatsappUrl: enlace })]);
+    server.use(
+      http.patch(`${listUrl}/min-1`, async ({ request }) => {
+        parche = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(makeMinisterio({ whatsappUrl: enlace }));
+      }),
+    );
+
+    renderPage();
+    const tabla = await screen.findByRole('table');
+    await userEvent.click(within(tabla).getByRole('button', { name: 'Editar' }));
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/^Nombre \(Español\)/), {
+      target: { value: 'Alabanza y adoración' },
+    });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Guardar cambios' }));
+
+    await waitFor(() => expect(parche).toBeDefined());
+    expect(parche?.whatsappUrl).toBe(enlace);
   });
 });
 
