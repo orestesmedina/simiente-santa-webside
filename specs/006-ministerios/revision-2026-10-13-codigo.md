@@ -89,3 +89,86 @@ Revisadas con `git log -p` archivo por archivo (`lib/permissions.test.ts`, `feat
 1. **I1** se corrige en este PR (contrato + `make api:gen` + el ajuste de `MinistryForm`) o queda registrada como incoherencia abierta en `estado.md` con su issue; es el único punto donde contrato y código discrepan.
 2. M1–M6 pueden resolverse en el mismo PR o quedar como hallazgos abiertos en `estado.md`; ninguno bloquea.
 3. Registrar RG6-6 (pruebas de F2/F4 ajustadas de forma acotada) en el PR junto a RG4-10.
+
+---
+
+## Ciclo 1 — re-validación (2026-10-13)
+
+**Fecha**: 2026-10-13 · **Revisor**: `revisor-codigo` (solo lectura; este informe es la única escritura) · **Fase**: 5 (validar), ciclo de corrección 1/3
+**Alcance**: commits `1e0d9e5` (contrato + prueba de contrato, I1), `6328cff` (formulario, I1) y `2d75367` (`sortOrder`, M1) sobre el estado ya revisado; y el estado final de `backend/api/openapi.yaml`, `frontend/src/api/schema.d.ts`, `MinistryForm.tsx`, `backend/go.mod` y las pruebas afectadas.
+
+### Veredicto del ciclo
+
+**I1: CERRADO · M1: CERRADO · Veredicto global: APROBADO CON CAMBIOS MENORES.**
+La corrección es de fondo y no cosmética: contrato, tipos generados, formulario y pruebas quedan en el mismo carril («sin enlace» = `null` explícito, nunca `""`) y el orden manual ya no se trunca en silencio. No se introdujo nada nuevo fuera del alcance de los hallazgos; `go.mod` sigue sin dependencias nuevas. Se mantienen abiertos los menores **M2–M6** (ninguno bloqueante) y se suman **2 sugerencias (S1–S2)** derivadas de esta re-validación.
+
+### I1 — cerrado (evidencia)
+
+| Punto del hallazgo | Estado final verificado |
+|---|---|
+| `MinisterioPatch.whatsappUrl` sin `null` | `type: [string, "null"]` + `maxLength: 500` + `pattern` (`backend/api/openapi.yaml:5278-5286`), con prosa «Un `null` explícito lo borra; ausente no lo toca»: **ya no contradice al esquema**. |
+| `MinisterioInput.whatsappUrl` sin `null` | `type: [string, "null"]` (`backend/api/openapi.yaml:5194-5202`); el alta acepta `null` y el servidor lo normaliza a «sin enlace». |
+| `MinisterioAdmin.whatsappUrl` sin `null` | `type: [string, "null"]` (`backend/api/openapi.yaml:5095-5104`) y el DTO lo manda **siempre, explícito** (`service_admin.go:45`, sin `omitempty`): `null` cuando no hay enlace. |
+| `MinisterioPatch` sin `minProperties: 1` | `minProperties: 1` en `backend/api/openapi.yaml:5239`. Ahora **los 6 PATCH del contrato** lo declaran (`:2907`, `:3022`, `:3862`, `:3973`, `:4047`, `:5239`), coherentes entre sí, con F3/F4 y con el 400 del PATCH vacío del service. |
+| `schema.d.ts` atrasado | Regenerado: `whatsappUrl?: string | null` en los tres esquemas (`frontend/src/api/schema.d.ts:2738`, `:2796`, `:2839`). **Verificado**: `npm run api:gen` sobre el contrato vivo deja el archivo **byte a byte igual** al commiteado (`git diff` vacío) — los tipos son exactamente los del contrato. |
+| Formulario mandaba `""` | `MinistryForm.tsx:239` → `whatsappUrl: nullable(fields.whatsappUrl)`: viaja `null` o el valor, **nunca `""`**. Revisado el payload completo (`MinistryForm.tsx:218-244`): **ningún otro campo opcional manda `""`** — todos los textos usan `nullable(...)` (`validation.ts:79-82`, trim → `null`), `imageFile` es `string \| null` (`:137`, `:241`), `leaderPhone`/`leaderEmail` `null` explícito cuando no aplican. Es el mismo criterio que los formularios de F3/F4 (`mapUrl`, `imageAltEs`…). |
+| El `pattern` vs. la prosa | Resuelto para los tres esquemas de entrada/panel. La única referencia restante al esquema `WhatsappUrl` (`type: string` + `pattern`, `backend/api/openapi.yaml:4864-4874`) es `MinisterioPublico.whatsappUrl` (`:4942-4945`), donde «ausente = sin enlace» y el servidor **omite** la clave (`model.go:144`, `omitempty`): coherente. Resta una tensión menor de redacción, ver **S1**. |
+| Pruebas | `TestContractPatchAllowsNullWhatsappURL` (`contract_test.go:75-99`) fija `minProperties: 1` y la anulabilidad del `PATCH`/alta; `ministryForm.test.tsx` añade 3 casos reales con MSW (crear sin enlace → `whatsappUrl: null` y `not.toBe('')`; quitar el enlace al editar → `PATCH` con `null`; no tocarlo → se conserva) y su mock pasa de `undefined` a `null` (**más** fiel al contrato). Ejecutadas en verde. |
+
+### M1 — cerrado (evidencia)
+
+- **Servidor**: constantes `MinSortOrder`/`MaxSortOrder` = `math.MinInt32`/`math.MaxInt32` (`service.go:64-70`, el default 0 intacto) y validación en `validateMinistry` (`service.go:362-368`) con `details.sortOrder`; como el `PATCH` revalida la fila **ya fusionada**, cubre alta y edición por igual.
+- **Contrato**: `minimum: -2147483648` / `maximum: 2147483647` en `MinisterioInput.sortOrder` (`backend/api/openapi.yaml:5228-5237`) y `MinisterioPatch.sortOrder` (`:5309-5311`), con prosa explícita del `400`. `schema.d.ts` regenerado.
+- **Pruebas en cuatro capas** (todas ejecutadas en verde): dominio (`TestValidateMinistryReportsEachField`, ambos extremos fuera de rango), constantes (`TestLimitsAreTheSingleSourceOfTruth` ahora exige −2147483648/2147483647), service (`TestSortOrderOutOfRangeIsRejected`: rechazo en alta y PATCH con fila intacta y extremos del rango **válidos**), HTTP (`handler_admin_test.go:183-188`, `:350-355`) y contrato (`TestContractSortOrderIsBounded`, que compara contra las constantes del dominio: contrato y código atados entre sí).
+- La columna y la migración `000010` **no cambian** (correcto: el límite es de la columna, no de la tabla).
+
+### Nada nuevo introducido (comprobado)
+
+- **`go.mod`: aceptable.** `gopkg.in/yaml.v3 v3.0.1` pasa de `// indirect` a directa porque `contract_test.go` lo importa (solo pruebas; es la única forma idiomática de leer el OpenAPI desde Go). Verificado con **`go mod tidy -diff` limpio**: el estado commiteado es exactamente el que produce `tidy` (un import de prueba del módulo principal cuenta como uso directo). Mismo módulo y **misma versión** que ya estaba en el grafo, `go.sum` sin cambios, **0 dependencias nuevas** (se mantiene el compromiso de F6) y cero impacto en el binario (solo entra en pruebas).
+- **Pruebas solo añadidas.** Revisado el diff de los tres commits: ninguna aserción existente se relajó ni eliminó; el único valor modificado es el mock `whatsappUrl: undefined → null` (aprieta). Suite frontend **652/652** (94 archivos) frente a las 649 del ciclo 1: **+3, exactamente las nuevas**. Sin `skip`/`only`/`xit`/`todo`.
+- **Coherencia con F3/F4**: el estilo `type: [string, "null"]` + `pattern` es idéntico al de `mapUrl`/`imageFile` de `EventoAdmin` (`backend/api/openapi.yaml:4417-4443`) y `minProperties: 1` se aplica a los mismos PATCH, sin tocar ninguno de F2/F3/F4.
+- **e2e intactos**: los specs de F6 ya tipaban `whatsappUrl: string \| null` y esperaban `null` tras guardar sin enlace (`e2e/ministerios-panel.spec.ts:336-337`); el cambio de payload no altera su semántica (el servidor aceptaba `null` antes y ahora).
+
+### El snapshot de `specs/` sin tocar — dictamen: **correcto**
+
+La inmutabilidad del snapshot está **declarada por el propio proyecto**: cabecera de `backend/api/openapi.yaml:8` («El snapshot de specs/ no se vuelve a editar; este es el único contrato fuente y se edita antes que el código») y reiterada en `contract_test.go:16-17`. Editarlo habría contradicho esa regla. Consecuencia asumible: el snapshot diverge del vivo en **exactamente tres fragmentos** —`whatsappUrl` anulable, `minProperties: 1` y `sortOrder` acotado—, superados por `1e0d9e5`/`2d75367`. Ver **S2** para dejarlo registrado.
+
+### Hallazgos abiertos
+
+| ID | Severidad | Estado en este ciclo | Motivo / dictamen |
+|---|---|---|---|
+| **M2** (`RecordAction` en `service.go:529`) | MENOR | **Se mantiene** | Aún es un método del repository en el archivo del service. Organización de archivos: no bloquea. |
+| **M3** (`mergeInvalid`, `service.go:412-423`) | MENOR | **Se mantiene** | Sigue sobrescribiendo el motivo por campo; hoy cada regla produce uno, sin pérdida real. No bloquea. |
+| **M4** (`homePage.test.tsx:259`, `setTimeout` de 20 ms) | MENOR | **Se mantiene** | Única aserción dependiente del reloj; riesgo de falso negativo en CI lenta. La suite pasó dos veces completas en este ciclo, pero conviene fijarla antes de que la CI la delate. **No bloquea el merge**; sí recomendable antes del PR a `main`. |
+| **M5** (`useMinistries.ts`, `limit: 100` sin aviso de `total`) | SUGERENCIA | **Se mantiene** | Con >100 ministerios el listado se corta sin indicación. No bloquea. |
+| **M6** (`Optional[T]` en `optional.go`, tercera copia) | SUGERENCIA | **Se mantiene como deuda** | Regla de tres cumplida; promover a `platform/` al aparecer el cuarto consumidor (o dejarlo registrado en `estado.md`, que es lo que se propone). No bloquea. |
+| **S1** (nueva) | SUGERENCIA | — | La prosa de `MinisterioInput.whatsappUrl` (`backend/api/openapi.yaml:5198-5202`) documenta que «el servidor normaliza `""`/espacios a `null`» mientras el `pattern` **rechaza** `""`. Ya no es la contradicción normativa de I1 (el contrato define la interfaz válida; la frase describe tolerancia del servidor), pero redactarlo como «`""` no es un valor válido del contrato (el servidor lo tolera y lo normaliza)» cerraría toda ambigüedad. |
+| **S2** (nueva) | SUGERENCIA | — | Dejar constancia en `estado.md`/registro del PR de que los tres fragmentos del snapshot (`specs/006-ministerios/contracts/openapi.yaml`: `WhatsappUrl`, `minProperties`, `sortOrder`) quedan **superados** por `1e0d9e5`/`2d75367`, para que nadie los cite como vigentes. Es el coste esperado de la regla «snapshot inmutable» y no requiere tocarlo. |
+
+**Ninguno de los abiertos (M2–M6, S1–S2) bloquea el merge.**
+
+### Evidencia ejecutada en este ciclo
+
+| Comprobación | Resultado |
+|---|---|
+| `gofmt -l`, `go vet ./...` (backend) | limpios |
+| `go test ./...` (unitarias, 21 paquetes) | en verde |
+| `go test -count=1 ./internal/ministerios -run 'Contract\|SortOrder\|Limits'` | 4/4 PASS (las pruebas nuevas de I1/M1, ejecutadas sin caché) |
+| `golangci-lint run ./...` (backend) | **0 issues** |
+| `npx tsc --noEmit`, `npx eslint .` (frontend) | limpios |
+| `npx vitest --run` (frontend) | **652/652 en verde** (94 archivos; +3 sobre el ciclo 1) |
+| `npm run api:gen` → `git diff frontend/src/api/schema.d.ts` | **vacío**: `schema.d.ts` regenerado = commiteado |
+| `go mod tidy -diff` (backend) | **vacío**: `go.mod`/`go.sum` exactamente como `tidy` los deja |
+| `govulncheck ./...` | 0 vulnerabilidades que afecten al código (1 a nivel de módulo, `GO-2026-5932` de `golang.org/x/crypto/openpgp`, **preexistente y no invocada**) |
+| Pruebas desactivadas (`skip`/`only`/`xit`/`todo`) | ninguna |
+| **No ejecutadas en este ciclo** | integración (`-tags=integration`, requiere Docker/PostgreSQL) y e2e (Playwright). No se introdujeron cambios que las afecten (payload `null` ya aceptado por el servidor, `000010` intacta, e2e ya esperaban `null`), pero quedan como pendiente de la fase de entrega si se desea la misma garantía que en el ciclo 1. |
+
+### Condiciones para el merge (estado)
+
+1. **I1 — cumplida** por la vía «corregir en este PR»: contrato + `api:gen` + formulario + pruebas. ✔
+2. **M1 — resuelto** en este PR. ✔ · M2–M6 quedan como hallazgos abiertos (tabla anterior), ninguno bloqueante. ✔
+3. **RG6-6** queda por registrar en el PR junto a RG4-10 (pendiente de T638, no de este ciclo).
+
+### Declaración
+
+Este ciclo no modificó **código, contratos, pruebas ni documentación ajena**: la única escritura es este informe (`specs/006-ministerios/revision-2026-10-13-codigo.md`), commiteado aparte con `docs(revision):`.
