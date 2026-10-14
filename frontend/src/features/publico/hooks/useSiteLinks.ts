@@ -1,16 +1,22 @@
 import { useMemo } from 'react';
 import type { ProximamentePublica } from '../../../api/agenda';
+import type { PortadaMinisterios } from '../../../api/ministerios';
 import type { PortadaPublica } from '../../../api/portada';
 import { hasUpcomingContent, useUpcomingEvents } from '../eventos/hooks/useUpcomingEvents';
 import type { PublicMessageKey } from '../i18n/messages';
+import {
+  hasPortadaMinistryContent,
+  usePortadaMinisterios,
+} from '../ministerios/hooks/usePortadaMinisterios';
 import { presentSections, type PublicSectionId } from '../sections';
 import { usePublicHomeData } from './usePublicHomeData';
 
 /**
  * Identificador de un enlace del sitio público: las secciones de la portada
- * (ancla dentro de `/`) y la sección de agenda, que es una **ruta** propia.
+ * (ancla dentro de `/`) y las secciones que son una **ruta** propia (agenda y
+ * ministerios).
  */
-export type SiteLinkId = PublicSectionId | 'events';
+export type SiteLinkId = PublicSectionId | 'events' | 'ministries';
 
 /**
  * Enlace navegable del sitio público. Es la pieza común que alimenta **tanto**
@@ -44,6 +50,18 @@ const EVENTS_LINK: SiteLink = {
 };
 
 /**
+ * Enlace único de la sección de ministerios (F6/⟲ D-1): «Ministerios» también es
+ * una **ruta real** (`/ministerios`) y va **al final** de la lista, después de
+ * «Eventos y actividades», respetando la secuencia de la portada (los bloques
+ * llevan a la ruta al final).
+ */
+const MINISTRIES_LINK: SiteLink = {
+  id: 'ministries',
+  messageKey: 'nav.sections.ministries',
+  href: '/ministerios',
+};
+
+/**
  * Ruta de la portada: los enlaces de sección son **absolutos** a la raíz
  * (`/#ancla`, QA Bug 1). Como se pintan con `<a>` nativos desde cualquier ruta
  * —incluida `/eventos`—, un ancla relativa (`#ancla`) se resolvería contra la
@@ -52,19 +70,22 @@ const EVENTS_LINK: SiteLink = {
 const HOME_PATH = '/';
 
 /**
- * Deriva los enlaces visibles de las dos respuestas públicas (FR-012/FR-022/
- * SC-012): una sección de portada sin contenido publicado **no** es enlace, y
- * la sección de agenda **solo** existe si el documento público trae algún
- * evento o actividad publicado y próximo (con solo borradores o vencidos el
- * servidor omite ambos bloques y el ítem desaparece). Cero enlaces rotos o
- * huérfanos en las tres superficies, que beben de esta única función.
+ * Deriva los enlaces visibles de las respuestas públicas (FR-012/FR-022/
+ * SC-012): una sección de portada sin contenido publicado **no** es enlace, la
+ * sección de agenda **solo** existe si el documento público trae algún evento o
+ * actividad publicado y próximo, y la sección de ministerios **solo** si el
+ * documento del **bloque de la portada** trae al menos un ministerio publicado
+ * (P6-9/T628: mismo predicado "publicado", 0 peticiones extra en la portada).
+ * Cero enlaces rotos o huérfanos en las tres superficies, que beben de esta
+ * única función.
  *
  * Es una función pura para poder probarla sin React; el hook la envuelve sobre
- * las consultas compartidas por `queryClient` (⟲ D-23).
+ * las consultas compartidas por `queryClient`.
  */
 export function buildSiteLinks(
   data: PortadaPublica | undefined,
   upcoming?: ProximamentePublica,
+  portadaMinisterios?: PortadaMinisterios,
 ): SiteLink[] {
   const links: SiteLink[] = presentSections(data).map((section) => ({
     id: section.id,
@@ -76,18 +97,31 @@ export function buildSiteLinks(
   if (hasUpcomingContent(upcoming)) {
     links.push(EVENTS_LINK);
   }
+  if (hasPortadaMinistryContent(portadaMinisterios)) {
+    links.push(MINISTRIES_LINK);
+  }
   return links;
 }
 
 /**
  * Fuente única de los enlaces de navegación del sitio público: secciones de la
- * portada con contenido publicado (en el orden de la página) más la sección de
- * agenda cuando existe (⟲ D-23: la presencia se deduce de la misma respuesta
- * pública que pinta `/eventos`, sin pedir el módulo dos veces). La consumen a la
- * vez la cabecera, el menú móvil y el mapa del sitio del pie.
+ * portada con contenido publicado (en el orden de la página) más las secciones
+ * con ruta propia cuando existen. La presencia de «Eventos y actividades» sale
+ * del documento público de la agenda y la de «Ministerios» del documento del
+ * **bloque de la portada** (`usePortadaMinisterios`, compartida por
+ * `queryClient` con `MinisteriosBlock`: una sola petición paga bloque + barra +
+ * menú + pie). La consumen a la vez la cabecera, el menú móvil y el mapa del
+ * sitio del pie.
+ *
+ * **No** consume la consulta de la sección `/ministerios` (`usePublicMinistries`):
+ * esa decide **su** redirección (P6-21) y son dos consultas a propósito.
  */
 export function useSiteLinks(): SiteLink[] {
   const { data } = usePublicHomeData();
   const { data: upcoming } = useUpcomingEvents();
-  return useMemo(() => buildSiteLinks(data, upcoming), [data, upcoming]);
+  const { data: portadaMinisterios } = usePortadaMinisterios();
+  return useMemo(
+    () => buildSiteLinks(data, upcoming, portadaMinisterios),
+    [data, upcoming, portadaMinisterios],
+  );
 }

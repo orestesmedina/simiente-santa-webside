@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -191,6 +191,80 @@ describe('HomePage · secciones publicadas (US1, SC-012)', () => {
     expect(screen.getByRole('link', { name: /Escribir por WhatsApp/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'hola@ejemplo.com' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ver en Facebook/ })).toBeInTheDocument();
+  });
+
+  it('inserta el bloque «Ministerios» tras el de eventos y antes de «quiénes somos» (F6/US6)', async () => {
+    responder(completa);
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/portada/proximamente`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [
+            { kind: 'event', id: 'ev-1', title: 'Vigilia', date: '2026-10-17', place: 'Templo' },
+          ],
+        }),
+      ),
+      http.get(`${API_BASE_URL}/api/v1/portada/ministerios`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [{ id: 'min-1', name: 'Alabanza', schedule: 'Todos los viernes' }],
+        }),
+      ),
+    );
+
+    renderHome();
+
+    await screen.findByRole('link', { name: 'Ministerio: Alabanza' });
+
+    // Una sola inserción: entre el bloque de F4 y «quiénes somos», sin tocar el
+    // resto de la secuencia de F3 (FR-021/FR-029).
+    const eventos = screen.getByRole('heading', { level: 2, name: 'Lo que viene' });
+    const ministerios = screen.getByRole('heading', { level: 2, name: 'Ministerios' });
+    const quienesSomos = screen.getByRole('heading', { level: 2, name: 'Quiénes somos' });
+    const horario = screen.getByRole('heading', { level: 2, name: 'Horario de servicios' });
+    expect(eventos.compareDocumentPosition(ministerios)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(ministerios.compareDocumentPosition(quienesSomos)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(quienesSomos.compareDocumentPosition(horario)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    // Único CTA del bloque (paso 2 hacia la sección completa).
+    expect(screen.getByRole('link', { name: 'Ver más ministerios' })).toHaveAttribute(
+      'href',
+      '/ministerios',
+    );
+
+    // Las secciones de F3 siguen renderizándose igual que antes.
+    expect(screen.getByText(/Línea uno\s+Línea dos/)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('sin ministerios publicados la portada no gana sección ni mensaje (FR-028)', async () => {
+    responder(completa);
+    let peticiones = 0;
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/portada/ministerios`, () => {
+        peticiones += 1;
+        return HttpResponse.json({ lang: 'es' });
+      }),
+    );
+
+    renderHome();
+    await screen.findByRole('heading', { name: 'Iglesia Simiente Santa' });
+    // Se espera a que el bloque haya respondido: aun así no dibuja nada.
+    await waitFor(() => expect(peticiones).toBe(1));
+    // La portada ya está pintada por completo y el bloque no repite la petición:
+    // una sola petición paga bloque + barra + menú + pie (P6-9).
+    await screen.findByRole('table');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(peticiones).toBe(1);
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'Ministerios' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Ver más ministerios' })).toBeNull();
+
+    // Y las demás secciones de la portada se renderizan igual que antes.
+    expect(screen.getByRole('heading', { level: 2, name: 'Quiénes somos' })).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });
 

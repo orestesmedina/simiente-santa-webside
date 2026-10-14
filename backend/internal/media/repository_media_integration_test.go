@@ -97,6 +97,21 @@ func seedActivity(t *testing.T, tx *pgx.Tx, file, state, day string, startTime, 
 	return id
 }
 
+// seedMinistry crea un ministerio con la imagen indicada y su estado, dentro de
+// la transacción de la prueba (F6, T610). El nombre lleva el archivo para que dos
+// casos no choquen entre sí.
+func seedMinistry(t *testing.T, tx *pgx.Tx, file, state string) string {
+	t.Helper()
+	var id string
+	if err := (*tx).QueryRow(context.Background(), `INSERT INTO ministries
+		(name_es, description_es, image_file, image_alt_es, publication_state)
+		VALUES ('Ministerio ' || $1, 'Descripción', $1, 'Alt', $2)
+		RETURNING id`, file, state).Scan(&id); err != nil {
+		t.Fatalf("sembrar ministerio: %v", err)
+	}
+	return id
+}
+
 // pgTextOrNull traduce un *string a pgtype.Text.
 func pgTextOrNull(value *string) pgtype.Text {
 	if value == nil {
@@ -224,5 +239,74 @@ func TestIntegrationIsFilePublishedFollowsActivityDate(t *testing.T) {
 	seedActivity(t, tx, draftFile, "draft", testFuture, nil, nil)
 	if published(t, repo, ctx, draftFile) {
 		t.Error("una actividad en borrador no debe servir su imagen")
+	}
+}
+
+// TestIntegrationIsFilePublishedFollowsMinistryState cubre la rama de F6
+// (R6-7/T610, RG6-5): la imagen de un ministerio PUBLICADO se sirve; la del
+// mismo ministerio en borrador no, **sin borrar el archivo** (la fila sigue
+// referenciándolo) y la misma URL vuelve a responder al publicarlo. Es la misma
+// regla que F3/F4 aplican a su contenido, ahora para ministerios.
+func TestIntegrationIsFilePublishedFollowsMinistryState(t *testing.T) {
+	repo, tx, ctx := newMediaRepo(t)
+	const file = "img_ffffffff-ffff-ffff-ffff-ffffffffffff.png"
+
+	// Borrador: el archivo no se sirve.
+	ministryID := seedMinistry(t, tx, file, "draft")
+	if published(t, repo, ctx, file) {
+		t.Error("un ministerio en borrador no debe servir su imagen")
+	}
+
+	// Publicado: se sirve.
+	if _, err := (*tx).Exec(ctx, `UPDATE ministries SET publication_state = 'published' WHERE id = $1`, ministryID); err != nil {
+		t.Fatalf("publicar el ministerio: %v", err)
+	}
+	if !published(t, repo, ctx, file) {
+		t.Error("un ministerio publicado debe servir su imagen")
+	}
+
+	// Se retira de nuevo: deja de servirse y el archivo sigue en la fila (no se
+	// borra: puede volver a publicarse).
+	if _, err := (*tx).Exec(ctx, `UPDATE ministries SET publication_state = 'draft' WHERE id = $1`, ministryID); err != nil {
+		t.Fatalf("retirar el ministerio: %v", err)
+	}
+	if published(t, repo, ctx, file) {
+		t.Error("un ministerio retirado no debe servir su imagen")
+	}
+	var stored pgtype.Text
+	if err := (*tx).QueryRow(ctx, `SELECT image_file FROM ministries WHERE id = $1`, ministryID).Scan(&stored); err != nil {
+		t.Fatalf("leer el ministerio: %v", err)
+	}
+	if !stored.Valid || stored.String != file {
+		t.Error("el archivo se borró de la fila: solo debía dejar de servirse")
+	}
+
+	// Al volver a publicarlo, la misma URL responde otra vez.
+	if _, err := (*tx).Exec(ctx, `UPDATE ministries SET publication_state = 'published' WHERE id = $1`, ministryID); err != nil {
+		t.Fatalf("volver a publicar el ministerio: %v", err)
+	}
+	if !published(t, repo, ctx, file) {
+		t.Error("al publicar de nuevo el ministerio, la misma URL debe responder otra vez")
+	}
+}
+
+// TestIntegrationIsFilePublishedIgnoresTheLeaderSwitch fija que la publicación
+// de la imagen depende SOLO del estado del ministerio: el interruptor de la
+// ficha del encargado (FR-025/FR-026) no tiene nada que ver con servir el
+// archivo, esté encendido o apagado.
+func TestIntegrationIsFilePublishedIgnoresTheLeaderSwitch(t *testing.T) {
+	repo, tx, ctx := newMediaRepo(t)
+	const file = "img_99999999-9999-9999-9999-999999999999.webp"
+
+	ministryID := seedMinistry(t, tx, file, "published")
+	for _, visible := range []bool{false, true} {
+		if _, err := (*tx).Exec(ctx,
+			`UPDATE ministries SET leader_visible = $1, leader_name_es = 'Ana Pérez' WHERE id = $2`,
+			visible, ministryID); err != nil {
+			t.Fatalf("cambiar el interruptor del encargado: %v", err)
+		}
+		if !published(t, repo, ctx, file) {
+			t.Errorf("la imagen del ministerio publicado no se sirve con leaderVisible = %v", visible)
+		}
 	}
 }

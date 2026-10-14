@@ -20,4 +20,12 @@ export const server = setupServer(
   // prueba que renderice `HomePage` fallaría por petición no gestionada. Sin
   // ítems, como una agenda vacía; cada prueba lo sobrescribe si necesita datos.
   http.get(`${API_BASE_URL}/api/v1/portada/proximamente`, () => HttpResponse.json({ lang: 'es' })),
+  // El bloque «Ministerios» de la portada (F6/T629) consulta su extracto al
+  // montarse la portada **y** el chrome público lo consulta para decidir la
+  // presencia de la entrada de navegación (T628, compartida por `queryClient`):
+  // sin handler por defecto, cualquier prueba que monte `PublicLayout` fallaría
+  // por petición no gestionada. Sin ítems —«no hay nada publicado»—, de modo
+  // que no añade enlaces ni secciones a las aserciones existentes; cada prueba
+  // lo sobrescribe cuando necesita contenido.
+  http.get(`${API_BASE_URL}/api/v1/portada/ministerios`, () => HttpResponse.json({ lang: 'es' })),
 );

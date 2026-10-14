@@ -15,6 +15,7 @@ import (
 
 	"simiente-santa/backend/internal/agenda"
 	"simiente-santa/backend/internal/media"
+	"simiente-santa/backend/internal/ministerios"
 	"simiente-santa/backend/internal/platform/config"
 	"simiente-santa/backend/internal/platform/database"
 	"simiente-santa/backend/internal/platform/httpserver"
@@ -154,6 +155,22 @@ func main() {
 		Logger:         appLog,
 	})
 
+	// Dominio ministerios (F6): la sección pública, su bloque en la portada y la
+	// gestión desde el panel. Comparte el almacén de imágenes de F3 (misma
+	// política de subida) y su service también es el audit.Recorder del grupo de
+	// panel (T616). El permiso `ministerios` ya está sembrado por 000002: F6 no
+	// añade permisos.
+	ministeriosSvc := ministerios.NewService(ministerios.ServiceDeps{
+		Repository: ministerios.NewRepository(pool),
+		Store:      portadaStore,
+		Logger:     appLog,
+	})
+	ministeriosHandler := ministerios.NewHandler(ministerios.HandlerDeps{
+		Service:        ministeriosSvc,
+		MaxUploadBytes: cfg.UploadMaxBytes,
+		Logger:         appLog,
+	})
+
 	handler := usuarios.NewHandler(usuarios.HandlerDeps{
 		Access:     authSvc,
 		Setup:      initSvc,
@@ -222,6 +239,18 @@ func main() {
 				Logger:     appLog,
 			},
 		},
+		ministeriosHandler: ministeriosHandler,
+		ministeriosAdmin: ministerios.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions: sessions,
+				Resolver: authSvc,
+				// El Recorder del grupo es el service de F6 (T616): registra las
+				// denegaciones de `ministry.*`.
+				Recorder:   ministeriosSvc,
+				CSRFSecret: cfg.SessionSecret,
+				Logger:     appLog,
+			},
+		},
 	}
 
 	srv := httpserver.New(newMux(deps, appLog),
@@ -240,21 +269,24 @@ func main() {
 // struct para que newMux sea puro y las pruebas puedan inyectar dobles sin base
 // de datos ni Redis (FR-011).
 type apiDeps struct {
-	statusRepo     status.Repository
-	authHandler    *usuarios.Handler
-	public         usuarios.PublicDeps
-	admin          usuarios.AdminDeps
-	portadaHandler *portada.Handler
-	portadaAdmin   portada.AdminDeps
-	mediaHandler   *media.Handler
-	agendaHandler  *agenda.Handler
-	agendaAdmin    agenda.AdminDeps
+	statusRepo         status.Repository
+	authHandler        *usuarios.Handler
+	public             usuarios.PublicDeps
+	admin              usuarios.AdminDeps
+	portadaHandler     *portada.Handler
+	portadaAdmin       portada.AdminDeps
+	mediaHandler       *media.Handler
+	agendaHandler      *agenda.Handler
+	agendaAdmin        agenda.AdminDeps
+	ministeriosHandler *ministerios.Handler
+	ministeriosAdmin   ministerios.AdminDeps
 }
 
 // newMux compone el enrutador con las rutas de status y las de los dominios
 // usuarios (acceso y grupo de panel), portada (superficie pública y panel), media
-// (descarga pública de archivos) y agenda («lo que viene» y los tres grupos de
-// panel de F4). Recibe las dependencias ya construidas.
+// (descarga pública de archivos), agenda («lo que viene» y los tres grupos de
+// panel de F4) y ministerios (sección pública, bloque de la portada y grupo de
+// panel de F6). Recibe las dependencias ya construidas.
 func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	root := httpserver.NewMuxRegistrar(mux)
@@ -266,5 +298,7 @@ func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	media.RegisterPublic(root, deps.mediaHandler)
 	agenda.RegisterPublic(root, deps.agendaHandler)
 	agenda.RegisterAdmin(root, deps.agendaHandler, deps.agendaAdmin)
+	ministerios.RegisterPublic(root, deps.ministeriosHandler)
+	ministerios.RegisterAdmin(root, deps.ministeriosHandler, deps.ministeriosAdmin)
 	return mux
 }

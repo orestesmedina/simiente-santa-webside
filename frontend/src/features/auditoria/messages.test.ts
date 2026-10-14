@@ -48,6 +48,41 @@ describe('ACTION_LABELS · etiquetas humanas de la auditoría (ux.md §4.9)', ()
     expect(ACTION_LABELS['role.delete']).toBe('Eliminó un rol');
   });
 
+  it('cubre los 8 códigos `ministry.*` de F6 (migración `000011`, R6-12)', () => {
+    const F6_ACTIONS = [
+      'ministry.create',
+      'ministry.update',
+      'ministry.delete',
+      'ministry.publish',
+      'ministry.unpublish',
+      'ministry.leader.show',
+      'ministry.leader.hide',
+      'ministry.image.upload',
+    ] as const;
+
+    for (const action of F6_ACTIONS) {
+      const label = ACTION_LABELS[action];
+      expect(label, `etiqueta de ${action}`).toBeTruthy();
+      expect(label).not.toBe(action);
+      expect(actionLabel(action)).toBe(label);
+    }
+  });
+
+  it('distingue el concepto y el verbo de cada código de ministerios (ux.md §4.8/§7.1)', () => {
+    expect(ACTION_LABELS['ministry.create']).toBe('Creó el ministerio');
+    expect(ACTION_LABELS['ministry.update']).toBe('Modificó el ministerio');
+    expect(ACTION_LABELS['ministry.publish']).toBe('Publicó el ministerio');
+    expect(ACTION_LABELS['ministry.unpublish']).toBe('Retiró el ministerio');
+    expect(ACTION_LABELS['ministry.delete']).toBe('Eliminó el ministerio');
+    expect(ACTION_LABELS['ministry.leader.show']).toBe(
+      'Publicó la ficha del encargado del ministerio',
+    );
+    expect(ACTION_LABELS['ministry.leader.hide']).toBe(
+      'Ocultó la ficha del encargado del ministerio',
+    );
+    expect(ACTION_LABELS['ministry.image.upload']).toBe('Subió la imagen de un ministerio');
+  });
+
   it('un código desconocido se muestra tal cual (nunca en blanco)', () => {
     expect(actionLabel('home.update')).toBe('home.update');
   });

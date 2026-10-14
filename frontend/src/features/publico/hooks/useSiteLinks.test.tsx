@@ -12,6 +12,7 @@ import { buildSiteLinks } from './useSiteLinks';
 
 const portadaUrl = `${API_BASE_URL}/api/v1/portada`;
 const upcomingUrl = `${API_BASE_URL}/api/v1/proximamente`;
+const ministriesUrl = `${API_BASE_URL}/api/v1/portada/ministerios`;
 
 const completa: PortadaPublica = {
   lang: 'es',
@@ -97,6 +98,51 @@ describe('useSiteLinks · sección de eventos (FR-021/FR-022, ⟲ D-1/D-23)', ()
   });
 });
 
+describe('useSiteLinks · sección de ministerios (FR-005/FR-006, T628)', () => {
+  const conMinisterios = {
+    lang: 'es' as const,
+    items: [{ id: 'min-1', name: 'Alabanza', schedule: 'Todos los viernes' }],
+  };
+
+  it('añade «Ministerios» al final con href de ruta cuando el bloque trae ítems', () => {
+    const links = buildSiteLinks(completa, conEventos, conMinisterios);
+
+    const ultimo = links[links.length - 1];
+    expect(ultimo?.id).toBe('ministries');
+    expect(ultimo?.href).toBe('/ministerios');
+    expect(ultimo?.messageKey).toBe('nav.sections.ministries');
+    // Va **después** de «Eventos y actividades» (⟲ D-1: al final de la lista).
+    expect(links.map((link) => link.id).indexOf('ministries')).toBeGreaterThan(
+      links.map((link) => link.id).indexOf('events'),
+    );
+  });
+
+  it('la presencia se deduce del documento del BLOQUE, no de la sección', () => {
+    // `items` omitida (0 publicados) → sin enlace, en ninguna de las tres superficies.
+    expect(
+      buildSiteLinks(completa, conEventos, { lang: 'es' }).map((link) => link.id),
+    ).not.toContain('ministries');
+    expect(buildSiteLinks(completa, conEventos, undefined).map((link) => link.id)).not.toContain(
+      'ministries',
+    );
+    // `items: []` tampoco cuenta como contenido.
+    expect(
+      buildSiteLinks(completa, undefined, { lang: 'es', items: [] }).map((link) => link.id),
+    ).not.toContain('ministries');
+    // Sin la respuesta del bloque, solo queda el ítem nuevo si hay ítems.
+    expect(buildSiteLinks(undefined, undefined, conMinisterios).map((link) => link.id)).toEqual([
+      'ministries',
+    ]);
+  });
+
+  it('el resto de enlaces (anclas de portada y /eventos) no cambia', () => {
+    const sinMinisterios = buildSiteLinks(completa, conEventos);
+    const conMinisteriosLinks = buildSiteLinks(completa, conEventos, conMinisterios);
+
+    expect(conMinisteriosLinks.slice(0, sinMinisterios.length)).toEqual(sinMinisterios);
+  });
+});
+
 describe('useSiteLinks · superficies de la misma lista (FR-022)', () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => window.localStorage.clear());
@@ -163,5 +209,51 @@ describe('useSiteLinks · superficies de la misma lista (FR-022)', () => {
 
     expect(screen.queryByRole('link', { name: 'Eventos y actividades' })).toBeNull();
     expect(document.querySelectorAll('a[href="/eventos"]')).toHaveLength(0);
+  });
+
+  it('con ministerios publicados el ítem aparece en la barra y en el mapa del pie (T628)', async () => {
+    server.use(
+      http.get(portadaUrl, () => HttpResponse.json(completa)),
+      http.get(ministriesUrl, () =>
+        HttpResponse.json({ lang: 'es', items: [{ id: 'min-1', name: 'Alabanza' }] }),
+      ),
+    );
+
+    renderPublico();
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones de la portada' });
+    expect(await within(nav).findByRole('link', { name: 'Ministerios' })).toHaveAttribute(
+      'href',
+      '/ministerios',
+    );
+
+    const sitemap = screen.getByRole('navigation', { name: 'Mapa del sitio' });
+    expect(within(sitemap).getByRole('link', { name: 'Ministerios' })).toHaveAttribute(
+      'href',
+      '/ministerios',
+    );
+
+    // Barra + mapa del pie: la lista del menú móvil es la MISMA del `<nav>`.
+    expect(document.querySelectorAll('a[href="/ministerios"]')).toHaveLength(2);
+  });
+
+  it('sin ministerios publicados el ítem no está en ninguna superficie (FR-005/SC-010)', async () => {
+    let peticiones = 0;
+    server.use(
+      http.get(portadaUrl, () => HttpResponse.json(completa)),
+      http.get(ministriesUrl, () => {
+        peticiones += 1;
+        return HttpResponse.json({ lang: 'es' });
+      }),
+    );
+
+    renderPublico();
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones de la portada' });
+    await within(nav).findByRole('link', { name: 'Quiénes somos' });
+    await waitFor(() => expect(peticiones).toBeGreaterThan(0));
+
+    expect(screen.queryByRole('link', { name: 'Ministerios' })).toBeNull();
+    expect(document.querySelectorAll('a[href="/ministerios"]')).toHaveLength(0);
   });
 });

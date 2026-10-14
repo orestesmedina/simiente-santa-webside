@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { API_BASE_URL } from '../../api/client';
 import type { SessionUser } from '../../api/auth';
 import { AppProviders } from '../../app/providers';
-import { ADMIN_USERS_ROLES } from '../../lib/permissions';
+import { ADMIN_USERS_ROLES, MINISTERIOS } from '../../lib/permissions';
 import { server } from '../../test/server';
 import { NO_MODULES_MESSAGE, InicioPage } from './pages/InicioPage';
 
@@ -140,5 +140,30 @@ describe('InicioPage · accesos rápidos', () => {
     expect(within(nav).queryByRole('link', { name: 'Gestión de eventos' })).toBeNull();
     expect(within(nav).queryByRole('link', { name: 'Gestión de actividades' })).toBeNull();
     expect(within(nav).queryByRole('link', { name: 'Categorías' })).toBeNull();
+  });
+
+  it('con solo el permiso «ministerios» se ve solo su tarjeta (F6, FR-011)', async () => {
+    useSession(makeSession({ permissions: [MINISTERIOS] }));
+
+    renderInicio();
+
+    const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
+    expect(within(nav).getByRole('link', { name: 'Gestión de ministerios' })).toHaveAttribute(
+      'href',
+      '/panel/ministerios',
+    );
+    // Los módulos son independientes: «ministerios» no abre los demás (Decisión 5).
+    expect(within(nav).queryByRole('link', { name: 'Usuarios' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Gestión de eventos' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Portada e información general' })).toBeNull();
+  });
+
+  it('sin el permiso «ministerios» su tarjeta no aparece', async () => {
+    useSession(makeSession());
+
+    renderInicio();
+
+    const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
+    expect(within(nav).queryByRole('link', { name: 'Gestión de ministerios' })).toBeNull();
   });
 });

@@ -5,6 +5,7 @@ import {
   ADMIN_USERS_ROLES,
   CATEGORIAS,
   EVENTOS,
+  MINISTERIOS,
   PORTADA,
   hasPermission,
 } from '../../../lib/permissions';
@@ -20,6 +21,7 @@ const SECTIONS: QuickAccess[] = [
   { to: '/panel/eventos', label: 'Gestión de eventos', code: EVENTOS },
   { to: '/panel/actividades', label: 'Gestión de actividades', code: ACTIVIDADES },
   { to: '/panel/categorias', label: 'Categorías', code: CATEGORIAS },
+  { to: '/panel/ministerios', label: 'Gestión de ministerios', code: MINISTERIOS },
   { to: '/panel/usuarios', label: 'Usuarios', code: ADMIN_USERS_ROLES },
   { to: '/panel/roles', label: 'Roles', code: ADMIN_USERS_ROLES },
   { to: '/panel/auditoria', label: 'Auditoría', code: ADMIN_USERS_ROLES },

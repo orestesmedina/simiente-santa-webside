@@ -1,9 +1,10 @@
 import type { EventoPublico } from '../../../api/agenda';
 import { Card } from '../../../components/publico/Card';
+import { CardImage } from '../../../components/publico/CardImage';
 import { useLanguage } from '../i18n/useLanguage';
 import { CategoryChip } from './CategoryChip';
 import { DateBadge } from './DateBadge';
-import { CardImage, CompactTime, PlaceLine } from './ItemCardParts';
+import { CompactTime, PlaceLine } from './ItemCardParts';
 
 export interface EventCardProps {
   /** Evento publicado con **al menos una fecha próxima** (FR-004). */

@@ -9,6 +9,7 @@ import {
   ADMIN_USERS_ROLES,
   CATEGORIAS,
   EVENTOS,
+  MINISTERIOS,
   PORTADA,
   hasPermission,
 } from '../lib/permissions';
@@ -95,6 +96,9 @@ export function PanelLayout() {
   }
   if (hasPermission(session, CATEGORIAS)) {
     items.push({ to: '/panel/categorias', label: 'Categorías' });
+  }
+  if (hasPermission(session, MINISTERIOS)) {
+    items.push({ to: '/panel/ministerios', label: 'Gestión de ministerios' });
   }
   if (hasPermission(session, ADMIN_USERS_ROLES)) {
     items.push(

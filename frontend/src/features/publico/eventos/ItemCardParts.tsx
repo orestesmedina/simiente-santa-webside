@@ -1,44 +1,16 @@
-import { useState } from 'react';
-import { mediaUrl } from '../../../api/client';
-import type { ImagenPublica } from '../../../api/agenda';
 import { formatTimeRange } from '../schedule';
 import { useLanguage } from '../i18n/useLanguage';
 import { datetimeValue, formatLongDate } from './formatoFechas';
 import { MapLink } from './MapLink';
 
 /**
- * Piezas compartidas por `EventCard` y `ActivityCard` (ux.md §4.1): la imagen
- * a sangre del marco, la línea de lugar con su enlace de mapa y la fecha
- * compacta de la lista de fechas restantes. Sin lógica de negocio: solo
- * presentación sobre datos ya resueltos por el servidor.
+ * Piezas compartidas por `EventCard` y `ActivityCard` (ux.md §4.1): la línea de
+ * lugar con su enlace de mapa y la fecha compacta de la lista de fechas
+ * restantes. Sin lógica de negocio: solo presentación sobre datos ya resueltos
+ * por el servidor. La imagen de la tarjeta (`CardImage`) se promovió al
+ * inventario único (`src/components/publico/CardImage.tsx`, T623) para que F6 la
+ * reutilice en fichas y extracto.
  */
-
-export interface CardImageProps {
-  image?: ImagenPublica;
-}
-
-/**
- * Imagen opcional del elemento (FR-020): a sangre en el marco superior, 16:9 y
- * recorte al centro (⟲ D-9). Sin imagen la tarjeta **no muestra hueco** y, si
- * la imagen falla, un `onError` la retira sin transformar el layout (la tarjeta
- * conserva título, fecha, lugar y detalle).
- */
-export function CardImage({ image }: CardImageProps) {
-  const [failed, setFailed] = useState(false);
-  const src = mediaUrl(image?.url);
-  if (!src || failed) {
-    return null;
-  }
-
-  return (
-    <img
-      src={src}
-      alt={image?.alt ?? ''}
-      onError={() => setFailed(true)}
-      className="aspect-video w-full object-cover"
-    />
-  );
-}
 
 export interface PlaceLineProps {
   place: string;
