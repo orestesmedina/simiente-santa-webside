@@ -1013,7 +1013,7 @@ la portada, silenciosa y sin aviso**) · **Plan**: [plan.md](./plan.md)
 > ejecutan con `make e2e` **por tandas** respetando el **límite de intentos de login** de F2 (las
 > specs de panel hacen login; ver T637).
 
-- [ ] T632 · `ministeriosSeed.ts` (fixtures del módulo) · `[frontend]`
+- [X] T632 · `ministeriosSeed.ts` (fixtures del módulo) · `[frontend]`
 
   - **Archivos**: `frontend/e2e/ministeriosSeed.ts` (NUEVO; patrón de `frontend/e2e/agendaSeed.ts`).
   - **Qué hace**: fixtures reutilizables por las 4 specs e2e (patrón de F4): ministerios publicados
