@@ -191,3 +191,60 @@ En vivo verifiqué §0 (stack de la rama), §1 (200 sin sesión + `no-store`, `i
 ## Veredicto final
 
 **APROBADO** para la puerta de validación: emitir PR con el `documentador`, con los dos pendientes manuales (SC-012 y lector real) y el flaky preexistente de F4 asentados como acciones **antes del cierre** de la funcionalidad.
+
+---
+
+## Ciclo 1 — re-validación (2026-10-13, tras las correcciones I1 y M1)
+
+**Alcance**: los commits `1e0d9e5` (contrato: `whatsappUrl` anulable + `minProperties: 1`), `6328cff` (formulario manda `null`, nunca `""`) y `2d75367` (`sortOrder` acotado a int32). Re-verificación **acotada a lo que el cambio toca** + regresión de privacidad, en vivo contra el stack y con las suites.
+
+### Entorno
+
+- El stack local (`backend`/`frontend`) seguía con las imágenes de las 18:16, **anteriores** a las correcciones (20:52–21:06): reconstruí ambas imágenes (`docker compose build backend frontend`) y las levanté de nuevo. Todo lo verificado en vivo corre contra el binario corregido.
+- La base quedó limpia tras las verificaciones (0 filas en `ministries`); los 3 ministerios QA que sembré y los del e2e se eliminaron solos.
+
+### Verificación en vivo con datos reales (API + DOM)
+
+Sembré por la API con la cuenta admin: **MIN-A** (creado **con `whatsappUrl: null` explícito**, encargado visible con celular, completo en ambos idiomas, publicado), **MIN-B** (creado **con** enlace, publicado) y **MIN-C** (con enlace, encargado con celular, **interruptor omitido** → nació `"leaderVisible": false`).
+
+| # | Verificación | Evidencia concreta | Resultado |
+|---|---|---|---|
+| R1 | **Crear sin enlace** (FR-003/SC-009, SC-017) | `POST` con `"whatsappUrl": null` → 201; DTO del panel `whatsappUrl: null`; la sección pública **omite la clave** (nunca vacía); DOM: ficha de MIN-A sin botón de unirse, con encargado «Roberto Teléfono» + `+506 8888-8888`, sin líneas de enlace vacías ni `href=""` | ✅ |
+| R2 | **Quitar el enlace del publicado** — el riesgo real (que el `PATCH null` borre algo más) | MIN-B con enlace visible en sección (`whatsappUrl` presente) → `PATCH {"whatsappUrl": null}` → **200**; el DTO del panel conserva **íntegros** `nameEs/En`, `descriptionEs/En`, `leaderNameEs/En`, `leaderEmail`, `leaderVisible`, `scheduleEs`, `placeEs`, `sortOrder: 20`, `publicationState: published` y deja `whatsappUrl: null`; sección es/en muestran todo lo demás (fallback en intacto) y **sin** `whatsappUrl`; DOM: sin botón en la ficha, encargado/correo/horario/lugar intactos | ✅ |
+| R3 | **Bloque de portada tras el cambio** | el bloque volvió a servir a MIN-B (`name/schedule/place`); su DTO **nunca transporta** el enlace (FR-027, por diseño) y el HTML de la portada no contiene el enlace quitado (`QaRvTest999` = 0) ni el encargado oculto | ✅ |
+| R4 | **`PATCH {}` sigue siendo 400** (`minProperties: 1`) | `{"error":{"code":"invalid","message":"No hay cambios que guardar"}}`, HTTP 400 | ✅ |
+| R5 | **`sortOrder` fuera de int32 → 400 por campo, sin truncar** | POST y PATCH con `4294967296` y `-2147483649` → **4×400** con `details.sortOrder` («el orden admite valores entre -2147483648 y 2147483647»); extremos `2147483647` y `-2147483648` → **200** y la ficha quedó exacta en la columna `INTEGER` (verificado en la base: 10 y 20 tras restaurar) | ✅ |
+| R6 | **Regresión de privacidad del encargado oculto** (SC-014) | MIN-C: 12/12 greps = **0** apariciones de «Sigfrido Oculto» / «Sigfrid Hidden» / «7777-7777» en los 4 endpoints públicos (sección y portada, es y en); clave `leader` **omitida** en es/en; HTML de `/ministerios` y de la portada con 0 apariciones (script Playwright fuera del repo). El interruptor nace apagado (`"leaderVisible": false` con la clave omitida en el alta) y **el dato sí existe en el panel** (no se descartó en el guardado) | ✅ |
+| R7 | El renderizado del enlace **no se rompió** con el cambio | la ficha de MIN-C (sí tiene enlace) muestra su botón con el `href` exacto; la prueba `TestContractPatchAllowsNullWhatsappURL` y las 3 de Vitest del formulario quedan en verde | ✅ |
+
+### Suites ejecutadas por mí en esta re-validación
+
+| Suite | Comando | Resultado |
+|---|---|---|
+| Frontend unitarias | `npm test -- --run` | ✅ **652/652** (94 archivos; 649 anteriores + 3 nuevas de `6328cff`) |
+| Backend unitarias | `go test ./...` | ✅ 20 paquetes ok |
+| Backend integración (PostgreSQL real, `count=1`) | `DATABASE_URL_TEST=… go test -tags=integration -count=1 -v ./internal/ministerios/...` | ✅ **125 PASS / 0 FAIL** |
+| Pruebas nuevas de contrato/dominio (explícitas) | `go test -run TestContractPatchAllowsNullWhatsappURL\|TestContractSortOrderIsBounded\|TestSortOrderOutOfRangeIsRejected` | ✅ todas PASS (con los subtest `orden_por_encima/debajo_del_rango_de_la_columna`) |
+| E2e de F6 — Docker Playwright 1.63.0-jammy, `--network host`, `--workers=1` | `npx playwright test --config e2e/playwright.config.ts ministerios- portada-ministerios` | ✅ **19/19** (27,0 s) |
+| DOM en vivo (script ad-hoc fuera del repo) | portada + `/ministerios` | ✅ (tabla R1–R7) |
+
+### Notas de la corrida
+
+1. **Las pruebas de integración se omiten en silencio** si `DATABASE_URL_TEST` no está definida (`t.Skipf` en `internal/platform/testutil/db.go`): una corrida sin la variable da `ok` en <1 s sin ejecutar nada. Con la variable puesta contra el PostgreSQL local del compose, las 125 corren y pasan. (Observación, no defecto: el patrón es el mismo de F2/F3/F4.)
+2. La primera tanda e2e falló 4 pruebas por `ENOENT /resources/simiente.jpeg`: **error del método** (monté solo `frontend/` en el contenedor y el fixture vive en `<repo>/resources/`); montando el repo raíz, 19/19. No es de F6.
+3. Las correcciones no tocan ninguna vía por la que puediera filtrarse el encargado (solo `whatsappUrl`, `minProperties` y `sortOrder`): la regresión R6 lo confirma en vivo.
+
+### Cobertura del caso corregido
+
+La cobertura automatizada del ciclo ya existía y es suficiente; **no añadí pruebas nuevas**:
+
+- Backend: `TestUpdateMinisterioNullExplicitFromJSON` (PATCH `null` borra el enlace y conserva el resto), `TestContractPatchAllowsNullWhatsappURL` (esquema anulable + `minProperties`), `TestUpdateMinisterioHandlerRejections/sin campos` y service (PATCH vacío → 400), `TestSortOrderOutOfRangeIsRejected` + subtest del dominio + HTTP (rango int32, extremos válidos, sin truncar).
+- Frontend: `ministryForm.test.tsx` (I1): crear sin enlace manda `null` y no `""`; quitar el enlace al editar manda `null`; editar sin tocar lo conserva.
+
+### Confirmación
+
+**No toqué ningún código de producción ni ninguna prueba existente.** Lo único que añadí en el repo es esta sección del informe. En el stack local reconstruí las imágenes de `backend`/`frontend` (estado del entorno, no del repositorio) y ejecuté las suites; la base quedó sin filas de prueba.
+
+### Veredicto del ciclo 1
+
+**APROBADO** — las actuaciones de corrección I1/M1 hacen lo que dicen, el `PATCH null` no borra nada más, el 400 del `PATCH {}` y del `sortOrder` fuera de int32 se comportan como el contrato, la privacidad del encargado sigue intacta y las suites completas están en verde. Sin bloqueantes. Los pendientes manuales de la validación original (SC-012 y lector real) siguen abiertos para el cierre.
