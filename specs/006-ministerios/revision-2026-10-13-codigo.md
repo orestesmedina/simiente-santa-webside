@@ -1,0 +1,91 @@
+# Revisión de código — F6 Ministerios
+
+**Fecha**: 2026-10-13 · **Fase**: 5 (validar) · **Revisor**: `revisor-codigo` (solo lectura; este informe es la única escritura)
+**Alcance**: `git diff main...HEAD` (rama `006-ministerios`, 47 commits desde `d114cac`, 123 archivos, +25 356/−143) contrastado con `spec.md` (FR-001…FR-029, SC-001…SC-017), `plan.md` (P6-1…P6-21), `ux.md` (D-1…D-14), `tasks.md` (T601–T638), `data-model.md`, `contracts/openapi.yaml` (0.7.0) y `.specify/memory/constitution.md`.
+
+## Veredicto
+
+**APROBADO CON CAMBIOS MENORES** — sin hallazgos CRÍTICOS. La implementación corresponde exactamente a lo aprobado: privacidad del encargado **estructural** (consulta + DTO + composición en un solo punto), «oculto por defecto» (P6-3) fijado por prueba en las cuatro capas, redirección silenciosa de `/ministerios` mecánicamente correcta y explícitamente distinta de `/eventos` (P6-21), `PATCH` que fusiona y escribe la fila completa (P6-20) con los casos «un solo campo» y `null` explícito probados, auditoría transaccional con la regla exacta de códigos (alta = solo `ministry.create`), `IsFilePublished` aditiva sin tocar F3/F4 y **0 dependencias nuevas**. Quedan **1 IMPORTANTE** (incoherencia del contrato con el propio código en `whatsappUrl`) y **6 MENORES/SUGERENCIAS**.
+
+## Evidencia verificada en esta revisión
+
+| Comprobación | Resultado |
+|---|---|
+| `gofmt -l`, `go vet ./...`, `go vet -tags=integration ./...` (backend) | limpios |
+| `golangci-lint run ./...` (backend) | **0 issues** |
+| `go build ./...`, `go test ./...` (unitarias) | en verde (21 paquetes) |
+| `go test -tags=integration ./internal/ministerios ./internal/media` contra **PostgreSQL 16 real** (BD desechable creada y migrada con las 11 migraciones para la revisión, luego eliminada) | **26 `TestIntegration*` en verde, 0 skip, 0 fail** (incluye up→down→up de `000010`/`000011`, CHECKs de la BD, «oculto por defecto», `ListPublishedMinistries` sin borradores y con encargado enmascarado, mutación+auditoría atómica y rollback, `IsFilePublished` con las ramas de F3/F4 intactas) |
+| Cobertura de `internal/ministerios/service*.go` (perfil, no bitácora) | **96,83 %** (366/378 statements): `service.go` 97,4 %, `service_admin.go` 95,7 %, `service_public.go` 97,6 %, `service_audit.go` 100 % — la cifra reportada es exacta |
+| `npx tsc --noEmit`, `npx eslint .` (frontend) | limpios |
+| `npx vitest --run` (frontend) | **649/649 en verde** (94 archivos) |
+| `govulncheck ./...` | 0 vulnerabilidades que afecten al código (1 a nivel de módulo, `GO-2026-5932` de `golang.org/x/crypto/openpgp`, **preexistente y no invocada**; F6 no añade dependencias) |
+| `npm audit --audit-level=high` | 0 vulnerabilidades |
+| Pruebas desactivadas (`skip`/`only`/`xit`/`todo`) | ninguna |
+| `any` injustificado en `frontend/src` (fuera de tests y `.d.ts`) | ninguno |
+| Diff de `go.mod`/`package.json` | **vacío** (0 dependencias nuevas, cumplido) |
+| `backend/api/openapi.yaml` v0.7.0 vs snapshot `specs/006-ministerios/contracts/openapi.yaml` | coherentes (los 13 esquemas F6 comparados byte a byte; solo diferencia de comillas YAML equivalente en `MinisterioInput.leaderPhone`) |
+
+## Hallazgos
+
+### IMPORTANTE
+
+**I1 — El contrato desmiente su propia prosa en `whatsappUrl` (y el frontend manda un valor que el esquema tampoco admite).**
+- `specs/006-ministerios/contracts/openapi.yaml:579-588` y `backend/api/openapi.yaml:4864-4873` — el esquema `WhatsappUrl` es `type: string` + `pattern: "^https://[^\\s]+$"`, sin `null`.
+- `specs/006-ministerios/contracts/openapi.yaml:975-977` y `backend/api/openapi.yaml:5260-5262` — `MinisterioPatch.whatsappUrl` es `$ref: WhatsappUrl`, mientras su prosa (`:939-941` / `:5223-5225`) promete «un campo con `null` explícito borra su valor opcional (p. ej. **`whatsappUrl`**, `imageFile`, `leaderPhone`, `scheduleEs`…)». Un validador estricto rechaza el `null` que el propio contrato documenta; `openapi-typescript` genera `whatsappUrl?: WhatsappUrl` (= `string`), es decir que **un cliente tipado no puede expresar el borrado** que la spec exige (FR-014/A6-3).
+- `frontend/src/features/ministerios/components/MinistryForm.tsx:233-238` — el formulario lo sortea mandando `whatsappUrl: ""` cuando el campo está vacío (también en el alta), pero el `pattern` del esquema **tampoco admite la cadena vacía**: el formato de cable real de «sin enlace» no es representable en el contrato. (El servidor sí acepta ambos y normaliza `""`→`NULL`: `service.go:167-173`, `service_admin.go:398-401`; el comportamiento es correcto, es el contrato lo que queda atrasado.)
+- Relacionado, mismo esquema: `MinisterioPatch` **no declara `minProperties: 1`** (ni en el snapshot ni en el vivo, `backend/api/openapi.yaml:5221-5222`), a diferencia de los PATCH de F3/F4 (`:2907`, `:3022`, `:3862`, `:4047`) y de lo que hace el servidor (PATCH vacío → 400, `service_admin.go:181-183`).
+- **Corrección propuesta** (`dev-backend`, contrato + `make api:gen`): declarar `whatsappUrl` anulable donde el `null` es legal (p. ej. `oneOf: [$ref WhatsappUrl, {type: "null"}]` o `type: [string, "null"]` con el `pattern` condicionado), añadir `minProperties: 1` a `MinisterioPatch` y unificar con la prosa; y alinear `MinistryForm.tsx` (`dev-frontend`) al formato ya corregido (omitir la clave en vez de mandar `""`, si esa es la convención que queda). Es un cambio de **documentación/contrato**, no de comportamiento.
+
+### MENOR / SUGERENCIA
+
+**M1 — `sortOrder` sin rango: truncamiento silencioso a `int32`.**
+`backend/internal/ministerios/repository_ministerios.go:200` y `:226` hacen `int32(ministry.SortOrder)` sobre un `SortOrder int` de 64 bits (`model.go:120`) sin validación de rango en el service ni `minimum`/`maximum` en el contrato (`specs/006-ministerios/contracts/openapi.yaml:931`, `:1001`). Un `sortOrder` fuera de `int32` (p. ej. `4294967296` vía API) se guarda **truncado** (`0`) y responde 201/200: el orden pedido no es el guardado, sin aviso. **Corrección** (`dev-backend`): acotar el rango en `validateMinistry` (o tipar el DTO como `int32`) y reflejarlo en el contrato. Impacto hoy mínimo (solo panel).
+
+**M2 — Un método del repository vive en el archivo del service.**
+`backend/internal/ministerios/service.go:509-514` implementa `func (r *repository) RecordAction`, un método de la capa de persistencia, en el archivo cuyo propio comentario dice «la persistencia y la auditoría atómica viven en el repository». **Corrección** (`dev-backend`): moverlo a `repository.go`/`repository_audit.go`. Menor, pero rompe la coherencia de archivos por capa que el resto del módulo mantiene impecablemente.
+
+**M3 — `mergeInvalid` conserva solo el último motivo por campo.**
+`backend/internal/ministerios/service.go:395-406` recorre `domainErr.Details` sobrescribiendo `details[field]`; si una regla devolviera varios motivos solo sobrevive el último. Hoy cada regla produce uno solo, así que no hay pérdida real. **Corrección** (`dev-backend`): `break` tras el primero o concatenar.
+
+**M4 — Espera por tiempo en una prueba de la portada.**
+`frontend/src/features/publico/homePage.test.tsx:259` — `await new Promise((resolve) => setTimeout(resolve, 20))` para verificar que no se repite la petición del bloque. Es la única aserción dependiente del reloj de toda la tanda; bajo CI lenta puede fallar en falso. **Corrección** (`dev-frontend`): sustituir por una espera determinista (p. ej. estabilizar con `waitFor` sobre el estado final y asertar el conteo, o fake timers).
+
+**M5 — El listado del panel se corta en 100 sin avisar.**
+`frontend/src/features/ministerios/hooks/useMinistries.ts:28-31` pide `limit: 100` (tope del contrato) y `MinistriesList`/`MinistriesPage` no muestran `total`: con más de 100 ministerios el equipo vería una lista incompleta sin indicación (la decisión de no paginar está en `ux.md` §4.3, pero el aviso no). **Corrección** (`dev-frontend`): mostrar `total` o un aviso discreto cuando `total > items.length`. Sugerencia.
+
+**M6 — `Optional[T]` llega al tercer dominio (regla de tres cumplida).**
+`backend/internal/ministerios/optional.go:25-29` repite el tipo de `internal/portada` y `internal/agenda` (el propio comentario lo anticipa: «candidata a promover a `platform/` cuando aparezca un cuarto consumidor»). Con tres copias ya conviene promoverlo (`dev-backend`), o dejarlo registrado como deuda en `estado.md`.
+
+## Puntos delicados de F6: dictamen
+
+| Punto | Dictamen |
+|---|---|
+| **1. Privacidad del encargado (FR-026)** | **Sólida y estructural en tres capas.** (a) La consulta pública (`queries/ministries.sql:49-52`) devuelve las 4 columnas con `CASE WHEN leader_visible` → la fila **no transporta** el dato; (b) `repository_public.go:49-59` traduce los `interface{}` de sqlc con `maskedText` (`repository.go:176-184`: fail-closed ante NULL, cadena vacía o tipo inesperado) y ningún `interface{}` sale del paquete; (c) `MinisterioPublico` (`model.go:137-146`) solo tiene el nombre y el contacto **dentro** de `leader`, que `localizeMinistry` (`service_public.go:62-86`) construye solo con interruptor publicado **y** nombre, y `ItemMinisterioPortada` (`service_public.go:103-109`) **no tiene campos de encargado en ningún caso**. Sin caminos de fuga comprobados: los dos endpoints públicos pasan por `ListPublishedMinistries` (única vía pública), las respuestas de error no llevan datos (`wrap`/`classify` → `internal` genérico), los logs solo llevan método/ruta/errores (`handler.go:158-179`, `service.go:496-507`) y `media` solo sirve archivos. Pruebas: `service_public_test.go:132-191` serializa el DTO y exige **0 apariciones** de nombre/celular/correo en `es` y `en`; `TestGetPortadaMinisteriosHasNoLeaderFields` (`:420`); integración `TestIntegrationListPublishedMinistriesHidesTheLeaderByDefault`; e2e `ministerios-publica.spec.ts:220-305` inspecciona red + HTML (incluidos los dígitos del celular) y la API forzada sin sesión. |
+| **2. Redirección silenciosa de `/ministerios`** | **Correcta y deliberadamente distinta de `/eventos`.** `MinisteriosPage.tsx:43-50`: esqueleto mientras `query.isPending` y `<Navigate to="/" replace />` **solo** con éxito y 0 items → sin destello, sin H1, sin `HiddenNotice`, sin mensaje; `replace` evita el bucle con «Atrás» (probado: `MinisteriosPage.test.tsx:220-237` aserta `historyAction === 'REPLACE'` y 0 pantallas intermedias; `:239-253` fija redirección en el primer render con caché; `:255-272` el esqueleto; **`:274-303` ante error NO redirige** y conserva la ruta). La divergencia con F4 está explícita en el código (`MinisteriosPage.tsx:31-33`, `router.tsx:83-86`), en `useSiteLinks.ts:115-117` (dos consultas a propósito) y en `plan.md` P6-21/RG6-13. El API responde 200 con `items` omitida (no 3xx): coherente con el contrato. |
+| **3. `PATCH` (P6-20/A6-3)** | **Correcto.** `mergeMinisterio` (`service_admin.go:362-460`) fusiona solo los campos presentes (`Optional[T]` distingue ausente/valor/`null` explícito, `optional.go`) y `UpdateMinistry` escribe **la fila completa ya fusionada** (`repository_ministerios.go:49-68` + `queries/ministries.sql:201-218`, todas las columnas en el `UPDATE`), revalidando el resultado (`validateMinistry`). Probado: `TestUpdateMinisterioMergesOnlyPresentFields` (`service_admin_test.go:331-402`, caso «un solo campo» + `null`), `TestUpdateMinisterioNullExplicitFromJSON` (`:404-436`, `null` **desde JSON**, no solo construido en código), `TestIntegrationUpdateMinistryWritesTheMergedRow`, y `handler_admin_test.go:284` (`TestUpdateMinisterioHandlerPatchSemantics`). Único reparo: la semántica de borrado del `whatsappUrl` no es representable en el contrato (ver I1). |
+| **4. Auditoría** | **Correcta.** El alta registra **solo `ministry.create`** —una fila, también con `leaderVisible` o naciendo publicado (`service_admin.go:125-151`; `TestCreateMinisterioStoresAndAuditsOnlyCreate:126-127` exige `len == 1` y el código exacto). Los intentos rechazados **sí** se registran: validación/duplicado/PATCH vacío → `result='failure'` (`recordContentFailure`, `service.go:475-483`), JSON/DTO inválido → `RecordRejectedBestEffort` (`handler.go:158-179`, sin cuerpo de la petición), denegaciones de permiso → `RecordDenied` con `result='denied'` (`service_audit.go:44-55`), y todo con `service_audit_test.go:130-296`. Mutación + filas de auditoría en la **misma transacción** y fail-closed (`repository_ministerios.go:35-68`; integración `TestIntegrationWriteTxRollsBackWhenAuditFails`/`…WhenAuditCodeIsUnknown`, que además fija que la BD solo admite los 8 códigos nuevos). |
+| **5. `IsFilePublished`** | **Aditiva.** La rama F6 entra como tercer `UNION ALL` (`queries/media.sql:62-70`) sin tocar las ramas de F3/F4; las pruebas de integración de `media` cubren las cuatro (`…FollowsHomeState`, `…FollowsEventDates`, `…FollowsActivityDate`, `…FollowsMinistryState` e `…IgnoresTheLeaderSwitch`): el comportamiento de F3/F4 queda **fijado, no alterado**. Ciclo de vida del archivo (A6-11) coherente: `DeleteMinisterio` no borra el fichero y la limpieza del reemplazado es best-effort (`service_admin.go:234-237`, `:488-498`). |
+| **6. Contrato vivo 0.7.0** | **Coherente en operaciones y esquemas** (5 rutas F6 verificadas contra `routes.go`; `AdminActionItem.action` +8 códigos; `error.code` sin crecer; snapshot = fusión, salvo I1). Los puntos abiertos son exactamente los de I1: `whatsappUrl` sin `null` pese a la prosa y `MinisterioPatch` sin `minProperties: 1`. |
+
+## Pruebas de F2/F4/F10 modificadas por F6 (T626, «cambio acotado RG6-6»)
+
+Revisadas con `git log -p` archivo por archivo (`lib/permissions.test.ts`, `features/roles/*`, `panel.test.tsx`, `test/server.ts`, `homePage.test.tsx`, `layout.test.tsx`, `useSiteLinks.*`):
+- **Ninguna aserción de comportamiento se relajó.** Los cambios son de **catálogo**: recuentos y listas exactas que ahora incluyen `MINISTERIOS` (`permissions.test.ts:65-76` sigue exigiendo la lista exacta con `toEqual`, es decir **más** estricta), el sello «Disponible más adelante» de `roles.test.tsx:62-88` conserva su aserción `queryByText(/Disponible más adelante/) === null`, y `panel.test.tsx:145-168`/`layout.test.tsx:125-153` **añaden** casos sin tocar los existentes.
+- `test/server.ts:23-30` añade un handler por defecto del bloque (`{lang:'es'}`, sin items) documentado y neutral para las aserciones previas.
+- El único test «congelado» tocado de F4 es `useSiteLinks.test.ts → .tsx` (mismo caso ya juzgado en F4, M4): F6 le añade su propio caso sin borrar los de F4.
+- **Dictamen: legítimo, sin debilitamiento.** Recomendación (M4 de F4, se reitera): dejar constancia de RG6-6 en el registro del PR/`estado.md`, como se hizo con RG4-10.
+
+## Sin hallazgos (verificado y correcto)
+
+- **Capas (§II)**: handlers sin SQL ni lógica (`handler*.go`); service sin `net/http`/`pgx`; repository es el único que conoce pgx y traduce errores con `%w` (`repository.go:345-352`). Rutas públicas sin middlewares de sesión y panel con la cadena de F2 —`AdminChain("ministerios")` (`routes.go:52-66`)— con el permiso **ya sembrado por `000002`**: **cero** permisos nuevos (fijado por `TestIntegrationPermissionsCatalogUnchanged`).
+- **Seguridad (§IV)**: SQL 100 % parametrizado (sqlc; el único `fmt.Sprintf` de SQL está en un helper de pruebas con `$n` parametrizados, `repository_migrations_integration_test.go:108`); validación completa en servidor (tags + `validateMinistry`, con `details` por campo); subidas por firma binaria JPEG/PNG/WebP sin SVG/GIF, nombre generado por el servidor, tope en stream (`handler_images.go:38-60`) y auditoría fail-closed de la subida; sin secretos, sin `dangerouslySetInnerHTML`/`eval`, `target="_blank"` con `rel="noopener"` (`PublicButton external`), y el `href` se sirve **tal cual** (FR-015: sin transformar).
+- **Migraciones (§VI)**: `000010`/`000011` con `up`/`down`, sin tocar las aplicadas (`000011` solo sustituye el `CHECK` de `admin_actions`, con nombre propio desde `000006`), `id`/`created_at`/`updated_at`, CHECKs de invariantes (contacto excluyente, contacto exige nombre, español por campo, alt con imagen, `whatsapp_url ~ '^https://…'`, normalización `btrim`) e índices explícitos (`sort_order, id`, `publication_state`). El up→down→up está fijado por prueba de integración.
+- **Dominio y UX**: horario/lugar como **textos libres** sin fechas ni recurrencias (sin `DateBadge`/`<time>`, `MinistryCard.tsx:39-50`, SC-015), sin nada de F5/F4 en la sección (SC-013), imagen/encargado/enlace opcionales sin huecos ni líneas vacías (`MinistryCard` y `EncargadoLine` solo montan lo que existe), botón de unión solo con enlace (`WhatsappJoinButton`), `alt` obligatorio, bilingüe con fallback por campo en el **servidor** (`pickString`/`pickOptional`) y `lang` inválido → 400 con `details.lang`.
+- **Bloque de portada**: tope **5 firme del servidor** (`maxPortadaItems` + `LIMIT`; `TestGetPortadaMinisteriosCapsAtFiveAndKeepsOrder`), `sort_order, id`, DTO sin encargado ni enlace, oculto por completo sin publicados (sin mensaje, diferencia consciente con F4), posición exacta tras `ProximamenteBlock` y antes de `WhoWeAreSection` (fijado por orden de documentos en `homePage.test.tsx:195-235`), y **una sola petición** para bloque + barra + menú + pie (P6-9, `usePortadaMinisterios` con `staleTime` corto y aserción de conteo en `homePage.test.tsx:243-262`).
+- **Trazabilidad**: `tasks.md` T601–T637 completas (T638, documentación y PR, es la fase siguiente); FR-001…FR-029 y SC-001…SC-017 rastreados en `plan.md` «Cobertura de requisitos» y cubiertos por pruebas (comprobado SC por SC en código y e2e); `schema.d.ts` regenerado desde el contrato (`npm run api:gen`), 0 `any`; i18n `es`/`en` con claves tipadas nuevas y las 8 etiquetas de auditoría; `CardImage` promovido a `components/publico/` **sin copia duplicada** (F4 la consume desde el inventario único).
+
+## Condiciones para el merge (cambios menores)
+
+1. **I1** se corrige en este PR (contrato + `make api:gen` + el ajuste de `MinistryForm`) o queda registrada como incoherencia abierta en `estado.md` con su issue; es el único punto donde contrato y código discrepan.
+2. M1–M6 pueden resolverse en el mismo PR o quedar como hallazgos abiertos en `estado.md`; ninguno bloquea.
+3. Registrar RG6-6 (pruebas de F2/F4 ajustadas de forma acotada) en el PR junto a RG4-10.
