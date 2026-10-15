@@ -28,4 +28,14 @@ export const server = setupServer(
   // que no añade enlaces ni secciones a las aserciones existentes; cada prueba
   // lo sobrescribe cuando necesita contenido.
   http.get(`${API_BASE_URL}/api/v1/portada/ministerios`, () => HttpResponse.json({ lang: 'es' })),
+  // F7: la presencia de la entrada «Ofrendas y diezmos» se deduce del
+  // **documento de la sección** (`usePublicOfrendas`, P7-8), compartido por
+  // `queryClient` con la página `/ofrendas`; y el bloque de la portada consulta
+  // su propio extracto al montarse `HomePage` (`usePortadaOfrendas`, T728). Sin
+  // handlers por defecto, cualquier prueba que monte `PublicLayout` o la portada
+  // fallaría por petición no gestionada. Sin contenido publicado (documento solo
+  // `lang`) —«no hay nada»—, de modo que no añade enlaces ni bloques; cada
+  // prueba lo sobrescribe cuando necesita datos.
+  http.get(`${API_BASE_URL}/api/v1/ofrendas`, () => HttpResponse.json({ lang: 'es' })),
+  http.get(`${API_BASE_URL}/api/v1/portada/ofrendas`, () => HttpResponse.json({ lang: 'es' })),
 );
