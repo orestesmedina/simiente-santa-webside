@@ -454,7 +454,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     T709/T710.
   - **Commit sugerido**: `feat(donaciones): modelo y base del repository con auditoria transaccional`
 
-- [ ] T709 · `donaciones`: `repository_donaciones.go` (CRUD y duplicados) · `[backend]` `[P]` (P2)
+- [X] T709 · `donaciones`: `repository_donaciones.go` (CRUD y duplicados) · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/donaciones/repository_donaciones.go` y
     `repository_donaciones_integration_test.go` (NUEVOS; `//go:build integration`).
