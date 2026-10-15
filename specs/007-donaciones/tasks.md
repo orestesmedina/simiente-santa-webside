@@ -1070,7 +1070,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 > ejecutan con `make e2e` **por tandas** respetando el **límite de intentos de login** de F2 (las
 > specs de panel hacen login; ver T737).
 
-- [ ] T732 · `ofrendasSeed.ts` (fixtures del módulo) · `[frontend]`
+- [X] T732 · `ofrendasSeed.ts` (fixtures del módulo) · `[frontend]`
 
   - **Archivos**: `frontend/e2e/ofrendasSeed.ts` (NUEVO; patrón de `frontend/e2e/agendaSeed.ts` /
     `ministeriosSeed.ts`).
@@ -1089,7 +1089,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Criterio de terminado**: fixtures listas y documentadas (qué caso cubre cada una).
   - **Commit sugerido**: `test(e2e): fixtures de ofrendas`
 
-- [ ] T733 · E2E Playwright `ofrendas-publica.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T733 · E2E Playwright `ofrendas-publica.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/ofrendas-publica.spec.ts` (NUEVO; usa `helpers.ts` y
     `ofrendasSeed.ts`).
@@ -1114,7 +1114,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     extremo a extremo.
   - **Commit sugerido**: `test(e2e): seccion publica de ofrendas (numeros exactos y redireccion)`
 
-- [ ] T734 · E2E Playwright `ofrendas-panel.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T734 · E2E Playwright `ofrendas-panel.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/ofrendas-panel.spec.ts` (NUEVO).
   - **Qué hace**: recorrido del panel (US2, US3) según `quickstart.md` §2–§8/§12/§13: login con
@@ -1137,7 +1137,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     servidor y las reglas de número probadas en el flujo real.
   - **Commit sugerido**: `test(e2e): gestion de donaciones en el panel, permisos y auditoria`
 
-- [ ] T735 · E2E Playwright `ofrendas-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
+- [X] T735 · E2E Playwright `ofrendas-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/ofrendas-accesibilidad.spec.ts` (NUEVO; patrón de
     `ministerios-accesibilidad.spec.ts` / `portada-accesibilidad.spec.ts`).
@@ -1158,7 +1158,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     `make e2e` junto a las otras specs.
   - **Commit sugerido**: `test(e2e): accesibilidad por teclado de ofrendas (SC-008)`
 
-- [ ] T736 · E2E Playwright `portada-ofrendas.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T736 · E2E Playwright `portada-ofrendas.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/portada-ofrendas.spec.ts` (NUEVO).
   - **Qué hace**: bloque de la portada (US6, SC-014) según `quickstart.md` §14: con 8 publicados
