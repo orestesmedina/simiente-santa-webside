@@ -229,3 +229,122 @@ func TestGetOfrendasRepositoryError(t *testing.T) {
 		t.Fatalf("err = %v, se esperaba el error del repositorio", err)
 	}
 }
+
+// --- T714 · bloque de la portada ---
+
+// TestGetPortadaOfrendasCapsAtFiveAndKeepsOrder fija US6/FR-022/SC-014: con 8
+// publicados salen exactamente los 5 primeros en el orden de la sección; el tope
+// es del servidor y no hay parámetro de límite.
+func TestGetPortadaOfrendasCapsAtFiveAndKeepsOrder(t *testing.T) {
+	repo := newFakeRepository()
+	// 3 IBAN con sortOrder 0..2 y 5 SINPE con sortOrder 0..4: los 5 primeros son
+	// los 3 IBAN y los 2 primeros SINPE.
+	for i := 0; i < 3; i++ {
+		method := publishedMethod(KindIban, "CR05015202001234567890")
+		method.SortOrder = i
+		method.Institution = "IBAN " + string(rune('A'+i))
+		repo.seedMethods(method)
+	}
+	for i := 0; i < 5; i++ {
+		method := publishedMethod(KindSinpe, "+50688888888")
+		method.SortOrder = i
+		method.Institution = "SINPE " + string(rune('A'+i))
+		repo.seedMethods(method)
+	}
+
+	out, err := newTestService(repo).GetPortadaOfrendas(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaOfrendas = %v", err)
+	}
+	if len(out.Items) != maxPortadaItems {
+		t.Fatalf("items = %d, se esperaban %d", len(out.Items), maxPortadaItems)
+	}
+	if got := repo.publicLimits; len(got) != 1 || got[0] != maxPortadaItems {
+		t.Errorf("topes consultados = %v, se esperaba [%d]", got, maxPortadaItems)
+	}
+	wantInstitutions := []string{"IBAN A", "IBAN B", "IBAN C", "SINPE A", "SINPE B"}
+	got := make([]string, 0, len(out.Items))
+	for _, item := range out.Items {
+		got = append(got, item.Institution)
+	}
+	if strings.Join(got, ",") != strings.Join(wantInstitutions, ",") {
+		t.Errorf("orden = %v, se esperaba %v", got, wantInstitutions)
+	}
+	if raw := mustJSON(t, out); strings.Contains(raw, "limit") || strings.Contains(raw, "offset") {
+		t.Errorf("el bloque expone parámetros de paginación: %s", raw)
+	}
+	if maxPortadaItems != 5 {
+		t.Errorf("maxPortadaItems = %d, se esperaban 5", maxPortadaItems)
+	}
+}
+
+// TestGetPortadaOfrendasOmitsItemsWithoutMethods fija FR-022/SC-014: el bloque
+// solo mira los métodos; con 0 publicados `items` se omite aunque haya textos
+// publicados, y con menos de 5 salen exactos los que hay.
+func TestGetPortadaOfrendasOmitsItemsWithoutMethods(t *testing.T) {
+	// Solo textos publicados: el bloque no existe.
+	onlyTexts := newFakeRepository()
+	onlyTexts.seedTexts(TextoDonacion{TextKey: TextKeyIntro, BodyEs: "Cómo donar", PublicationState: StatePublished})
+	out, err := newTestService(onlyTexts).GetPortadaOfrendas(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaOfrendas = %v", err)
+	}
+	if out.Items != nil {
+		t.Errorf("items = %+v, se esperaba omitido", out.Items)
+	}
+	if got := mustJSON(t, out); got != `{"lang":"es"}` {
+		t.Errorf("JSON = %s, se esperaba solo lang", got)
+	}
+
+	// Con uno solo, exacto; un borrador no cuenta.
+	repo := newFakeRepository()
+	draft := publishedMethod(KindIban, "CR05015202001234567890")
+	draft.PublicationState = StateDraft
+	repo.seedMethods(draft, publishedMethod(KindSinpe, "+50688888888"))
+	withOne, err := newTestService(repo).GetPortadaOfrendas(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaOfrendas = %v", err)
+	}
+	if len(withOne.Items) != 1 || withOne.Items[0].Kind != "sinpe" {
+		t.Fatalf("items = %+v, se esperaba solo el publicado", withOne.Items)
+	}
+}
+
+// TestGetPortadaOfrendasUsesSameItemSchema fija FR-022: el bloque usa el mismo
+// esquema de ítem que la sección (mismo fallback y sin `publicationState`).
+func TestGetPortadaOfrendasUsesSameItemSchema(t *testing.T) {
+	repo := newFakeRepository()
+	method := publishedMethod(KindIban, "CR05015202001234567890")
+	method.HolderEs = textOf("Ana Pérez")
+	method.HolderEn = textOf("Ana Perez")
+	repo.seedMethods(method)
+
+	out, err := newTestService(repo).GetPortadaOfrendas(context.Background(), LangEN)
+	if err != nil {
+		t.Fatalf("GetPortadaOfrendas = %v", err)
+	}
+	if out.Items[0].Holder != "Ana Perez" {
+		t.Errorf("holder = %q, se esperaba la traducción", out.Items[0].Holder)
+	}
+	if raw := mustJSON(t, out); strings.Contains(raw, "publicationState") {
+		t.Errorf("el DTO público expone el estado: %s", raw)
+	}
+}
+
+// TestGetPortadaOfrendasInvalidLang fija el 400 invalid con details.lang.
+func TestGetPortadaOfrendasInvalidLang(t *testing.T) {
+	_, err := newTestService(newFakeRepository()).GetPortadaOfrendas(context.Background(), "fr")
+	if _, ok := detailsOf(t, err)["lang"]; !ok {
+		t.Fatalf("se esperaba details.lang: %v", err)
+	}
+}
+
+// TestGetPortadaOfrendasRepositoryError fija que un fallo de datos no se disfraza.
+func TestGetPortadaOfrendasRepositoryError(t *testing.T) {
+	repo := newFakeRepository()
+	repo.readErr = errors.New("boom")
+	if _, err := newTestService(repo).GetPortadaOfrendas(context.Background(), LangES); err == nil ||
+		!strings.Contains(err.Error(), "boom") {
+		t.Fatalf("err = %v, se esperaba el error del repositorio", err)
+	}
+}

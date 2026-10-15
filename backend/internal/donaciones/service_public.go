@@ -61,6 +61,36 @@ func (s *service) GetOfrendas(ctx context.Context, lang string) (OfrendasPublica
 	return out, nil
 }
 
+// GetPortadaOfrendas devuelve el extracto del bloque de la portada resuelto a
+// `lang` (US6/FR-022/SC-014): los mismos métodos publicados que la sección —mismo
+// predicado y mismo fallback `en → es` por campo, mismo esquema de ítem— acotados
+// al tope FIRME `maxPortadaItems` (5) en el orden de la sección. El tope se
+// aplica en el servidor: la respuesta no admite ningún parámetro de límite.
+//
+// Este bloque **solo mira los métodos**: con 0 métodos publicados `items` queda
+// omitida (la portada no dibuja el bloque, sin mensaje, a diferencia del bloque
+// de F4) aunque haya textos publicados.
+func (s *service) GetPortadaOfrendas(ctx context.Context, lang string) (PortadaOfrendas, error) {
+	lang, err := normalizeLang(lang)
+	if err != nil {
+		return PortadaOfrendas{}, err
+	}
+
+	methods, err := s.repository.ListPublishedDonationMethods(ctx, maxPortadaItems)
+	if err != nil {
+		return PortadaOfrendas{}, fmt.Errorf("listar los métodos publicados: %w", err)
+	}
+
+	out := PortadaOfrendas{Lang: lang}
+	if len(methods) > 0 {
+		out.Items = make([]MetodoDonacionPublico, 0, len(methods))
+		for _, method := range methods {
+			out.Items = append(out.Items, localizeMetodo(method, lang))
+		}
+	}
+	return out, nil
+}
+
 // localizeMetodo traduce un método publicado al DTO del visitante. Es el ÚNICO
 // lugar donde se compone el ítem público (FR-003): `kind`, `number` e
 // `institution` siempre; `currency` solo en las cuentas IBAN y `holder` solo
