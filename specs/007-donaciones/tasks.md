@@ -483,7 +483,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     y traducidos a errores del dominio.
   - **Commit sugerido**: `feat(donaciones): persistencia de metodos con duplicados por tipo y numero`
 
-- [ ] T710 · `donaciones`: `repository_textos.go` + `repository_public.go` · `[backend]` `[P]` (P2)
+- [X] T710 · `donaciones`: `repository_textos.go` + `repository_public.go` · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/donaciones/repository_textos.go`, `repository_public.go`,
     `repository_textos_integration_test.go` y `repository_public_integration_test.go` (NUEVOS;
