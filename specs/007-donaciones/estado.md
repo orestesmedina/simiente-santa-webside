@@ -13,11 +13,11 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
-| Fase | 4/9 · Implementar (fase 3 cerrada: `tasks.md` + `analyze` con altos corregidos) |
+| Fase | 5/9 · Validar (T701–T737 implementadas y `make ci` en verde; validación en curso) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Implementar por tandas desde `tasks.md`: primer grupo `[P]` T701/T702/T704/T706/T707 (`dev-backend`) |
+| Próximo paso | Validación con `qa-tester`, `revisor-codigo` y `seguridad`; luego convergencia y entrega (T738: docs + PR) |
 | Bloqueado por | — |
-| Actualizado | 2026-10-14 |
+| Actualizado | 2026-10-15 |
 
 ## Aprobaciones
 
@@ -48,6 +48,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-15 — Fase 4: implementadas T701–T737 (backend, frontend, e2e). `make ci` en verde; cobertura `service*.go` 89,6 %. Fase 5 (validación) iniciada.
 - 2026-10-14 — Fase 3: `tasks.md` (38 tareas) y `analyze` (veredicto: sin críticos; 3 altos A1/A2/A3 corregidos) — fase cerrada. Fase 4 (implementar) iniciada.
 - 2026-10-14 — Puerta 2: **plan aprobado** por el humano (frase: "apruebo"); defaults aceptados. Fase 3 (tareas y coherencia) iniciada.
 - 2026-10-14 — Fase 2: `arquitecto` produjo plan/research/data-model/contracts/quickstart y `disenador-ux` produjo `ux.md`. Corregida una contradicción interna de la spec (entidad financiera no traducible). Pendiente la puerta 2 (aprobación del plan).
