@@ -1181,7 +1181,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 
 ## Fase 9 — Cierre
 
-- [ ] T737 · Verificación de cierre · `[infra]`
+- [X] T737 · Verificación de cierre · `[infra]`
 
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit. `.env.example`, `docker-compose.yml` y `Makefile`: **sin cambios** (F7 no añade
