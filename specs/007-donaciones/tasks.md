@@ -746,7 +746,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Criterio de terminado**: `quickstart.md` §7 ejecutable vía API (US2, FR-021).
   - **Commit sugerido**: `feat(donaciones): endpoints de los textos de la seccion`
 
-- [ ] T721 · `routes.go` + `cmd/api/main.go` (`AdminChain("donaciones")`) + humo · `[backend]`
+- [X] T721 · `routes.go` + `cmd/api/main.go` (`AdminChain("donaciones")`) + humo · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/routes.go` y `routes_test.go` (NUEVOS),
     `backend/cmd/api/main.go` y `main_test.go` (EDITADOS: DI del dominio `donaciones` + registro de

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"simiente-santa/backend/internal/agenda"
+	"simiente-santa/backend/internal/donaciones"
 	"simiente-santa/backend/internal/media"
 	"simiente-santa/backend/internal/ministerios"
 	"simiente-santa/backend/internal/platform/audit"
@@ -146,6 +147,43 @@ func (stubMinisteriosRepo) CountMinistries(context.Context, *ministerios.Publica
 	return 0, nil
 }
 
+// stubDonacionesRepo satisface donaciones.Repository para el humo de composición:
+// sin nada publicado la sección y el bloque responden solo `lang`, y los listados
+// del panel vienen vacíos. El resto de métodos (no ejercitados en el humo) quedan
+// como método no implementado del embedding. Con `actions` captura las filas de
+// auditoría best-effort (denegaciones) que le llegan.
+type stubDonacionesRepo struct {
+	donaciones.Repository
+	actions *[]audit.Action
+}
+
+func (s stubDonacionesRepo) RecordAction(_ context.Context, action audit.Action) error {
+	if s.actions != nil {
+		*s.actions = append(*s.actions, action)
+	}
+	return nil
+}
+
+func (stubDonacionesRepo) ListPublishedDonationMethods(context.Context, int) ([]donaciones.MetodoDonacion, error) {
+	return nil, nil
+}
+
+func (stubDonacionesRepo) ListPublishedDonationTexts(context.Context) ([]donaciones.TextoDonacion, error) {
+	return nil, nil
+}
+
+func (stubDonacionesRepo) ListDonationMethods(context.Context, *donaciones.PublicationState, paginate.Params) ([]donaciones.MetodoDonacion, error) {
+	return nil, nil
+}
+
+func (stubDonacionesRepo) CountDonationMethods(context.Context, *donaciones.PublicationState) (int64, error) {
+	return 0, nil
+}
+
+func (stubDonacionesRepo) ListDonationTexts(context.Context) ([]donaciones.TextoDonacion, error) {
+	return nil, nil
+}
+
 // liveSessionStore tiene una sesión viva para cualquier token: permite probar
 // los permisos de los grupos de panel sin Redis.
 type liveSessionStore struct{ userID uuid.UUID }
@@ -272,6 +310,8 @@ type testOptions struct {
 	agendaRecorder audit.Recorder
 	// ministeriosRepo sustituye al stub por defecto (permite capturar la auditoría).
 	ministeriosRepo ministerios.Repository
+	// donacionesRepo sustituye al stub por defecto (permite capturar la auditoría).
+	donacionesRepo donaciones.Repository
 }
 
 // testDeps compone las dependencias del mux con dobles, sin base de datos ni
@@ -336,6 +376,20 @@ func testDepsWith(opts testOptions, repo status.Repository, log *slog.Logger) ap
 		MaxUploadBytes: 1 << 20,
 		Logger:         log,
 	})
+	donacionesRepo := opts.donacionesRepo
+	if donacionesRepo == nil {
+		donacionesRepo = stubDonacionesRepo{}
+	}
+	// Como en producción: el service de donaciones es el Recorder de su cadena y
+	// resuelve método+ruta → acción (T716).
+	donacionesSvc := donaciones.NewService(donaciones.ServiceDeps{
+		Repository: donacionesRepo,
+		Logger:     log,
+	})
+	donacionesHandler := donaciones.NewHandler(donaciones.HandlerDeps{
+		Service: donacionesSvc,
+		Logger:  log,
+	})
 	return apiDeps{
 		statusRepo:  repo,
 		authHandler: handler,
@@ -389,6 +443,16 @@ func testDepsWith(opts testOptions, repo status.Repository, log *slog.Logger) ap
 				Sessions:   opts.sessions,
 				Resolver:   opts.resolver,
 				Recorder:   ministeriosSvc,
+				CSRFSecret: "secret",
+				Logger:     log,
+			},
+		},
+		donacionesHandler: donacionesHandler,
+		donacionesAdmin: donaciones.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions:   opts.sessions,
+				Resolver:   opts.resolver,
+				Recorder:   donacionesSvc,
 				CSRFSecret: "secret",
 				Logger:     log,
 			},
@@ -1044,6 +1108,246 @@ func TestMinisteriosPermissionsSmoke(t *testing.T) {
 					t.Errorf("acción = %+v, se esperaba ministry.update con result=denied", action)
 				}
 				if want := "Ministerios · " + itemID.String(); action.TargetLabel != want {
+					t.Errorf("targetLabel = %q, se esperaba %q", action.TargetLabel, want)
+				}
+			})
+		}
+	})
+
+	t.Run("y al revés: su propio módulo sigue funcionando", func(t *testing.T) {
+		deps := testDepsWith(testOptions{
+			sessions: liveSessionStore{userID: userID},
+			resolver: permissionsResolver{permissions: []string{agenda.PermissionEventos}},
+		}, fakeRepository{}, logger)
+
+		srv := httptest.NewServer(httpserver.NewHandler(
+			newMux(deps, logger),
+			logger,
+			middleware.Chain(logger, []string{"http://localhost:5173"})...,
+		))
+		t.Cleanup(srv.Close)
+		sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
+
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/eventos", "", sessionCookie)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("GET eventos con su permiso: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+	})
+}
+
+// TestDonacionesRoutesSmoke comprueba el humo de composición de F7 (T721): la
+// superficie pública (sección de ofrendas y bloque de la portada) responde sin
+// sesión y sin caché, el grupo de panel exige sesión, `/healthz` sigue intacto
+// (§8.1.9) y una ruta inexistente responde 404 con sobre.
+func TestDonacionesRoutesSmoke(t *testing.T) {
+	logger, _ := testutil.NewLogger()
+	srv := httptest.NewServer(httpserver.NewHandler(
+		newMux(testDeps(fakeRepository{}, logger), logger),
+		logger,
+		middleware.Chain(logger, []string{"http://localhost:5173"})...,
+	))
+	t.Cleanup(srv.Close)
+
+	t.Run("la sección pública responde 200 sin sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/ofrendas", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		// Sin nada publicado: las claves de contenido se omiten (SC-010) y es el
+		// frontend el que redirige (P7-21).
+		if body := strings.TrimSpace(string(resp.Body)); body != `{"lang":"es"}` {
+			t.Errorf("cuerpo = %s, se esperaba solo lang", body)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+		}
+	})
+
+	t.Run("el bloque de la portada responde 200 sin sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada/ofrendas", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if body := strings.TrimSpace(string(resp.Body)); body != `{"lang":"es"}` {
+			t.Errorf("cuerpo = %s, se esperaba solo lang", body)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+		}
+	})
+
+	t.Run("lang inválido responde 400", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/ofrendas?lang=fr", "", nil)
+		if resp.Status != http.StatusBadRequest {
+			t.Fatalf("status = %d, se esperaba 400 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"invalid"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+	})
+
+	t.Run("el grupo de panel exige sesión", func(t *testing.T) {
+		for _, probe := range []struct {
+			method string
+			path   string
+		}{
+			{method: http.MethodGet, path: "/api/v1/admin/donaciones"},
+			{method: http.MethodPost, path: "/api/v1/admin/donaciones"},
+			{method: http.MethodGet, path: "/api/v1/admin/donaciones/" + uuid.New().String()},
+			{method: http.MethodPatch, path: "/api/v1/admin/donaciones/" + uuid.New().String()},
+			{method: http.MethodDelete, path: "/api/v1/admin/donaciones/" + uuid.New().String()},
+			{method: http.MethodGet, path: "/api/v1/admin/donaciones/textos"},
+			{method: http.MethodPut, path: "/api/v1/admin/donaciones/textos/intro"},
+		} {
+			resp := testutil.Do(t, srv, probe.method, probe.path, "", nil)
+			if resp.Status != http.StatusUnauthorized {
+				t.Fatalf("%s %s: status = %d, se esperaba 401 (%s)", probe.method, probe.path, resp.Status, resp.Body)
+			}
+			if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
+				t.Errorf("%s %s: cuerpo inesperado: %s", probe.method, probe.path, resp.Body)
+			}
+		}
+	})
+
+	t.Run("healthz sigue intacto y las rutas inexistentes dan 404 con sobre", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/healthz", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("/healthz: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		// Las rutas que coinciden con un {id} exigen sesión (401) antes de llegar
+		// al handler; estas no coinciden con ningún patrón registrado (§8.1.9).
+		for _, path := range []string{
+			"/api/v1/admin/donaciones/x/y",
+			"/api/v1/ofrendas/extra",
+			"/api/v1/portada/ofrendas/extra",
+		} {
+			resp := testutil.Do(t, srv, http.MethodGet, path, "", nil)
+			if resp.Status != http.StatusNotFound {
+				t.Fatalf("GET %s: status = %d, se esperaba 404 (%s)", path, resp.Status, resp.Body)
+			}
+			if !strings.Contains(string(resp.Body), `"code":"not_found"`) {
+				t.Errorf("GET %s: cuerpo inesperado: %s", path, resp.Body)
+			}
+		}
+	})
+
+	t.Run("la portada de F3 y los demás módulos siguen intactos", func(t *testing.T) {
+		for _, path := range []string{"/api/v1/portada", "/api/v1/proximamente", "/api/v1/ministerios"} {
+			resp := testutil.Do(t, srv, http.MethodGet, path, "", nil)
+			if resp.Status != http.StatusOK {
+				t.Fatalf("GET %s: status = %d, se esperaba 200 (%s)", path, resp.Status, resp.Body)
+			}
+		}
+	})
+}
+
+// TestDonacionesPermissionsSmoke fija SC-005/SC-011 (FR-011): el permiso
+// `donaciones` es independiente de los demás y se verifica **en el servidor**. Una
+// cuenta con `donaciones` no entra en los grupos de F4/F6 y al revés; las
+// denegaciones quedan registradas con la acción de la ruta (`result='denied'`,
+// R7-10) y las lecturas del panel no dejan fila.
+func TestDonacionesPermissionsSmoke(t *testing.T) {
+	logger, _ := testutil.NewLogger()
+	userID := uuid.New()
+	itemID := uuid.New()
+
+	t.Run("con donaciones", func(t *testing.T) {
+		var agendaActions []audit.Action
+		deps := testDepsWith(testOptions{
+			sessions: liveSessionStore{userID: userID},
+			resolver: permissionsResolver{permissions: []string{donaciones.PermissionDonaciones}},
+			// La denegación de una mutación de OTRO módulo la registra el Recorder
+			// de ESA cadena (el service de F4): aquí se captura desde el
+			// repositorio de agenda para poder comprobarla.
+			agendaRepo: stubAgendaRepo{actions: &agendaActions},
+		}, fakeRepository{}, logger)
+
+		srv := httptest.NewServer(httpserver.NewHandler(
+			newMux(deps, logger),
+			logger,
+			middleware.Chain(logger, []string{"http://localhost:5173"})...,
+		))
+		t.Cleanup(srv.Close)
+		sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
+
+		// Con su permiso, el listado responde 200 (vacío).
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/donaciones", "", sessionCookie)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("GET con permiso: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if len(agendaActions) != 0 {
+			t.Errorf("una lectura del panel no debe dejar fila: %+v", agendaActions)
+		}
+
+		// Otro módulo (F4): 403 genérico y sin fila (la lectura no se audita).
+		resp = testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/eventos", "", sessionCookie)
+		if resp.Status != http.StatusForbidden {
+			t.Fatalf("GET eventos: status = %d, se esperaba 403 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"forbidden"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+		if len(agendaActions) != 0 {
+			t.Errorf("una lectura denegada no debe dejar fila: %+v", agendaActions)
+		}
+
+		// Una mutación de otro módulo: 403 y la denegación queda registrada con la
+		// acción de ESA ruta (el Recorder de la cadena es el service de F4).
+		resp = testutil.Do(t, srv, http.MethodPatch, "/api/v1/admin/eventos/"+itemID.String(), "", sessionCookie)
+		if resp.Status != http.StatusForbidden {
+			t.Fatalf("PATCH eventos: status = %d, se esperaba 403 (%s)", resp.Status, resp.Body)
+		}
+		if len(agendaActions) != 1 {
+			t.Fatalf("denegaciones = %+v, se esperaba 1", agendaActions)
+		}
+		if agendaActions[0].Code != "event.update" || agendaActions[0].Result != audit.ResultDenied {
+			t.Errorf("acción = %+v, se esperaba event.update con result=denied", agendaActions[0])
+		}
+	})
+
+	t.Run("sin donaciones", func(t *testing.T) {
+		for _, permission := range []string{
+			agenda.PermissionEventos,
+			agenda.PermissionActividades,
+			agenda.PermissionCategorias,
+			ministerios.PermissionMinisterios,
+		} {
+			t.Run(permission, func(t *testing.T) {
+				var actions []audit.Action
+				deps := testDepsWith(testOptions{
+					sessions:       liveSessionStore{userID: userID},
+					resolver:       permissionsResolver{permissions: []string{permission}},
+					donacionesRepo: stubDonacionesRepo{actions: &actions},
+				}, fakeRepository{}, logger)
+
+				srv := httptest.NewServer(httpserver.NewHandler(
+					newMux(deps, logger),
+					logger,
+					middleware.Chain(logger, []string{"http://localhost:5173"})...,
+				))
+				t.Cleanup(srv.Close)
+				sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
+
+				resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/donaciones", "", sessionCookie)
+				if resp.Status != http.StatusForbidden {
+					t.Fatalf("GET donaciones con %s: status = %d, se esperaba 403 (%s)", permission, resp.Status, resp.Body)
+				}
+				if !strings.Contains(string(resp.Body), `"code":"forbidden"`) {
+					t.Errorf("cuerpo inesperado: %s", resp.Body)
+				}
+
+				resp = testutil.Do(t, srv, http.MethodPatch, "/api/v1/admin/donaciones/"+itemID.String(), "", sessionCookie)
+				if resp.Status != http.StatusForbidden {
+					t.Fatalf("PATCH donaciones con %s: status = %d, se esperaba 403 (%s)", permission, resp.Status, resp.Body)
+				}
+				if len(actions) != 1 {
+					t.Fatalf("denegaciones = %+v, se esperaba 1", actions)
+				}
+				action := actions[0]
+				if action.Code != audit.ActionDonationUpdate || action.Result != audit.ResultDenied {
+					t.Errorf("acción = %+v, se esperaba donation.update con result=denied", action)
+				}
+				if want := "Donaciones · " + itemID.String(); action.TargetLabel != want {
 					t.Errorf("targetLabel = %q, se esperaba %q", action.TargetLabel, want)
 				}
 			})
