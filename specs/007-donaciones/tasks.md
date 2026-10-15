@@ -363,7 +363,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     tipos del frontend (T705).
   - **Commit sugerido**: `docs(api): fusionar delta de F7 en el contrato vivo (0.8.0)`
 
-- [ ] T705 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
+- [X] T705 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/schema.d.ts` (GENERADO y commiteado).
   - **Qué hace**: ejecuta `make api-gen` (o `npm run api:gen`) contra **`backend/api/openapi.yaml`**
@@ -777,7 +777,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 > el panel va en español). Ningún `fetch` fuera del cliente de API (regla F2); sin imágenes
 > (Q6/FR-020: 0 `img` y 0 `ImageUploader` en F7). **`HiddenNotice` no se usa** (F7 redirige, P7-21).
 
-- [ ] T722 · `api/ofrendas.ts` + hooks · `[frontend]` `[P]` (P3)
+- [X] T722 · `api/ofrendas.ts` + hooks · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/api/ofrendas.ts` (NUEVO),
     `frontend/src/features/publico/ofrendas/hooks/usePublicOfrendas.ts`,
@@ -801,7 +801,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     solo del contrato vivo (0 `any`).
   - **Commit sugerido**: `feat(frontend): cliente y hooks de ofrendas`
 
-- [ ] T723 · i18n público y textos del panel · `[frontend]` `[P]` (P3)
+- [X] T723 · i18n público y textos del panel · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/features/publico/i18n/{messages,es,en}.ts` (EDITADOS: claves
     tipadas de `ux.md` §7.2 — `nav.sections.offerings`, `offerings.page.*`, `offerings.iban.heading`,
@@ -823,7 +823,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     panel listo para T726–T731.
   - **Commit sugerido**: `feat(frontend): textos de ofrendas (i18n publico y panel)`
 
-- [ ] T724 · Permisos, accesos del panel y `ACTION_LABELS` · `[frontend]`
+- [X] T724 · Permisos, accesos del panel y `ACTION_LABELS` · `[frontend]`
 
   - **Archivos**: `frontend/src/lib/permissions.ts` (EDITADO: `DONACIONES = 'donaciones'` y su
     entrada en `MODULE_PERMISSIONS`), `frontend/src/features/roles/permissions.ts` (EDITADO: el sello
@@ -851,7 +851,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     `donaciones` y la auditoría no muestra códigos crudos de F7 (`ux.md` §4.8).
   - **Commit sugerido**: `feat(frontend): permiso donaciones, accesos del panel y etiquetas de auditoria`
 
-- [ ] T725 · Actualización **acotada** de las pruebas que fijan permisos/accesos · `[frontend]` *(cambio acotado documentado, RG7-6)*
+- [X] T725 · Actualización **acotada** de las pruebas que fijan permisos/accesos · `[frontend]` *(cambio acotado documentado, RG7-6)*
 
   - **Archivos** (SOLO los que fijen la lista de permisos/accesos; al menos los 3 de RG7-6):
     `frontend/src/features/roles/permissions.test.ts`,
