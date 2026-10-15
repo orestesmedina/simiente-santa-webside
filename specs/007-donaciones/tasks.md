@@ -973,7 +973,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     bloque de ministerios), y `quickstart.md` §14 ejecutable en navegador.
   - **Commit sugerido**: `feat(frontend): bloque de ofrendas y diezmos en la portada`
 
-- [ ] T729 · Panel: `DonacionesPage` + `DonacionesListsByType` + ruta `/panel/donaciones` · `[frontend]`
+- [X] T729 · Panel: `DonacionesPage` + `DonacionesListsByType` + ruta `/panel/donaciones` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/donaciones/pages/DonacionesPage.tsx`,
     `components/DonacionesListsByType.tsx` y tests (NUEVOS), `frontend/src/app/router.tsx` (EDITADO:
@@ -1005,7 +1005,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Criterio de terminado**: `quickstart.md` §2/§8/§13 ejecutables en el panel (US3).
   - **Commit sugerido**: `feat(frontend): panel de donaciones con listados agrupados y textos`
 
-- [ ] T730 · Panel: `DonacionForm` + `validation.ts` + `errors.ts` · `[frontend]`
+- [X] T730 · Panel: `DonacionForm` + `validation.ts` + `errors.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/donaciones/components/DonacionForm.tsx`,
     `NumeroDisplay.tsx`, `validation.ts`, `errors.ts` y tests (NUEVOS).
@@ -1038,7 +1038,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     reglas de Q2/Q3/Q4 reflejadas en la interfaz.
   - **Commit sugerido**: `feat(frontend): formulario de metodo de donacion con moneda por tipo`
 
-- [ ] T731 · Panel: `TextoForm` + zona de textos con estado propio · `[frontend]`
+- [X] T731 · Panel: `TextoForm` + zona de textos con estado propio · `[frontend]`
 
   - **Archivos**: `frontend/src/features/donaciones/components/TextoForm.tsx` y tests (NUEVOS);
     `DonacionesPage.tsx` (EDITADO: la zona de textos de `ux.md` §4.5/§5.a queda completa).
