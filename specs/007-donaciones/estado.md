@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
-| Fase | 2/9 · Planificar (plan técnico con `arquitecto` + `ux.md` con `disenador-ux`) |
+| Fase | 2/9 · Planificar (plan, research, data-model, contratos y ux listos; pendiente la puerta 2) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Puerta 2: aprobación humana del plan. Antes: `arquitecto` produce plan.md, research.md, data-model.md, contracts/ y quickstart.md; `disenador-ux` produce ux.md |
+| Próximo paso | Aprobación humana del plan (puerta 2). Después: fase 3 (`tasks` con `arquitecto` + `analyze` con `revisor-codigo`) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-14 |
 
@@ -47,6 +47,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-14 — Fase 2: `arquitecto` produjo plan/research/data-model/contracts/quickstart y `disenador-ux` produjo `ux.md`. Corregida una contradicción interna de la spec (entidad financiera no traducible). Pendiente la puerta 2 (aprobación del plan).
 - 2026-10-14 — Puerta 1: **spec v2 aprobada** por el humano. Fase 2 (planificar) iniciada.
 - 2026-10-14 — Fase 1 (clarify): las 11 preguntas resueltas y aplicadas; `spec.md` pasa a v2 sin marcas abiertas. Pendiente la puerta 1 (aprobación de la spec).
 - 2026-10-14 — Fase 1: rama `007-donaciones` creada y `spec.md` redactada por `analista-producto` (25 FR, 13 SC, 5 historias). 11 preguntas abiertas (Q1–Q11) para `clarify`.
