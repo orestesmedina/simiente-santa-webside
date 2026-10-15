@@ -84,6 +84,8 @@ export const TEXTS_ZONE_TITLE = 'Textos de la sección';
 export const TEXT_INTRO_TITLE = 'Introductorio';
 export const TEXT_USAGE_TITLE = '¿En qué usamos las donaciones?';
 export const TEXT_NOT_WRITTEN = 'Todavía sin escribir.';
+export const TEXT_FORM_TITLE_INTRO = 'Texto introductorio';
+export const TEXT_FORM_TITLE_USAGE = 'Texto de uso de las donaciones';
 
 /* ── Listado por grupos (ux.md §4.3) ─────────────────────────────────── */
 
@@ -151,6 +153,7 @@ export const IBAN_INVALID =
 export const SINPE_INVALID =
   'Ese número no parece un celular de Costa Rica: son 8 dígitos, con o sin el prefijo +506.';
 export const REQUIRED_CURRENCY = 'Elige la moneda de la cuenta: colones o dólares.';
+export const REQUIRED_TEXT = 'Escribe el texto.';
 export const DUPLICATE =
   'Ya existe esa misma cuenta o número (mismo tipo, entidad y número). Edita el que ya tienes o cambia algún dato.';
 export const NOTHING_PUBLISHED =
