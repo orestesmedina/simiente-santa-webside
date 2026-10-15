@@ -64,7 +64,7 @@ export function CopyAccountButton({ number, institution }: CopyAccountButtonProp
 
       <p
         role="status"
-        className={copied ? 'text-sm font-semibold text-accent-strong' : 'text-sm text-muted'}
+        className={copied ? 'text-sm font-semibold text-accent' : 'text-sm text-muted'}
       >
         {copied ? t('offerings.copied') : t('offerings.copy.hint')}
       </p>
