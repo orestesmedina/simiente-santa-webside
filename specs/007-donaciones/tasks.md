@@ -290,7 +290,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     anterior (§VI).
   - **Commit sugerido**: `feat(db): ampliar admin_actions a donaciones (000013)`
 
-- [ ] T703 · Consultas sqlc `donation_methods.sql` + `donation_texts.sql` y generar · `[db]`
+- [X] T703 · Consultas sqlc `donation_methods.sql` + `donation_texts.sql` y generar · `[db]`
 
   - **Archivos**: `backend/internal/db/queries/donation_methods.sql` (NUEVO),
     `backend/internal/db/queries/donation_texts.sql` (NUEVO) y `backend/internal/db/*.go`
