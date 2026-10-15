@@ -52,8 +52,9 @@ const (
 
 // Códigos de acción administrativa (FR-023). Son la lista cerrada de la tabla
 // admin_actions: los 8 de F2, los 15 de F3 (`home.*`), los 15 de F4
-// (`event.*`, `activity.*` y `category.*`) y los 8 de F6 (`ministry.*`); la
-// migración 000011 fija ese mismo registro cerrado en la base (§VI).
+// (`event.*`, `activity.*` y `category.*`), los 8 de F6 (`ministry.*`) y los 8
+// de F7 (`donation.*`); la migración 000013 fija ese mismo registro cerrado en
+// la base (§VI).
 const (
 	ActionUserCreate        = "user.create"
 	ActionUserUpdate        = "user.update"
@@ -113,6 +114,22 @@ const (
 	ActionMinistryLeaderShow  = "ministry.leader.show"
 	ActionMinistryLeaderHide  = "ministry.leader.hide"
 	ActionMinistryImageUpload = "ministry.image.upload"
+
+	// Códigos de F7 (R7-10): ofrendas y diezmos. El alta de un método registra
+	// **solo** `donation.create` (también con `publicationState: published`);
+	// `donation.publish`/`donation.unpublish` registran **solo** cambios de
+	// estado de un método; el guardado de un texto (alta o edición del
+	// singleton) registra `donation.text.update` y
+	// `donation.text.publish`/`donation.text.unpublish` **solo** cambios de
+	// estado de un texto. F7 no tiene imágenes (Q6/FR-020).
+	ActionDonationCreate        = "donation.create"
+	ActionDonationUpdate        = "donation.update"
+	ActionDonationDelete        = "donation.delete"
+	ActionDonationPublish       = "donation.publish"
+	ActionDonationUnpublish     = "donation.unpublish"
+	ActionDonationTextUpdate    = "donation.text.update"
+	ActionDonationTextPublish   = "donation.text.publish"
+	ActionDonationTextUnpublish = "donation.text.unpublish"
 )
 
 // ActionCodes es la lista cerrada de códigos válidos de FR-023, en el orden de
@@ -164,6 +181,14 @@ var ActionCodes = []string{
 	ActionMinistryLeaderShow,
 	ActionMinistryLeaderHide,
 	ActionMinistryImageUpload,
+	ActionDonationCreate,
+	ActionDonationUpdate,
+	ActionDonationDelete,
+	ActionDonationPublish,
+	ActionDonationUnpublish,
+	ActionDonationTextUpdate,
+	ActionDonationTextPublish,
+	ActionDonationTextUnpublish,
 }
 
 // Errores de validación de los tipos de plumbing.
