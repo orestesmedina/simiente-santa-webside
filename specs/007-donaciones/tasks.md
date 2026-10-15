@@ -875,7 +875,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     excepción queda documentada en la evidencia.
   - **Commit sugerido**: `test(frontend): permisos y accesos con donaciones (cambio acotado RG7-6)`
 
-- [ ] T726 · `/ofrendas`: `OfrendasPage`, `DonacionCard`, `NumeroDonacion`, `CopyAccountButton` y **redirección** · `[frontend]` `[P]` (P4)
+- [X] T726 · `/ofrendas`: `OfrendasPage`, `DonacionCard`, `NumeroDonacion`, `CopyAccountButton` y **redirección** · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/ofrendas/OfrendasPage.tsx`, `IntroText.tsx`,
     `UsageText.tsx`, `DonacionesGroup.tsx`, `DonacionCard.tsx`, `NumeroDonacion.tsx`,
@@ -916,7 +916,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     (US1/US4) y la redirección silenciosa sin destello verificada (RG7-12).
   - **Commit sugerido**: `feat(frontend): pagina /ofrendas con grupos, copia exacta y redireccion sin publicados`
 
-- [ ] T727 · `useSiteLinks`: entrada «Ofrendas y diezmos» condicional · `[frontend]` `[P]` (P4)
+- [X] T727 · `useSiteLinks`: entrada «Ofrendas y diezmos» condicional · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/hooks/useSiteLinks.ts` y su test (EDITADOS).
   - **Qué hace**: `SiteLinkId` crece con **`'offerings'`** (alineación §9.8) y la entrada única
@@ -938,7 +938,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     superficies (SC-010) con la fuente de P7-8.
   - **Commit sugerido**: `feat(frontend): navegacion con /ofrendas condicional en barra, menu y pie`
 
-- [ ] T728 · `OfrendasBlock` + `OfrendasItem` en la portada · `[frontend]` `[P]` (P4)
+- [X] T728 · `OfrendasBlock` + `OfrendasItem` en la portada · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/ofrendas/OfrendasBlock.tsx`, `OfrendasItem.tsx` y
     `*.test.tsx` (NUEVOS), `frontend/src/features/publico/pages/HomePage.tsx` (EDITADO: **una
