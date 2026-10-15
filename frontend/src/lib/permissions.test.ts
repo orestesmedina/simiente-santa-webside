@@ -3,6 +3,7 @@ import {
   ACTIVIDADES,
   ADMIN_USERS_ROLES,
   CATEGORIAS,
+  DONACIONES,
   EVENTOS,
   MINISTERIOS,
   MODULE_PERMISSIONS,
@@ -62,7 +63,7 @@ describe('hasAnyPermission', () => {
 });
 
 describe('MODULE_PERMISSIONS', () => {
-  it('reúne los permisos de módulo construidos (F2, F3, F4 y F6)', () => {
+  it('reúne los permisos de módulo construidos (F2, F3, F4, F6 y F7)', () => {
     expect(MODULE_PERMISSIONS).toEqual([
       ADMIN_USERS_ROLES,
       PORTADA,
@@ -70,6 +71,7 @@ describe('MODULE_PERMISSIONS', () => {
       ACTIVIDADES,
       CATEGORIAS,
       MINISTERIOS,
+      DONACIONES,
     ]);
   });
 });
