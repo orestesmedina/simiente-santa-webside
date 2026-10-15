@@ -727,7 +727,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Criterio de terminado**: `quickstart.md` §3/§4/§5/§6 ejecutables vía API (US2).
   - **Commit sugerido**: `feat(donaciones): endpoints del panel de donaciones`
 
-- [ ] T720 · `handler_admin.go` — textos (`GET` + `PUT …/textos/{textKey}`) · `[backend]`
+- [X] T720 · `handler_admin.go` — textos (`GET` + `PUT …/textos/{textKey}`) · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/handler_admin.go` (EDITADO) y
     `handler_admin_test.go` (AMPLIADO).

@@ -46,6 +46,12 @@ func withPathValue(req *http.Request, id string) *http.Request {
 	return req
 }
 
+// withTextKey deja la clave del texto en la ruta como el router de la stdlib.
+func withTextKey(req *http.Request, key string) *http.Request {
+	req.SetPathValue("textKey", key)
+	return req
+}
+
 // TestListDonacionesHandlerOK fija el 200 con el sobre paginado (§8.1.2/§8.1.3)
 // y que el listado incluye borradores.
 func TestListDonacionesHandlerOK(t *testing.T) {
@@ -404,5 +410,142 @@ func TestAdminHandlersWithoutService(t *testing.T) {
 	))
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("detalle sin service: status = %d", rec.Code)
+	}
+}
+
+// --- Textos de la sección (T720, FR-021) ---
+
+// TestGetTextosHandler fija el 200 con los dos singletons (en `null` hasta el
+// primer guardado, patrón F3) y su contenido una vez guardados.
+func TestGetTextosHandler(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := httptest.NewRecorder()
+	h.GetTextos(rec, adminRequest(http.MethodGet, "/api/v1/admin/donaciones/textos", "", true))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != `{"intro":null,"usage":null}` {
+		t.Fatalf("cuerpo = %s, se esperaba los dos singletons en null", body)
+	}
+
+	repo := newFakeRepository()
+	repo.seedTexts(TextoDonacion{
+		TextKey:          TextKeyIntro,
+		BodyEs:           "Cómo donar",
+		PublicationState: StatePublished,
+	})
+	h = newTestHandler(t, repo)
+	rec = httptest.NewRecorder()
+	h.GetTextos(rec, adminRequest(http.MethodGet, "/api/v1/admin/donaciones/textos", "", true))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"textEs":"Cómo donar"`) {
+		t.Errorf("cuerpo = %s, se esperaba el texto introductorio", rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"intro":null`) && !strings.Contains(rec.Body.String(), `"usage":null`) {
+		t.Errorf("cuerpo = %s, se esperaba la clave no guardada en null", rec.Body)
+	}
+}
+
+// TestPutTextoHandlerCreatesAndReplaces fija el 200 del guardado (crea el
+// singleton y luego lo reemplaza), con `textEs` obligatorio y `textEn` opcional,
+// y que el texto se guarda íntegro (tildes, ñ, signos y saltos de línea).
+func TestPutTextoHandlerCreatesAndReplaces(t *testing.T) {
+	repo := newFakeRepository()
+	h := newTestHandler(t, repo)
+
+	body := `{"textEs":"¿Cómo donar?\nPrimera línea","textEn":"How to give","publicationState":"published"}`
+	rec := httptest.NewRecorder()
+	h.PutTexto(rec, withTextKey(
+		adminRequest(http.MethodPut, "/api/v1/admin/donaciones/textos/intro", body, true), "intro",
+	))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got DonacionTextoAdmin
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es DonacionTextoAdmin: %v (%s)", err, rec.Body)
+	}
+	if got.TextKey != "intro" || got.TextEs != "¿Cómo donar?\nPrimera línea" || got.PublicationState != string(StatePublished) {
+		t.Errorf("DTO = %+v", got)
+	}
+	if got.TextEn == nil || *got.TextEn != "How to give" {
+		t.Errorf("textEn = %v", got.TextEn)
+	}
+	if len(repo.texts) != 1 {
+		t.Fatalf("el singleton no se guardó: %+v", repo.texts)
+	}
+
+	// El segundo guardado reemplaza el singleton en vez de duplicarlo.
+	rec = httptest.NewRecorder()
+	h.PutTexto(rec, withTextKey(
+		adminRequest(http.MethodPut, "/api/v1/admin/donaciones/textos/intro", `{"textEs":"Otro texto"}`, true), "intro",
+	))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if len(repo.texts) != 1 || repo.texts[0].BodyEs != "Otro texto" {
+		t.Fatalf("el singleton no se reemplazó: %+v", repo.texts)
+	}
+}
+
+// TestPutTextoHandlerInvalid fija el 400 con details por campo y la clave fuera
+// del catálogo.
+func TestPutTextoHandlerInvalid(t *testing.T) {
+	tests := []struct {
+		name   string
+		key    string
+		body   string
+		detail string
+	}{
+		{name: "sin texto español", key: "intro", body: `{"textEn":"How to give"}`, detail: "textEs"},
+		{name: "texto en inglés sin español", key: "intro", body: `{"textEs":"","textEn":"How to give"}`, detail: "textEs"},
+		{name: "texto demasiado largo", key: "intro", body: `{"textEs":"` + strings.Repeat("a", 2001) + `"}`, detail: "textEs"},
+		{name: "clave fuera del catálogo", key: "otro", body: `{"textEs":"Texto"}`, detail: "textKey"},
+		{name: "campo desconocido", key: "intro", body: `{"textEs":"Texto","otro":"x"}`, detail: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepository()
+			h := newTestHandler(t, repo)
+
+			rec := httptest.NewRecorder()
+			h.PutTexto(rec, withTextKey(
+				adminRequest(http.MethodPut, "/api/v1/admin/donaciones/textos/"+tt.key, tt.body, true), tt.key,
+			))
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"invalid"`) {
+				t.Errorf("sobre inesperado: %s", rec.Body)
+			}
+			if tt.detail != "" && !strings.Contains(rec.Body.String(), tt.detail) {
+				t.Errorf("sin details.%s: %s", tt.detail, rec.Body)
+			}
+			if len(repo.texts) != 0 {
+				t.Errorf("un DTO inválido no debe guardar nada: %+v", repo.texts)
+			}
+		})
+	}
+}
+
+// TestPutTextoHandlerRequiresSession fija el 401 de la red de seguridad del
+// handler (la cadena authn responde antes en producción).
+func TestPutTextoHandlerRequiresSession(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := httptest.NewRecorder()
+	h.PutTexto(rec, withTextKey(
+		adminRequest(http.MethodPut, "/api/v1/admin/donaciones/textos/intro", `{"textEs":"Texto"}`, false), "intro",
+	))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, se esperaba 401 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"unauthenticated"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
 	}
 }

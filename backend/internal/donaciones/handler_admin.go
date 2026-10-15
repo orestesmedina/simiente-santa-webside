@@ -141,6 +141,50 @@ func (h *Handler) DeleteDonacion(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// --- Textos de la sección (FR-021, singleton por clave, sin borrado — P7-17) ---
+
+// GetTextos responde GET /api/v1/admin/donaciones/textos (FR-021/Q5/Q11): los dos
+// textos libres de la sección —`intro` («cómo donar») y `usage` («en qué se usan
+// las donaciones»)—, cada uno con su propio `publicationState` (Q10) y en ambos
+// idiomas. Son singletons por clave: cada clave viene en `null` hasta el primer
+// guardado (patrón de F3).
+// Códigos: 200 con DonacionTextosAdmin; sin sesión → 401; sin permiso → 403
+// (cadena).
+func (h *Handler) GetTextos(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if _, ok := h.adminIdentity(ctx, w); !ok {
+		return
+	}
+	if !h.serviceConfigured(ctx, w) {
+		return
+	}
+
+	textos, err := h.service.GetTextos(ctx)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	httpserver.WriteJSON(w, http.StatusOK, textos)
+}
+
+// PutTexto responde PUT /api/v1/admin/donaciones/textos/{textKey} (FR-021/Q5/Q11):
+// reemplazo completo del texto indicado (`intro` o `usage`); crea la fila si no
+// existe (singleton por clave) y **no hay operación de borrado** (un texto se
+// retira poniéndolo en `draft`, P7-17). Texto plano de uno o varios párrafos,
+// ≤2.000 caracteres por idioma: se guarda íntegro, sin interpretar (§IV).
+// Códigos: 200 con DonacionTextoAdmin; `textEs` vacío, `textEn` sin español,
+// texto que excede el límite o `textKey` fuera del catálogo → 400 con details.
+func (h *Handler) PutTexto(w http.ResponseWriter, r *http.Request) {
+	h.updateItem(w, r, func(ctx context.Context, actorID uuid.UUID) (any, error) {
+		var in DonacionTextoInput
+		if !h.decodeAndValidate(w, r, &in) {
+			return nil, errAlreadyHandled
+		}
+		key := TextKey(strings.TrimSpace(r.PathValue("textKey")))
+		return h.service.PutTexto(ctx, actorID, key, in)
+	})
+}
+
 // --- Helpers HTTP compartidos del panel (patrón de F2/F3/F4/F6) ---
 
 // maxRequestBytes acota el cuerpo JSON de una petición (1 MiB): evita leer
