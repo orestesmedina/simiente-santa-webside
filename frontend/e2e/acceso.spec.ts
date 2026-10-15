@@ -50,11 +50,12 @@ test.describe('Acceso y gestión de usuarios (US1–US7)', () => {
       await adminPage.getByRole('button', { name: 'Crear rol' }).click();
       const roleDialog = adminPage.getByRole('dialog');
       await roleDialog.getByLabel('Nombre').fill(roleName);
-      // F4 construyó «Eventos» y «Actividades» (ya no son módulos reservados):
-      // el escenario de F2 —una cuenta con permisos de módulos **aún sin
-      // construir** ve solo Inicio y el aviso— usa ahora dos módulos de F5–F9.
+      // F4 construyó «Eventos» y «Actividades» (ya no son módulos reservados) y
+      // F7 construyó «Donaciones» (T724): el escenario de F2 —una cuenta con
+      // permisos de módulos **aún sin construir** ve solo Inicio y el aviso— usa
+      // ahora dos módulos de F5–F9 (`noticias` y `grupos`), como pide RG7-6.
       await roleDialog.getByRole('checkbox', { name: 'Noticias y galería' }).check();
-      await roleDialog.getByRole('checkbox', { name: 'Donaciones' }).check();
+      await roleDialog.getByRole('checkbox', { name: 'Grupos de conexión' }).check();
       await roleDialog.getByRole('button', { name: 'Crear rol' }).click();
       await expect(adminPage.getByText('Rol creado.')).toBeVisible();
       await expect(adminPage.getByRole('row').filter({ hasText: roleName })).toBeVisible();
