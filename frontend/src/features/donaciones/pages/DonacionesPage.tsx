@@ -1,10 +1,10 @@
-import { ApiError } from '../../../api/client';
 import type { DonacionTextoAdmin } from '../../../api/ofrendas';
 import { Button } from '../../../components/Button';
 import { EmptyState } from '../../../components/EmptyState';
 import { Notice } from '../../../components/Notice';
 import { StatusPill } from '../../../components/StatusPill';
 import { DonacionesListsByType } from '../components/DonacionesListsByType';
+import { isForbidden } from '../errors';
 import { useDonacionTextos } from '../hooks/useDonacionTextos';
 import { useDonaciones } from '../hooks/useDonaciones';
 import {
@@ -21,11 +21,6 @@ import {
   TEXTS_ZONE_TITLE,
   TITLE,
 } from '../messages';
-
-/** `true` si el servidor respondió `403` (FR-011). */
-function isForbidden(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 403;
-}
 
 /**
  * Tarjeta de un texto de la sección (ux.md §4.3/§4.5): título, fragmento del

@@ -116,8 +116,13 @@ export const FIELD_NUMBER_IBAN = 'Número de cuenta (IBAN)';
 export const FIELD_NUMBER_SINPE = 'Número de celular (SINPE Móvil)';
 export const FIELD_CURRENCY = 'Moneda';
 export const FIELD_ORDER = 'Orden';
+export const FIELD_TYPE = 'Tipo';
 export const TAB_ES = 'Español';
 export const TAB_EN = 'English (opcional)';
+
+export const CURRENCY_PLACEHOLDER = 'Elige una moneda';
+export const SUMMARY_TITLE = 'Revisa estos campos:';
+export const CANCEL = 'Cancelar';
 
 export const ENGLISH_HELP =
   'Si lo dejas vacío, el público verá este contenido en su versión en español.';

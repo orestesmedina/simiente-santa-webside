@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DonacionAdmin } from '../../../api/ofrendas';
+import type { DonacionAdmin, MetodoKind } from '../../../api/ofrendas';
 import { Button } from '../../../components/Button';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { EmptyState } from '../../../components/EmptyState';
@@ -45,11 +45,13 @@ import {
   emptyGroupMessage,
   retireConfirmDescription,
 } from '../messages';
+import { DonacionForm } from './DonacionForm';
 import { NumeroDisplay } from './NumeroDisplay';
 
 interface Feedback {
   variant: NoticeVariant;
   message: string;
+  draftNotice?: string;
 }
 
 export interface DonacionesListsByTypeProps {
@@ -106,7 +108,15 @@ export function DonacionesListsByType({
   const deleteDonacion = useDeleteDonacion();
 
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [creatingKind, setCreatingKind] = useState<MetodoKind | null>(null);
+  const [editing, setEditing] = useState<DonacionAdmin | null>(null);
   const [deleting, setDeleting] = useState<DonacionAdmin | null>(null);
+
+  const handleDone = (result: { message: string; draftNotice?: string }) => {
+    setCreatingKind(null);
+    setEditing(null);
+    setFeedback({ variant: 'success', ...result });
+  };
 
   const iban = donaciones.filter((donacion) => donacion.kind === 'iban');
   const sinpe = donaciones.filter((donacion) => donacion.kind === 'sinpe');
@@ -136,8 +146,14 @@ export function DonacionesListsByType({
       header: COL_ACTIONS,
       render: (d) => (
         <div className="flex flex-wrap items-center gap-2">
-          {/* El alta y la edición abren `DonacionForm` (T730). */}
-          <Button size="sm" variant="secondary" aria-haspopup="dialog">
+          {/* El alta y la edición abren `DonacionForm` en un `Dialog`. */}
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-haspopup="dialog"
+            aria-expanded={editing?.id === d.id}
+            onClick={() => setEditing(d)}
+          >
             {EDIT_ACTION}
           </Button>
           <PublishControls
@@ -184,7 +200,15 @@ export function DonacionesListsByType({
       <section key={kind} className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SectionHeading kicker={kicker}>{title}</SectionHeading>
-          {showHeaderButton && <Button aria-haspopup="dialog">{addLabel}</Button>}
+          {showHeaderButton && (
+            <Button
+              aria-haspopup="dialog"
+              aria-expanded={creatingKind === kind}
+              onClick={() => setCreatingKind(kind)}
+            >
+              {addLabel}
+            </Button>
+          )}
         </div>
         {loading ? (
           <EmptyState kind="loading" message={LOADING_ACCOUNTS} />
@@ -197,7 +221,15 @@ export function DonacionesListsByType({
         ) : items.length === 0 ? (
           <EmptyState
             message={emptyGroupMessage(kind)}
-            action={<Button aria-haspopup="dialog">{addLabel}</Button>}
+            action={
+              <Button
+                aria-haspopup="dialog"
+                aria-expanded={creatingKind === kind}
+                onClick={() => setCreatingKind(kind)}
+              >
+                {addLabel}
+              </Button>
+            }
           />
         ) : (
           <Table
@@ -214,9 +246,26 @@ export function DonacionesListsByType({
   return (
     <div className="space-y-4">
       {feedback && <Notice variant={feedback.variant}>{feedback.message}</Notice>}
+      {feedback?.draftNotice && <Notice variant="info">{feedback.draftNotice}</Notice>}
 
       {renderBlock('iban', '01', GROUP_IBAN_TITLE, ADD_ACCOUNT, iban, true)}
       {renderBlock('sinpe', '02', GROUP_SINPE_TITLE, ADD_SINPE, sinpe, false)}
+
+      {creatingKind && (
+        <DonacionForm
+          kind={creatingKind}
+          onDone={handleDone}
+          onCancel={() => setCreatingKind(null)}
+        />
+      )}
+      {editing && (
+        <DonacionForm
+          kind={editing.kind}
+          donacion={editing}
+          onDone={handleDone}
+          onCancel={() => setEditing(null)}
+        />
+      )}
 
       {deleting && (
         <ConfirmDialog
