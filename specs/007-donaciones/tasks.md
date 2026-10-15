@@ -432,7 +432,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     de prueba; sin imports fuera de la stdlib; `golangci-lint` sin comentarios.
   - **Commit sugerido**: `feat(donaciones): validacion y normalizacion de IBAN y SINPE Movil`
 
-- [ ] T708 · `donaciones`: `model.go` + `repository.go` · `[backend]`
+- [X] T708 · `donaciones`: `model.go` + `repository.go` · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/model.go`, `repository.go`, `repository_test.go`
     (NUEVOS).
