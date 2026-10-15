@@ -668,7 +668,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 
 ## Fase 6 — Handlers, rutas y cableado
 
-- [ ] T717 · `handler_public.go` — `GET /api/v1/ofrendas` · `[backend]`
+- [X] T717 · `handler_public.go` — `GET /api/v1/ofrendas` · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/handler.go`, `handler_public.go`,
     `handler_public_test.go` (NUEVOS).
