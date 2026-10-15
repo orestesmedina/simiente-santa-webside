@@ -1,0 +1,231 @@
+{
+  "rama": "007-donaciones",
+  "estado": "abierto",
+  "inicio": "2026-10-14T21:54:47Z",
+  "cerrado": null,
+  "moneda": "USD",
+  "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
+  "precios": [
+    {
+      "desde": "2026-10-15T02:06:09Z",
+      "modelos": {
+        "opencode-go/deepseek-v4.1-flash": {
+          "input": 0.15,
+          "output": 0.6,
+          "cache_read": 0.003,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3": {
+          "input": 1.4,
+          "output": 4.4,
+          "cache_read": 0.26,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3-flash": {
+          "input": 0.15,
+          "output": 0.5,
+          "cache_read": 0.03,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-flash": {
+          "input": 0.14,
+          "output": 0.28,
+          "cache_read": 0.0028,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-pro": {
+          "input": 0.435,
+          "output": 0.87,
+          "cache_read": 0.003625,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        }
+      }
+    }
+  ],
+  "sesiones": [
+    {
+      "id": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "padre": null,
+      "titulo": "Continuación de conversación",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-15T02:06:09Z",
+      "desde": "2026-10-14T22:22:03Z",
+      "hasta": "2026-10-15T00:16:30Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 53,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 152262,
+            "output": 18618,
+            "reasoning": 7958,
+            "cache_read": 3226496,
+            "cache_write": 0
+          },
+          "costo": 0.048464,
+          "costo_opencode": 0.048464
+        }
+      ],
+      "hasta_ms": 1792023390293
+    },
+    {
+      "id": "ses_ec339d94fffeOUtuzisM6dg2QY",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "UX F7 donaciones",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-15T02:06:09Z",
+      "desde": "2026-10-14T23:36:21Z",
+      "hasta": "2026-10-14T23:43:38Z",
+      "consumo": [
+        {
+          "agente": "disenador-ux",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 23,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 224640,
+            "output": 33352,
+            "reasoning": 4108,
+            "cache_read": 2168960,
+            "cache_write": 0
+          },
+          "costo": 0.117495,
+          "costo_opencode": 0.117495
+        }
+      ],
+      "hasta_ms": 1792021418535
+    },
+    {
+      "id": "ses_ec339d950ffe6vEwxAovpu6fv1",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "arquitecto: plan F7 donaciones",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-15T02:06:09Z",
+      "desde": "2026-10-14T23:36:21Z",
+      "hasta": "2026-10-15T00:14:22Z",
+      "consumo": [
+        {
+          "agente": "arquitecto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 30,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 244703,
+            "output": 69612,
+            "reasoning": 41244,
+            "cache_read": 3991168,
+            "cache_write": 0
+          },
+          "costo": 0.217359,
+          "costo_opencode": 0.217359
+        }
+      ],
+      "hasta_ms": 1792023262620
+    },
+    {
+      "id": "ses_ec37b2a34ffeQ11VTQTJXzshRc",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "Escribir spec F7 donaciones",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-15T02:06:09Z",
+      "desde": "2026-10-14T22:25:00Z",
+      "hasta": "2026-10-14T23:30:52Z",
+      "consumo": [
+        {
+          "agente": "analista-producto",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 16,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 147065,
+            "output": 43457,
+            "reasoning": 20746,
+            "cache_read": 974464,
+            "cache_write": 0
+          },
+          "costo": 0.123362,
+          "costo_opencode": 0.123362
+        }
+      ],
+      "hasta_ms": 1792020652440
+    }
+  ],
+  "totales": {
+    "por_agente_modelo": [
+      {
+        "agente": "arquitecto",
+        "modelo": "opencode-go/mimo-v2.6-pro",
+        "respuestas": 30,
+        "tokens": {
+          "input": 244703,
+          "output": 69612,
+          "reasoning": 41244,
+          "cache_read": 3991168,
+          "cache_write": 0
+        },
+        "costo": 0.217359,
+        "costo_opencode": 0.217359,
+        "sin_precio": false
+      },
+      {
+        "agente": "analista-producto",
+        "modelo": "opencode-go/mimo-v2.6-pro",
+        "respuestas": 16,
+        "tokens": {
+          "input": 147065,
+          "output": 43457,
+          "reasoning": 20746,
+          "cache_read": 974464,
+          "cache_write": 0
+        },
+        "costo": 0.123362,
+        "costo_opencode": 0.123362,
+        "sin_precio": false
+      },
+      {
+        "agente": "disenador-ux",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 23,
+        "tokens": {
+          "input": 224640,
+          "output": 33352,
+          "reasoning": 4108,
+          "cache_read": 2168960,
+          "cache_write": 0
+        },
+        "costo": 0.117495,
+        "costo_opencode": 0.117495,
+        "sin_precio": false
+      },
+      {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 53,
+        "tokens": {
+          "input": 152262,
+          "output": 18618,
+          "reasoning": 7958,
+          "cache_read": 3226496,
+          "cache_write": 0
+        },
+        "costo": 0.048464,
+        "costo_opencode": 0.048464,
+        "sin_precio": false
+      }
+    ],
+    "tokens": 11368853,
+    "costo": 0.50668,
+    "costo_opencode": 0.50668
+  }
+}
