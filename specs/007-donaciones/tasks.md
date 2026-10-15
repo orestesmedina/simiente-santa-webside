@@ -504,7 +504,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     no solo en el servicio (FR-012: "el sistema NUNCA debe exponer al público un borrador").
   - **Commit sugerido**: `feat(donaciones): textos por clave y lectura publica sin borradores`
 
-- [ ] T711 · Integración: migraciones up→down→up, `CHECK`s de la BD y atomicidad · `[backend]`
+- [X] T711 · Integración: migraciones up→down→up, `CHECK`s de la BD y atomicidad · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/repository_migrations_integration_test.go` y
     `repository_audit_integration_test.go` (NUEVOS; `//go:build integration`).
