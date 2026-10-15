@@ -8,6 +8,7 @@ import { ContactSection } from '../components/ContactSection';
 import { IdentityHero } from '../components/IdentityHero';
 import { ProximamenteBlock } from '../eventos/ProximamenteBlock';
 import { MinisteriosBlock } from '../ministerios/MinisteriosBlock';
+import { OfrendasBlock } from '../ofrendas/OfrendasBlock';
 import { ScheduleSection } from '../components/ScheduleSection';
 import { SectionSkeleton } from '../components/SectionSkeleton';
 import { SocialSection } from '../components/SocialSection';
@@ -98,6 +99,14 @@ export function HomePage() {
             las demás secciones no se tocan). */}
         <Reveal key="ministerios" from="left">
           <MinisteriosBlock />
+        </Reveal>
+        {/* Bloque «Ofrendas y diezmos» (F7/US6, ux.md §4.9): **una sola inserción**
+            inmediatamente después del bloque de ministerios y antes de «quiénes
+            somos» (Q7/FR-022). Se oculta por completo sin métodos publicados —sin
+            mensaje, como el de ministerios—. `from="right"` conserva la
+            alternancia con el bloque de F6 (⟲ D-15). */}
+        <Reveal key="ofrendas" from="right">
+          <OfrendasBlock />
         </Reveal>
         {about && (
           <Reveal key="quienes-somos" from="left">
