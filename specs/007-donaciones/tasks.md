@@ -528,7 +528,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 
 ## Fase 5 — Dominio `donaciones`: servicios
 
-- [ ] T712 · `donaciones`: `service.go` — invariantes, validación y constantes · `[backend]`
+- [X] T712 · `donaciones`: `service.go` — invariantes, validación y constantes · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/service.go` y `service_test.go` (NUEVOS).
   - **Qué hace**: interfaz `Repository` (definida por quien la consume, R3), constantes revisables
@@ -554,7 +554,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     los límites son el único punto de verdad (los usan T713–T715 y los cita el contrato).
   - **Commit sugerido**: `feat(donaciones): invariantes y validacion de dominio`
 
-- [ ] T713 · `donaciones`: `service_public.go` — `GetOfrendas` (sección) · `[backend]`
+- [X] T713 · `donaciones`: `service_public.go` — `GetOfrendas` (sección) · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/service_public.go` y `service_public_test.go`
     (NUEVOS).
@@ -581,7 +581,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     verificables en el service; cobertura medida (`go test -cover`, ≥ 80 % al cierre).
   - **Commit sugerido**: `feat(donaciones): seccion publica con textos, grupos y fallback`
 
-- [ ] T714 · `donaciones`: `service_public.go` — `GetPortadaOfrendas` (tope 5) · `[backend]`
+- [X] T714 · `donaciones`: `service_public.go` — `GetPortadaOfrendas` (tope 5) · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/service_public.go` (EDITADO) y
     `service_public_test.go` (AMPLIADO).
@@ -604,7 +604,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     `service*.go` ≥ 80 % intacta.
   - **Commit sugerido**: `feat(donaciones): extracto de la portada con tope 5 en el servidor`
 
-- [ ] T715 · `donaciones`: `service_admin.go` — CRUD, textos, publicación y auditoría · `[backend]`
+- [X] T715 · `donaciones`: `service_admin.go` — CRUD, textos, publicación y auditoría · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/service_admin.go` y `service_admin_test.go` (NUEVOS).
   - **Qué hace**: `CreateDonacion`/`UpdateDonacion`/`DeleteDonacion`/`ListDonaciones`/
@@ -646,7 +646,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Criterio de terminado**: US2/US3 y FR-010/FR-012/FR-013/FR-017 cubiertos en el service.
   - **Commit sugerido**: `feat(donaciones): gestion del panel con textos, publicacion y auditoria`
 
-- [ ] T716 · `donaciones`: `service_audit.go` — `audit.Recorder` · `[backend]`
+- [X] T716 · `donaciones`: `service_audit.go` — `audit.Recorder` · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/service_audit.go` y `service_audit_test.go` (NUEVOS).
   - **Qué hace**: implementa `audit.Recorder` para el dominio (patrón de F4/F6, R7-10):
