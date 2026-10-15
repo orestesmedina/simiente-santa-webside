@@ -100,7 +100,7 @@ curl -s -b /tmp/mi.jar -X POST "$API/api/v1/admin/donaciones" \
   -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
   -d '{
     "kind": "iban",
-    "number": "CR01 0000-0000-0000-0000-0",
+    "number": "CR05 0152-0200-1234-5678-90",
     "institution": "Banco Nacional de Costa Rica",
     "holderEs": "Iglesia Simiente Santa",
     "currency": "CRC",
@@ -109,10 +109,14 @@ curl -s -b /tmp/mi.jar -X POST "$API/api/v1/admin/donaciones" \
   }' | jq
 ```
 
-- `201` con el método guardado; `number` viene **normalizado** (`"CR0100000000000000000000"`:
-  los espacios y guiones desaparecen y todo va en mayúsculas — Q3/FR-015 —).
-- **Cuenta IBAN sin titular** (caso **válido**, Q2): envía el mismo alta sin `holderEs` → `201` y
-  la ficha pública **no** mostrará línea de titular (ni vacía ni con marcador; US1 esc. 5).
+- `201` con el método guardado; `number` viene **normalizado** (`"CR05015202001234567890"`:
+  los espacios y guiones desaparecen y todo va en mayúsculas — Q3/FR-015 —). El IBAN costarricense
+  normalizado mide **exactamente 22 caracteres** (`CR` + 20 dígitos): `"CR05 0152-0200-1234-5678-90"`
+  (27 con separadores) → `"CR05015202001234567890"` (22).
+- **Cuenta IBAN sin titular** (caso **válido**, Q2): envía el mismo alta sin `holderEs` y con
+  **otro número** —p. ej. `"number": "CR05 0152-0200-1234-5678-92"` → `"CR05015202001234567892"`
+  (22)— para no chocar con el duplicado del alta anterior (R7-9) → `201` y la ficha pública **no**
+  mostrará línea de titular (ni vacía ni con marcador; US1 esc. 5).
 - **SINPE Móvil** (sin moneda — Q2 —):
 
 ```bash
@@ -142,22 +146,32 @@ curl -s -b /tmp/mi.jar -X POST "$API/api/v1/admin/donaciones" \
 ## 4. Cuentas IBAN: aceptadas y rechazadas (US1, FR-015/Q3, SC-009)
 
 ```bash
-# ACEPTADO: IBAN costarricense (22 caracteres) escrito con espacios/guiones → se normaliza.
-#   "CR01 0000-0000-0000-0000-0"  →  "CR0100000000000000000000"
+# ACEPTADO: IBAN costarricense escrito con espacios/guiones → se normaliza.
+#   La regla (Q3/FR-015, R7-2) es estructura + longitud exacta por país: CR = 22 caracteres
+#   (CR + 20 dígitos). Ejemplo canónico:
+#   "CR05 0152-0200-1234-5678-90"  →  "CR05015202001234567890"   (22 = CR + 20 dígitos)
 # ACEPTADO: IBAN internacional válido según su país (longitud exacta del registro IBAN):
-#   "ES91 2100 0418 4502 0005 1332" (ES = 24) · "DE89 3704 0044 0532 0130 00" (DE = 22)
+#   "ES91 2100 0418 4502 0005 1332" → "ES9121000418450200051332" (ES = 24)
+#   "DE89 3704 0044 0532 0130 00"   → "DE89370400440532013000"   (DE = 22)
+#   "GB29 NWBK 6016 1331 9268 19"   → "GB29NWBK60161331926819"   (GB = 22)
 # RECHAZADO (400 invalid, details.number; no guarda nada):
 curl -s -b /tmp/mi.jar -X POST "$API/api/v1/admin/donaciones" -H 'Content-Type: application/json' \
   -H "X-CSRF-Token: $CSRF" \
-  -d '{"kind":"iban","number":"CR01 0000-0000-0000-0000","institution":"Banco Nacional","currency":"CRC"}' | jq
-#   → "estructura o longitud no válidas" (CR exige 22 caracteres: faltaba uno)
-#   "CR01 0000-0000-0000-0000-00" (23 para CR) · "ZZ01 0000000000000000" (país fuera del registro)
-#   "CR01-0000-0000-0000-0000-😀" · "hola" (ni letras ni emojis fuera de la estructura)
+  -d '{"kind":"iban","number":"CR05 0152 0200 1234 5678 9","institution":"Banco Nacional","currency":"CRC"}' | jq
+#   → "estructura o longitud no válidas" (CR exige 22 caracteres: tiene 21, falta uno)
+#   "CR05 0152 0200 1234 5678 901" (normaliza a 23: sobra uno) ·
+#   "CR05 0152-0200-1234-5678-90-1" (el sufijo tras el guion normaliza a 23) ·
+#   "ZZ05 0152 0200 1234 5678 90" (22, pero ZZ está fuera del registro IBAN) ·
+#   "CRAB 0152 0200 1234 5678 90" (letras donde van los dos dígitos de control: fuera de la
+#   estructura) · "CR05 0152-0200-1234-5678-9😀" (emoji fuera de la estructura) ·
+#   "hola" (ni estructura IBAN ni longitud)
 ```
 
 - El número **guardado y publicado** es el exacto normalizado (FR-015: "sin transformaciones que lo
-  alteren"); la presentación **agrupada en bloques** (`CR01 0000 0000 0000 0000 0000`) es del
-  cliente y el **botón de copiar copia el valor exacto** (`number`).
+  alteren"); la presentación **agrupada en bloques** (`CR05 0152 0200 1234 5678 90`) es del
+  cliente y el **botón de copiar copia el valor exacto** (`number`). La agrupación es **solo
+  presentación**: **quitar los separadores devuelve `number`** (`CR05015202001234567890`, 22;
+  RG7-7).
 - Nota: la validación es **estructura y longitud** (literal de Q3/FR-015); **no** se verifica el
   dígito de control mod-97 (pregunta abierta al humano, plan.md §"Preguntas").
 
@@ -190,6 +204,9 @@ curl -s -b /tmp/mi.jar -X PATCH "$API/api/v1/admin/donaciones/$ID" \
 
 - En el panel verás el mismo orden que el visitante: **primero el grupo de cuentas IBAN y después
   el de SINPE Móvil** y, dentro de cada grupo, `sortOrder`, `id` (US2 esc. 10).
+- Este `PATCH` **no cambia `number`** y responde **`200`**, no `409`: el chequeo de duplicados
+  **excluye la fila que se edita** (R7-9), así que una edición sin cambio de número nunca choca
+  contra sí misma.
 - Recarga `$WEB/ofrendas`: el orden es exactamente el que acabas de fijar (SC-003).
 
 ## 7. Los dos textos: introductorio y de uso (US2, FR-021, Q5/Q11)
@@ -236,7 +253,10 @@ curl -s -b /tmp/mi.jar -X PATCH "$API/api/v1/admin/donaciones/$ID" \
 # Editar un método publicado → el cambio es visible de inmediato (FR-013, "se publica al guardar")
 curl -s -b /tmp/mi.jar -X PATCH "$API/api/v1/admin/donaciones/$ID" \
   -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
-  -d '{"number":"CR01 0000-0000-0000-0000-1"}' | jq
+  -d '{"number":"CR05 0152-0200-1234-5678-91"}' | jq
+#   → 200 con "number": "CR05015202001234567891" (22). Otro número válido distinto del actual:
+#   el 409 de duplicado solo salta si coincide con el de OTRO método (la edición se excluye a sí
+#   misma); editar sin cambiar el número (aquí, p. ej. solo institution) también es 200.
 
 # Retirar el texto de uso (su propio estado, Q10) sin tocar el introductorio
 curl -s -b /tmp/mi.jar -X PUT "$API/api/v1/admin/donaciones/textos/usage" \

@@ -175,7 +175,7 @@ info:
     | 401 | `unauthenticated` | sin sesión válida en operaciones del panel |
     | 403 | `forbidden` | sin el permiso `donaciones` (independiente de los demás permisos de módulo), o cuenta con cambio de contraseña pendiente |
     | 404 | `not_found` | método de donación inexistente (`{id}`) |
-    | 409 | `conflict` | duplicado (mismo tipo y mismo número normalizado) |
+    | 409 | `conflict` | duplicado (mismo tipo y mismo número normalizado **de otro método**: el chequeo excluye la fila que se edita, de modo que editar un método sin cambiar su número responde `200` y nunca `409` contra sí mismo) |
     | 500 | `internal` | error inesperado (mensaje genérico) |
 
   contact:
@@ -381,9 +381,15 @@ paths:
         `+506`— y el servidor lo **normaliza** (IBAN: solo los caracteres del
         número, en mayúsculas; SINPE: `+506` + 8 dígitos) y lo **valida**
         (IBAN por estructura y longitud exacta por país —costarricense e
-        internacional válido según la estructura IBAN—; SINPE = celular
-        costarricense de 8 dígitos). Ante un número que no cumple, `400 invalid`
+        internacional válido según la estructura IBAN; el costarricense es
+        `CR` + 20 dígitos = 22: `CR05 0152-0200-1234-5678-90` →
+        `CR05015202001234567890`—; SINPE = celular costarricense de 8 dígitos).
+        Ante un número que no cumple, `400 invalid`
         con `details.number` y **sin guardado parcial**.
+
+        **Duplicados (R7-9)**: si **otro** método ya tiene ese mismo `kind` +
+        `number` normalizado, el alta devuelve `409 conflict` (en el alta no
+        hay fila propia que excluir del chequeo).
 
         **Idiomas (FR-007/Decisión 8)**: `holderEn` exige `holderEs`;
         `institution`, `kind`, `number` y `currency` no son traducibles (un
@@ -463,7 +469,11 @@ paths:
         actual** y los campos ausentes no cambian—: última escritura completa
         gana (R7-15). Si `number` viene en el `PATCH` se normaliza y valida
         igual que en el alta (las mismas reglas se aplican sobre el resultado
-        ya fusionado).
+        ya fusionado). El chequeo de duplicados **excluye la fila que se
+        edita**: una edición que no cambia `number` —o que lo cambia a un valor
+        que no coincide con el de otro método— responde `200`; el `409`
+        `conflict` solo salta cuando el `kind` + `number` normalizado del
+        conjunto fusionado coincide con el de **otro** método (R7-9).
 
         Si el método ya estaba publicado, los cambios guardados son visibles de
         inmediato (FR-013: se publica al guardar); `publicationState` cambia el
@@ -654,12 +664,13 @@ components:
       description: |
         Número **exacto y normalizado** tal como se guarda y se publica
         (FR-003/FR-015/FR-016): cuentas IBAN con solo los caracteres del número
-        en mayúsculas (longitud exacta por país: p. ej. `CR` = 22) y SINPE Móvil
+        en mayúsculas (longitud exacta por país: p. ej. `CR` = 22, o sea `CR` +
+        20 dígitos → `CR05015202001234567890`) y SINPE Móvil
         como `+506` + 8 dígitos. El **input** del panel acepta el número con
         espacios o guiones y, en SINPE, con o sin `+506`; el servidor normaliza
         y valida (SC-009: 0 números mal formados aceptados). La presentación
         del IBAN agrupada en bloques es del cliente y **no altera** este valor
-        (FR-015).
+        (FR-015: quitar los separadores de la presentación devuelve `number`).
 
     # ------------------------------------------------------------- público
     OfrendasPublicas:

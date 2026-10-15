@@ -60,7 +60,9 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 - **P7-9 — bilingüe** `*_es`/`*_en` por campo solo donde hay traducción + `?lang=es|en` resuelto en
   el servidor con fallback `en → es` por campo (nunca un campo vacío, FR-008).
 - **P7-10 — duplicado exacto → `409 conflict`** sobre `kind` + `number` **normalizado**
-  (`ExistsDonationMethodDuplicate`); **sin `UNIQUE`** en la BD (default revisable).
+  (`ExistsDonationMethodDuplicate(:kind, :number, :exclude_id)`, que **excluye la fila que se
+  edita** con `AND id <> :exclude_id`: una edición que no cambia el número **no** devuelve `409`
+  contra sí misma); **sin `UNIQUE`** en la BD (default revisable).
 - **P7-11 — auditoría**: 8 códigos `donation.*` (migración `000013`), `InsertAdminAction`
   **transaccional** (fail-closed) y `Recorder` del propio dominio; reordenar = `donation.update`;
   los textos no tienen `create` (`donation.text.update` cubre alta y edición del singleton); el alta
@@ -149,7 +151,8 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
      las pestañas de idioma de `DonacionForm` **solo** contienen el **titular**; `institution` es un
      campo no lingüístico único (como `number`/`currency`). Única lectura que garantiza SC-006.
    - **Duplicado**: `409` por **tipo + número normalizado** (P7-10), no por "mismo tipo, misma
-     entidad y mismo número" (`ux.md` §2.5, literal de Assumptions).
+     entidad y mismo número" (`ux.md` §2.5, literal de Assumptions). En la edición el chequeo
+     **excluye la fila que se edita**: editar sin cambiar el número responde `200`.
    - **SINPE en pantalla**: se muestra en su **formato normalizado** `+506XXXXXXXX` (FR-003/SC-009
      literal, plan P7-4). La agrupación de lectura propuesta en `ux.md` D-4 (`+506 8888 8888`) queda
      como **mejora de presentación pendiente del humano** (D-4 va marcada ⟲): si se aprueba, es una
@@ -301,8 +304,10 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     `CountDonationMethods` (panel paginado, **todo**, **mismo orden que ve el visitante**,
     US2 esc. 10); `GetDonationMethodByID`; `InsertDonationMethod`/`UpdateDonationMethod`/
     `DeleteDonationMethod` (el `Update` escribe **la fila completa ya fusionada** que le pasa el
-    service — R7-15) y `ExistsDonationMethodDuplicate(:kind, :number)` (mismo tipo y mismo número
-    **normalizado**, R7-9). En `donation_texts.sql`: `ListPublishedDonationTexts` (solo publicados,
+    service — R7-15) y `ExistsDonationMethodDuplicate(:kind, :number, sqlc.narg('exclude_id'))`
+    (mismo tipo y mismo número **normalizado**, R7-9; con `AND (@exclude_id::uuid IS NULL OR id <>
+    @exclude_id)` para **excluir la fila que se edita**: `NULL` en el alta, su `id` en la edición).
+    En `donation_texts.sql`: `ListPublishedDonationTexts` (solo publicados,
     `ORDER BY text_key`), `ListDonationTexts` (panel, los dos renglones posibles en ambos idiomas),
     `GetDonationTextByKey(:text_key)` y `UpsertDonationText` (`INSERT … ON CONFLICT (text_key) DO
     UPDATE …` + `updated_at = now()`, patrón del singleton de F3). Sin `SELECT *`, `ORDER BY`
@@ -408,13 +413,21 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     fija — default revisable, RG7-3 —) y devuelve `+506XXXXXXXX` (FR-016). Sin librerías nuevas
     (R7-16). *Cubre FR-015, FR-016 y SC-009* (capa de dominio).
   - **Pruebas incluidas** (§III): unitarias (tabla de casos). **Cómo se verifica**:
-    `go test ./internal/donaciones/` en verde: **aceptados** `CR01 0000-0000-0000-0000-0`,
-    `ES91 2100 0418 4502 0005 1332`, `DE89 3704 0044 0532 0130 00`, `GB29 NWBK 6016 1331 9268 19`
-    (con espacios/guiones y en minúsculas, que se normalizan) → el valor devuelto es el normalizado
-    y **no cambia** al guardarlo; **rechazados** `CR` con 21/23 caracteres, país fuera del registro
-    (`ZZ`), letras fuera de estructura, emojis/guion interno, cadena vacía; SINPE **aceptados**
-    `88888888`, `8888-8888`, `+506 8888 8888`, `+50688888888` → todos `+50688888888`; **rechazados**
-    7/9 dígitos, `22222222` (fija), letras, `+507…`, sufijo extra (SC-009).
+    `go test ./internal/donaciones/` en verde. **IBAN aceptados** (escritos con espacios/guiones y
+    en minúsculas, que se normalizan; el valor devuelto es el normalizado y **no cambia** al
+    guardarlo): `CR05 0152-0200-1234-5678-90` → `CR05015202001234567890` (**22** = `CR` + 20
+    dígitos), `ES91 2100 0418 4502 0005 1332` → `ES9121000418450200051332` (ES = 24),
+    `DE89 3704 0044 0532 0130 00` → `DE89370400440532013000` (DE = 22),
+    `GB29 NWBK 6016 1331 9268 19` → `GB29NWBK60161331926819` (GB = 22). **IBAN rechazados**, cada
+    uno por la razón que se indica: `CR05 0152 0200 1234 5678 9` (**21**: le falta uno a `CR`, que
+    exige 22) y `CR05 0152 0200 1234 5678 901` (**23**: le sobra uno) — los dos casos explícitos
+    "CR de 21 y de 23" —, `CR05 0152-0200-1234-5678-90-1` (sufijo tras un guion: normaliza a 23),
+    `ZZ05 0152 0200 1234 5678 90` (22 pero `ZZ` está **fuera del registro** IBAN),
+    `CRAB 0152 0200 1234 5678 90` (letras donde van los dos dígitos de control: fuera de la
+    estructura), `CR05 0152-0200-1234-5678-9😀` (emoji fuera de la estructura), `hola` y la cadena
+    vacía (ni estructura ni longitud). **SINPE aceptados**: `88888888`, `8888-8888`, `+506 8888 8888`,
+    `+50688888888` → todos `+50688888888`; **rechazados** 7/9 dígitos, `22222222` (fija), letras,
+    `+507…`, sufijo extra (SC-009).
   - **Criterio de terminado**: las reglas de número tienen **una** implementación pura y sus casos
     de prueba; sin imports fuera de la stdlib; `golangci-lint` sin comentarios.
   - **Commit sugerido**: `feat(donaciones): validacion y normalizacion de IBAN y SINPE Movil`
@@ -448,19 +461,24 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Qué hace**: `InsertDonationMethod`/`UpdateDonationMethod`/`DeleteDonationMethod`/
     `GetDonationMethodByID`, `ListDonationMethods`/`CountDonationMethods` (panel paginado, `ORDER BY
     CASE kind …, sort_order, id` — el mismo orden que ve el visitante, P7-20 —, filtro opcional
-    `publication_state`) y `ExistsDonationMethodDuplicate` (mismo `kind` + `number` **normalizado**,
-    R7-9). Traducción de restricciones a `apperr`: duplicado → `conflict`, violaciones de `CHECK`
+    `publication_state`) y `ExistsDonationMethodDuplicate(:kind, :number, :exclude_id)` (mismo
+    `kind` + `number` **normalizado**, R7-9; `:exclude_id` **opcional** — `NULL` en el alta — y la
+    consulta lleva `AND (@exclude_id::uuid IS NULL OR id <> @exclude_id)` para **excluir la fila
+    que se edita**). Traducción de restricciones a `apperr`: duplicado → `conflict`, violaciones de `CHECK`
     (formato por tipo, moneda por tipo, `*En` sin `*Es`, `btrim`) → `invalid` con `details`. Borrado
     físico (sin `deleted_at`, default revisable). *Cubre FR-010, FR-014, FR-015, FR-016, FR-019*.
   - **Pruebas incluidas** (§III): **integración contra PostgreSQL real**. **Cómo se verifica**:
     `go test -tags=integration ./internal/donaciones/` en verde: un IBAN con espacios
-    (`'CR01 0000…'`) o en minúsculas falla en la BD y el normalizado procede; un SINPE sin `+506`
+    (`'CR05 0152…'`) o en minúsculas falla en la BD y el normalizado procede; un SINPE sin `+506`
     falla y `'+50688888888'` procede; una cuenta `iban` **sin** `currency` falla y una `sinpe`
     **con** `currency` falla; `holder_en` sin `holder_es` falla; `institution`/`holder_*` con
-    espacios sobrantes fallan (`btrim`); `ExistsDonationMethodDuplicate` detecta `'cr01 0000-…'` vs
-    `'CR010000…'` (tras normalizar) y **no** dispara por el mismo número en otro tipo; el `Update`
-    deja exactamente la fila completa que recibe del service (ya **fusionada**: campos ausentes
-    intactos, `null` explícito borrando lo opcional — R7-15).
+    espacios sobrantes fallan (`btrim`); `ExistsDonationMethodDuplicate` detecta `'cr05 0152-…'` vs
+    `'CR050152…'` (tras normalizar) y **no** dispara por el mismo número en otro tipo; con
+    `:exclude_id` = el `id` de la propia fila devuelve `false` (**"editar un método sin cambiar el
+    número no devuelve `409`"**) y con `:exclude_id` de otra fila devuelve `true` cuando el número
+    coincide con el de **otro** método (el `PATCH` que cambia el número al de otro método sí debe
+    chocar); el `Update` deja exactamente la fila completa que recibe del service (ya **fusionada**:
+    campos ausentes intactos, `null` explícito borrando lo opcional — R7-15).
   - **Criterio de terminado**: persistencia real de métodos con sus invariantes protegidos por la BD
     y traducidos a errores del dominio.
   - **Commit sugerido**: `feat(donaciones): persistencia de metodos con duplicados por tipo y numero`
@@ -591,7 +609,9 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Archivos**: `backend/internal/donaciones/service_admin.go` y `service_admin_test.go` (NUEVOS).
   - **Qué hace**: `CreateDonacion`/`UpdateDonacion`/`DeleteDonacion`/`ListDonaciones`/
     `GetDonacion` y `GetTextos`/`PutTexto` (FR-010/FR-021): validación completa (T712) con `details`
-    por campo y **sin guardar nada a medias**; **duplicado exacto → `409 conflict`** (P7-10);
+    por campo y **sin guardar nada a medias**; **duplicado exacto → `409 conflict`** (P7-10) con
+    `ExistsDonationMethodDuplicate(:kind, :number, :exclude_id)` **excluyendo la fila que se
+    edita** (una edición que no cambia el número **no** devuelve `409` contra sí misma);
     normalización del número antes de persistir (IBAN a los caracteres del número; SINPE
     `+506XXXXXXXX`); `publication_state` por elemento **y por texto** (Q10) y **"se publica al
     guardar"** (FR-013: la edición de algo publicado es visible en la primera carga); `sortOrder`
@@ -610,7 +630,10 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Pruebas incluidas** (§III): unitarias con fakes (tabla de casos). **Cómo se verifica**:
     `go test ./internal/donaciones/` en verde: cada campo inválido → `400` con `details` y **sin
     guardar nada**; IBAN con espacios → se guarda el normalizado; SINPE sin `+506` → normalizado;
-    duplicado → `conflict`; moneda obligatoria en IBAN y rechazada en SINPE; `holderEn` sin
+    duplicado → `conflict` (alta repetida); **"editar un método sin cambiar el número no da
+    `409`"** → `200` (el chequeo excluye la fila que se edita; también con `PATCH` que solo toca
+    `institution`/`sortOrder`/`publicationState`) y un `PATCH` que cambia el número al de **otro**
+    método → `conflict`; moneda obligatoria en IBAN y rechazada en SINPE; `holderEn` sin
     `holderEs` → `invalid`; crear con `publicationState: published` deja **solo**
     `donation.create` (**cero** filas `donation.publish`); una edición que cambia datos y estado deja
     **dos filas**; reordenar deja `donation.update`; `PUT` de texto deja `donation.text.update` y su
@@ -618,7 +641,8 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     `""`/espacios en `*En` → `NULL`; tildes/`ñ`/`¿¡`/emojis intactos; eliminar deja su fila
     `donation.delete`. **Casos de fusión del `PATCH`**: actualizar **un solo campo** → el resto
     queda **intacto**; `null` explícito → **borrado opcional** (p. ej. `holderEs: null`);
-    `number` en el `PATCH` se revalida sobre el conjunto fusionado.
+    `number` en el `PATCH` se revalida sobre el conjunto fusionado **sin contar la fila propia**
+    como duplicado (R7-9).
   - **Criterio de terminado**: US2/US3 y FR-010/FR-012/FR-013/FR-017 cubiertos en el service.
   - **Commit sugerido**: `feat(donaciones): gestion del panel con textos, publicacion y auditoria`
 
@@ -687,7 +711,8 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Qué hace**: `GET/POST /api/v1/admin/donaciones` y `GET/PATCH/DELETE
     /api/v1/admin/donaciones/{id}` sobre el service de T715: listado paginado (`limit`/`offset` con
     `platform/paginate`, filtro opcional `publicationState`), `201`/`200`/`204` según el contrato,
-    `400` con `details` por campo, `404` por id inexistente y `409` en duplicado exacto; el `PATCH`
+    `400` con `details` por campo, `404` por id inexistente y `409` en duplicado exacto (**nunca**
+    contra la propia fila: editar un método sin cambiar su número responde `200`); el `PATCH`
     **fusiona los campos presentes** sobre la fila actual (última escritura completa gana, R7-15):
     los campos ausentes no cambian y `null` explícito borra lo opcional. El input acepta el número
     **tal como lo escribe el equipo** (espacios/guiones; SINPE con o sin `+506`) y el service lo
@@ -1205,7 +1230,8 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     (rama → PR con descripción, tareas cubiertas y los cambios documentados explícitamente:
     **RG7-6** — las pruebas de frontend de permisos/accesos — y los **defaults revisables**
     aplicados —entidad no traducible, «nada publicado» con solo textos, IBAN sin mod-97, SINPE con
-    primer dígito 6/7/8, duplicado `409` por tipo+número, textos sin borrado—). *Cubre el cierre de
+    primer dígito 6/7/8, duplicado `409` por tipo+número —la edición **se excluye a sí misma**:
+    editar sin cambiar el número no da `409`—, textos sin borrado—). *Cubre el cierre de
     US1–US6/FR-001…FR-025 como entregable.*
   - **Pruebas incluidas** (§III): — (documentación y proceso). **Cómo se verifica**: la documentación
     refleja el comportamiento real (la prueba es el `quickstart.md` ejecutado en T737); el PR
@@ -1226,9 +1252,9 @@ Cobertura exigida: **80 % en `service/`** (§III). Comandos: `go test ./...` ·
 |---|---|---|---|
 | `platform/audit` | Unitaria | Los 8 códigos nuevos en el registro cerrado; objetivo `content` con `targetLabel` | `internal/platform/audit/*_test.go` (T706) |
 | `donaciones/numero` | Unitaria (tabla de casos) | IBAN aceptados `CR` 22, `ES` 24, `DE` 22, `GB` 22 (con espacios/guiones y en minúsculas) → normalizados; rechazados longitud errónea por país, país fuera del registro, letras/emojis; SINPE aceptados con y sin `+506` → `+506XXXXXXXX`; rechazados 7/9 dígitos, `2xxx`, letras, `+507`, sufijo extra | `internal/donaciones/numero_test.go` (T707) |
-| `service` | Unitaria con fakes | Solo `published` **y por texto**; orden `iban → sinpe` y `sortOrder, id`; fallback `en → es` por campo (nunca huecos); claves omitidas sin contenido; **tope 200 y tope 5 fijados por prueba**; DTOs sin `publicationState`, sin `currency` en SINPE, sin `holder` vacío; validación completa (obligatorios, moneda por tipo, español por campo, números, límites) con `details` y **sin guardado parcial**; normalización antes de persistir; duplicado → `conflict`; publicar/retirar por método **y por texto**; "se publica al guardar"; `PATCH` que fusiona y `PUT` que reemplaza; auditoría con la regla exacta de códigos (fail-closed; datos + estado → dos filas; alta = solo `donation.create`) | `internal/donaciones/service_*_test.go` (T712–T715) |
+| `service` | Unitaria con fakes | Solo `published` **y por texto**; orden `iban → sinpe` y `sortOrder, id`; fallback `en → es` por campo (nunca huecos); claves omitidas sin contenido; **tope 200 y tope 5 fijados por prueba**; DTOs sin `publicationState`, sin `currency` en SINPE, sin `holder` vacío; validación completa (obligatorios, moneda por tipo, español por campo, números, límites) con `details` y **sin guardado parcial**; normalización antes de persistir; duplicado → `conflict` (alta repetida y `PATCH` hacia el número de **otro** método) y **editar sin cambiar el número no lo dispara**; publicar/retirar por método **y por texto**; "se publica al guardar"; `PATCH` que fusiona y `PUT` que reemplaza; auditoría con la regla exacta de códigos (fail-closed; datos + estado → dos filas; alta = solo `donation.create`) | `internal/donaciones/service_*_test.go` (T712–T715) |
 | `handler` | Unitaria `httptest` | Cada operación: decodificación, `details` en 400, códigos 200/201/204/400/401/403/404/409, sobres uniformes; **el JSON público jamás contiene `publicationState`**; `GET /api/v1/ofrendas` y `/portada/ofrendas`: `200` con `no-store`, claves omitidas con 0 publicados | `internal/donaciones/handler_*_test.go` (T717–T720) |
-| `repository` | **Integración** (PostgreSQL real) | `CHECK`s de formato por tipo, moneda por tipo, español por campo, `btrim`, `text_key` y `UNIQUE (text_key)`; `ListPublished*` **nunca** devuelve borradores; orden `CASE kind …, sort_order, id` y `LIMIT` (5/200); `ExistsDonationMethodDuplicate` con normalización; `UpsertDonationText` sin duplicar; **mutación + `admin_actions` atómicas** (y rollback si falla el registro); migraciones up→down→up; `permissions` sigue en 10 | `internal/donaciones/repository_*_test.go` (T709–T711) |
+| `repository` | **Integración** (PostgreSQL real) | `CHECK`s de formato por tipo, moneda por tipo, español por campo, `btrim`, `text_key` y `UNIQUE (text_key)`; `ListPublished*` **nunca** devuelve borradores; orden `CASE kind …, sort_order, id` y `LIMIT` (5/200); `ExistsDonationMethodDuplicate` con normalización y **exclusión de la fila que se edita** (`:exclude_id`: "editar sin cambiar el número no da `409`"); `UpsertDonationText` sin duplicar; **mutación + `admin_actions` atómicas** (y rollback si falla el registro); migraciones up→down→up; `permissions` sigue en 10 | `internal/donaciones/repository_*_test.go` (T709–T711) |
 | `cmd/api` | Humo de composición | Rutas nuevas con su sobre y permiso, `/healthz` intacto, `404` `not_found` en rutas inexistentes, **403 cruzado** por permiso | `cmd/api/main_test.go` (T721) |
 | Frontend | Unitaria (Vitest + MSW) | Pública: dos grupos en el orden del API; IBAN en bloques en pantalla y copia = `number` (SC-009); SINPE normalizado; sin titular → 0 líneas; sin moneda en SINPE; fallback visible; navegación y bloque ocultos sin publicados; **redirección sin destello** (esqueleto; `<Navigate replace>`; ante error NO redirige); bloque con 1…5 y **ausente con 0**; panel: errores por campo, moneda oculta en SINPE, textos con su `StatusPill`, publicar/retirar, `RequirePermission(DONACIONES)`, `ACTION_LABELS` +8, error sin perder lo escrito; y las pruebas actualizadas (RG7-6) | `frontend/src/features/*/*.test.tsx` (T722–T731) |
 | E2E pública | Playwright | Recorrido de `quickstart.md`: dos grupos en orden exacto, números íntegros, moneda solo IBAN, titular solo si existe, borradores invisibles, **`/ofrendas` redirige sin nada publicado** (sin destello, «Atrás» sin bucles), inglés con fallback y datos idénticos, 3 anchos | `frontend/e2e/ofrendas-publica.spec.ts` (T733) |
@@ -1314,7 +1340,8 @@ T730, T734) · **IBAN con espacios/guiones** (válido y normalizado: T707, T715,
 **SINPE mal formado** (T707, T712, T730, T734) · **SINPE con o sin `+506`** (normalizado: T707, T715,
 T734) · **IBAN sin titular** (ficha completa sin línea: T713, T726, T733) · **SINPE con moneda**
 (imposible: campo ausente y `CHECK`; T701, T712, T730) · **duplicado exacto → `409`** (T709, T715,
-T730) · **cambio de cuenta bancaria** (edición normal sin historial: T715, T734; se documenta) ·
+T730) y **editar un método sin cambiar el número no da `409`** (T709, T715, T719) · **cambio de
+cuenta bancaria** (edición normal sin historial: T715, T734; se documenta) ·
 **textos largos con varios párrafos** (límite 2.000, saltos intactos: T712, T726, T731) · **texto en
 borrador con métodos publicados** (sin hueco: T713, T726, T731, T733) · **tildes, `ñ`, `¿¡` y emojis
 intactos** y **emojis/letras en números rechazados** (T707, T712, T731) · **inglés sin español por
@@ -1355,7 +1382,8 @@ que necesitó la excepción T405). F7 **no** promueve piezas al inventario únic
 4. **Primer dígito del SINPE 6/7/8** (celular vs línea fija, RG7-3): default **sí** (T707: se
    rechazan los `2xxx`). Quitar la condición es una línea + sus casos de prueba.
 5. **Duplicados** (P7-10): se **rechazan** con `409` por **tipo + número normalizado**, **sin
-   `UNIQUE`** en la BD. Si se prefiere la regla literal de Assumptions (tipo + entidad + número) o un
+   `UNIQUE`** en la BD y **excluyendo la fila que se edita** (editar sin cambiar el número no da
+   `409`). Si se prefiere la regla literal de Assumptions (tipo + entidad + número) o un
    índice único, es un cambio acotado (T709/T715).
 6. **Textos sin borrado** (P7-17): los textos solo se retiran en `draft`; no hay `DELETE`. Si el
    equipo lo necesita, se añade `DELETE /api/v1/admin/donaciones/textos/{textKey}` al contrato y a

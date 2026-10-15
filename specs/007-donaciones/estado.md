@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
-| Fase | 3/9 · Tareas y coherencia (`tasks` con `arquitecto`, luego `analyze` con `revisor-codigo`) |
+| Fase | 4/9 · Implementar (fase 3 cerrada: `tasks.md` + `analyze` con altos corregidos) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Generar `tasks.md` y pasar `analyze`; después, fase 4 (implementar) |
+| Próximo paso | Implementar por tandas desde `tasks.md`: primer grupo `[P]` T701/T702/T704/T706/T707 (`dev-backend`) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-14 |
 
@@ -48,6 +48,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-14 — Fase 3: `tasks.md` (38 tareas) y `analyze` (veredicto: sin críticos; 3 altos A1/A2/A3 corregidos) — fase cerrada. Fase 4 (implementar) iniciada.
 - 2026-10-14 — Puerta 2: **plan aprobado** por el humano (frase: "apruebo"); defaults aceptados. Fase 3 (tareas y coherencia) iniciada.
 - 2026-10-14 — Fase 2: `arquitecto` produjo plan/research/data-model/contracts/quickstart y `disenador-ux` produjo `ux.md`. Corregida una contradicción interna de la spec (entidad financiera no traducible). Pendiente la puerta 2 (aprobación del plan).
 - 2026-10-14 — Puerta 1: **spec v2 aprobada** por el humano. Fase 2 (planificar) iniciada.

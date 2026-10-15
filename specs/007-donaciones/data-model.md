@@ -246,7 +246,10 @@ ALTER TABLE admin_actions ADD CONSTRAINT admin_actions_action_check CHECK (actio
   `DELETE` nuevo en el contrato (no se inventa).
 - **Sin `UNIQUE (kind, number)`** (R7-9): el duplicado exacto lo rechaza el service con
   `409 conflict` (mismo gesto que F6/R6-11), y así el default revisable "se rechaza **o se
-  señala**" sigue siendo una línea que cambiar. Si el humano prefiere blindar la BD frente a dos
+  señala**" sigue siendo una línea que cambiar. El chequeo **excluye la fila que se edita**
+  (`ExistsDonationMethodDuplicate` con `:exclude_id` y `AND id <> :exclude_id`): como el `PATCH`
+  revalida el conjunto fusionado completo (R7-15), sin esa exclusión **toda edición** devolvería
+  `409` contra sí misma. Si el humano prefiere blindar la BD frente a dos
   altas simultáneas, `CREATE UNIQUE INDEX … ON donation_methods (kind, number)` es la adición de
   la migración siguiente.
 - **Sin `deleted_at`**: la eliminación es definitiva, con confirmación y registrada (default
@@ -275,7 +278,7 @@ que ve borradores es la del panel (FR-012).
 | `CountDonationMethods` (`sqlc.narg('publication_state')`) | Total del listado del panel (sobre de paginación) |
 | `GetDonationMethodByID` | Panel (detalle y respuestas de escritura): todas las columnas |
 | `InsertDonationMethod` / `UpdateDonationMethod` / `DeleteDonationMethod` | Mutaciones del panel (el `Update` escribe **la fila completa ya fusionada por el service** — campos presentes del `PATCH` sobre la fila actual, ausentes intactos y opcionales como `NULL` cuando se borran: R7-15) |
-| `ExistsDonationMethodDuplicate` (`:kind`, `:number`) | Duplicado (mismo tipo y mismo número **normalizado**, R7-9) → `409 conflict` |
+| `ExistsDonationMethodDuplicate` (`:kind`, `:number`, `:exclude_id` **opcional**) | Duplicado (mismo tipo y mismo número **normalizado**, R7-9) → `409 conflict`. **Excluye la fila que se edita**: `AND (@exclude_id::uuid IS NULL OR id <> @exclude_id)` (en el alta `:exclude_id` es `NULL`; en la edición, el `id` de la fila). Así una edición que no cambia el número **no** choca contra sí misma (R7-15 revalida el conjunto fusionado completo) y sí salta el `409` si el número coincide con el de **otro** método |
 
 ### `backend/internal/db/queries/donation_texts.sql` (dominio `donaciones`, nuevo)
 
@@ -320,7 +323,7 @@ sobre `admin_actions` (solo lectura).
 | Solo lo publicado es visible al visitante (FR-012), **también por texto** (Q10) | Consultas `…Published` (única vía pública) + pruebas "0 borradores expuestos" (ni métodos ni textos) |
 | Orden `iban → sinpe` y, dentro de cada grupo, `sort_order, id` (FR-004/SC-014) | `ORDER BY CASE kind … END, sort_order, id` + índice `donation_methods_kind_sort_order_id_idx` + prueba de orden |
 | Tope **5** del bloque, resuelto en el servidor (FR-022) | `maxPortadaItems = 5` (constante del service, con prueba) + `LIMIT :limit` en SQL; sin parámetro de límite en el contrato |
-| Duplicado exacto rechazado (mismo tipo y mismo número normalizado, R7-9) | `ExistsDonationMethodDuplicate` → `409 conflict` |
+| Duplicado exacto rechazado (mismo tipo y mismo número normalizado, R7-9), **excluyendo la fila que se edita** (editar sin cambiar el número no es duplicado contra uno mismo) | `ExistsDonationMethodDuplicate(:kind, :number, :exclude_id)` → `409 conflict` |
 | Auditoría atómica con la mutación | Transacción única (`InsertAdminAction` sobre `tx`) + prueba de integración |
 | Registro de auditoría de solo lectura | Sin consultas `UPDATE`/`DELETE` sobre `admin_actions` en `queries/` |
 | Permisos: `donaciones` ya existe y **no cambia** el catálogo de F2 | Sin migración de permisos; `000002` no se toca; `AdminChain("donaciones")` en `routes.go` |
@@ -333,8 +336,8 @@ sobre `admin_actions` (solo lectura).
 2. Pruebas de integración del repository (PostgreSQL real, `//go:build integration`):
    - el catálogo de `permissions` **sigue en 10 filas** y `donaciones` entre ellas (F7 no lo toca;
      el `down` de `000012`/`000013` no lo roza);
-   - `CHECK` de formato por tipo: un IBAN con espacios (`'CR01 000…'`) falla en la BD; un
-     `'cr01…'` en minúsculas falla; un SINPE sin `+506` (`'88888888'`) falla; un
+   - `CHECK` de formato por tipo: un IBAN con espacios (`'CR05 0152…'`) falla en la BD; un
+     `'cr05…'` en minúsculas falla; un SINPE sin `+506` (`'88888888'`) falla; un
      `'+50688888888'` procede;
    - `CHECK` de moneda: una cuenta `iban` sin `currency` falla; una `sinpe` **con** `currency`
      falla; `iban` + `CRC` y `sinpe` sin moneda proceden;
@@ -346,9 +349,11 @@ sobre `admin_actions` (solo lectura).
    - `ListPublishedDonationMethods`: **nunca** devuelve borradores; el orden es
      `CASE kind …, sort_order, id` (iban primero) y el `LIMIT` se respeta (5 en el bloque);
    - `ListPublishedDonationTexts`: solo textos publicados;
-   - `ExistsDonationMethodDuplicate` detecta el repetido tras normalizar (`'cr01 0000-…'` vs
-     `'CR010000…'`) y **no** dispara por el mismo número en otro tipo (imposible por forma, pero
-     la consulta es `kind + number`);
+   - `ExistsDonationMethodDuplicate` detecta el repetido tras normalizar (`'cr05 0152-…'` vs
+     `'CR050152…'`), **no** dispara al editar una fila sin cambiar su número (la consulta la
+     excluye con `:exclude_id` = su `id`: **"editar sin cambiar el número no da `409`"**), **no**
+     dispara por el mismo número en otro tipo (imposible por forma, pero la consulta es
+     `kind + number`) y **sí** dispara cuando un `Update` cambia el número al de **otro** método;
    - cada mutación deja su fila en `admin_actions` en la misma transacción (y al forzar un fallo en
      el registro, la mutación no se aplica), con los 8 códigos y `target_label` correctos;
    - inserción de `admin_actions` con los 8 códigos dentro del `CHECK` ampliado (y rechazo de un

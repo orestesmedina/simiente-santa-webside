@@ -79,10 +79,11 @@ número" y presentarlo "agrupado en bloques". ¿Dónde vive la regla y qué sign
 **Decisión.** Tres piezas, todas sin dependencias nuevas:
 
 1. **Normalización al guardar** (la que exige Q3): se acepta el número tal como lo escribe el
-   equipo (con espacios o guiones: `CR01 0000-0000-0000-0000-0`), se **recorta a los caracteres
+   equipo (con espacios o guiones: `CR05 0152-0200-1234-5678-90`), se **recorta a los caracteres
    del número** (se eliminan espacios y guiones, y se pasa a mayúsculas) y **ese valor normalizado
-   es el que se guarda y el que se publica** (FR-015: "el número publicado DEBE ser el número
-   válido guardado, sin transformaciones que lo alteren"). La normalización es **determinista** y
+   es el que se guarda y el que se publica** (queda `CR05015202001234567890`: 22 caracteres,
+   `CR` + 20 dígitos). FR-015: "el número publicado DEBE ser el número
+   válido guardado, sin transformaciones que lo alteren". La normalización es **determinista** y
    por eso la regla de duplicados (R7-9) puede comparar números con igualdad simple.
 2. **Validación por estructura y longitud** (literal de Q3/FR-015):
    - estructura: `^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$` (2 letras de país + 2 dígitos de control +
@@ -328,10 +329,24 @@ no justifica el índice y así el default "se rechaza o se señala" sigue siendo
 cambiar). Si el humano quiere blindarlo frente a dos altas simultáneas, `UNIQUE (kind, number)` es
 una línea en la migración siguiente (documentado en data-model.md).
 
+**La edición se excluye a sí misma (imprescindible bajo R7-15).** El `PATCH` revalida el conjunto
+**fusionado** completo, de modo que cualquier edición que no cambie el número (entidad, titular,
+orden, estado…) llevaría al chequeo el **mismo** par `kind` + `number` de la propia fila: sin
+exclusión, **toda edición devolvería `409` contra sí misma**. Por eso la consulta es
+`ExistsDonationMethodDuplicate(:kind, :number, :exclude_id)` con **`AND id <> :exclude_id`**
+(`:exclude_id` **opcional** — `NULL` en el alta, el `id` de la fila en la edición —). Regla
+resultante: **editar un método sin cambiar su número no es duplicado** (`200`); **sí** lo es que el
+número normalizado del conjunto fusionado coincida con el de **otro** método (p. ej. un `PATCH`
+que cambia el número al de otro método existente, o un alta repetida), y eso devuelve `409
+conflict`. Queda fijado por prueba en el service y en la integración (T709/T715).
+
 **Alternativas descartadas.** `409` solo con la tripleta tipo+entidad+número (dejaría pasar la
 misma cuenta con el banco escrito de otra forma); solo señalizar en el formulario (la API forzada
 quedaría sin señal, como advierte R6-11); `UNIQUE` desde ya (bloquearía el default "se señala" y
-haría falta una migración para revertirlo).
+haría falta una migración para revertirlo); saltarse el chequeo cuando el `PATCH` no cambia
+`number` (en vez de excluir la fila por `id`: perdería el caso "el número nuevo coincide con el de
+**otro** método", que sí exige `409`; la exclusión `id <> :exclude_id` cubre los dos casos con una
+sola consulta).
 
 ---
 
@@ -534,7 +549,7 @@ textos y el bloque).
 | R7-6 | Permisos | `AdminChain("donaciones")` con el permiso **ya sembrado** en `000002`; **sin migración de permisos y sin tocar F2** |
 | R7-7 | Superficie HTTP | `GET /api/v1/ofrendas` + `GET /api/v1/portada/ofrendas` (público = **sección**) y `/api/v1/admin/donaciones…` (panel = **módulo**), `no-store`; **la presencia de la navegación bebe del documento de la sección** (patrón F4/D-23, no F6/P6-9: los textos solo viven en la sección) |
 | R7-8 | Bilingüe | `*_es`/`*_en` solo en titular y textos; `?lang` con fallback en el servidor; panel en español |
-| R7-9 | Duplicados | Mismo **tipo + número normalizado** → `409` (más fuerte que el default de Assumptions; cubre el edge case); sin `UNIQUE` en BD (patrón F6) |
+| R7-9 | Duplicados | Mismo **tipo + número normalizado** → `409` (más fuerte que el default de Assumptions; cubre el edge case); **la edición excluye su propia fila** (`AND id <> :exclude_id`: editar sin cambiar el número no es duplicado); sin `UNIQUE` en BD (patrón F6) |
 | R7-10 | Auditoría | 8 códigos `donation.*` (migración `000013`), transaccional fail-closed, `target_kind='content'`; textos sin código `create` (singleton) |
 | R7-11 | Publicación | `publication_state` por método **y por texto** (Q10); "se publica al guardar"; consultas `…Published`; F7 **no toca** `IsFilePublished` (sin imágenes) |
 | R7-12 | Sin nada publicado | Entrada oculta + **`/ofrendas` redirige a la portada** (P7-21; decisión del cliente Q9, distinta a propósito de F4); **"nada publicado" = sin métodos NI textos** (default sobre un caso que la spec no cubre; pregunta al humano) |
