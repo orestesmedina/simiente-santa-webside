@@ -243,7 +243,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 > huecos desde `000001` (F6 terminó en `000011`). **Sin migración de permisos** (P7-6: `donaciones`
 > ya está sembrado por `000002` y el catálogo sigue en 10).
 
-- [ ] T701 · Migración `000012_create_donation_content` · `[db]` `[P]` (P1)
+- [X] T701 · Migración `000012_create_donation_content` · `[db]` `[P]` (P1)
 
   - **Archivos**: `backend/migrations/000012_create_donation_content.up.sql` y
     `000012_create_donation_content.down.sql` (NUEVOS).
@@ -271,7 +271,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
     contra la skill `postgres-db`) y los invariantes de Q1/Q2/Q10 están garantizados por la BD.
   - **Commit sugerido**: `feat(db): tablas de ofrendas con numeros normalizados y textos por clave (000012)`
 
-- [ ] T702 · Migración `000013_extend_admin_actions_for_donations` · `[db]` `[P]` (P1)
+- [X] T702 · Migración `000013_extend_admin_actions_for_donations` · `[db]` `[P]` (P1)
 
   - **Archivos**: `backend/migrations/000013_extend_admin_actions_for_donations.up.sql` y
     `.down.sql` (NUEVOS).
@@ -325,7 +325,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 
 ## Fase 2 — Contrato OpenAPI y tipos
 
-- [ ] T704 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.8.0) · `[backend]` `[P]` (P1)
+- [X] T704 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.8.0) · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO). *No* se toca
     `specs/007-donaciones/contracts/openapi.yaml` (snapshot inmutable, P7-19).
@@ -381,7 +381,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 
 ## Fase 3 — Núcleo de plataforma (`backend/internal/platform/`)
 
-- [ ] T706 · `platform/audit`: 8 códigos `donation.*` · `[backend]` `[P]` (P1)
+- [X] T706 · `platform/audit`: 8 códigos `donation.*` · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/internal/platform/audit/audit.go` y `audit_test.go` (EDITADOS).
   - **Qué hace**: amplía el registro cerrado del plumbing de F2 (R7-10) con los **8 códigos**
@@ -400,7 +400,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
 
 ## Fase 4 — Dominio `donaciones`: números y repository
 
-- [ ] T707 · `donaciones`: `numero.go` — normalización y validación de IBAN y SINPE · `[backend]` `[P]` (P1)
+- [X] T707 · `donaciones`: `numero.go` — normalización y validación de IBAN y SINPE · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/internal/donaciones/numero.go` y `numero_test.go` (NUEVOS).
   - **Qué hace**: funciones **puras** del dominio (R7-2/R7-3, P7-2/P7-3/P7-4):
