@@ -687,7 +687,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Criterio de terminado**: `quickstart.md` §1 es ejecutable tal cual por API (US1).
   - **Commit sugerido**: `feat(donaciones): endpoint publico de ofrendas y diezmos`
 
-- [ ] T718 · `handler_public.go` — `GET /api/v1/portada/ofrendas` · `[backend]`
+- [X] T718 · `handler_public.go` — `GET /api/v1/portada/ofrendas` · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/handler_public.go` (EDITADO) y
     `handler_public_test.go` (AMPLIADO).

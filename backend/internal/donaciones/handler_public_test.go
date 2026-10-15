@@ -195,3 +195,136 @@ func TestGetOfrendasHandlerWithoutService(t *testing.T) {
 		t.Errorf("sobre inesperado: %s", rec.Body)
 	}
 }
+
+// --- Bloque de la portada (T718, US6/FR-022/SC-014) ---
+
+// TestGetPortadaOfrendasHandlerOK fija el 200 con el sobre del contrato, la
+// cabecera no-store y el mismo esquema de ítem de la sección (FR-022).
+func TestGetPortadaOfrendasHandlerOK(t *testing.T) {
+	repo := newFakeRepository()
+	method := publishedMethod(KindSinpe, "+50688888888")
+	method.HolderEs = textOf("Ana Pérez")
+	repo.seedMethods(method)
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaOfrendas, "/api/v1/portada/ofrendas")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+	}
+
+	var got PortadaOfrendas
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es PortadaOfrendas: %v (%s)", err, rec.Body)
+	}
+	if got.Lang != LangES || len(got.Items) != 1 {
+		t.Fatalf("sobre = %+v", got)
+	}
+	if item := got.Items[0]; item.Kind != "sinpe" || item.Number != "+50688888888" || item.Holder != "Ana Pérez" {
+		t.Errorf("item = %+v", item)
+	}
+}
+
+// TestGetPortadaOfrendasHandlerOmitsItemsWhenEmpty fija FR-022/SC-014: sin
+// métodos publicados la respuesta lleva solo `lang` (nunca `items: null`) y la
+// portada no dibuja el bloque; aunque haya textos publicados, el bloque solo mira
+// los métodos.
+func TestGetPortadaOfrendasHandlerOmitsItemsWhenEmpty(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seedTexts(TextoDonacion{
+		TextKey:          TextKeyIntro,
+		BodyEs:           "Cómo donar",
+		PublicationState: StatePublished,
+	})
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaOfrendas, "/api/v1/portada/ofrendas")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != `{"lang":"es"}` {
+		t.Fatalf("cuerpo = %s, se esperaba solo lang", body)
+	}
+}
+
+// TestGetPortadaOfrendasHandlerIgnoresLimit fija FR-022: el tope 5 es del
+// servidor; la ruta no admite parámetro de límite.
+func TestGetPortadaOfrendasHandlerIgnoresLimit(t *testing.T) {
+	repo := newFakeRepository()
+	for i := 0; i < 8; i++ {
+		method := publishedMethod(KindIban, "CR05015202001234567890")
+		method.SortOrder = i
+		repo.seedMethods(method)
+	}
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaOfrendas, "/api/v1/portada/ofrendas?limit=100")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got PortadaOfrendas
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es PortadaOfrendas: %v", err)
+	}
+	if len(got.Items) != maxPortadaItems {
+		t.Fatalf("items = %d, se esperaban %d (tope del servidor)", len(got.Items), maxPortadaItems)
+	}
+}
+
+// TestGetPortadaOfrendasHandlerNeverLeaksDrafts fija FR-012/SC-002 en la capa
+// HTTP: un borrador no aparece y el DTO nunca expone `publicationState`.
+func TestGetPortadaOfrendasHandlerNeverLeaksDrafts(t *testing.T) {
+	const (
+		institution = "Banco Borrador"
+		number      = "CR09999999999999999999"
+	)
+	repo := newFakeRepository()
+	repo.seedMethods(MetodoDonacion{
+		Kind:             KindIban,
+		Number:           number,
+		Institution:      institution,
+		PublicationState: StateDraft,
+	})
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaOfrendas, "/api/v1/portada/ofrendas")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	raw := rec.Body.String()
+	for _, secret := range []string{institution, number, "publicationState"} {
+		if strings.Contains(raw, secret) {
+			t.Errorf("el JSON crudo contiene contenido en borrador %q: %s", secret, raw)
+		}
+	}
+}
+
+// TestGetPortadaOfrendasHandlerInvalidLang fija el 400 invalid con details.lang.
+func TestGetPortadaOfrendasHandlerInvalidLang(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := doGet(t, h.GetPortadaOfrendas, "/api/v1/portada/ofrendas?lang=fr")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"invalid"`) || !strings.Contains(rec.Body.String(), `"lang"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+}
+
+// TestGetPortadaOfrendasHandlerServiceError fija el sobre genérico.
+func TestGetPortadaOfrendasHandlerServiceError(t *testing.T) {
+	repo := newFakeRepository()
+	repo.readErr = errors.New("boom")
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaOfrendas, "/api/v1/portada/ofrendas")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "boom") {
+		t.Errorf("la respuesta filtra la causa interna: %s", rec.Body)
+	}
+}
