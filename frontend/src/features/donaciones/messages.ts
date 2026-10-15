@@ -103,6 +103,11 @@ export const CURRENCY_DOLARES = 'Dólares';
 /** El listado del panel sí usa «—» para el titular vacío (⟲ D-16). */
 export const EMPTY_DASH = '—';
 
+/* ── Copia exacta del número en el listado (ux.md §4.3, ⟲ D-9) ────────── */
+
+export const COPY_NUMBER = 'Copiar número';
+export const COPIED = 'Número copiado.';
+
 /* ── Formulario (ux.md §4.4/§4.5) ────────────────────────────────────── */
 
 export const FIELD_INSTITUTION = 'Entidad financiera';

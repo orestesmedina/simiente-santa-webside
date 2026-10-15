@@ -6,6 +6,7 @@ import { AuditPage } from '../features/auditoria/pages/AuditPage';
 import { ActivitiesPage } from '../features/eventos/pages/ActivitiesPage';
 import { CategoriesPage } from '../features/eventos/pages/CategoriesPage';
 import { EventsPage as PanelEventsPage } from '../features/eventos/pages/EventsPage';
+import { DonacionesPage } from '../features/donaciones/pages/DonacionesPage';
 import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
 import { MinistriesPage } from '../features/ministerios/pages/MinistriesPage';
@@ -21,6 +22,7 @@ import {
   ACTIVIDADES,
   ADMIN_USERS_ROLES,
   CATEGORIAS,
+  DONACIONES,
   EVENTOS,
   MINISTERIOS,
   PORTADA,
@@ -153,6 +155,12 @@ const appRoutes: RouteObject[] = [
                 // ningún permiso nuevo y el catálogo sigue en 10.
                 element: <RequirePermission code={MINISTERIOS} />,
                 children: [{ path: 'ministerios', element: <MinistriesPage /> }],
+              },
+              {
+                // F7 también usa el permiso **ya sembrado** por F2 (P7-6/Q8):
+                // sin permiso nuevo y sin renombrarlo.
+                element: <RequirePermission code={DONACIONES} />,
+                children: [{ path: 'donaciones', element: <DonacionesPage /> }],
               },
             ],
           },
