@@ -704,7 +704,7 @@ T401…T449, `specs/006-ministerios/` T601…T638, `specs/010-sistema-diseno-mov
   - **Criterio de terminado**: `quickstart.md` §14 es ejecutable tal cual por API (US6).
   - **Commit sugerido**: `feat(donaciones): endpoint publico del bloque de ofrendas de la portada`
 
-- [ ] T719 · `handler_admin.go` — CRUD de `/api/v1/admin/donaciones` · `[backend]`
+- [X] T719 · `handler_admin.go` — CRUD de `/api/v1/admin/donaciones` · `[backend]`
 
   - **Archivos**: `backend/internal/donaciones/handler_admin.go` y `handler_admin_test.go`
     (NUEVOS).
