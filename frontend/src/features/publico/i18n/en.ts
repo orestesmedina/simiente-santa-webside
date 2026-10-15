@@ -125,5 +125,6 @@ export const en: PublicMessages = {
   'a11y.home.ministries.heading': 'Church ministries: quick look and link to the full section',
   'a11y.offerings.account': 'Bank account: {entity}, number {number}',
   'a11y.offerings.sinpe': 'SINPE Móvil: {entity}, number {number}',
+  'a11y.offerings.copy': 'Copy number for {entity}',
   'a11y.home.offerings.heading': 'Offerings & tithes: quick look and link to the full section',
 };

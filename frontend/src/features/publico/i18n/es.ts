@@ -129,6 +129,7 @@ export const es: PublicMessages = {
     'Ministerios de la iglesia: mira el resumen y entra a la sección completa',
   'a11y.offerings.account': 'Cuenta IBAN: {entidad}, número {número}',
   'a11y.offerings.sinpe': 'SINPE Móvil: {entidad}, número {número}',
+  'a11y.offerings.copy': 'Copiar número de {entidad}',
   'a11y.home.offerings.heading':
     'Ofrendas y diezmos: mira el resumen y entra a la sección completa',
 };

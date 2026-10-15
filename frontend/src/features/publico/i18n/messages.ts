@@ -130,6 +130,7 @@ export const publicMessageKeys = [
   'a11y.home.ministries.heading',
   'a11y.offerings.account',
   'a11y.offerings.sinpe',
+  'a11y.offerings.copy',
   'a11y.home.offerings.heading',
 ] as const;
 
