@@ -86,4 +86,33 @@ describe('ACTION_LABELS · etiquetas humanas de la auditoría (ux.md §4.9)', ()
   it('un código desconocido se muestra tal cual (nunca en blanco)', () => {
     expect(actionLabel('home.update')).toBe('home.update');
   });
+
+  it('cubre los 8 códigos `donation.*` de F7 (migración `000013`, R7-10)', () => {
+    const F7_ACTIONS = [
+      'donation.create',
+      'donation.update',
+      'donation.delete',
+      'donation.publish',
+      'donation.unpublish',
+      'donation.text.update',
+      'donation.text.publish',
+      'donation.text.unpublish',
+    ] as const;
+
+    for (const action of F7_ACTIONS) {
+      const label = ACTION_LABELS[action];
+      expect(label, `etiqueta de ${action}`).toBeTruthy();
+      expect(label).not.toBe(action);
+      expect(actionLabel(action)).toBe(label);
+    }
+
+    expect(ACTION_LABELS['donation.create']).toBe('Creó una cuenta o número de donaciones');
+    expect(ACTION_LABELS['donation.publish']).toBe('Publicó una cuenta o número de donaciones');
+    expect(ACTION_LABELS['donation.text.update']).toBe(
+      'Modificó el texto introductorio o el de uso',
+    );
+    expect(ACTION_LABELS['donation.text.unpublish']).toBe(
+      'Retiró el texto introductorio o el de uso',
+    );
+  });
 });
