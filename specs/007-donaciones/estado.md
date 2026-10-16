@@ -13,11 +13,11 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
-| Fase | 5/9 · Validar (T701–T737 implementadas y `make ci` en verde; validación en curso) |
-| Ciclo de corrección | 1/3 (M1 devuelto a dev-backend) |
-| Próximo paso | Corregir M1 (auditoría de `PutTexto` sin cambios) y cerrar el ciclo; luego convergencia y entrega (T738: docs + PR) |
+| Fase | 6/9 · Converger (implementación validada y ciclo de corrección 1 cerrado; solo falta la entrega T738) |
+| Ciclo de corrección | 1/3 · cerrado (M1 resuelto en `7f05e40` y confirmado por el revisor) |
+| Próximo paso | Entrega: `documentador` (CHANGELOG/README/notas) y PR (T738); luego puerta 3 (aprobación humana del merge) |
 | Bloqueado por | — |
-| Actualizado | 2026-10-15 |
+| Actualizado | 2026-10-16 |
 
 ## Aprobaciones
 
@@ -34,7 +34,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- **M1 (medio)** — `PutTexto` (`service_admin.go`) escribe `updated_at` sin fila de auditoría cuando el PUT no cambia nada; corregir con *early-return* como `UpdateDonacion` (+ prueba). Devuelto a `dev-backend` en el ciclo 1. Ver [revision-2026-10-15.md](./revision-2026-10-15.md).
+- (ninguno: M1 resuelto y confirmado en el ciclo 1; ver [revision-2026-10-15.md](./revision-2026-10-15.md))
 
 ## Decisiones y aclaraciones
 
@@ -48,7 +48,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
-- 2026-10-15 — Fase 4: implementadas T701–T737 (backend, frontend, e2e). `make ci` en verde; cobertura `service*.go` 89,6 %. Fase 5 (validación) iniciada.
+- 2026-10-16 — Ciclo de corrección 1 cerrado (M1 resuelto en `7f05e40`, confirmado por el revisor). Fase 6 (convergencia): no hay tareas nuevas. Inicio de la entrega (T738).
+- 2026-10-15 — Fase 5: validación con QA/código/seguridad (los tres aprueban). Fase 4: implementadas T701–T737; `make ci` en verde; cobertura `service*.go` 89,6 %.
 - 2026-10-14 — Fase 3: `tasks.md` (38 tareas) y `analyze` (veredicto: sin críticos; 3 altos A1/A2/A3 corregidos) — fase cerrada. Fase 4 (implementar) iniciada.
 - 2026-10-14 — Puerta 2: **plan aprobado** por el humano (frase: "apruebo"); defaults aceptados. Fase 3 (tareas y coherencia) iniciada.
 - 2026-10-14 — Fase 2: `arquitecto` produjo plan/research/data-model/contracts/quickstart y `disenador-ux` produjo `ux.md`. Corregida una contradicción interna de la spec (entidad financiera no traducible). Pendiente la puerta 2 (aprobación del plan).
