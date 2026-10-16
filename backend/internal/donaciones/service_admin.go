@@ -261,6 +261,11 @@ func (s *service) GetTextos(ctx context.Context) (DonacionTextosAdmin, error) {
 // registra su auditoría (R7-10). No hay operación de borrado: un texto se retira
 // poniéndolo en `draft`.
 //
+// Un `PUT` idéntico al texto ya guardado (mismo contenido y estado) no es una
+// operación: devuelve la fila actual **sin escribir** —`updated_at` incluido— y
+// **sin registrar** auditoría (FR-017/SC-011), igual que `UpdateDonacion` ante un
+// `PATCH` sin cambios.
+//
 // Auditoría: data (alta o edición del singleton) → `donation.text.update`; el
 // cambio de estado → `donation.text.publish`/`donation.text.unpublish` (solo
 // cuando hay estado previo distinto); ambos a la vez → dos filas.
@@ -295,6 +300,12 @@ func (s *service) PutTexto(ctx context.Context, actorID uuid.UUID, key TextKey, 
 	if found {
 		dataChanged = current.BodyEs != texto.BodyEs || !sameOptional(current.BodyEn, texto.BodyEn)
 		stateChanged = current.PublicationState != texto.PublicationState
+		if !dataChanged && !stateChanged {
+			// Un PUT idéntico no es una operación: no se escribe (`updated_at`
+			// incluido) ni se registra auditoría (FR-017/SC-011), igual que
+			// `UpdateDonacion` ante un PATCH sin cambios.
+			return donacionTextoAdminFrom(current), nil
+		}
 	}
 
 	actions := make([]audit.Action, 0, 2)

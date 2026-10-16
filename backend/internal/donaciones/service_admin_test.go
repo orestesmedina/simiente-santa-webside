@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -454,6 +455,65 @@ func TestPutTextoCreatesAndReplaces(t *testing.T) {
 	}
 	if got := actionsOf(repo); len(got) != 1 || got[0] != audit.ActionDonationTextUnpublish {
 		t.Errorf("acciones (retirar) = %v", got)
+	}
+}
+
+// TestPutTextoNoChangesReturnsCurrent fija el borde de FR-017/SC-011 (M1 de la
+// revisión de F7): un `PUT` con el mismo contenido y estado devuelve la fila
+// actual **sin escribir** —`updated_at` incluido— y sin registrar auditoría,
+// igual que `UpdateDonacion`. Un cambio real sí escribe y audita.
+func TestPutTextoNoChangesReturnsCurrent(t *testing.T) {
+	repo := newFakeRepository()
+	stored := TextoDonacion{
+		ID:               uuid.MustParse("33333333-3333-3333-3333-333333333333"),
+		TextKey:          TextKeyIntro,
+		BodyEs:           "Cómo donar",
+		BodyEn:           textOf("How to give"),
+		PublicationState: StatePublished,
+		CreatedAt:        time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+		UpdatedAt:        time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+	}
+	repo.seedTexts(stored)
+	svc := newTestService(repo)
+
+	out, err := svc.PutTexto(context.Background(), actorID(), TextKeyIntro, DonacionTextoInput{
+		TextEs:           "Cómo donar",
+		TextEn:           "How to give",
+		PublicationState: "published",
+	})
+	if err != nil {
+		t.Fatalf("PutTexto(sin cambios) = %v", err)
+	}
+	if out.TextEs != stored.BodyEs || !out.UpdatedAt.Equal(stored.UpdatedAt) {
+		t.Errorf("out = %+v, se esperaba la fila actual intacta", out)
+	}
+	if len(repo.textUpserts) != 0 {
+		t.Errorf("se escribió un PUT sin cambios: %v", repo.textUpserts)
+	}
+	if got := repo.texts[0]; !got.UpdatedAt.Equal(stored.UpdatedAt) {
+		t.Errorf("updated_at se renovó sin cambios: %v", got.UpdatedAt)
+	}
+	if len(repo.committed) != 0 {
+		t.Errorf("se auditó un PUT sin cambios: %+v", repo.committed)
+	}
+
+	// Un cambio real de datos sí escribe y registra `donation.text.update`.
+	repo.committed = nil
+	if _, err := svc.PutTexto(context.Background(), actorID(), TextKeyIntro, DonacionTextoInput{
+		TextEs:           "Cómo donar 🙌🏽",
+		TextEn:           "How to give",
+		PublicationState: "published",
+	}); err != nil {
+		t.Fatalf("PutTexto(cambio) = %v", err)
+	}
+	if len(repo.textUpserts) != 1 || repo.textUpserts[0] != TextKeyIntro {
+		t.Errorf("el cambio real no escribió: %v", repo.textUpserts)
+	}
+	if got := repo.texts[0]; got.UpdatedAt.Equal(stored.UpdatedAt) {
+		t.Errorf("updated_at no se renovó con un cambio real: %v", got.UpdatedAt)
+	}
+	if got := actionsOf(repo); len(got) != 1 || got[0] != audit.ActionDonationTextUpdate {
+		t.Errorf("acciones = %v, se esperaba donation.text.update", got)
 	}
 }
 

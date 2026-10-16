@@ -38,8 +38,11 @@ type fakeRepository struct {
 	recordErr         error
 	duplicate         bool
 
-	// Observaciones de las consultas.
+	// Observaciones de las consultas y de las mutaciones: `publicLimits` recuerda
+	// el tope pedido a la vía pública y `textUpserts` las claves de los textos que
+	// llegaron a guardarse (para fijar el no-op de `PutTexto` sin cambios).
 	publicLimits []int
+	textUpserts  []TextKey
 }
 
 var _ Repository = (*fakeRepository)(nil)
@@ -285,6 +288,7 @@ func (f *fakeRepository) UpsertDonationText(_ context.Context, text TextoDonacio
 	if f.mutationErr != nil {
 		return TextoDonacion{}, f.mutationErr
 	}
+	f.textUpserts = append(f.textUpserts, text.TextKey)
 	index := f.findTextIndex(text.TextKey)
 	if index < 0 {
 		text.ID = uuid.New()
