@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/testutil"
@@ -35,27 +35,54 @@ func migrationsDir(t *testing.T) string {
 	return filepath.Join("..", "..", "migrations")
 }
 
+// executor reúne lo mínimo que necesitan los helpers de este archivo y lo
+// cumplen tanto *pgxpool.Pool como pgx.Tx. Gracias a eso la prueba del ciclo de
+// migración corre DENTRO de una transacción (y se revierte), mientras las demás
+// pruebas del paquete siguen usando el pool.
+type executor interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// migrationTx abre la transacción de la prueba del ciclo de migración: toma el
+// lock de serialización de testutil como primera sentencia (ver
+// testutil.SerializeMigrations) y se revierte al terminar. Antes esta prueba
+// corría en autocommit sobre el pool: además de entrar en la carrera 40P01 del
+// CI, CONFIRMABA el `down` destructivo en la base compartida y dejaba a las
+// otras pruebas del paquete viendo un esquema a medias.
+func migrationTx(t *testing.T, ctx context.Context) pgx.Tx {
+	t.Helper()
+	pool := testutil.Pool(t, ctx)
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("abrir transacción de la prueba de migración: %v", err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback(ctx) })
+	testutil.SerializeMigrations(t, ctx, tx)
+	return tx
+}
+
 // execSQLFile ejecuta un archivo .sql completo (varias sentencias) con el
 // protocolo simple de pgx. Se usa para reejecutar los .sql de la migración 000006.
-func execSQLFile(t *testing.T, ctx context.Context, pool *pgxpool.Pool, path string) {
+func execSQLFile(t *testing.T, ctx context.Context, db executor, path string) {
 	t.Helper()
 	sql, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("leer %s: %v", path, err)
 	}
-	if _, err := pool.Exec(ctx, string(sql)); err != nil {
+	if _, err := db.Exec(ctx, string(sql)); err != nil {
 		t.Fatalf("ejecutar %s: %v", filepath.Base(path), err)
 	}
 }
 
 // hasConstraint indica si existe una restricción llamada name sobre admin_actions.
-func hasConstraint(t *testing.T, ctx context.Context, pool *pgxpool.Pool, name string) bool {
+func hasConstraint(t *testing.T, ctx context.Context, db executor, name string) bool {
 	t.Helper()
 	var exists bool
 	const query = `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint
 		WHERE conname = $1 AND conrelid = 'admin_actions'::regclass)`
-	if err := pool.QueryRow(ctx, query, name).Scan(&exists); err != nil {
+	if err := db.QueryRow(ctx, query, name).Scan(&exists); err != nil {
 		t.Fatalf("buscar restricción %s: %v", name, err)
 	}
 	return exists
@@ -63,12 +90,12 @@ func hasConstraint(t *testing.T, ctx context.Context, pool *pgxpool.Pool, name s
 
 // constraintDef devuelve la definición textual de una restricción de
 // admin_actions (pg_get_constraintdef).
-func constraintDef(t *testing.T, ctx context.Context, pool *pgxpool.Pool, name string) string {
+func constraintDef(t *testing.T, ctx context.Context, db executor, name string) string {
 	t.Helper()
 	var def string
 	const query = `SELECT pg_get_constraintdef(oid) FROM pg_constraint
 		WHERE conname = $1 AND conrelid = 'admin_actions'::regclass`
-	if err := pool.QueryRow(ctx, query, name).Scan(&def); err != nil {
+	if err := db.QueryRow(ctx, query, name).Scan(&def); err != nil {
 		t.Fatalf("definición de la restricción %s: %v", name, err)
 	}
 	return def
@@ -93,9 +120,14 @@ func assertCheckViolation(t *testing.T, err error, constraint string) {
 // TestIntegrationMigration000006UpDownUp aplica la migración 000006 up → down
 // → up sin errores y comprueba que el registro cerrado queda restaurado y
 // ampliado (RG3-2/FR-017).
+//
+// Corre dentro de una transacción serializada (migrationTx): el `down` de 000006
+// es destructivo y antes, en autocommit sobre la base compartida del CI, se
+// confirmaba (dejando el esquema a medias para el resto) y competía con los
+// `down` de F4/F6/F7 por los locks de `admin_actions` hasta matarse con 40P01.
 func TestIntegrationMigration000006UpDownUp(t *testing.T) {
 	ctx := context.Background()
-	pool := testutil.Pool(t, ctx)
+	tx := migrationTx(t, ctx)
 
 	dir := migrationsDir(t)
 	up := filepath.Join(dir, "000006_extend_admin_actions_for_home_content.up.sql")
@@ -104,20 +136,20 @@ func TestIntegrationMigration000006UpDownUp(t *testing.T) {
 	// Normaliza el punto de partida al estado previo a 000006: si la migración
 	// ya está aplicada (BD del CI), se revierte primero para poder ejecutar el
 	// ciclo up → down → up literal.
-	if hasConstraint(t, ctx, pool, "admin_actions_target_coherence_check") {
-		execSQLFile(t, ctx, pool, down)
+	if hasConstraint(t, ctx, tx, "admin_actions_target_coherence_check") {
+		execSQLFile(t, ctx, tx, down)
 	}
-	if !hasConstraint(t, ctx, pool, "admin_actions_check1") {
+	if !hasConstraint(t, ctx, tx, "admin_actions_check1") {
 		t.Fatal("estado previo a 000006 inesperado: falta admin_actions_check1")
 	}
 
-	execSQLFile(t, ctx, pool, up)   // 1) up
-	execSQLFile(t, ctx, pool, down) // 2) down
-	execSQLFile(t, ctx, pool, up)   // 3) up
+	execSQLFile(t, ctx, tx, up)   // 1) up
+	execSQLFile(t, ctx, tx, down) // 2) down
+	execSQLFile(t, ctx, tx, up)   // 3) up
 
 	// El CHECK de acción incluye exactamente los 15 códigos home.* de
 	// platform/audit (T311): el registro cerrado coincide con la BD.
-	actionDef := constraintDef(t, ctx, pool, "admin_actions_action_check")
+	actionDef := constraintDef(t, ctx, tx, "admin_actions_action_check")
 	homeCodes := 0
 	for _, code := range audit.ActionCodes {
 		if !strings.HasPrefix(code, "home.") {
@@ -136,7 +168,7 @@ func TestIntegrationMigration000006UpDownUp(t *testing.T) {
 	}
 
 	// target_kind admite user, role y content.
-	kindDef := constraintDef(t, ctx, pool, "admin_actions_target_kind_check")
+	kindDef := constraintDef(t, ctx, tx, "admin_actions_target_kind_check")
 	for _, kind := range []string{"'user'", "'role'", "'content'"} {
 		if !strings.Contains(kindDef, kind) {
 			t.Fatalf("target_kind no admite %s: %s", kind, kindDef)
@@ -145,10 +177,10 @@ func TestIntegrationMigration000006UpDownUp(t *testing.T) {
 
 	// La coherencia de objetivo queda con el nombre nuevo tras el up y con el
 	// de F2 tras el down.
-	if !hasConstraint(t, ctx, pool, "admin_actions_target_coherence_check") {
+	if !hasConstraint(t, ctx, tx, "admin_actions_target_coherence_check") {
 		t.Fatal("falta admin_actions_target_coherence_check tras el up")
 	}
-	if hasConstraint(t, ctx, pool, "admin_actions_check1") {
+	if hasConstraint(t, ctx, tx, "admin_actions_check1") {
 		t.Fatal("admin_actions_check1 no debería existir tras el up")
 	}
 }

@@ -36,7 +36,10 @@ import (
 // Aislamiento: cada prueba trabaja dentro de una TRANSACCIÓN que se revierte al
 // terminar (el DDL de PostgreSQL es transaccional), así que los `down` —que son
 // destructivos a propósito— no tocan el estado que ven las pruebas de
-// integración de los otros dominios, que corren en paralelo. La atomicidad de
+// integración de los otros dominios, que corren en paralelo. Esas transacciones
+// además toman el lock de testutil.SerializeMigrations (ver migrationTx), porque
+// en CI todas las pruebas comparten una única base y dos `down` destructivos
+// solapados se matan entre sí con 40P01. La atomicidad de
 // mutación + auditoría y el registro cerrado de códigos se verifican en
 // repository_audit_integration_test.go.
 
@@ -63,6 +66,19 @@ func testTx(t *testing.T, ctx context.Context) (*pgxpool.Pool, pgx.Tx) {
 		t.Fatalf("abrir transacción de prueba: %v", err)
 	}
 	t.Cleanup(func() { _ = tx.Rollback(ctx) })
+	return pool, tx
+}
+
+// migrationTx abre la transacción de una prueba de MIGRACIÓN: además de
+// revertirse al terminar, toma el lock de serialización de testutil como primera
+// sentencia. Las pruebas de auditoría y las de CHECK siguen usando testTx: solo
+// los `down` destructivos (DELETE + ALTER TABLE de `admin_actions`) pueden
+// matarse entre sí con 40P01 cuando los paquetes comparten base (ver
+// testutil.SerializeMigrations).
+func migrationTx(t *testing.T, ctx context.Context) (*pgxpool.Pool, pgx.Tx) {
+	t.Helper()
+	pool, tx := testTx(t, ctx)
+	testutil.SerializeMigrations(t, ctx, tx)
 	return pool, tx
 }
 
@@ -143,7 +159,7 @@ func constraintName(err error) string {
 // defecto», P6-3) y los dos índices del orden y del filtro público.
 func TestIntegrationMigration000010UpDownUp(t *testing.T) {
 	ctx := context.Background()
-	_, tx := testTx(t, ctx)
+	_, tx := migrationTx(t, ctx)
 
 	const (
 		up   = "000010_create_ministries.up.sql"
@@ -229,7 +245,7 @@ func assertMinistriesSchema(t *testing.T, ctx context.Context, tx pgx.Tx) {
 // el de F4 sin tocar los códigos de F2/F3/F4.
 func TestIntegrationMigration000011UpDownUp(t *testing.T) {
 	ctx := context.Background()
-	_, tx := testTx(t, ctx)
+	_, tx := migrationTx(t, ctx)
 
 	const (
 		up   = "000011_extend_admin_actions_for_ministries.up.sql"
@@ -295,7 +311,7 @@ func assertActionCheck(t *testing.T, ctx context.Context, tx pgx.Tx, wantF6 bool
 // ninguno se llama `ministry.*`; los `down` de F6 tampoco lo rozan.
 func TestIntegrationPermissionsCatalogUnchanged(t *testing.T) {
 	ctx := context.Background()
-	_, tx := testTx(t, ctx)
+	_, tx := migrationTx(t, ctx)
 
 	const catalog = `SELECT count(*) FROM permissions`
 
