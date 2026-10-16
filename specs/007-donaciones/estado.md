@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Converger (implementación validada y ciclo de corrección 1 cerrado; solo falta la entrega T738) |
+| Fase | 7/9 · Entregar (PR #10 abierto; pendiente la aprobación humana del merge) |
 | Ciclo de corrección | 1/3 · cerrado (M1 resuelto en `7f05e40` y confirmado por el revisor) |
-| Próximo paso | Entrega: `documentador` (CHANGELOG/README/notas) y PR (T738); luego puerta 3 (aprobación humana del merge) |
+| Próximo paso | Aprobación humana del **PR #10** (puerta 3); al aprobarlo: `make costos CERRAR=1` y commit de `estado.md`+`costos.json` en la rama antes del merge |
 | Bloqueado por | — |
 | Actualizado | 2026-10-16 |
 
@@ -27,7 +27,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano (cliente) | 2026-10-14 | "si" (aprueba la spec v2 de F7) |
 | Plan | aprobado | humano (cliente) | 2026-10-14 | "apruebo" (aprueba el plan de F7; acepta los defaults presentados: IBAN solo estructura/longitud, SINPE 6/7/8, sección visible con solo textos) |
-| PR / merge | pendiente | | | |
+| PR / merge | abierto (pendiente de aprobación humana) | — | 2026-10-16 | PR #10 abierto: https://github.com/orestesmedina/simiente-santa-webside/pull/10 |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -48,6 +48,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-16 — Fase 7 (entrega): documentación (CHANGELOG 0.7.0, README, nota de entrega y protocolo SC-012) y **PR #10 abierto**; pendiente la aprobación humana del merge.
 - 2026-10-16 — Ciclo de corrección 1 cerrado (M1 resuelto en `7f05e40`, confirmado por el revisor). Fase 6 (convergencia): no hay tareas nuevas. Inicio de la entrega (T738).
 - 2026-10-15 — Fase 5: validación con QA/código/seguridad (los tres aprueban). Fase 4: implementadas T701–T737; `make ci` en verde; cobertura `service*.go` 89,6 %.
 - 2026-10-14 — Fase 3: `tasks.md` (38 tareas) y `analyze` (veredicto: sin críticos; 3 altos A1/A2/A3 corregidos) — fase cerrada. Fase 4 (implementar) iniciada.
