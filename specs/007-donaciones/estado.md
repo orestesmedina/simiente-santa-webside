@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 7/9 · Entregar (PR #10 abierto; CI en rojo por un flaky de infraestructura de pruebas — decisión pendiente del humano) |
 | Ciclo de corrección | 2/3 · cerrado por decisión del humano (C1 resuelto; C2 → defecto conocido, no bloqueante) |
-| Próximo paso | **CI en verde** (corrida 38976039295). Pendiente: aprobación humana del **PR #10** (puerta 3); al aprobarlo, `make costos CERRAR=1` + commit y push antes del merge |
+| Próximo paso | El humano hace el **merge del PR #10**; al confirmarlo, marcar F7 como **terminada** en el roadmap y cerrar la sesión |
 | Bloqueado por | — (C2 reclasificado como defecto conocido, no bloqueante, por decisión del humano el 2026-10-16) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-16 |
@@ -28,7 +28,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano (cliente) | 2026-10-14 | "si" (aprueba la spec v2 de F7) |
 | Plan | aprobado | humano (cliente) | 2026-10-14 | "apruebo" (aprueba el plan de F7; acepta los defaults presentados: IBAN solo estructura/longitud, SINPE 6/7/8, sección visible con solo textos) |
-| PR / merge | abierto (pendiente de aprobación humana) | — | 2026-10-16 | PR #10 abierto: https://github.com/orestesmedina/simiente-santa-webside/pull/10 |
+| PR / merge | aprobado | humano (cliente) | 2026-10-16 | "has el cierre, yo hago el merge" — el humano hará el merge |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -54,6 +54,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-16 — **Puerta 3: PR aprobado** por el humano ("has el cierre, yo hago el merge"). Costo de la tarea **cerrado** (225,6 M tokens ≈ $4,98). El merge lo hace el humano.
 - 2026-10-16 — CI del PR #10 **en verde** (corrida 38976039295): los 6 trabajos pasan y el flaky 40P01 no reapareció. Pendiente solo la aprobación humana del merge.
 - 2026-10-16 — Decisión del humano (opción A): C2 queda como **defecto conocido** y se relanza el CI. Ciclo 2 cerrado.
 - 2026-10-16 — C2 (flaky del CI): 3 intentos de arreglo revertidos (lock de aviso; AccessExclusive; base aislada por prueba) — el backend vuelve al estado validado del PR. Escalado al humano.
