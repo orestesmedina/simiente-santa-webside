@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Entregar (PR #10 abierto; pendiente la aprobación humana del merge) |
-| Ciclo de corrección | 1/3 · cerrado (M1 resuelto en `7f05e40` y confirmado por el revisor) |
-| Próximo paso | Aprobación humana del **PR #10** (puerta 3); al aprobarlo: `make costos CERRAR=1` y commit de `estado.md`+`costos.json` en la rama antes del merge |
+| Fase | 7/9 · Entregar (PR #10 abierto; corregido el fallo del CI) |
+| Ciclo de corrección | 2/3 · en curso (C1 cerrado; C2: deadlock del CI) |
+| Próximo paso | Ciclo 2: corregir la carrera de las pruebas de migración en la base compartida del CI; luego re-validar y re-hacer el PR |
 | Bloqueado por | — |
 | Actualizado | 2026-10-16 |
 
@@ -35,6 +35,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
 - (ninguno: M1 resuelto y confirmado en el ciclo 1; ver [revision-2026-10-15.md](./revision-2026-10-15.md))
+- **C2 (bloqueante, CI)** — el CI del PR #10 falla con `deadlock detected (40P01)` en `TestIntegrationMigration000008UpDownUp` (`internal/agenda`): varias pruebas `*UpDownUp` ejecutan `DELETE FROM admin_actions` (RowExclusive) + `ALTER TABLE admin_actions` (AccessExclusive) en paralelo sobre la **base compartida** del CI. Fix en curso (serializar las pruebas de migración).
 
 ## Decisiones y aclaraciones
 
