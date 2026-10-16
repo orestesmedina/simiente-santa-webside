@@ -33,6 +33,10 @@ Séptima entrega: **F7 — Ofrendas y diezmos** (rama `007-donaciones`). Spec ap
 
 - **`PutTexto` sin cambios escribía y no auditaba** (hallazgo medio **M1** de la validación, ciclo 1): un `PUT` de texto con el mismo contenido renovaba `updated_at` sin dejar fila de auditoría, al borde de FR-017/SC-011. Ahora, si no hay cambios de datos ni de estado, la operación devuelve la fila actual **sin escribir ni auditar**, replicando `UpdateDonacion` (commit `7f05e40`, con prueba *test-first* `TestPutTextoNoChangesReturnsCurrent`).
 
+### Conocido (no bloqueante)
+
+- **Flaky preexistente del CI en las pruebas de migración.** En una corrida del CI, `TestIntegrationMigration000008UpDownUp` (`internal/agenda`) falló con `deadlock detected (40P01)`. Causa: en CI las pruebas de integración corren **en paralelo contra una sola base** (`DATABASE_URL_TEST`) y varios ciclos `up→down→up` ejecutan `DELETE FROM admin_actions` + `ALTER TABLE admin_actions` en la misma transacción, de modo que dos se solapan y se bloquean en ciclo. Es **anterior a F7** (F3/F4/F6 ya tenían tres ciclos; F7 añadió el cuarto). El código pasa 15/15 y 3/3 suites completas en base fresca. Arreglo de raíz propuesto (no aplicado): aislar cada ciclo en su propio esquema, o correr la integración en serie en el CI del kit; ver el **defecto conocido 23** del [roadmap](docs/producto/roadmap.md).
+
 ### No entra en esta versión
 
 - **Nada de cobros ni procesamiento de donaciones**: no hay pasarelas de pago, montos, metas, comprobantes, recibos ni **registro de quién donó**. El sitio **publica la información** (cuentas IBAN y SINPE) y la persona dona por sus propios medios.

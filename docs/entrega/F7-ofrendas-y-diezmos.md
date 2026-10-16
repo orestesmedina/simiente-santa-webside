@@ -36,6 +36,10 @@ Como aquí un error de lectura puede hacer que un aporte no llegue, el sistema p
 - **No se verifica** que la cuenta exista, siga activa o sea de la iglesia: solo se revisa que el número esté bien escrito. La corrección es manual, editando el dato.
 - **Sin imágenes** en esta sección (texto y datos) y **sin formulario** para inscribirse o avisar de una donación.
 
+## Limitación conocida (interna, no afecta al sitio)
+
+Hay un **defecto preexistente en las pruebas automáticas** del proyecto (no en el producto): una de las pruebas de base de datos puede fallar de forma intermitente en el servidor de integración continua. Es anterior a esta entrega, está documentado en el **defecto conocido 23** del [roadmap](../../docs/producto/roadmap.md) (con su causa y el arreglo propuesto) y **no afecta a lo que ven los visitantes ni el equipo**.
+
 ## Pruebas que se harán con el sitio ya en producción
 
 Dos comprobaciones **no se pueden automatizar** y quedan para después del despliegue, igual que en funcionalidades anteriores: la **prueba de usabilidad** con personas de distintas edades (que al menos 9 de cada 10 encuentren cómo donar sin ayuda, y que lo logren en menos de 30 segundos) y la **revisión con un lector de pantalla real**. El protocolo completo está en [`specs/007-donaciones/pruebas-usabilidad-SC-012.md`](../../specs/007-donaciones/pruebas-usabilidad-SC-012.md).
