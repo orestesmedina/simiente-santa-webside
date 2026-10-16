@@ -1,0 +1,1002 @@
+# ============================================================================
+# DELTA DE DISEÑO — Spec Kit (fase /speckit.plan de F7, 2026-10-14)
+# Funcionalidad: Ofrendas y diezmos (spec.md v2, aprobada por el humano el
+# 2026-10-14; Q1–Q11 resueltas)
+#
+# ESTE ARCHIVO ES UN DELTA, NO EL CONTRATO VIVO. Se fusiona (aditivamente) en
+# `backend/api/openapi.yaml` en la primera tarea de implementación (§8.1.5 de
+# docs/tecnico/arquitectura.md), que pasa de info.version 0.7.0 a 0.8.0.
+# Este snapshot de specs/ NO se vuelve a editar.
+#
+# DECISIONES DE F7 que afectan a este contrato:
+#   - NOMBRES (Q8): la SECCIÓN pública es «Ofrendas y diezmos» en `/ofrendas`
+#     y sus rutas públicas se llaman `ofrendas`; el MÓDULO y el PERMISO del
+#     panel siguen llamándose `donaciones` y las rutas de panel se llaman
+#     `donaciones`. El permiso del catálogo de F2 NO cambia de nombre y F7 NO
+#     crea permisos nuevos (sembrado por 000002: ('donaciones','Donaciones')).
+#   - AGRUPACIÓN POR TIPO (Q1): los métodos viajan en un array `items` plano
+#     cuyo ORDEN es el de la sección —primero los `iban` y después los `sinpe`,
+#     cada grupo por `sortOrder`, `id`— y cada ítem lleva `kind`. El cliente
+#     compone los dos grupos con ese orden garantizado (FR-004).
+#   - CAMPOS (Q2): `kind`, `number` e `institution` obligatorios; `holder`
+#     opcional (si se rellena, se publica); `currency` (`CRC`|`USD`) SOLO en
+#     cuentas IBAN (obligatoria ahí) y NUNCA en SINPE; sin campo de notas; SIN
+#     imágenes (Q6/FR-020: no hay operaciones de subida ni de descarga nuevas).
+#   - NÚMEROS (Q3/Q4): el servidor guarda y publica el número NORMALIZADO
+#     (IBAN: solo los caracteres del número, en mayúsculas; SINPE: `+506` + 8
+#     dígitos). El input del panel ACEPTA el número tal como lo escribe el
+#     equipo (con espacios o guiones y, en SINPE, con o sin `+506`) y el
+#     servidor lo normaliza y valida (IBAN por estructura y longitud exacta por
+#     país; SINPE = celular costarricense de 8 dígitos). `number` de la
+#     respuesta = valor exacto guardado; la presentación agrupada en bloques
+#     del IBAN es responsabilidad del cliente (FR-015: el valor publicado no se
+#     transforma).
+#   - TRADUCIBILIDAD (R7-5): SOLO `holder` (titular) y los `body` de los textos
+#     son traducibles (`*Es`/`*En`, español base por campo). `kind`, `number`,
+#     `institution` y `currency` NO lo son (FR-007/US4 esc. 5/SC-006): la
+#     entidad financiera es un único valor idéntico en ambos idiomas. La
+#     contradicción de FR-019/Key Entities está señalada en research R7-5.
+#   - DOS TEXTOS (Q5/Q11/Q10): `intro` («cómo donar») y `usage` («en qué se
+#     utilizan las donaciones»), textos libres de uno o varios párrafos (≤2.000
+#     caracteres por idioma), cada uno con SU PROPIO `publicationState`, con
+#     `PUT` que crea o reemplaza (patrón del singleton de F3 en
+#     `/admin/portada/quienes-somos`). No hay operación de borrado de textos:
+#     se retiran con `draft` (FR-010 solo habla de "mantenerlos").
+#   - BLOQUE DE LA PORTADA (Q7/FR-022): `GET /api/v1/portada/ofrendas` con
+#     HASTA 5 ítems (tope FIRME del servidor, sin parámetro de límite) en el
+#     orden de la sección, con el MISMO esquema de ítem que la sección ("el
+#     bloque es un extracto de los mismos métodos, no un modelo nuevo") y
+#     enlace/botón hacia `/ofrendas`. Con 0 métodos publicados la respuesta
+#     viene SIN `items` y la portada NO renderiza el bloque (a diferencia del
+#     bloque «Lo que viene» de F4, aquí no hay mensaje).
+#   - SIN NADA PUBLICADO (Q9/FR-005): la sección, su entrada de navegación y el
+#     bloque se ocultan y la ruta SPA `/ofrendas` REDIRIGE a la portada. Es una
+#     decisión del FRONTEND (elemento de ruta, como P6-21 de F6): este contrato
+#     NO cambia — `GET /api/v1/ofrendas` responde 200 con las claves de
+#     contenido omitidas — y es DISTINTA A PROPÓSITO del patrón de F4 en
+#     `/eventos` (aviso sin redirigir), que no se toca. "Nada publicado" =
+#     sin métodos NI textos publicados (R7-12: default sobre un caso que la
+#     spec no cubre; pregunta abierta al humano).
+#   - PRESENCIA DE LA NAVEGACIÓN (R7-7): `useSiteLinks` bebe del documento de
+#     la SECCIÓN (`GET /api/v1/ofrendas`), no del bloque — a diferencia de F6 —
+#     porque los textos solo viven en la sección y la sección puede existir con
+#     solo textos publicados. La entrada «Ofrendas y diezmos» existe si este
+#     documento trae `items`, `intro` o `usage`.
+#
+# Se REUTILIZAN del documento vivo (definidos por F1/F2/F3/F4/F6, no se
+# redefinen):
+#   - components/responses: NotFound, MethodNotAllowed, Invalid, Unauthenticated,
+#     Forbidden, Conflict, TooManyRequests, DatabaseUnavailable, Internal
+#   - components/schemas: ErrorEnvelope, ErrorBody, PublicationState
+#   - components/parameters: Limit, Offset (los reutilizables REALES del
+#     contrato vivo, `backend/api/openapi.yaml`)
+#   - components/securitySchemes: sessionCookie
+# El registro de `error.code` NO cambia: F7 emite `invalid`, `unauthenticated`,
+# `forbidden`, `not_found`, `conflict` e `internal`, todos ya en el enum.
+# No se toca `GET /api/v1/media/{fileName}` (F7 no tiene imágenes).
+#
+# CAMBIOS EN ESQUEMAS/PROSA EXISTENTES (aplicar en la fusión; son aditivos):
+#   - AdminActionItem.action: el enum crece con los 8 códigos de F7 (research
+#     R7-10): donation.create, donation.update, donation.delete,
+#     donation.publish, donation.unpublish, donation.text.update,
+#     donation.text.publish, donation.text.unpublish. Regla exacta: el alta
+#     registra SOLO `donation.create` (también con `publicationState:
+#     published`); `donation.publish`/`donation.unpublish` SOLO registran
+#     cambios de estado de un método y `donation.text.publish`/
+#     `donation.text.unpublish` SOLO cambios de estado de un texto; el guardado
+#     de un texto (alta o edición del singleton) registra `donation.text.update`;
+#     reordenar registra `donation.update`; datos + estado en un mismo guardado
+#     → dos filas. `targetKind` NO cambia (`content`: `targetId` null y
+#     `targetLabel` "Donaciones · <entidad> · <número>" o "Donaciones · Texto
+#     introductorio" / "Donaciones · Texto de uso").
+#   - La prosa del catálogo de permisos (F2) NO cambia: sigue en 10 permisos.
+#
+# NORMALIZACIÓN DE CAMPOS `*En` (patrón I6 de F3): todo campo `*En` acepta ""
+# o solo espacios y el servidor lo guarda como `null` (trim antes de persistir).
+# `null`/"" significan "sin traducción" y disparan el fallback `en → es` del
+# servidor (FR-008). La regla del español base es POR CAMPO (Decisión 8):
+# `holderEn` sin `holderEs` → 400 invalid con `details.holderEs`; `textEn` sin
+# `textEs` → 400 invalid con `details.textEs`.
+#
+# Formato uniforme (F1): 2xx → el DTO de la operación; 4xx/5xx → ErrorEnvelope.
+#
+# Convenciones: operaciones en inglés (camelCase), segmentos de URL en español
+# donde el dominio lo pide (arquitectura.md §5.1), campos en camelCase con
+# sufijo Es/En solo donde hay traducción, additionalProperties: false.
+#
+# Idioma (R3-2 de F3): la superficie pública se resuelve por `?lang=es|en`
+# (por defecto `es`, idioma base) con fallback por campo `en → es` en el server:
+# NUNCA sale un campo vacío por falta de traducción (FR-008/SC-006).
+#
+# Borradores (FR-012/SC-002): este contrato NO tiene ninguna operación pública
+# que devuelva un método ni un texto en `draft`. Las claves `items`, `intro` y
+# `usage` se OMITEN cuando no hay nada publicado (SC-010: sin secciones vacías;
+# la navegación oculta la entrada, la portada no renderiza el bloque y la ruta
+# SPA `/ofrendas` redirige a la portada — decisión del frontend, no de este
+# contrato —).
+# ============================================================================
+openapi: 3.1.0
+info:
+  title: API — Iglesia Simiente Santa
+  version: 0.8.0
+  description: |
+    Delta de F7 (ofrendas y diezmos) sobre el contrato vivo. Se fusiona de
+    forma aditiva y sube la versión del contrato vivo de 0.7.0 a **0.8.0**
+    (§8.1.10: minor al añadir operaciones y esquemas).
+
+    ## Nuevos en este delta
+
+    - **Sección pública de ofrendas y diezmos** `GET /api/v1/ofrendas?lang=es|en`
+    (FR-002…FR-006): el documento de la sección —**texto introductorio**
+    («cómo donar», Q11) si está publicado, los **métodos de donación
+    publicados** agrupados por tipo (cuentas IBAN y después números de SINPE
+    Móvil, con el orden manual de cada grupo: FR-004) y el **texto de uso de
+    las donaciones** (Q5) si está publicado—. Cada método trae `kind`, `number`
+    (el valor exacto normalizado), `institution`, `currency` (solo IBAN) y
+    `holder` cuando existe. Los campos traducibles vienen ya resueltos a `lang`
+    con fallback `en → es` (FR-008). Sin autenticación, sin filtros ni
+    paginación (FR-004). `Cache-Control: no-store`.
+    - **Bloque de la portada** `GET /api/v1/portada/ofrendas?lang=es|en`
+    (FR-022, US6, SC-014): extracto con **hasta 5 métodos** publicados (tope
+    **firme del servidor**: sin parámetro de límite) en el mismo orden de la
+    sección y con el **mismo esquema de ítem** ("no un modelo nuevo"), para la
+    tarjeta compacta que enlaza a `/ofrendas`. Con 0 métodos publicados la
+    respuesta viene **sin `items`** y la portada **no renderiza el bloque**.
+    `Cache-Control: no-store`.
+    - **Gestión de métodos de donación** bajo `/api/v1/admin/donaciones`
+    (FR-010/FR-019), protegida con el permiso del catálogo de F2 `donaciones`
+    verificado **en el servidor** junto con la sesión y el CSRF (FR-011; el
+    permiso ya existe — F7 NO crea permisos nuevos): CRUD con `kind`, `number`
+    (se acepta tal como lo escribe el equipo y el servidor lo normaliza),
+    `institution`, `holderEs`/`holderEn` opcionales, `currency` solo en IBAN,
+    `sortOrder` y publicación por elemento (FR-012/FR-013).
+    - **Gestión de los dos textos** bajo `/api/v1/admin/donaciones/textos`
+    (FR-010/FR-021): `intro` y `usage`, cada uno con su `publicationState`
+    (Q10), con `PUT` que crea o reemplaza (singleton).
+    - Toda operación queda registrada en la auditoría de F2 (FR-017): ver los
+    cambios de `AdminActionItem` más arriba.
+
+    ## Números exactos (FR-003/FR-015/FR-016)
+
+    `number` es **siempre** el valor exacto normalizado guardado: IBAN con solo
+    los caracteres del número (en mayúsculas; la presentación agrupada en
+    bloques es responsabilidad del cliente y no altera el valor) y SINPE Móvil
+    como `+506` + 8 dígitos. El **input** del panel acepta el número con
+    espacios o guiones y, en SINPE, con o sin `+506`; el servidor normaliza y
+    valida (IBAN por estructura y longitud exacta por país —costarricense e
+    internacional—; SINPE = celular costarricense de 8 dígitos). Un número mal
+    formado se rechaza con `400 invalid` y `details.number`, sin guardar nada.
+
+    ## Códigos que F7 puede devolver (no añade ninguno nuevo)
+
+    | HTTP | `error.code` | Cuándo |
+    |---|---|---|
+    | 400 | `invalid` | datos inválidos/incompletos con `details` por campo (`kind`/`number`/`institution` vacíos o mal formados, IBAN con estructura o longitud no válidas, SINPE que no es un celular costarricense de 8 dígitos, `currency` faltante en IBAN o presente en SINPE, `*En` sin su `*Es`, textos que exceden 2.000 caracteres, `sortOrder` fuera de rango, `lang` o `textKey` fuera de su catálogo) |
+    | 401 | `unauthenticated` | sin sesión válida en operaciones del panel |
+    | 403 | `forbidden` | sin el permiso `donaciones` (independiente de los demás permisos de módulo), o cuenta con cambio de contraseña pendiente |
+    | 404 | `not_found` | método de donación inexistente (`{id}`) |
+    | 409 | `conflict` | duplicado (mismo tipo y mismo número normalizado **de otro método**: el chequeo excluye la fila que se edita, de modo que editar un método sin cambiar su número responde `200` y nunca `409` contra sí mismo) |
+    | 500 | `internal` | error inesperado (mensaje genérico) |
+
+  contact:
+    name: Equipo del proyecto
+servers:
+  - url: http://localhost:8080
+    description: Entorno local de desarrollo (Docker Compose)
+tags:
+  - name: ofrendas
+    description: "Sección pública «Ofrendas y diezmos» (visitante, sin autenticación; solo publicado)"
+  - name: portada-ofrendas
+    description: "Bloque de ofrendas y diezmos de la portada (visitante; hasta 5 ítems, oculto sin métodos publicados)"
+  - name: donaciones-admin
+    description: Gestión de ofrendas y diezmos desde el panel (permiso `donaciones` de F2)
+paths:
+  /api/v1/ofrendas:
+    get:
+      tags: [ofrendas]
+      operationId: getOfrendas
+      summary: "Ofrendas y diezmos publicadas (sección pública completa)"
+      description: |
+        Devuelve el documento de la sección «Ofrendas y diezmos» (FR-002…FR-006):
+        el **texto introductorio** («cómo donar», Q11) cuando está publicado, los
+        **métodos de donación publicados** y el **texto de uso de las
+        donaciones** (Q5) cuando está publicado. Sin autenticación, sin filtros
+        ni paginación (FR-004: el visitante no hace nada para verlos todos).
+
+        **Orden y agrupación (FR-004/Q1)**: `items` viene en el orden de la
+        sección —**primero todos los métodos `iban` y después todos los
+        `sinpe`**, cada grupo por `sortOrder`, `id`— y cada ítem lleva `kind`,
+        de modo que el cliente compone los dos grupos sin ordenar nada. Con
+        menos elementos se muestran exactos los que hay, sin huecos.
+
+        **Campos de cada método (FR-003/Q2)**: `kind`, `number` (íntegro y
+        exacto: el valor normalizado guardado — FR-015/FR-016 —), `institution`
+        siempre; `currency` **solo en las cuentas IBAN** (el SINPE nunca lo
+        muestra) y `holder` **solo cuando se rellena** (la ficha se compone sin
+        líneas vacías ni marcadores: US1 esc. 5). La presentación del IBAN
+        agrupado en bloques es del cliente y no altera el valor de `number`
+        (SC-009: el número debe poder copiarse o transcribirse sin error).
+
+        **Textos (FR-021/Q5/Q11/Q10)**: `intro` y `usage` son objetos `{text}`
+        con el cuerpo ya localizado; cada uno se **omite si no está publicado**
+        (un texto en borrador no deja hueco: US3 esc. 7) y solo se muestra si
+        existe.
+
+        **Solo contenido publicado (FR-012/SC-002)**: un borrador no aparece
+        por ninguna vía. Los campos traducibles (`holder`, `text`) vienen
+        resueltos a `lang` con fallback `en → es` (FR-008): nunca un campo
+        vacío por falta de traducción; `kind`, `number`, `institution` y
+        `currency` **no cambian con el idioma** (FR-007/SC-006). Cada lista
+        viene acotada por una **constante de seguridad del servidor: máximo 200
+        métodos** (`maxPublicItems`); si el volumen real la superara, se sirven
+        los 200 primeros ya ordenados.
+
+        **Sin nada publicado (FR-005/SC-010)**: cuando no hay métodos ni textos
+        publicados, la respuesta es `200` con **todas las claves de contenido
+        omitidas** (`{lang}`): la navegación oculta la entrada «Ofrendas y
+        diezmos», la portada no renderiza el bloque y la ruta SPA `/ofrendas`
+        **redirige a la portada** (decisión del cliente 2026-10-14, distinta a
+        propósito de `/eventos` de F4), pero **este contrato no cambia**: la
+        operación sigue respondiendo `200` — un `3xx` o un `404` romperían el
+        sobre `{lang, …}` y a sus consumidores; la redirección es una decisión
+        de presentación del frontend —. `Cache-Control: no-store`.
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8).
+          schema:
+            type: string
+            enum: [es, en]
+            default: es
+      responses:
+        "200":
+          description: "Sección resuelta a `lang`. Sin nada publicado la respuesta viene solo con `lang`: la ruta SPA `/ofrendas` redirige a la portada en ese caso."
+          headers:
+            Cache-Control:
+              description: Siempre `no-store` (SC-003: los cambios guardados se ven en la primera carga posterior).
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfrendasPublicas"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/portada/ofrendas:
+    get:
+      tags: [portada-ofrendas]
+      operationId: getPortadaOfrendas
+      summary: "Bloque de ofrendas y diezmos de la portada: hasta 5 métodos publicados"
+      description: |
+        Extracto de métodos de donación para el bloque de la portada
+        (US6/FR-022/SC-014, Q7). Devuelve **hasta 5 métodos** publicados —tope
+        **firme del servidor** (FR-022): no hay parámetro de límite ni
+        paginación— en el **orden de la sección** (`iban` primero, `sinpe`
+        después, cada grupo por `sortOrder`, `id`) y con el **mismo esquema de
+        ítem** `MetodoDonacionPublico` de la sección (FR-022: "el bloque es un
+        extracto de los mismos métodos de donación, no un modelo nuevo"); la
+        tarjeta compacta es composición de `ux.md` y el detalle vive en
+        `/ofrendas` (el botón del bloque lleva allí).
+
+        Con menos de 5 publicados se devuelven exactos los que hay (sin huecos
+        ni marcadores, SC-014); con más, los 5 primeros. Cuando **no hay ningún
+        método publicado** la respuesta viene **sin `items`** (clave omitida,
+        equivalente a vacía y nunca `null`) y la portada **no renderiza el
+        bloque en absoluto** (a diferencia del bloque «Lo que viene» de F4,
+        aquí no hay mensaje de sección vacía). **Este bloque solo mira los
+        métodos**: aunque haya textos publicados, sin métodos el bloque no
+        existe (FR-022). `Cache-Control: no-store`.
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8).
+          schema:
+            type: string
+            enum: [es, en]
+            default: es
+      responses:
+        "200":
+          description: "Extracto de la portada resuelto a `lang`. Sin métodos publicados la respuesta viene sin `items`: la portada no pinta el bloque."
+          headers:
+            Cache-Control:
+              description: Siempre `no-store` (los cambios guardados y las retiradas se reflejan en la primera carga).
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortadaOfrendas"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/donaciones:
+    get:
+      tags: [donaciones-admin]
+      operationId: listDonaciones
+      summary: Lista de métodos de donación para el panel (incluye borradores)
+      description: |
+        Listado paginado **completo** del módulo (exige el permiso
+        `donaciones`): incluye borradores y ambos idiomas de cada campo (este
+        lado es el único que los ve). Orden: el **mismo que ve el visitante**
+        (`iban` antes que `sinpe`; dentro de cada grupo `sortOrder`, `id` —
+        US2 esc. 10). Filtro opcional por estado de publicación. Cada fila
+        trae `number` **normalizado** (el valor guardado) e `institution`.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - name: publicationState
+          in: query
+          required: false
+          description: Filtra por estado de publicación (FR-012). Sin valor: todos.
+          schema:
+            $ref: "#/components/schemas/PublicationState"
+      responses:
+        "200":
+          description: Listado paginado de métodos de donación.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonacionAdminList"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    post:
+      tags: [donaciones-admin]
+      operationId: createDonacion
+      summary: Crea un método de donación
+      description: |
+        Alta (FR-010/FR-019). Obligatorios **solo** `kind`, `number` e
+        `institution` (Q2) y, además, `currency` **si `kind` es `iban`**
+        (FR-014: "la moneda solo aplica y es obligatoria dentro de las cuentas
+        IBAN"); `holderEs`/`holderEn` son opcionales ("si se rellena, se
+        publica") y el SINPE **nunca** lleva `currency`. `publicationState`
+        opcional (por defecto `draft`) y `sortOrder` opcional (por defecto 0).
+
+        **Números (FR-015/FR-016, Q3/Q4)**: `number` se acepta tal como lo
+        escribe el equipo —IBAN con espacios o guiones; SINPE con o sin
+        `+506`— y el servidor lo **normaliza** (IBAN: solo los caracteres del
+        número, en mayúsculas; SINPE: `+506` + 8 dígitos) y lo **valida**
+        (IBAN por estructura y longitud exacta por país —costarricense e
+        internacional válido según la estructura IBAN; el costarricense es
+        `CR` + 20 dígitos = 22: `CR05 0152-0200-1234-5678-90` →
+        `CR05015202001234567890`—; SINPE = celular costarricense de 8 dígitos).
+        Ante un número que no cumple, `400 invalid`
+        con `details.number` y **sin guardado parcial**.
+
+        **Duplicados (R7-9)**: si **otro** método ya tiene ese mismo `kind` +
+        `number` normalizado, el alta devuelve `409 conflict` (en el alta no
+        hay fila propia que excluir del chequeo).
+
+        **Idiomas (FR-007/Decisión 8)**: `holderEn` exige `holderEs`;
+        `institution`, `kind`, `number` y `currency` no son traducibles (un
+        único valor idéntico en ambos idiomas). Los límites son 160 caracteres
+        para `institution` y `holder`.
+
+        Auditoría: en el alta se registra **solo `donation.create`** (también
+        con `publicationState: published`); `donation.publish`/
+        `donation.unpublish` solo registran **cambios de estado** sobre un
+        método existente, nunca el alta.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DonacionInput"
+      responses:
+        "201":
+          description: Método de donación creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonacionAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/donaciones/{id}:
+    get:
+      tags: [donaciones-admin]
+      operationId: getDonacion
+      summary: Detalle de un método de donación (ambos idiomas)
+      description: |
+        Ficha completa para el formulario de edición (incluye borradores; exige
+        el permiso `donaciones`).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/DonacionItemId"
+      responses:
+        "200":
+          description: Método de donación con todos sus datos.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonacionAdmin"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    patch:
+      tags: [donaciones-admin]
+      operationId: updateDonacion
+      summary: Edita un método de donación (los campos presentes)
+      description: |
+        Actualización parcial (FR-010): solo se tocan los campos presentes; un
+        campo con `null` explícito borra su valor opcional (p. ej. `holderEs`,
+        `holderEn`). La transacción del guardado escribe **la fila completa ya
+        fusionada** —el `PATCH` **fusiona los campos presentes sobre la fila
+        actual** y los campos ausentes no cambian—: última escritura completa
+        gana (R7-15). Si `number` viene en el `PATCH` se normaliza y valida
+        igual que en el alta (las mismas reglas se aplican sobre el resultado
+        ya fusionado). El chequeo de duplicados **excluye la fila que se
+        edita**: una edición que no cambia `number` —o que lo cambia a un valor
+        que no coincide con el de otro método— responde `200`; el `409`
+        `conflict` solo salta cuando el `kind` + `number` normalizado del
+        conjunto fusionado coincide con el de **otro** método (R7-9).
+
+        Si el método ya estaba publicado, los cambios guardados son visibles de
+        inmediato (FR-013: se publica al guardar); `publicationState` cambia el
+        estado por elemento (FR-012) y `sortOrder` reordena **dentro de su
+        grupo** (FR-004: el visitante ve exactamente ese orden).
+
+        Auditoría: un cambio de datos registra `donation.update` (incluye
+        `sortOrder`); solo de estado, `donation.publish`/`donation.unpublish`;
+        ambos a la vez, **una fila por operación**.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/DonacionItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DonacionPatch"
+      responses:
+        "200":
+          description: Método de donación actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonacionAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+    delete:
+      tags: [donaciones-admin]
+      operationId: deleteDonacion
+      summary: Elimina un método de donación (definitivo, con confirmación en la interfaz)
+      description: |
+        Borrado definitivo (default revisable: sin papelera ni recuperación, como
+        F3/F4/F6). Desaparece de lo público de inmediato (sección y bloque de la
+        portada). La interfaz pide confirmación explícita antes de llamar
+        (US2 esc. 7). Auditoría: `donation.delete`.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/DonacionItemId"
+      responses:
+        "204":
+          description: Método de donación eliminado.
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/donaciones/textos:
+    get:
+      tags: [donaciones-admin]
+      operationId: getDonacionTextos
+      summary: "Los dos textos de la sección (introductorio y de uso), en ambos idiomas"
+      description: |
+        Estado de los dos textos libres de la sección (FR-021/Q5/Q11): `intro`
+        («cómo donar») y `usage` («en qué utilizamos esas donaciones»), cada uno
+        con su **propio** `publicationState` (Q10). Son singletons por clave:
+        `intro` y `usage` vienen en `null` hasta el primer guardado (patrón de
+        `GET /api/v1/admin/portada` de F3). Exige el permiso `donaciones`.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Los dos textos (o `null` si aún no se guardaron).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonacionTextosAdmin"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/donaciones/textos/{textKey}:
+    put:
+      tags: [donaciones-admin]
+      operationId: updateDonacionTexto
+      summary: "Guarda un texto de la sección (crea o reemplaza el singleton)"
+      description: |
+        Reemplazo completo del texto indicado por `textKey` (`intro` o `usage`;
+        FR-021/Q5/Q11): `textEs` obligatorio, `textEn` opcional (Decisión 8) y
+        `publicationState` (por defecto `draft`). Texto **plano** de uno o
+        varios párrafos, límite **2.000 caracteres por idioma** (default
+        revisable de la spec): se guarda íntegro, sin interpretar (constitución
+        §IV; tildes, `ñ`, `¿¡` y emojis intactos). Crea la fila si no existe
+        (singleton por clave) y **no hay operación de borrado**: un texto se
+        retira poniéndolo en `draft` (FR-010 solo habla de "mantenerlos").
+
+        Si el texto ya estaba publicado, los cambios guardados son visibles de
+        inmediato (FR-013). Auditoría: un cambio de datos registra
+        `donation.text.update` (también el primer guardado); un cambio solo de
+        estado registra `donation.text.publish`/`donation.text.unpublish`; un
+        cambio que modifica **datos y estado** deja **ambas** filas (FR-017).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/DonacionTextKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DonacionTextoInput"
+      responses:
+        "200":
+          description: Texto guardado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonacionTextoAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+components:
+  parameters:
+    DonacionItemId:
+      name: id
+      in: path
+      required: true
+      description: Identificador (UUID) del método de donación.
+      schema:
+        type: string
+        format: uuid
+    DonacionTextKey:
+      name: textKey
+      in: path
+      required: true
+      description: |
+        Clave del texto de la sección: `intro` («cómo donar», Q11) o `usage`
+        («en qué utilizamos esas donaciones», Q5). Cualquier otra clave → 400.
+      schema:
+        type: string
+        enum: [intro, usage]
+
+  schemas:
+    # ------------------------------------------------------------ comunes
+    MetodoKind:
+      type: string
+      enum: [iban, sinpe]
+      description: |
+        Tipo de método de donación (Q1/FR-019): `iban` = cuenta bancaria
+        (costarricense o internacional) y `sinpe` = número de SINPE Móvil. El
+        orden de la sección es **primero `iban` y después `sinpe`** (FR-004).
+        No es contenido traducible (FR-007/SC-006).
+    Moneda:
+      type: string
+      enum: [CRC, USD]
+      description: |
+        Moneda de la cuenta (Q2/FR-019): `CRC` = colones, `USD` = dólares.
+        **Solo en cuentas IBAN** (obligatoria ahí; FR-014) y **nunca** en SINPE.
+        La etiqueta visible («Colones (₡)» / «Dólares (US$)») la localiza el
+        cliente: la moneda **no** es contenido traducible (FR-007/SC-006).
+    NumeroNormalizado:
+      type: string
+      maxLength: 34
+      pattern: "^(?:[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}|\\+506[0-9]{8})$"
+      description: |
+        Número **exacto y normalizado** tal como se guarda y se publica
+        (FR-003/FR-015/FR-016): cuentas IBAN con solo los caracteres del número
+        en mayúsculas (longitud exacta por país: p. ej. `CR` = 22, o sea `CR` +
+        20 dígitos → `CR05015202001234567890`) y SINPE Móvil
+        como `+506` + 8 dígitos. El **input** del panel acepta el número con
+        espacios o guiones y, en SINPE, con o sin `+506`; el servidor normaliza
+        y valida (SC-009: 0 números mal formados aceptados). La presentación
+        del IBAN agrupada en bloques es del cliente y **no altera** este valor
+        (FR-015: quitar los separadores de la presentación devuelve `number`).
+
+    # ------------------------------------------------------------- público
+    OfrendasPublicas:
+      type: object
+      required: [lang]
+      description: |
+        Documento de la sección «Ofrendas y diezmos» (FR-002…FR-006), resuelto
+        a `lang`. `items`, `intro` y `usage` están presentes **solo** si hay
+        algo publicado; vacío/ausente significa "no hay nada publicado" y la
+        navegación oculta la entrada, la portada no renderiza el bloque y la
+        ruta SPA `/ofrendas` redirige a la portada (FR-005/FR-022/SC-010; la
+        redirección es del frontend y este documento sigue siendo `200`). Las
+        claves vacías se **omiten** (SC-010/US3 esc. 7: sin huecos) y nunca son
+        `null` (§8.1.2). `items` está acotada a **200** elementos (constante de
+        seguridad del servidor) en el orden de la sección: **primero los
+        métodos `iban` y después los `sinpe`**, cada grupo por `sortOrder`,
+        `id` (FR-004).
+      properties:
+        lang:
+          type: string
+          enum: [es, en]
+          description: Idioma en el que se resolvieron los contenidos.
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/MetodoDonacionPublico"
+        intro:
+          $ref: "#/components/schemas/TextoPublico"
+          description: |
+            Texto introductorio («cómo donar», Q11). Ausente si no está
+            publicado o si nunca se guardó (FR-012/Q10).
+        usage:
+          $ref: "#/components/schemas/TextoPublico"
+          description: |
+            Texto de uso de las donaciones («en qué utilizamos esas
+            donaciones», Q5). Ausente si no está publicado o si nunca se
+            guardó (FR-012/Q10).
+      additionalProperties: false
+    MetodoDonacionPublico:
+      type: object
+      required: [id, kind, number, institution]
+      description: |
+        Método de donación **publicado** para el visitante (FR-003). `kind`,
+        `number` e `institution` están siempre; `currency` **solo** aparece en
+        las cuentas IBAN (el SINPE nunca lo muestra, Q2) y `holder` **solo**
+        cuando el titular existe (US1 esc. 5: la ficha se compone sin líneas
+        vacías ni marcadores). **Es el mismo esquema que usa el bloque de la
+        portada** (FR-022: "el bloque es un extracto de los mismos métodos, no
+        un modelo nuevo"). `number` es íntegro y exacto (SC-009) y no cambia
+        con el idioma (FR-007/SC-006); `holder` sí puede venir del español por
+        fallback (FR-008).
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/MetodoKind"
+        number:
+          allOf:
+            - $ref: "#/components/schemas/NumeroNormalizado"
+          description: |
+            Número exacto y normalizado (IBAN en mayúsculas y sin espacios ni
+            guiones; SINPE como `+506` + 8 dígitos). El cliente presenta el
+            IBAN agrupado en bloques (FR-003) **sin alterar** este valor.
+        institution:
+          type: string
+          maxLength: 160
+          description: |
+            Entidad financiera (nombre del banco), **idéntica en ambos idiomas**
+            (FR-007/SC-006: no es contenido traducible).
+        currency:
+          $ref: "#/components/schemas/Moneda"
+        holder:
+          type: string
+          maxLength: 160
+          description: |
+            Titular de la cuenta, ya localizado a `lang` (puede provenir del
+            español por fallback). Ausente si no existe (Q2: opcional).
+      additionalProperties: false
+    TextoPublico:
+      type: object
+      required: [text]
+      description: |
+        Texto libre publicado de la sección (FR-021): uno o varios párrafos de
+        texto plano, ya localizado a `lang` con fallback `en → es`. Se compone
+        sin huecos ni marcadores cuando no existe (la clave entera se omite
+        entonces).
+      properties:
+        text:
+          type: string
+          maxLength: 2000
+          description: Cuerpo del texto, texto plano (≤2.000 caracteres por idioma).
+      additionalProperties: false
+    PortadaOfrendas:
+      type: object
+      required: [lang]
+      description: |
+        Bloque de ofrendas y diezmos de la portada (US6, FR-022/SC-014): hasta
+        **5** métodos publicados en el orden de la sección (tope firme del
+        servidor). `items` está presente **solo** si hay métodos publicados;
+        sin ninguno la portada **no renderiza el bloque** (sin mensaje, a
+        diferencia del bloque «Lo que viene» de F4). Nunca es `null`. Este
+        bloque **solo mira los métodos**: los textos de la sección no forman
+        parte de él.
+      properties:
+        lang:
+          type: string
+          enum: [es, en]
+          description: Idioma en el que se resolvieron los contenidos.
+        items:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/MetodoDonacionPublico"
+      additionalProperties: false
+
+    # ------------------------------------------------------------- panel
+    DonacionAdminList:
+      type: object
+      required: [items, total, limit, offset]
+      description: Listado paginado de métodos de donación del panel (§8.1.2/§8.1.3).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DonacionAdmin"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    DonacionAdmin:
+      type: object
+      required: [id, kind, number, institution, publicationState, sortOrder, createdAt, updatedAt]
+      description: |
+        Método de donación completo del panel (FR-010/FR-019): ambos idiomas
+        donde hay traducción (es obligatorio por campo relleno, en opcional) y
+        el estado. `number` viene **normalizado** (el valor guardado); lo que
+        escribió el equipo antes de normalizar no se conserva (FR-015).
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/MetodoKind"
+        number:
+          $ref: "#/components/schemas/NumeroNormalizado"
+        institution:
+          type: string
+          maxLength: 160
+          description: Entidad financiera (nombre del banco); no traducible (FR-007).
+        holderEs:
+          type: [string, "null"]
+          maxLength: 160
+          description: Titular de la cuenta en español (opcional; Q2).
+        holderEn:
+          type: [string, "null"]
+          maxLength: 160
+        currency:
+          oneOf:
+            - $ref: "#/components/schemas/Moneda"
+            - type: "null"
+          description: |
+            Moneda de la cuenta (solo `kind: iban`; obligatoria ahí y prohibida
+            en SINPE — Q2/FR-014 —).
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        sortOrder:
+          type: integer
+          description: Valor de orden **dentro del grupo de tipo** (Q1/FR-004); el visitante ve `iban` primero y luego `sinpe`, cada grupo por `sortOrder`, `id`.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    DonacionInput:
+      type: object
+      required: [kind, number, institution]
+      description: |
+        Alta de método de donación (FR-014/FR-019): obligatorios **solo**
+        `kind`, `number` e `institution` (Q2) y `currency` si `kind` es `iban`
+        (FR-014). `holderEs`/`holderEn` opcionales; `holderEn` exige
+        `holderEs`. `number` se acepta **tal como lo escribe el equipo** (IBAN
+        con espacios o guiones; SINPE con o sin `+506`) y el servidor lo
+        normaliza y valida (FR-015/FR-016/Q3/Q4). `publicationState` por
+        defecto `draft`; `sortOrder` por defecto 0. El SINPE **no** acepta
+        `currency` (Q2).
+      properties:
+        kind:
+          $ref: "#/components/schemas/MetodoKind"
+        number:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: |
+            Número tal como lo escribe el equipo (se admiten espacios y
+            guiones; el SINPE, con o sin `+506`). El servidor guarda el valor
+            normalizado (R7-2/R7-3).
+        institution:
+          type: string
+          minLength: 1
+          maxLength: 160
+          description: Entidad financiera (nombre del banco); obligatoria y no traducible (Q2/FR-007).
+        holderEs:
+          type: [string, "null"]
+          maxLength: 160
+        holderEn:
+          type: [string, "null"]
+          maxLength: 160
+        currency:
+          oneOf:
+            - $ref: "#/components/schemas/Moneda"
+            - type: "null"
+          description: Obligatoria si `kind: iban`; debe ausentarse con `kind: sinpe` (Q2).
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        sortOrder:
+          type: integer
+          description: Valor de orden dentro del grupo de tipo (por defecto 0; Q1).
+      additionalProperties: false
+    DonacionPatch:
+      type: object
+      description: |
+        Edición parcial: solo los campos presentes se modifican. Un campo con
+        `null` explícito borra su valor opcional (p. ej. `holderEs`,
+        `holderEn`). Las mismas reglas de coherencia que el alta se aplican
+        **sobre el resultado ya fusionado**: `holderEn` exige `holderEs`,
+        `currency` obligatoria en IBAN y prohibida en SINPE, `number` (si se
+        envía) normalizado y validado por tipo (FR-015/FR-016). Cambiar `kind`
+        revalida el número y la moneda del conjunto fusionado.
+      properties:
+        kind:
+          $ref: "#/components/schemas/MetodoKind"
+        number:
+          type: string
+          minLength: 1
+          maxLength: 60
+        institution:
+          type: string
+          minLength: 1
+          maxLength: 160
+        holderEs:
+          type: [string, "null"]
+          maxLength: 160
+        holderEn:
+          type: [string, "null"]
+          maxLength: 160
+        currency:
+          oneOf:
+            - $ref: "#/components/schemas/Moneda"
+            - type: "null"
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        sortOrder:
+          type: integer
+      additionalProperties: false
+    DonacionTextosAdmin:
+      type: object
+      required: [intro, usage]
+      description: |
+        Los dos textos de la sección (Q5/Q11), cada uno con su **propio**
+        `publicationState` (Q10). Son singletons por clave: cada clave viene en
+        `null` hasta el primer guardado (patrón de F3, `PortadaAdmin`).
+      properties:
+        intro:
+          oneOf:
+            - $ref: "#/components/schemas/DonacionTextoAdmin"
+            - type: "null"
+          description: Texto introductorio («cómo donar», Q11); `null` hasta el primer guardado.
+        usage:
+          oneOf:
+            - $ref: "#/components/schemas/DonacionTextoAdmin"
+            - type: "null"
+          description: Texto de uso de las donaciones (Q5); `null` hasta el primer guardado.
+      additionalProperties: false
+    DonacionTextoAdmin:
+      type: object
+      required: [textKey, textEs, publicationState, createdAt, updatedAt]
+      description: |
+        Texto libre de la sección (FR-021): uno o varios párrafos de texto
+        plano (≤2.000 caracteres por idioma), con `textEs` obligatorio y
+        `textEn` opcional (Decisión 8) y su propio estado de publicación (Q10).
+      properties:
+        textKey:
+          type: string
+          enum: [intro, usage]
+        textEs:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        textEn:
+          type: [string, "null"]
+          maxLength: 2000
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    DonacionTextoInput:
+      type: object
+      required: [textEs]
+      description: |
+        Guardado completo del texto (crea o reemplaza el singleton, patrón F3).
+        `textEs` obligatorio (1…2.000 caracteres), `textEn` opcional (exige
+        `textEs`) y `publicationState` por defecto `draft`. Texto plano, sin
+        interpretar (constitución §IV).
+      properties:
+        textEs:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        textEn:
+          type: [string, "null"]
+          maxLength: 2000
+        publicationState:
+          $ref: "#/components/schemas/PublicationState"
+      additionalProperties: false

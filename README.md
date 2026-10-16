@@ -1,6 +1,6 @@
 # Simiente Santa
 
-Sitio web de la Iglesia Simiente Santa: sitio público (desde F3 la portada con la información general de la iglesia; desde F10 con el sistema visual y de movimiento moderno; desde F4 la sección de eventos y actividades y el bloque «Lo que viene» de la portada; desde F6 la sección de ministerios y su bloque en la portada; grupos, donaciones, noticias y medios por llegar) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
+Sitio web de la Iglesia Simiente Santa: sitio público (desde F3 la portada con la información general de la iglesia; desde F10 con el sistema visual y de movimiento moderno; desde F4 la sección de eventos y actividades y el bloque «Lo que viene» de la portada; desde F6 la sección de ministerios y su bloque en la portada; desde F7 la sección de ofrendas y diezmos y su bloque en la portada; grupos, noticias y medios por llegar) y panel de administración. El detalle de lo que se construye, fase por fase, está en [`docs/producto/roadmap.md`](docs/producto/roadmap.md).
 
 ## Qué es la F1 (Estructura base)
 
@@ -76,6 +76,19 @@ La funcionalidad **F6** es la segunda sección de contenido dinámico del sitio:
 - **API y datos**: `GET /api/v1/ministerios?lang=es|en` (sección) y `GET /api/v1/portada/ministerios?lang=es|en` (bloque, tope 5 resuelto en el servidor, `no-store`), más el subgrupo `/api/v1/admin/ministerios` (lista, alta, `GET`/`PATCH`/`DELETE` por id e imagen); contrato vivo a **0.7.0**; migraciones **`000010`** (tabla `ministries`) y **`000011`** (los 8 códigos de auditoría); sin dependencias nuevas ni variables de entorno nuevas.
 
 Rama: `006-ministerios`. Spec, plan, UX y quickstart en [`specs/006-ministerios/`](specs/006-ministerios/).
+
+## Qué es F7 (Ofrendas y diezmos)
+
+La funcionalidad **F7** es la tercera sección de contenido dinámico del sitio: **cómo apoyar a la iglesia**, con el módulo del panel que la administra y su bloque en la portada. La sección pública se llama **«Ofrendas y diezmos»** y vive en **`/ofrendas`**; el permiso y el módulo del panel siguen llamándose **«donaciones»**.
+
+- **Sección pública en <http://localhost:5173/ofrendas>**: visible **sin cuenta ni registro**, con el **texto introductorio** («cómo donar»), el grupo de **cuentas IBAN** y el grupo de **números de SINPE Móvil** (agrupado por tipo, con **orden manual** dentro de cada grupo) y el **texto de uso de las donaciones**. Cada ficha muestra **tipo, número, entidad financiera y —si existe— titular**, y la **moneda (colones o dólares) solo en las cuentas IBAN**. El **IBAN se muestra agrupado en bloques** y el **SINPE en su formato normalizado**, con un botón **«Copiar número»** que copia el **número exacto guardado**. **Sin imágenes** y **bilingüe es/en** con fallback al español (los números y datos de la cuenta **no** se traducen).
+- **Números validados**: el **IBAN** por estructura y longitud (costarricense e internacional); el **SINPE Móvil** como **celular costarricense de 8 dígitos**, con o sin `+506`, normalizado al guardar. Un número mal formado se rechaza con un aviso claro y **no se guarda nada a medias**.
+- **Aparece solo cuando hay contenido**: mientras no haya nada publicado, la entrada **«Ofrendas y diezmos»** no se muestra y **`/ofrendas` redirige a la portada** de forma silenciosa y sin aviso (a propósito distinto de la sección de eventos, que muestra un aviso sin salir).
+- **Bloque «Ofrendas y diezmos» en la portada**, colocado **justo después del bloque de ministerios**: hasta **5 métodos** (los primeros según el orden de la sección) con el botón **«Ver formas de ofrendar»**; **si no hay ningún método publicado, el bloque no aparece**.
+- **Panel `/panel/donaciones`** bajo el permiso **«Donaciones»** de F2 —**ya existente: F7 no añade permisos ni migración de permisos** y el catálogo sigue en **10**—: listado agrupado por tipo con orden numérico, alta/edición/eliminación, publicación y retirada **por cada cuenta o número** y **por cada texto**, y validación completa en el servidor (duplicado por tipo+número → `409`). Todo queda en `/panel/auditoria` con **8 códigos** `donation.*` (incluidas las denegaciones). Acceso directo **«Gestión de donaciones»** en Inicio.
+- **API y datos**: `GET /api/v1/ofrendas?lang=es|en` (sección) y `GET /api/v1/portada/ofrendas?lang=es|en` (bloque, tope 5 resuelto en el servidor, `no-store`), más el subgrupo `/api/v1/admin/donaciones` (lista, alta, `GET`/`PATCH`/`DELETE` por id, `GET /textos` y `PUT /textos/{textKey}`); contrato vivo a **0.8.0**; migraciones **`000012`** (`donation_methods` y `donation_texts`) y **`000013`** (los 8 códigos de auditoría); sin dependencias nuevas ni variables de entorno nuevas.
+
+Rama: `007-donaciones`. Spec, plan, UX y quickstart en [`specs/007-donaciones/`](specs/007-donaciones/).
 
 ## Prerrequisito
 
@@ -266,15 +279,18 @@ Los archivos del kit no se editan aquí (regla 10). **Política (FR-016)**: toda
 
 - **E2E de F6 (2026-10-13)**: la suite completa se corre en **cuatro tandas** con `--workers=1` (el límite de 20 intentos de `/api/v1/auth/login` por minuto y por IP lo impone): **1** F2 (`acceso`, `auditoria`), **2** F4 (`agenda-`), **3** F3/F10 (`portada- diseno- movimiento navegacion- tema- qa- status`; el filtro `portada-` arrastra también `portada-ministerios`) y **4** F6 (`ministerios- portada-ministerios`). La tanda 4 de F6 salió **19/19**; los comandos exactos están documentados en la cabecera de `frontend/e2e/ministerios-publica.spec.ts`.
 
+- **E2E de F7 (2026-10-15)**: la suite completa se corre en **cinco tandas** con `--workers=1` (el mismo límite de login): **1** F2 (`acceso`, `auditoria`), **2** F4 (`agenda-`), **3** F3/F10 (`portada- diseno- movimiento navegacion- tema- qa- status`; el filtro `portada-` arrastra también `portada-ministerios` y `portada-ofrendas`), **4** F6 (`ministerios-`) y **5** F7 (`ofrendas- portada-ofrendas`). La tanda 5 de F7 salió **23/23**; los comandos exactos están documentados en la cabecera de `frontend/e2e/ofrendas-publica.spec.ts`.
+
 ## Documentación relacionada
 
-- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1, la 0.2.0 a F2, la 0.3.0 a F3, la 0.4.0 a F10, la 0.5.0 a F4 y la 0.6.0 a F6.
+- [`CHANGELOG.md`](CHANGELOG.md) — cambios notables por versión (Keep a Changelog + SemVer): la 0.1.0 corresponde a F1, la 0.2.0 a F2, la 0.3.0 a F3, la 0.4.0 a F10, la 0.5.0 a F4, la 0.6.0 a F6 y la 0.7.0 a F7.
 - [`docs/entrega/F1-estructura-base.md`](docs/entrega/F1-estructura-base.md) — notas de entrega de F1 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F2-acceso-y-gestion-de-usuarios.md`](docs/entrega/F2-acceso-y-gestion-de-usuarios.md) — notas de entrega de F2 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F3-portada-e-informacion-general.md`](docs/entrega/F3-portada-e-informacion-general.md) — notas de entrega de F3 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F4-eventos-y-actividades.md`](docs/entrega/F4-eventos-y-actividades.md) — notas de entrega de F4 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F10-sistema-de-diseno-y-movimiento.md`](docs/entrega/F10-sistema-de-diseno-y-movimiento.md) — notas de entrega de F10 para el cliente (lenguaje no técnico).
 - [`docs/entrega/F6-ministerios.md`](docs/entrega/F6-ministerios.md) — notas de entrega de F6 para el cliente (lenguaje no técnico).
+- [`docs/entrega/F7-ofrendas-y-diezmos.md`](docs/entrega/F7-ofrendas-y-diezmos.md) — notas de entrega de F7 para el cliente (lenguaje no técnico).
 - [`specs/001-estructura-base/quickstart.md`](specs/001-estructura-base/quickstart.md) — validación ejecutable de F1 de punta a punta (qué se espera en cada escenario).
 - [`specs/002-acceso-gestion-usuarios/quickstart.md`](specs/002-acceso-gestion-usuarios/quickstart.md) — validación ejecutable de F2 (inicialización, sesión, usuarios, roles y auditoría).
 - [`specs/003-portada-info-general/quickstart.md`](specs/003-portada-info-general/quickstart.md) — validación ejecutable de F3 (portada pública, edición desde el panel, publicación por elemento, imágenes, idioma y auditoría).

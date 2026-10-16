@@ -6,12 +6,14 @@ import { AuditPage } from '../features/auditoria/pages/AuditPage';
 import { ActivitiesPage } from '../features/eventos/pages/ActivitiesPage';
 import { CategoriesPage } from '../features/eventos/pages/CategoriesPage';
 import { EventsPage as PanelEventsPage } from '../features/eventos/pages/EventsPage';
+import { DonacionesPage } from '../features/donaciones/pages/DonacionesPage';
 import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
 import { MinistriesPage } from '../features/ministerios/pages/MinistriesPage';
 import { PublicLayout } from '../features/publico/components/PublicLayout';
 import { EventsPage as PublicEventsPage } from '../features/publico/eventos/EventsPage';
 import { MinisteriosPage as PublicMinisteriosPage } from '../features/publico/ministerios/MinisteriosPage';
+import { OfrendasPage as PublicOfrendasPage } from '../features/publico/ofrendas/OfrendasPage';
 import { HomePage } from '../features/publico/pages/HomePage';
 import { RolesPage } from '../features/roles/pages/RolesPage';
 import { StatusPage } from '../features/status/pages/StatusPage';
@@ -20,6 +22,7 @@ import {
   ACTIVIDADES,
   ADMIN_USERS_ROLES,
   CATEGORIAS,
+  DONACIONES,
   EVENTOS,
   MINISTERIOS,
   PORTADA,
@@ -84,6 +87,10 @@ const appRoutes: RouteObject[] = [
       // navegación (T628). Sin publicados redirige a la portada desde la propia
       // página (D-14/P6-21), no desde aquí.
       { path: 'ministerios', element: <PublicMinisteriosPage /> },
+      // «Ofrendas y diezmos» es una **ruta real** (⟲ D-1 de F7) y una sola
+      // entrada de navegación (T727). Sin nada publicado redirige a la portada
+      // desde la propia página (Q9/P7-21), no desde aquí.
+      { path: 'ofrendas', element: <PublicOfrendasPage /> },
     ],
   },
   {
@@ -148,6 +155,12 @@ const appRoutes: RouteObject[] = [
                 // ningún permiso nuevo y el catálogo sigue en 10.
                 element: <RequirePermission code={MINISTERIOS} />,
                 children: [{ path: 'ministerios', element: <MinistriesPage /> }],
+              },
+              {
+                // F7 también usa el permiso **ya sembrado** por F2 (P7-6/Q8):
+                // sin permiso nuevo y sin renombrarlo.
+                element: <RequirePermission code={DONACIONES} />,
+                children: [{ path: 'donaciones', element: <DonacionesPage /> }],
               },
             ],
           },

@@ -8,6 +8,7 @@ import {
   ACTIVIDADES,
   ADMIN_USERS_ROLES,
   CATEGORIAS,
+  DONACIONES,
   EVENTOS,
   MINISTERIOS,
   PORTADA,
@@ -99,6 +100,9 @@ export function PanelLayout() {
   }
   if (hasPermission(session, MINISTERIOS)) {
     items.push({ to: '/panel/ministerios', label: 'Gestión de ministerios' });
+  }
+  if (hasPermission(session, DONACIONES)) {
+    items.push({ to: '/panel/donaciones', label: 'Gestión de donaciones' });
   }
   if (hasPermission(session, ADMIN_USERS_ROLES)) {
     items.push(

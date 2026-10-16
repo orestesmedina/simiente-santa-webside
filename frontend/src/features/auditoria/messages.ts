@@ -58,6 +58,16 @@ export const ACTION_LABELS: Record<string, string> = {
   'ministry.leader.show': 'Publicó la ficha del encargado del ministerio',
   'ministry.leader.hide': 'Ocultó la ficha del encargado del ministerio',
   'ministry.image.upload': 'Subió la imagen de un ministerio',
+  // F7 (migración `000013`, R7-10): 8 códigos del módulo de donaciones, para
+  // que el panel no muestre códigos crudos (ux.md §4.8/§7.1).
+  'donation.create': 'Creó una cuenta o número de donaciones',
+  'donation.update': 'Modificó una cuenta o número de donaciones',
+  'donation.delete': 'Eliminó una cuenta o número de donaciones',
+  'donation.publish': 'Publicó una cuenta o número de donaciones',
+  'donation.unpublish': 'Retiró una cuenta o número de donaciones',
+  'donation.text.update': 'Modificó el texto introductorio o el de uso',
+  'donation.text.publish': 'Publicó el texto introductorio o el de uso',
+  'donation.text.unpublish': 'Retiró el texto introductorio o el de uso',
 };
 
 export function actionLabel(action: string): string {

@@ -266,6 +266,77 @@ describe('HomePage · secciones publicadas (US1, SC-012)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Quiénes somos' })).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
+
+  it('inserta el bloque «Ofrendas y diezmos» tras ministerios y antes de «quiénes somos» (F7/US6)', async () => {
+    responder(completa);
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/portada/proximamente`, () =>
+        HttpResponse.json({ lang: 'es' }),
+      ),
+      http.get(`${API_BASE_URL}/api/v1/portada/ministerios`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [{ id: 'min-1', name: 'Alabanza', schedule: 'Todos los viernes' }],
+        }),
+      ),
+      http.get(`${API_BASE_URL}/api/v1/portada/ofrendas`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [
+            {
+              id: 'don-1',
+              kind: 'iban',
+              number: 'CR05015202001234567890',
+              institution: 'Banco Nacional de Costa Rica',
+              currency: 'CRC',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderHome();
+
+    await screen.findByRole('link', { name: 'Ver formas de ofrendar' });
+
+    // Una sola inserción: entre ministerios y «quiénes somos», sin tocar el resto
+    // de la secuencia de F3 (Q7/FR-022/FR-023).
+    const ministerios = screen.getByRole('heading', { level: 2, name: 'Ministerios' });
+    const ofrendas = screen.getByRole('heading', { level: 2, name: 'Ofrendas y diezmos' });
+    const quienesSomos = screen.getByRole('heading', { level: 2, name: 'Quiénes somos' });
+    expect(ministerios.compareDocumentPosition(ofrendas)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(ofrendas.compareDocumentPosition(quienesSomos)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    // La ficha compacta: chip de tipo + entidad + número; sin enlaces por ficha.
+    expect(screen.getByText('Cuenta IBAN')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Banco Nacional de Costa Rica' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('CR05 0152 0200 1234 5678 90')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver formas de ofrendar' })).toHaveAttribute(
+      'href',
+      '/ofrendas',
+    );
+  });
+
+  it('sin ofrendas publicadas la portada no gana bloque ni mensaje (FR-022)', async () => {
+    responder(completa);
+    let peticiones = 0;
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/portada/ofrendas`, () => {
+        peticiones += 1;
+        return HttpResponse.json({ lang: 'es' });
+      }),
+    );
+
+    renderHome();
+    await screen.findByRole('heading', { name: 'Iglesia Simiente Santa' });
+    await waitFor(() => expect(peticiones).toBe(1));
+    await screen.findByRole('table');
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'Ofrendas y diezmos' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Ver formas de ofrendar' })).toBeNull();
+  });
 });
 
 describe('HomePage · contenido y enlaces (US1, SC-009)', () => {

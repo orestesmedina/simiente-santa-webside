@@ -85,6 +85,30 @@ type AgendaEventDate struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type DonationMethod struct {
+	ID               pgtype.UUID
+	Kind             string
+	Number           string
+	Institution      string
+	HolderEs         pgtype.Text
+	HolderEn         pgtype.Text
+	Currency         pgtype.Text
+	PublicationState string
+	SortOrder        int32
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type DonationText struct {
+	ID               pgtype.UUID
+	TextKey          string
+	BodyEs           string
+	BodyEn           pgtype.Text
+	PublicationState string
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+}
+
 type HomeAbout struct {
 	ID               pgtype.UUID
 	Singleton        bool

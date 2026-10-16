@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"simiente-santa/backend/internal/agenda"
+	"simiente-santa/backend/internal/donaciones"
 	"simiente-santa/backend/internal/media"
 	"simiente-santa/backend/internal/ministerios"
 	"simiente-santa/backend/internal/platform/config"
@@ -171,6 +172,19 @@ func main() {
 		Logger:         appLog,
 	})
 
+	// Dominio donaciones (F7): la sección pública de ofrendas, su bloque en la
+	// portada y la gestión desde el panel. Sin imágenes (Q6/FR-020) y con su
+	// service como audit.Recorder del grupo de panel (T716). El permiso
+	// `donaciones` ya está sembrado por 000002: F7 no añade permisos.
+	donacionesSvc := donaciones.NewService(donaciones.ServiceDeps{
+		Repository: donaciones.NewRepository(pool),
+		Logger:     appLog,
+	})
+	donacionesHandler := donaciones.NewHandler(donaciones.HandlerDeps{
+		Service: donacionesSvc,
+		Logger:  appLog,
+	})
+
 	handler := usuarios.NewHandler(usuarios.HandlerDeps{
 		Access:     authSvc,
 		Setup:      initSvc,
@@ -251,6 +265,18 @@ func main() {
 				Logger:     appLog,
 			},
 		},
+		donacionesHandler: donacionesHandler,
+		donacionesAdmin: donaciones.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions: sessions,
+				Resolver: authSvc,
+				// El Recorder del grupo es el service de F7 (T716): registra las
+				// denegaciones de `donation.*`.
+				Recorder:   donacionesSvc,
+				CSRFSecret: cfg.SessionSecret,
+				Logger:     appLog,
+			},
+		},
 	}
 
 	srv := httpserver.New(newMux(deps, appLog),
@@ -280,6 +306,8 @@ type apiDeps struct {
 	agendaAdmin        agenda.AdminDeps
 	ministeriosHandler *ministerios.Handler
 	ministeriosAdmin   ministerios.AdminDeps
+	donacionesHandler  *donaciones.Handler
+	donacionesAdmin    donaciones.AdminDeps
 }
 
 // newMux compone el enrutador con las rutas de status y las de los dominios
@@ -300,5 +328,7 @@ func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	agenda.RegisterAdmin(root, deps.agendaHandler, deps.agendaAdmin)
 	ministerios.RegisterPublic(root, deps.ministeriosHandler)
 	ministerios.RegisterAdmin(root, deps.ministeriosHandler, deps.ministeriosAdmin)
+	donaciones.RegisterPublic(root, deps.donacionesHandler)
+	donaciones.RegisterAdmin(root, deps.donacionesHandler, deps.donacionesAdmin)
 	return mux
 }

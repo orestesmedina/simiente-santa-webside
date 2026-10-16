@@ -25,6 +25,9 @@ func TestActionCodesRegistry(t *testing.T) {
 		"ministry.create", "ministry.update", "ministry.delete", "ministry.publish",
 		"ministry.unpublish", "ministry.leader.show", "ministry.leader.hide",
 		"ministry.image.upload",
+		"donation.create", "donation.update", "donation.delete", "donation.publish",
+		"donation.unpublish", "donation.text.update", "donation.text.publish",
+		"donation.text.unpublish",
 	}
 	if len(ActionCodes) != len(want) {
 		t.Fatalf("ActionCodes tiene %d códigos, se esperaban %d", len(ActionCodes), len(want))
@@ -37,7 +40,7 @@ func TestActionCodesRegistry(t *testing.T) {
 			t.Errorf("ValidActionCode(%q) = false, se esperaba true", code)
 		}
 	}
-	for _, code := range []string{"", "user.delete", "role.password_reset", "USER.CREATE", "home.page.update", "event.archive", "activity.dup", "category.publish", "ministry.archive", "ministries.create", "ministry.leader.show.all"} {
+	for _, code := range []string{"", "user.delete", "role.password_reset", "USER.CREATE", "home.page.update", "event.archive", "activity.dup", "category.publish", "ministry.archive", "ministries.create", "ministry.leader.show.all", "donation.archive", "donations.create", "donation.text.create", "donation.image.upload"} {
 		if ValidActionCode(code) {
 			t.Errorf("ValidActionCode(%q) = true, se esperaba false", code)
 		}
@@ -179,6 +182,74 @@ func TestF6ActionCodesValidate(t *testing.T) {
 	// Fuera del registro: el prefijo no basta, el código tiene que existir.
 	for _, code := range []string{"ministry.archive", "ministry.leader.rotate", "ministries.create"} {
 		action := Action{ActorUserID: &actor, Code: code, TargetKind: TargetContent, TargetLabel: "Ministerios · X", Result: ResultSuccess}
+		if err := action.Validate(); !errors.Is(err, ErrUnknownActionCode) {
+			t.Fatalf("Validate(%q) = %v, se esperaba %v", code, err, ErrUnknownActionCode)
+		}
+	}
+}
+
+// TestF7ActionCodesValidate fija el registro cerrado de F7 (FR-017/R7-10): los 8
+// códigos `donation.*` —incluidos los tres de los textos
+// (`text.update`/`text.publish`/`text.unpublish`)— se registran sobre un
+// objetivo de contenido (`target_kind = 'content'`), con `targetLabel` —nunca el
+// cuerpo de la petición— y sin FK de usuario ni de rol. Los códigos de
+// F2/F3/F4/F6 siguen intactos (regresión) y un código fuera de la lista falla.
+func TestF7ActionCodesValidate(t *testing.T) {
+	actor := uuid.New()
+
+	f7Codes := []string{
+		ActionDonationCreate, ActionDonationUpdate, ActionDonationDelete,
+		ActionDonationPublish, ActionDonationUnpublish,
+		ActionDonationTextUpdate, ActionDonationTextPublish, ActionDonationTextUnpublish,
+	}
+	if len(f7Codes) != 8 {
+		t.Fatalf("se esperaban 8 códigos de F7, hay %d", len(f7Codes))
+	}
+
+	labels := map[string]string{
+		ActionDonationCreate:        "Donaciones · BAC San José · CR05015202001234567890",
+		ActionDonationUpdate:        "Donaciones · BAC San José · CR05015202001234567890",
+		ActionDonationDelete:        "Donaciones · BAC San José · CR05015202001234567890",
+		ActionDonationPublish:       "Donaciones · BAC San José · CR05015202001234567890",
+		ActionDonationUnpublish:     "Donaciones · BAC San José · CR05015202001234567890",
+		ActionDonationTextUpdate:    "Donaciones · Texto introductorio",
+		ActionDonationTextPublish:   "Donaciones · Texto de uso",
+		ActionDonationTextUnpublish: "Donaciones · Texto de uso",
+	}
+
+	for _, code := range f7Codes {
+		t.Run(code, func(t *testing.T) {
+			action := Action{
+				ActorUserID: &actor,
+				Code:        code,
+				TargetKind:  TargetContent,
+				TargetLabel: labels[code],
+				Result:      ResultSuccess,
+			}
+			if err := action.Validate(); err != nil {
+				t.Fatalf("Validate() = %v, se esperaba nil", err)
+			}
+			if !ValidActionCode(code) {
+				t.Fatalf("ValidActionCode(%q) = false", code)
+			}
+		})
+	}
+
+	// Los códigos de F2, F3, F4 y F6 siguen intactos (regresión del registro
+	// cerrado: F7 solo añade).
+	for _, code := range []string{ActionUserCreate, ActionUserPasswordReset, ActionRoleDelete,
+		ActionHomeIdentityUpdate, ActionHomeImageUpload, ActionHomePublish, ActionHomeUnpublish,
+		ActionEventCreate, ActionEventImageUpload, ActionActivityPublish,
+		ActionCategoryCreate, ActionCategoryDelete,
+		ActionMinistryCreate, ActionMinistryLeaderShow, ActionMinistryImageUpload} {
+		if !ValidActionCode(code) {
+			t.Errorf("ValidActionCode(%q) = false: el código previo se perdió", code)
+		}
+	}
+
+	// Fuera del registro: los códigos nuevos son los de F7 y solo esos.
+	for _, code := range []string{"donation.archive", "donations.create", "donation.text.create", "donation.image.upload"} {
+		action := Action{ActorUserID: &actor, Code: code, TargetKind: TargetContent, TargetLabel: "Donaciones · X", Result: ResultSuccess}
 		if err := action.Validate(); !errors.Is(err, ErrUnknownActionCode) {
 			t.Fatalf("Validate(%q) = %v, se esperaba %v", code, err, ErrUnknownActionCode)
 		}

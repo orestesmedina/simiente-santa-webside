@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { API_BASE_URL } from '../../api/client';
 import type { SessionUser } from '../../api/auth';
 import { AppProviders } from '../../app/providers';
-import { ADMIN_USERS_ROLES, MINISTERIOS } from '../../lib/permissions';
+import { ADMIN_USERS_ROLES, DONACIONES, MINISTERIOS } from '../../lib/permissions';
 import { server } from '../../test/server';
 import { NO_MODULES_MESSAGE, InicioPage } from './pages/InicioPage';
 
@@ -165,5 +165,30 @@ describe('InicioPage · accesos rápidos', () => {
 
     const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
     expect(within(nav).queryByRole('link', { name: 'Gestión de ministerios' })).toBeNull();
+  });
+
+  it('con solo el permiso «donaciones» se ve solo su tarjeta (F7, FR-011)', async () => {
+    useSession(makeSession({ permissions: [DONACIONES] }));
+
+    renderInicio();
+
+    const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
+    expect(within(nav).getByRole('link', { name: 'Gestión de donaciones' })).toHaveAttribute(
+      'href',
+      '/panel/donaciones',
+    );
+    // Los módulos son independientes: «donaciones» no abre los demás (Decisión 5).
+    expect(within(nav).queryByRole('link', { name: 'Usuarios' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Gestión de ministerios' })).toBeNull();
+    expect(within(nav).queryByRole('link', { name: 'Portada e información general' })).toBeNull();
+  });
+
+  it('sin el permiso «donaciones» su tarjeta no aparece', async () => {
+    useSession(makeSession());
+
+    renderInicio();
+
+    const nav = await screen.findByRole('navigation', { name: 'Accesos rápidos' });
+    expect(within(nav).queryByRole('link', { name: 'Gestión de donaciones' })).toBeNull();
   });
 });

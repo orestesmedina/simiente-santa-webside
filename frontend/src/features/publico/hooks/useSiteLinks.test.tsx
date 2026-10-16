@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { API_BASE_URL } from '../../../api/client';
 import type { PortadaPublica } from '../../../api/portada';
+import type { OfrendasPublicas } from '../../../api/ofrendas';
 import { AppProviders } from '../../../app/providers';
 import { server } from '../../../test/server';
 import { PublicLayout } from '../components/PublicLayout';
@@ -13,6 +14,7 @@ import { buildSiteLinks } from './useSiteLinks';
 const portadaUrl = `${API_BASE_URL}/api/v1/portada`;
 const upcomingUrl = `${API_BASE_URL}/api/v1/proximamente`;
 const ministriesUrl = `${API_BASE_URL}/api/v1/portada/ministerios`;
+const ofrendasUrl = `${API_BASE_URL}/api/v1/ofrendas`;
 
 const completa: PortadaPublica = {
   lang: 'es',
@@ -255,5 +257,135 @@ describe('useSiteLinks · superficies de la misma lista (FR-022)', () => {
 
     expect(screen.queryByRole('link', { name: 'Ministerios' })).toBeNull();
     expect(document.querySelectorAll('a[href="/ministerios"]')).toHaveLength(0);
+  });
+});
+
+describe('useSiteLinks · sección de ofrendas (P7-8/P7-13, T727)', () => {
+  const conMetodos: OfrendasPublicas = {
+    lang: 'es',
+    items: [
+      {
+        id: 'don-1',
+        kind: 'iban',
+        number: 'CR05015202001234567890',
+        institution: 'Banco Nacional de Costa Rica',
+        currency: 'CRC',
+      },
+    ],
+  };
+  const soloTextos: OfrendasPublicas = { lang: 'es', intro: { text: 'Cómo donar.' } };
+  const conMinisterios = {
+    lang: 'es' as const,
+    items: [{ id: 'min-1', name: 'Alabanza', schedule: 'Todos los viernes' }],
+  };
+
+  it('con métodos publicados añade «Ofrendas y diezmos» al final, tras Ministerios', () => {
+    const links = buildSiteLinks(completa, conEventos, conMinisterios, conMetodos);
+
+    const ultimo = links[links.length - 1];
+    expect(ultimo?.id).toBe('offerings');
+    expect(ultimo?.href).toBe('/ofrendas');
+    expect(ultimo?.messageKey).toBe('nav.sections.offerings');
+    // Después de «Eventos y actividades» y de «Ministerios» (⟲ D-1).
+    expect(links.map((link) => link.id).indexOf('offerings')).toBeGreaterThan(
+      links.map((link) => link.id).indexOf('ministries'),
+    );
+  });
+
+  it('con SOLO textos publicados (0 métodos) el ítem también existe: la sección vive (P7-13)', () => {
+    expect(
+      buildSiteLinks(completa, conEventos, conMinisterios, soloTextos).map((l) => l.id),
+    ).toContain('offerings');
+    // Con `usage` en vez de `intro` también; y sin ningún otro contenido.
+    expect(
+      buildSiteLinks(undefined, undefined, undefined, {
+        lang: 'es',
+        usage: { text: 'En qué se usa.' },
+      }).map((l) => l.id),
+    ).toEqual(['offerings']);
+  });
+
+  it('sin nada publicado (documento solo `lang` o ausente) el ítem no existe', () => {
+    expect(
+      buildSiteLinks(completa, conEventos, conMinisterios, { lang: 'es' }).map((l) => l.id),
+    ).not.toContain('offerings');
+    expect(
+      buildSiteLinks(completa, conEventos, conMinisterios, undefined).map((l) => l.id),
+    ).not.toContain('offerings');
+    // `items: []` tampoco cuenta como contenido.
+    expect(
+      buildSiteLinks(completa, undefined, undefined, { lang: 'es', items: [] }).map((l) => l.id),
+    ).not.toContain('offerings');
+  });
+
+  it('el resto de enlaces (anclas, /eventos y /ministerios) no cambia al añadir ofrendas', () => {
+    const sinOfrendas = buildSiteLinks(completa, conEventos, conMinisterios);
+    const conOfrendas = buildSiteLinks(completa, conEventos, conMinisterios, conMetodos);
+
+    expect(conOfrendas.slice(0, sinOfrendas.length)).toEqual(sinOfrendas);
+  });
+
+  it('con contenido el ítem aparece en la barra y en el mapa del pie', async () => {
+    server.use(
+      http.get(portadaUrl, () => HttpResponse.json(completa)),
+      http.get(ofrendasUrl, () => HttpResponse.json(conMetodos)),
+    );
+
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route index element={<p>portada</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones de la portada' });
+    expect(await within(nav).findByRole('link', { name: 'Ofrendas y diezmos' })).toHaveAttribute(
+      'href',
+      '/ofrendas',
+    );
+
+    const sitemap = screen.getByRole('navigation', { name: 'Mapa del sitio' });
+    expect(within(sitemap).getByRole('link', { name: 'Ofrendas y diezmos' })).toHaveAttribute(
+      'href',
+      '/ofrendas',
+    );
+
+    // Barra + mapa del pie: sin duplicar la lista del menú móvil.
+    expect(document.querySelectorAll('a[href="/ofrendas"]')).toHaveLength(2);
+  });
+
+  it('sin nada publicado el ítem no está en ninguna superficie (FR-005/SC-010)', async () => {
+    let peticiones = 0;
+    server.use(
+      http.get(portadaUrl, () => HttpResponse.json(completa)),
+      http.get(ofrendasUrl, () => {
+        peticiones += 1;
+        return HttpResponse.json({ lang: 'es' });
+      }),
+    );
+
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route index element={<p>portada</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones de la portada' });
+    await within(nav).findByRole('link', { name: 'Quiénes somos' });
+    await waitFor(() => expect(peticiones).toBeGreaterThan(0));
+
+    expect(screen.queryByRole('link', { name: 'Ofrendas y diezmos' })).toBeNull();
+    expect(document.querySelectorAll('a[href="/ofrendas"]')).toHaveLength(0);
   });
 });
