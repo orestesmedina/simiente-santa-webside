@@ -14,8 +14,8 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Rama | 007-donaciones |
 | Flujo | equipo-feature |
 | Fase | 5/9 · Validar (T701–T737 implementadas y `make ci` en verde; validación en curso) |
-| Ciclo de corrección | 0/3 |
-| Próximo paso | Validación con `qa-tester`, `revisor-codigo` y `seguridad`; luego convergencia y entrega (T738: docs + PR) |
+| Ciclo de corrección | 1/3 (M1 devuelto a dev-backend) |
+| Próximo paso | Corregir M1 (auditoría de `PutTexto` sin cambios) y cerrar el ciclo; luego convergencia y entrega (T738: docs + PR) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-15 |
 
@@ -34,7 +34,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- (ninguno)
+- **M1 (medio)** — `PutTexto` (`service_admin.go`) escribe `updated_at` sin fila de auditoría cuando el PUT no cambia nada; corregir con *early-return* como `UpdateDonacion` (+ prueba). Devuelto a `dev-backend` en el ciclo 1. Ver [revision-2026-10-15.md](./revision-2026-10-15.md).
 
 ## Decisiones y aclaraciones
 
