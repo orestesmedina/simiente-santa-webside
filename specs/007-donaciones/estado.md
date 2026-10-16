@@ -15,7 +15,7 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 | Flujo | equipo-feature |
 | Fase | 7/9 · Entregar (PR #10 abierto; CI en rojo por un flaky de infraestructura de pruebas — decisión pendiente del humano) |
 | Ciclo de corrección | 2/3 · cerrado por decisión del humano (C1 resuelto; C2 → defecto conocido, no bloqueante) |
-| Próximo paso | CI relanzado con la rama actualizada; al ponerse verde, aprobación humana del **PR #10** (puerta 3) |
+| Próximo paso | **CI en verde** (corrida 38976039295). Pendiente: aprobación humana del **PR #10** (puerta 3); al aprobarlo, `make costos CERRAR=1` + commit y push antes del merge |
 | Bloqueado por | — (C2 reclasificado como defecto conocido, no bloqueante, por decisión del humano el 2026-10-16) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-16 |
@@ -54,6 +54,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-16 — CI del PR #10 **en verde** (corrida 38976039295): los 6 trabajos pasan y el flaky 40P01 no reapareció. Pendiente solo la aprobación humana del merge.
 - 2026-10-16 — Decisión del humano (opción A): C2 queda como **defecto conocido** y se relanza el CI. Ciclo 2 cerrado.
 - 2026-10-16 — C2 (flaky del CI): 3 intentos de arreglo revertidos (lock de aviso; AccessExclusive; base aislada por prueba) — el backend vuelve al estado validado del PR. Escalado al humano.
 - 2026-10-16 — Fase 7 (entrega): documentación (CHANGELOG 0.7.0, README, nota de entrega y protocolo SC-012) y **PR #10 abierto**; pendiente la aprobación humana del merge.
