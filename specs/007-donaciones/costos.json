@@ -299,10 +299,531 @@
         }
       ],
       "hasta_ms": 1792031143542
+    },
+    {
+      "id": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "padre": null,
+      "titulo": "Continuación de conversación",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T03:09:42Z",
+      "hasta": "2026-10-16T17:55:48Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 62,
+          "respuestas_pico": 19,
+          "tokens": {
+            "input": 108380,
+            "output": 27909,
+            "reasoning": 8028,
+            "cache_read": 9653632,
+            "cache_write": 0
+          },
+          "costo": 0.080673,
+          "costo_opencode": 0.06678
+        }
+      ],
+      "hasta_ms": 1792173348336
+    },
+    {
+      "id": "ses_eba2da062ffeunRQyVvFEJeVqw",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 abrir PR",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-16T17:46:17Z",
+      "hasta": "2026-10-16T17:54:57Z",
+      "consumo": [
+        {
+          "agente": "devops",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 34,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 52291,
+            "output": 6505,
+            "reasoning": 4014,
+            "cache_read": 734400,
+            "cache_write": 0
+          },
+          "costo": 0.035135,
+          "costo_opencode": 0.035135
+        }
+      ],
+      "hasta_ms": 1792173297622
+    },
+    {
+      "id": "ses_eba34763affeQ8Yo1plafeULOx",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "Confirmar fix M1",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-16T17:38:49Z",
+      "hasta": "2026-10-16T17:41:33Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 10,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 18032,
+            "output": 2737,
+            "reasoning": 3883,
+            "cache_read": 155904,
+            "cache_write": 0
+          },
+          "costo": 0.014168,
+          "costo_opencode": 0.014168
+        }
+      ],
+      "hasta_ms": 1792172493566
+    },
+    {
+      "id": "ses_eba3c0fc4ffe6042KswU7tDr2T",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 fix M1 auditoria PutTexto",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-16T17:30:31Z",
+      "hasta": "2026-10-16T17:38:32Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 40,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 51990,
+            "output": 7734,
+            "reasoning": 5051,
+            "cache_read": 1773312,
+            "cache_write": 0
+          },
+          "costo": 0.020789,
+          "costo_opencode": 0.020789
+        }
+      ],
+      "hasta_ms": 1792172312844
+    },
+    {
+      "id": "ses_eba69b52cffexl3gsN9deE9Has",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "Revision codigo F7",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-16T16:40:40Z",
+      "hasta": "2026-10-16T17:08:51Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 42,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 168207,
+            "output": 13802,
+            "reasoning": 15781,
+            "cache_read": 4341632,
+            "cache_write": 0
+          },
+          "costo": 0.114646,
+          "costo_opencode": 0.114646
+        }
+      ],
+      "hasta_ms": 1792170531703
+    },
+    {
+      "id": "ses_eba69b52dffeIW74Wz8hJ0G8Rg",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "QA F7 contra criterios",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-16T16:40:40Z",
+      "hasta": "2026-10-16T17:29:28Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 121,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 312182,
+            "output": 41094,
+            "reasoning": 24782,
+            "cache_read": 12097984,
+            "cache_write": 0
+          },
+          "costo": 0.442705,
+          "costo_opencode": 0.442705
+        }
+      ],
+      "hasta_ms": 1792171768447
+    },
+    {
+      "id": "ses_ec165e798ffeUGPMY1ezcHpFwn",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "Seguridad F7",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T08:07:28Z",
+      "hasta": "2026-10-15T08:23:07Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 33,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 149980,
+            "output": 12442,
+            "reasoning": 16897,
+            "cache_read": 2728680,
+            "cache_write": 0
+          },
+          "costo": 1.04852,
+          "costo_opencode": 1.04852
+        }
+      ],
+      "hasta_ms": 1792052587668
+    },
+    {
+      "id": "ses_ec18811b5ffe2WGWhjid2Dh0RV",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 T737 cierre infra",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T07:30:09Z",
+      "hasta": "2026-10-15T07:58:17Z",
+      "consumo": [
+        {
+          "agente": "devops",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 92,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 142427,
+            "output": 9441,
+            "reasoning": 13525,
+            "cache_read": 5915456,
+            "cache_write": 0
+          },
+          "costo": 0.210311,
+          "costo_opencode": 0.210311
+        }
+      ],
+      "hasta_ms": 1792051097971
+    },
+    {
+      "id": "ses_ec1b0dc2bffekRGNAsdvOs63ff",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 4 frontend: e2e",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T06:45:36Z",
+      "hasta": "2026-10-15T07:29:41Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 102,
+          "respuestas_pico": 102,
+          "tokens": {
+            "input": 219201,
+            "output": 49548,
+            "reasoning": 45033,
+            "cache_read": 22087296,
+            "cache_write": 0
+          },
+          "costo": 0.311781,
+          "costo_opencode": 0.155891
+        }
+      ],
+      "hasta_ms": 1792049381855
+    },
+    {
+      "id": "ses_ec1e0730ffferxDY1apOBi21lF",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 3 frontend: panel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T05:53:37Z",
+      "hasta": "2026-10-15T06:45:00Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 172,
+          "respuestas_pico": 127,
+          "tokens": {
+            "input": 162489,
+            "output": 45785,
+            "reasoning": 40081,
+            "cache_read": 23917184,
+            "cache_write": 0
+          },
+          "costo": 0.253966,
+          "costo_opencode": 0.147645
+        }
+      ],
+      "hasta_ms": 1792046700502
+    },
+    {
+      "id": "ses_ec2088554ffeY2gqK3T55OQVg3",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 2 frontend: publico",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T05:09:51Z",
+      "hasta": "2026-10-15T05:53:14Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 105,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 269221,
+            "output": 32096,
+            "reasoning": 27596,
+            "cache_read": 14984832,
+            "cache_write": 0
+          },
+          "costo": 0.121153,
+          "costo_opencode": 0.121153
+        }
+      ],
+      "hasta_ms": 1792043594154
+    },
+    {
+      "id": "ses_ec21f3610ffeWZFH9ZV5A8OD0o",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 1 frontend: base",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T04:45:04Z",
+      "hasta": "2026-10-15T05:09:21Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 76,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 434014,
+            "output": 34515,
+            "reasoning": 16313,
+            "cache_read": 10822144,
+            "cache_write": 0
+          },
+          "costo": 0.128065,
+          "costo_opencode": 0.128065
+        }
+      ],
+      "hasta_ms": 1792040961006
+    },
+    {
+      "id": "ses_ec237f448ffeVDPbPEdJtGr5Tu",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 4: handlers y rutas",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T04:18:02Z",
+      "hasta": "2026-10-15T04:44:28Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 73,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 454529,
+            "output": 38029,
+            "reasoning": 11057,
+            "cache_read": 10059520,
+            "cache_write": 0
+          },
+          "costo": 0.12781,
+          "costo_opencode": 0.12781
+        }
+      ],
+      "hasta_ms": 1792039468818
+    },
+    {
+      "id": "ses_ec2442c72ffe352PUk0kKJmbKx",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 3: servicios",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T04:04:42Z",
+      "hasta": "2026-10-15T04:17:38Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 47,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 292653,
+            "output": 40286,
+            "reasoning": 20566,
+            "cache_read": 6882944,
+            "cache_write": 0
+          },
+          "costo": 0.101058,
+          "costo_opencode": 0.101058
+        }
+      ],
+      "hasta_ms": 1792037858712
+    },
+    {
+      "id": "ses_ec2631433ffeTzQSBj1uH0sXS2",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 2: repositorio",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T03:30:56Z",
+      "hasta": "2026-10-15T04:04:10Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 85,
+          "respuestas_pico": 75,
+          "tokens": {
+            "input": 317506,
+            "output": 51583,
+            "reasoning": 21922,
+            "cache_read": 12213632,
+            "cache_write": 0
+          },
+          "costo": 0.247384,
+          "costo_opencode": 0.12837
+        }
+      ],
+      "hasta_ms": 1792037050675
+    },
+    {
+      "id": "ses_ec2765ceaffe9JGorXCTVXMxCO",
+      "padre": "ses_ec37ddfa4ffewHbY9yjAy0CH1i",
+      "titulo": "F7 lote 1: db+validacion numeros",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T03:09:52Z",
+      "hasta": "2026-10-15T03:30:16Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 47,
+          "respuestas_pico": 47,
+          "tokens": {
+            "input": 168489,
+            "output": 18103,
+            "reasoning": 8194,
+            "cache_read": 3833088,
+            "cache_write": 0
+          },
+          "costo": 0.105102,
+          "costo_opencode": 0.052551
+        }
+      ],
+      "hasta_ms": 1792035016455
+    },
+    {
+      "id": "ses_ec26ffa48ffeEIxExJxw66rUDn",
+      "padre": null,
+      "titulo": "Levantar la página en local sin cambios",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-16T17:56:14Z",
+      "desde": "2026-10-15T03:16:51Z",
+      "hasta": "2026-10-15T03:18:17Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 9,
+          "respuestas_pico": 9,
+          "tokens": {
+            "input": 12468,
+            "output": 1487,
+            "reasoning": 1010,
+            "cache_read": 160384,
+            "cache_write": 0
+          },
+          "costo": 0.007699,
+          "costo_opencode": 0.00385
+        }
+      ],
+      "hasta_ms": 1792034297739
     }
   ],
   "totales": {
     "por_agente_modelo": [
+      {
+        "agente": "seguridad",
+        "modelo": "opencode-go/glm-5.3",
+        "respuestas": 33,
+        "tokens": {
+          "input": 149980,
+          "output": 12442,
+          "reasoning": 16897,
+          "cache_read": 2728680,
+          "cache_write": 0
+        },
+        "costo": 1.04852,
+        "costo_opencode": 1.04852,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-frontend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 455,
+        "tokens": {
+          "input": 1084925,
+          "output": 161944,
+          "reasoning": 129023,
+          "cache_read": 71811456,
+          "cache_write": 0
+        },
+        "costo": 0.814965,
+        "costo_opencode": 0.552754,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-backend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 292,
+        "tokens": {
+          "input": 1285167,
+          "output": 155735,
+          "reasoning": 66790,
+          "cache_read": 34762496,
+          "cache_write": 0
+        },
+        "costo": 0.602143,
+        "costo_opencode": 0.430578,
+        "sin_precio": false
+      },
       {
         "agente": "arquitecto",
         "modelo": "opencode-go/mimo-v2.6-pro",
@@ -319,18 +840,63 @@
         "sin_precio": false
       },
       {
-        "agente": "revisor-codigo",
-        "modelo": "opencode-go/mimo-v2.6-pro",
-        "respuestas": 23,
+        "agente": "qa-tester",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 121,
         "tokens": {
-          "input": 243651,
-          "output": 12940,
-          "reasoning": 30966,
-          "cache_read": 2998528,
+          "input": 312182,
+          "output": 41094,
+          "reasoning": 24782,
+          "cache_read": 12097984,
           "cache_write": 0
         },
-        "costo": 0.155056,
-        "costo_opencode": 0.155056,
+        "costo": 0.442705,
+        "costo_opencode": 0.442705,
+        "sin_precio": false
+      },
+      {
+        "agente": "revisor-codigo",
+        "modelo": "opencode-go/mimo-v2.6-pro",
+        "respuestas": 75,
+        "tokens": {
+          "input": 429890,
+          "output": 29479,
+          "reasoning": 50630,
+          "cache_read": 7496064,
+          "cache_write": 0
+        },
+        "costo": 0.28387,
+        "costo_opencode": 0.28387,
+        "sin_precio": false
+      },
+      {
+        "agente": "devops",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 126,
+        "tokens": {
+          "input": 194718,
+          "output": 15946,
+          "reasoning": 17539,
+          "cache_read": 6649856,
+          "cache_write": 0
+        },
+        "costo": 0.245446,
+        "costo_opencode": 0.245446,
+        "sin_precio": false
+      },
+      {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 148,
+        "tokens": {
+          "input": 390515,
+          "output": 55264,
+          "reasoning": 20435,
+          "cache_read": 15490664,
+          "cache_write": 0
+        },
+        "costo": 0.199585,
+        "costo_opencode": 0.150469,
         "sin_precio": false
       },
       {
@@ -362,25 +928,10 @@
         "costo": 0.123362,
         "costo_opencode": 0.123362,
         "sin_precio": false
-      },
-      {
-        "agente": "orquestador",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 77,
-        "tokens": {
-          "input": 269667,
-          "output": 25868,
-          "reasoning": 11397,
-          "cache_read": 5676648,
-          "cache_write": 0
-        },
-        "costo": 0.111213,
-        "costo_opencode": 0.079839,
-        "sin_precio": false
       }
     ],
-    "tokens": 26003276,
-    "costo": 1.09162,
-    "costo_opencode": 1.060246
+    "tokens": 172416188,
+    "costo": 4.462585,
+    "costo_opencode": 3.979693
   }
 }
