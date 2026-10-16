@@ -11,11 +11,11 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 
 | Campo | Valor |
 |---|---|
-| Rama | 007-donaciones |
+| Rama | 007-donaciones (eliminada tras el merge) |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Entregar (PR #10 abierto; CI en rojo por un flaky de infraestructura de pruebas — decisión pendiente del humano) |
-| Ciclo de corrección | 2/3 · cerrado por decisión del humano (C1 resuelto; C2 → defecto conocido, no bloqueante) |
-| Próximo paso | El humano hace el **merge del PR #10**; al confirmarlo, marcar F7 como **terminada** en el roadmap y cerrar la sesión |
+| Fase | 9/9 · Terminada (PR #10 **fusionado en `main`** el 2026-10-16; rama eliminada) |
+| Ciclo de corrección | 2/3 · cerrado (M1 resuelto; C2 → defecto conocido 23 del roadmap) |
+| Próximo paso | Nada para F7. Siguiente funcionalidad del roadmap: **F5 (grupos de conexión)** |
 | Bloqueado por | — (C2 reclasificado como defecto conocido, no bloqueante, por decisión del humano el 2026-10-16) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-16 |
@@ -54,6 +54,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-16 — **F7 cerrada**: PR #10 fusionado (squash) en `main` (`5f313f0`) y rama eliminada. Roadmap → terminada.
 - 2026-10-16 — **Puerta 3: PR aprobado** por el humano ("has el cierre, yo hago el merge"). Costo de la tarea **cerrado** (225,6 M tokens ≈ $4,98). El merge lo hace el humano.
 - 2026-10-16 — CI del PR #10 **en verde** (corrida 38976039295): los 6 trabajos pasan y el flaky 40P01 no reapareció. Pendiente solo la aprobación humana del merge.
 - 2026-10-16 — Decisión del humano (opción A): C2 queda como **defecto conocido** y se relanza el CI. Ciclo 2 cerrado.
