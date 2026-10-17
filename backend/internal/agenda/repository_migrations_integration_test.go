@@ -23,7 +23,10 @@ import (
 // Aislamiento: cada ciclo se ejecuta dentro de una TRANSACCIÓN que se revierte al
 // terminar (el DDL de PostgreSQL es transaccional), así que el `down` —que es
 // destructivo a propósito— no toca el estado que ven las pruebas de integración
-// de los otros dominios, que corren en paralelo.
+// de los otros dominios, que corren en paralelo. Esas transacciones además toman
+// el lock de testutil.SerializeMigrations (ver migrationTx), porque en CI todas
+// las pruebas comparten una única base y dos `down` destructivos solapados se
+// matan entre sí con 40P01.
 //
 // La regla "próximo" (los tres casos de R4-2) y la atomicidad mutación +
 // auditoría se verifican en las pruebas de eventos (T412), actividades (T413),
@@ -55,6 +58,18 @@ func testTx(t *testing.T, ctx context.Context) (*pgxpool.Pool, pgx.Tx) {
 	return pool, tx
 }
 
+// migrationTx abre la transacción de una prueba de MIGRACIÓN: además de
+// revertirse al terminar, toma el lock de serialización de testutil como primera
+// sentencia. Las pruebas de auditoría siguen usando testTx: solo los `down`
+// destructivos (DELETE + ALTER TABLE de `admin_actions`) pueden matarse entre sí
+// con 40P01 cuando los paquetes comparten base (ver testutil.SerializeMigrations).
+func migrationTx(t *testing.T, ctx context.Context) (*pgxpool.Pool, pgx.Tx) {
+	t.Helper()
+	pool, tx := testTx(t, ctx)
+	testutil.SerializeMigrations(t, ctx, tx)
+	return pool, tx
+}
+
 // constraintDefTx devuelve la definición textual de una restricción.
 func constraintDefTx(t *testing.T, ctx context.Context, tx pgx.Tx, name, table string) string {
 	t.Helper()
@@ -81,7 +96,7 @@ func countTx(t *testing.T, ctx context.Context, tx pgx.Tx, query string) int {
 // los códigos de F4 y que el down restaura el de F3 (FR-017/R4-10).
 func TestIntegrationMigration000008UpDownUp(t *testing.T) {
 	ctx := context.Background()
-	_, tx := testTx(t, ctx)
+	_, tx := migrationTx(t, ctx)
 
 	const (
 		up   = "000008_extend_admin_actions_for_agenda.up.sql"
@@ -129,7 +144,7 @@ func assertActionCheck(t *testing.T, ctx context.Context, tx pgx.Tx, wantF4 bool
 // (R4-4) y la reversa sin filas huérfanas en `role_permissions`.
 func TestIntegrationMigration000009UpDownUp(t *testing.T) {
 	ctx := context.Background()
-	_, tx := testTx(t, ctx)
+	_, tx := migrationTx(t, ctx)
 
 	const (
 		up            = "000009_seed_permission_categorias.up.sql"
