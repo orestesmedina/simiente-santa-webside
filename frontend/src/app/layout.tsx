@@ -19,10 +19,15 @@ import {
  * Layout mínimo y semántico de la aplicación pública: encabezado con navegación
  * principal y región `main` donde renderiza la ruta activa. El foco visible
  * se deja al estilo por defecto del navegador (accesibilidad de la skill).
+ *
+ * La superficie es siempre clara (`bg-white`), así que fija `color-scheme: light`
+ * (`[color-scheme:light]`) para que los controles nativos —p. ej. el indicador
+ * de `<input type="date">`/`type="time"`— no hereden el `dark` global de
+ * `<html>` (F10) y se pinten en claro sobre blanco (invisibles).
  */
 export function AppLayout() {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-slate-900">
+    <div className="flex min-h-screen flex-col bg-white text-slate-900 [color-scheme:light]">
       <header className="border-b border-slate-200">
         <nav aria-label="Navegación principal" className="mx-auto w-full max-w-3xl px-4 py-3">
           <Link
@@ -52,10 +57,16 @@ export function AppLayout() {
  * el navegador pinta el fondo del documento en negro, dejando la pantalla
  * ilegible (texto oscuro sobre negro). No se resuelve con un fondo global en
  * `body`: el sitio público necesita su lienzo oscuro (su layout pinta encima).
+ *
+ * Además fija `color-scheme: light` (`[color-scheme:light]`) en la superficie:
+ * sin ese reset el `dark` de `<html>` se hereda y el navegador pinta el
+ * indicador nativo de `<input type="date">`/`type="time"` en color claro sobre
+ * el panel blanco (invisible). El tema del sitio público no se toca: el reset
+ * solo aplica al subárbol del panel.
  */
 export function PanelSurfaceLayout({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-panel-ink">
+    <div className="flex min-h-screen flex-col bg-white text-panel-ink [color-scheme:light]">
       {children ?? <Outlet />}
     </div>
   );
@@ -113,7 +124,7 @@ export function PanelLayout() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-slate-900">
+    <div className="flex min-h-screen flex-col bg-white text-slate-900 [color-scheme:light]">
       <SessionWarning />
       <header className="border-b border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">
