@@ -75,6 +75,34 @@
         }
       ],
       "hasta_ms": 1792275589867
+    },
+    {
+      "id": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "padre": null,
+      "titulo": "Requisitos para arrancar F9",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-17T22:32:57Z",
+      "desde": "2026-10-17T22:20:05Z",
+      "hasta": "2026-10-17T22:32:33Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 8,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 1991,
+            "output": 1799,
+            "reasoning": 4589,
+            "cache_read": 1277824,
+            "cache_write": 0
+          },
+          "costo": 0.007965,
+          "costo_opencode": 0.007965
+        }
+      ],
+      "hasta_ms": 1792276353764
     }
   ],
   "totales": {
@@ -82,21 +110,21 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 3,
+        "respuestas": 11,
         "tokens": {
-          "input": 1323,
-          "output": 544,
-          "reasoning": 275,
-          "cache_read": 465792,
+          "input": 3314,
+          "output": 2343,
+          "reasoning": 4864,
+          "cache_read": 1743616,
           "cache_write": 0
         },
-        "costo": 0.002087,
-        "costo_opencode": 0.002087,
+        "costo": 0.010052,
+        "costo_opencode": 0.010052,
         "sin_precio": false
       }
     ],
-    "tokens": 467934,
-    "costo": 0.002087,
-    "costo_opencode": 0.002087
+    "tokens": 1754137,
+    "costo": 0.010052,
+    "costo_opencode": 0.010052
   }
 }
