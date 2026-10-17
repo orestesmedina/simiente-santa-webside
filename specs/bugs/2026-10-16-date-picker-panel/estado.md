@@ -8,9 +8,9 @@
 |---|---|
 | Rama | fix/date-picker-panel |
 | Flujo | equipo-bug |
-| Fase | 1/5 · Diagnóstico cerrado (paso 2: prueba que falla) |
+| Fase | 5/5 · Validado (QA/código/seguridad **APRUEBAN**); pendiente el PR |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | `qa-tester` escribe una prueba que falle; luego `dev-frontend` aplica el arreglo |
+| Próximo paso | Abrir el PR del arreglo y esperar la aprobación humana del merge |
 | Bloqueado por | — |
 | Actualizado | 2026-10-16 |
 
@@ -25,7 +25,15 @@
 
 ## Hallazgos abiertos
 
-- **Bug:** en el panel (p. ej. crear evento), los campos de fecha/hora se ven como un input de texto y obligan a escribir la fecha a mano; el usuario recuerda que antes había un *date picker*.
+- (ninguno: arreglo validado por QA, código y seguridad; ver abajo)
+
+## Verificación y validación
+
+- **Prueba de regresión:** `frontend/e2e/qa-bug-color-scheme-panel.spec.ts` — falla **antes** (`color-scheme` resuelto `dark` en el panel con tema oscuro) y pasa **después** (panel e inputs resuelven `light`, los campos siguen siendo nativos).
+- **QA:** 12/12 e2e relacionadas en verde (incluye `tema-oscuro`, `qa-bug-fondo-oscuro-fuera-layouts`, `qa-medidas-f10`), `npm test` 782/782, lint/typecheck limpios. **APRUEBA**.
+- **Revisión de código:** cambio mínimo en las tres superficies del panel; el sitio público no se toca; la prueba falla sin el arreglo y pasa con él. **APRUEBA** (condiciones: actualizar este estado —hecho— y registrar el fallo preexistente de `qa-bugs-004` Bug 1 —abajo—).
+- **Seguridad:** sin impacto (solo CSS + spec). **APRUEBA**.
+- **No atribuible a este arreglo:** el e2e `frontend/e2e/qa-bugs-004.spec.ts` (Bug 1, scroll a `#whatsapp` desde `/`) falla de forma determinista en este entorno; es el **e2e flaky preexistente de F3/F4** ya registrado en el roadmap (decisión 21). La página afectada no usa las clases del arreglo ni `PublicLayout` importa `app/layout.tsx`.
 
 ## Diagnóstico (causa raíz)
 
@@ -41,4 +49,7 @@
 
 ## Bitácora
 
+- 2026-10-16 — Validación: QA, revisión de código y seguridad **aprueban** (12/12 e2e relacionadas, 782/782 unitarias). Pendiente el PR.
+- 2026-10-16 — Arreglo aplicado (`70c7012`): `[color-scheme:light]` en `AppLayout`, `PanelSurfaceLayout` y `PanelLayout`; la spec del bug pasa.
+- 2026-10-16 — Prueba que falla (`e19973c`): `frontend/e2e/qa-bug-color-scheme-panel.spec.ts`.
 - 2026-10-16 — Diagnóstico cerrado; rama `fix/date-picker-panel` creada.
