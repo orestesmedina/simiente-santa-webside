@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y el proyecto usa [Versionado Semántico](https://semver.org/lang/es/).
 
+## [0.7.2] — 2026-10-17
+
+Infraestructura de pruebas: se elimina el **flaky preexistente** que hacía fallar el CI de forma intermitente (registrado como **defecto conocido 23** del roadmap).
+
+### Corregido
+
+- **Deadlock (`40P01`) intermitente en las pruebas de migración.** En CI las pruebas de integración corren en paralelo contra una sola base de datos y varios ciclos `up → down → up` ejecutan `DELETE FROM admin_actions` (RowExclusive) + `ALTER TABLE admin_actions` (AccessExclusive) en la misma transacción; dos ciclos solapados daban **espera circular**. Ahora los ciclos destructivos se **serializan** con un lock de aviso transaccional (`pg_advisory_xact_lock`), de modo que nunca se solapan, con una **prueba de regresión determinista**. No cambia el CI (archivo del kit), ni las migraciones aplicadas, ni el código de producción. Ver `specs/bugs/2026-10-17-ci-migraciones-serializadas/estado.md`.
+
 ## [0.7.1] — 2026-10-16
 
 Corrección del panel tras F10: los campos de **fecha y hora** (p. ej. al crear un evento o una actividad) se veían como inputs de texto y obligaban a teclear la fecha, porque el **selector nativo del navegador** quedaba invisible. No era un cambio de los campos —siguen siendo `<input type="date">`/`<input type="time">` (decisión D-4 de F4)— sino un efecto del modo oscuro de F10: `color-scheme` se fija globalmente en `<html>` y el panel (siempre claro) no lo reseteaba, así que el icono del calendario/reloj se pintaba claro sobre blanco.

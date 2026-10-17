@@ -8,9 +8,9 @@
 |---|---|
 | Rama | fix/ci-migraciones-serializadas |
 | Flujo | equipo-bug |
-| Fase | 5/5 · Arreglo validado; PR pendiente de aprobación humana |
+| Fase | Cerrado · **PR #12 fusionado en `main`** (`5e9a44a`, 2026-10-17) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Abrir el PR y esperar la aprobación/merge del humano; después, marcar el **defecto conocido 23** del roadmap como resuelto |
+| Próximo paso | Nada. El **defecto conocido 23** del roadmap queda **resuelto** por este arreglo |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | Spec | n/a (bug) | | | |
 | Plan | n/a (bug) | | | |
-| PR / merge | pendiente | | | |
+| PR / merge | aprobado y fusionado | humano (cliente) | 2026-10-17 | PR #12 fusionado en `main` por el humano |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -53,4 +53,5 @@
 
 ## Bitácora
 
+- 2026-10-17 — **Cerrado**: PR #12 fusionado en `main` (`5e9a44a`) por el humano.
 - 2026-10-17 — Arreglo recuperado y verificado (10/10 estrés, lint limpio); registro creado. Pendiente el PR.

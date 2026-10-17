@@ -8,9 +8,9 @@
 |---|---|
 | Rama | fix/date-picker-panel |
 | Flujo | equipo-bug |
-| Fase | 5/5 · Cerrado (arreglo validado y subido); **PR #11 abierto, pendiente de tu aprobación y merge** |
-| Ciclo de corrección | 3/3 · cerrado (condiciones del revisor resueltas) |
-| Próximo paso | Aprobar y fusionar el **PR #11** (lo hace el humano); tras el merge, marcar el bug como terminado en el registro |
+| Fase | Cerrado · **PR #11 fusionado en `main`** (`67f1ba3`, 2026-10-17) |
+| Ciclo de corrección | 3/3 · cerrado |
+| Próximo paso | Nada para este bug. Siguiente en el roadmap: **F5** (grupos de conexión) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | Spec | n/a (bug) | | | |
 | Plan | n/a (bug) | | | |
-| PR / merge | abierto (pendiente de tu aprobación y merge) | — | 2026-10-17 | PR #11: https://github.com/orestesmedina/simiente-santa-webside/pull/11 |
+| PR / merge | aprobado y fusionado | humano (cliente) | 2026-10-17 | PR #11 fusionado en `main` por el humano |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -61,6 +61,7 @@
 
 ## Bitácora
 
+- 2026-10-17 — **Bug cerrado**: PR #11 fusionado en `main` (`67f1ba3`) por el humano.
 - 2026-10-17 — **3.ª iteración cerrada**: alineación estable **con y sin error** (`subgridRow`, `2241534`/`60c410a`), ritmo móvil y `min-w-0` (`48bbd49`), pruebas de alineación/ritmo/«Quitar» (`410ddb6`, `a140819`, `dca7e52`, `2d6af17`). Validada por QA y revisión de código (797/797 unitarias, 12/12 e2e). Pendiente el merge del PR #11.
 - 2026-10-17 — **2.ª iteración** (pedida por el humano: «faltan los iconos para saber dónde dar clic»): botón con icono de calendario/reloj en `Field` para `date`/`time`, que abre `showPicker()`, con un solo icono por campo. Test-first (`47566e5`, `a5c64e9`, `fa5d029`, spec de QA `e23e49a`). Validada por QA/código/seguridad (793/793 unitarias, 8/8 e2e). Pendiente el merge del PR #11.
 - 2026-10-16 — Validación: QA, revisión de código y seguridad **aprueban** (12/12 e2e relacionadas, 782/782 unitarias). Pendiente el PR.
