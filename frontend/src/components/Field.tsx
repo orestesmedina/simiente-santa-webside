@@ -17,6 +17,11 @@ export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
    * La rejilla de la fila debe declarar **tres pistas de fila** (etiqueta,
    * control, mensaje), p. ej. `sm:grid-rows-[auto_auto_auto]`. Por defecto es
    * `false`: el resto de formularios apila el campo en vertical sin cambios.
+   *
+   * Contrato de **una sola pista de mensaje**: el campo solo puede añadir un
+   * hijo tras el control. No combines `help` y `error` con `subgridRow`: se
+   * renderizarían dos hijos y el campo ocuparía cuatro pistas, rompiendo el
+   * `row-span`/`subgrid` de la fila. `DatesEditor` solo pasa `error`.
    */
   subgridRow?: boolean;
 }
@@ -154,8 +159,11 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
         )}
       </label>
       {/* Botón superpuesto al borde derecho del campo (el indicador nativo se
-          oculta arriba): área de toque ≥44 px, siempre visible y con foco. */}
-      <div className="relative">
+          oculta arriba): área de toque ≥44 px, siempre visible y con foco.
+          `min-w-0` evita que el `min-width:auto` del envoltorio impida encoger
+          la pista del subgrid en columnas estrechas (el campo vecino volvería
+          a interceptar los clics del botón con icono). */}
+      <div className="relative min-w-0">
         <input
           {...rest}
           id={inputId}

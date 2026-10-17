@@ -39,7 +39,7 @@ export function DatesEditor({ rows, onChange, errors = {}, generalError }: Dates
       {rows.map((row, index) => (
         <div
           key={index}
-          className="grid gap-x-3 gap-y-1 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:grid-rows-[auto_auto_auto]"
+          className="grid gap-y-3 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:grid-rows-[auto_auto_auto] sm:gap-x-3 sm:gap-y-1"
         >
           {/* `minmax(0,1fr)` (QA Bug 3): las columnas pueden encogerse por
               debajo del ancho mínimo de los inputs nativos, así que la fila
@@ -54,9 +54,11 @@ export function DatesEditor({ rows, onChange, errors = {}, generalError }: Dates
               las etiquetas ocupen distinto o aunque un mensaje de error (que se
               pinta en la tercera pista) aparezca solo bajo un campo. Alinear
               por arriba o por abajo (`sm:items-end`) movía los controles en
-              cuanto una celda crecía con el mensaje. `gap-y-1` conserva el
-              ritmo vertical de 4 px del campo; en móvil la fila apila en una
-              columna y el `subgrid` (prefijado con `sm:`) no aplica. */}
+              cuanto una celda crecía con el mensaje. En escritorio
+              `sm:gap-y-1` conserva el ritmo vertical compacto de 4 px entre
+              pistas; en móvil la fila apila en una columna con `gap-y-3`
+              (12 px) entre campos, porque el `subgrid` (prefijado con `sm:`)
+              no aplica y los campos deben conservar su separación de siempre. */}
           <Field
             subgridRow
             id={`agenda-date-${index}`}

@@ -49,6 +49,10 @@ describe('Field', () => {
       'sm:grid-cols-[minmax(0,1fr)]',
       'min-w-0',
     );
+
+    // El envoltorio del input+botón también puede encogerse (`min-w-0`): su
+    // `min-width:auto` no debe desbordar la pista del subgrid.
+    expect(screen.getByLabelText('Fecha 1').parentElement).toHaveClass('relative', 'min-w-0');
   });
 
   it('sin subgridRow el campo se apila en vertical como siempre', () => {
