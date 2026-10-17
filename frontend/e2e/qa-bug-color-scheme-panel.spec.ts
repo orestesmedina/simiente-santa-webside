@@ -47,6 +47,13 @@ import { createAdminContext } from './publicSeed';
  *   docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp \
  *     -v "$PWD/..":/work -w /work/frontend mcr.microsoft.com/playwright:v1.63.0-jammy \
  *     npx playwright test --config e2e/playwright.config.ts qa-bug-color-scheme-panel --workers=1
+ *
+ * **2.ª iteración (2026-10-17, humano):** con el `color-scheme` ya en claro el
+ * panel seguía «sin icono»: el indicador propio del nativo es pequeño y poco
+ * evidente. El segundo test exige que cada campo de fecha/hora traiga un
+ * **botón con icono siempre visible** («Abrir calendario» / «Abrir selector de
+ * hora») que abra el selector nativo con `showPicker()`, sin degradar el input
+ * ni enviar el formulario.
  */
 
 test.describe('Bug: color-scheme oscuro filtrado al panel (nativos de fecha/hora)', () => {
@@ -119,6 +126,94 @@ test.describe('Bug: color-scheme oscuro filtrado al panel (nativos de fecha/hora
       expect(esquemaFecha, 'color-scheme del input de fecha').toBe('light');
       expect(esquemaInicio, 'color-scheme del input de hora de inicio').toBe('light');
       expect(esquemaFin, 'color-scheme del input de hora de fin').toBe('light');
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('cada campo de fecha/hora del formulario de evento tiene un botón con icono visible que abre el selector nativo', async ({
+    browser,
+  }) => {
+    // El mismo escenario del bug (dispositivo en oscuro) y, además, el
+    // `showPicker()` nativo espiado: en headless el selector no llega a
+    // pintarse, así que se comprueba la llamada al API del navegador.
+    const context = await createAdminContext(browser);
+    try {
+      const page = await context.newPage();
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await page.addInitScript(() => {
+        (window as unknown as { __showPickerCalls: number }).__showPickerCalls = 0;
+        HTMLInputElement.prototype.showPicker = function showPicker(this: HTMLInputElement) {
+          (window as unknown as { __showPickerCalls: number }).__showPickerCalls += 1;
+        };
+      });
+      await page.goto('/panel');
+
+      await page
+        .getByRole('navigation', { name: 'Navegación del panel' })
+        .getByRole('link', { name: 'Gestión de eventos' })
+        .click();
+      await expect(page.getByRole('heading', { name: 'Gestión de eventos' })).toBeVisible();
+      await page.getByRole('button', { name: 'Agregar evento' }).click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+
+      const calendarios = dialog.getByRole('button', { name: 'Abrir calendario' });
+      const relojes = dialog.getByRole('button', { name: 'Abrir selector de hora' });
+
+      // Al menos un calendario (la fecha) y dos relojes (inicio y fin), todos
+      // visibles **sin hover**.
+      expect(await calendarios.count()).toBeGreaterThan(0);
+      expect(await relojes.count()).toBeGreaterThanOrEqual(2);
+      // Se comprueba la primera fila de fechas del editor.
+      const calendario = dialog
+        .locator('input[type="date"]')
+        .first()
+        .locator('xpath=following-sibling::button');
+      await expect(calendario).toBeVisible();
+      await expect(relojes.first()).toBeVisible();
+
+      // Área de toque suficiente (objetivo ≥40 px) y fuera del `<label>`.
+      const caja = await calendario.boundingBox();
+      expect(caja?.width ?? 0).toBeGreaterThanOrEqual(40);
+      expect(caja?.height ?? 0).toBeGreaterThanOrEqual(40);
+      expect(await calendario.evaluate((el) => el.closest('label') === null)).toBe(true);
+
+      // El icono no puede quedar «invisible» como el indicador nativo: color
+      // no blanco ni transparente sobre la superficie clara del panel.
+      const colorIcono = await calendario.evaluate((el) => getComputedStyle(el).color);
+      expect(colorIcono).not.toBe('rgb(255, 255, 255)');
+      expect(colorIcono).not.toBe('rgba(0, 0, 0, 0)');
+      expect(
+        await calendario.evaluate((el) => el.querySelector('svg')?.getAttribute('aria-hidden')),
+      ).toBe('true');
+
+      // Es un botón real (no envía el formulario) y abre el selector nativo.
+      expect(await calendario.evaluate((el) => (el as HTMLButtonElement).type)).toBe('button');
+      await calendario.click();
+      expect(
+        await page.evaluate(
+          () => (window as unknown as { __showPickerCalls: number }).__showPickerCalls,
+        ),
+        'showPicker() del input de fecha',
+      ).toBe(1);
+      // La fecha sigue siendo nativa y el diálogo sigue abierto (nada se envió).
+      await expect(dialog).toBeVisible();
+      expect(
+        await dialog
+          .locator('input[type="date"]')
+          .first()
+          .evaluate((el) => (el as HTMLInputElement).type),
+      ).toBe('date');
+
+      // El botón de hora también abre el selector de su propio input.
+      await relojes.first().click();
+      expect(
+        await page.evaluate(
+          () => (window as unknown as { __showPickerCalls: number }).__showPickerCalls,
+        ),
+      ).toBe(2);
     } finally {
       await context.close();
     }
