@@ -39,11 +39,18 @@ export function DatesEditor({ rows, onChange, errors = {}, generalError }: Dates
       {rows.map((row, index) => (
         <div
           key={index}
-          className="grid gap-3 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
+          className="grid gap-3 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"
         >
           {/* `minmax(0,1fr)` + `min-w-0` (QA Bug 3): las columnas pueden
               encogerse por debajo del ancho mínimo de los inputs nativos, así
-              que la fila nunca desborda el ancho del diálogo. */}
+              que la fila nunca desborda el ancho del diálogo.
+              `sm:items-end` (QA ⟲, 3.ª iteración): las etiquetas no ocupan lo
+              mismo («Hora de inicio (opcional)» se parte en dos líneas), así
+              que alineando por arriba los inputs —y sus botones con icono—
+              quedaban a distinta altura. Alineando por abajo las etiquetas
+              crecen hacia arriba y fecha, inicio y fin comparten la base del
+              input; el botón «Quitar» también queda a esa altura. En móvil la
+              fila apila en una columna y `sm:items-end` no aplica. */}
           <div className="min-w-0">
             <Field
               id={`agenda-date-${index}`}
