@@ -13,10 +13,10 @@ import { createAdminContext } from './publicSeed';
  * arriba (`sm:items-start`): cada input —y su botón de icono— empezaba a
  * distinta altura, así que los iconos quedaban desalineados verticalmente.
  *
- * La prueba mide los `boundingBox()` reales de los tres botones de la primera
- * fila y exige que sus centros verticales coincidan con tolerancia de ±1 px.
- * Falla antes del arreglo (las etiquetas de dos líneas bajan su icono ~1
- * renglón) y pasa después.
+ * La prueba mide los `boundingBox()` reales de los tres botones con icono y del
+ * botón «Quitar» de la primera fila, y exige que sus centros verticales
+ * coincidan con tolerancia de ±1 px. Falla antes del arreglo (las etiquetas de
+ * dos líneas bajan su icono ~1 renglón) y pasa después.
  *
  * Nota de revisión de los otros consumidores de `Field`:
  *   - `DateRangeFilter` (filtros de Auditoría) ya alinea con `items-end` y sus
@@ -40,7 +40,7 @@ test.describe('Bug date-picker panel: iconos alineados en la fila de fechas del 
   const centroVertical = (caja: { y: number; height: number }): number => caja.y + caja.height / 2;
 
   /** Botón con icono que abre el selector nativo del input indicado. */
-  const botonDelCampo = async (page: Page, dialogo: Locator, campo: Locator): Promise<Locator> => {
+  const botonDelCampo = async (dialogo: Locator, campo: Locator): Promise<Locator> => {
     const id = await campo.evaluate((el) => (el as HTMLInputElement).id);
     const boton = dialogo.locator(`button[aria-controls="${id}"]`);
     await expect(boton, `botón con icono del campo #${id}`).toBeVisible();
@@ -62,9 +62,8 @@ test.describe('Bug date-picker panel: iconos alineados en la fila de fechas del 
     return dialogo;
   };
 
-  /** Centros verticales de los tres botones de icono de la primera fila. */
+  /** Centros verticales de los controles de la primera fila (iconos y «Quitar»). */
   const centrosDeLaFila = async (
-    page: Page,
     dialogo: Locator,
   ): Promise<{ desfases: number[]; mensaje: string }> => {
     const fecha = dialogo.getByLabel(/^Fecha 1/);
@@ -74,10 +73,16 @@ test.describe('Bug date-picker panel: iconos alineados en la fila de fechas del 
     await expect(inicio).toBeVisible();
     await expect(fin).toBeVisible();
 
+    // El botón «Quitar» también vive en la pista del control: debe compartir
+    // centro vertical con los inputs y sus iconos, no solo estar visible.
+    const quitar = dialogo.getByRole('button', { name: 'Quitar la fecha 1' });
+    await expect(quitar).toBeVisible();
+
     const botones = [
-      await botonDelCampo(page, dialogo, fecha),
-      await botonDelCampo(page, dialogo, inicio),
-      await botonDelCampo(page, dialogo, fin),
+      await botonDelCampo(dialogo, fecha),
+      await botonDelCampo(dialogo, inicio),
+      await botonDelCampo(dialogo, fin),
+      quitar,
     ];
 
     const cajas = [];
@@ -93,19 +98,19 @@ test.describe('Bug date-picker panel: iconos alineados en la fila de fechas del 
     return {
       desfases,
       mensaje:
-        'centros verticales de los iconos (fecha, inicio, fin) relativos al primero: ' +
+        'centros verticales de los controles (fecha, inicio, fin, quitar) relativos al primero: ' +
         `${desfases.map((valor) => valor.toFixed(1)).join(' / ')} px`,
     };
   };
 
-  /** Tolerancia ±1 px entre los centros de los tres iconos. */
+  /** Tolerancia ±1 px entre los centros de los controles de la fila. */
   const exigirAlineados = (desfases: number[], mensaje: string): void => {
     for (const desfase of desfases) {
       expect(Math.abs(desfase), mensaje).toBeLessThanOrEqual(1);
     }
   };
 
-  test('fecha, hora de inicio y hora de fin comparten el centro vertical de sus iconos', async ({
+  test('los controles de la fila comparten centro vertical (iconos y «Quitar»)', async ({
     browser,
   }) => {
     const context = await createAdminContext(browser);
@@ -113,10 +118,10 @@ test.describe('Bug date-picker panel: iconos alineados en la fila de fechas del 
       const page = await context.newPage();
       const dialogo = await abrirAltaDeEvento(page);
 
-      // Tolerancia ±1 px: los tres iconos comparten altura aunque las
-      // etiquetas ocupen una o dos líneas (crecen hacia arriba, no hacia
-      // abajo), y el botón «Quitar» se alinea con los inputs.
-      const { desfases, mensaje } = await centrosDeLaFila(page, dialogo);
+      // Tolerancia ±1 px: los tres iconos y «Quitar» comparten altura aunque
+      // las etiquetas ocupen una o dos líneas (crecen hacia arriba, no hacia
+      // abajo).
+      const { desfases, mensaje } = await centrosDeLaFila(dialogo);
       exigirAlineados(desfases, mensaje);
     } finally {
       await context.close();
@@ -164,7 +169,7 @@ test.describe('Bug date-picker panel: iconos alineados en la fila de fechas del 
         await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
       });
 
-      const { desfases, mensaje } = await centrosDeLaFila(page, dialogo);
+      const { desfases, mensaje } = await centrosDeLaFila(dialogo);
       exigirAlineados(desfases, `con error de validación · ${mensaje}`);
 
       // El error no desaparece al medir: la fila queda en el estado con error.
