@@ -1,0 +1,102 @@
+{
+  "rama": "009-medios-predicas-y-podcasts",
+  "estado": "abierto",
+  "inicio": "2026-10-17T21:19:14Z",
+  "cerrado": null,
+  "moneda": "USD",
+  "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
+  "precios": [
+    {
+      "desde": "2026-10-17T22:20:21Z",
+      "modelos": {
+        "opencode-go/deepseek-v4.1-flash": {
+          "input": 0.15,
+          "output": 0.6,
+          "cache_read": 0.003,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3": {
+          "input": 1.4,
+          "output": 4.4,
+          "cache_read": 0.26,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3-flash": {
+          "input": 0.15,
+          "output": 0.5,
+          "cache_read": 0.03,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-flash": {
+          "input": 0.14,
+          "output": 0.28,
+          "cache_read": 0.0028,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-pro": {
+          "input": 0.435,
+          "output": 0.87,
+          "cache_read": 0.003625,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        }
+      }
+    }
+  ],
+  "sesiones": [
+    {
+      "id": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "padre": null,
+      "titulo": "Requisitos para arrancar F9",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-17T22:20:21Z",
+      "desde": "2026-10-17T22:19:25Z",
+      "hasta": "2026-10-17T22:19:49Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 3,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 1323,
+            "output": 544,
+            "reasoning": 275,
+            "cache_read": 465792,
+            "cache_write": 0
+          },
+          "costo": 0.002087,
+          "costo_opencode": 0.002087
+        }
+      ],
+      "hasta_ms": 1792275589867
+    }
+  ],
+  "totales": {
+    "por_agente_modelo": [
+      {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 3,
+        "tokens": {
+          "input": 1323,
+          "output": 544,
+          "reasoning": 275,
+          "cache_read": 465792,
+          "cache_write": 0
+        },
+        "costo": 0.002087,
+        "costo_opencode": 0.002087,
+        "sin_precio": false
+      }
+    ],
+    "tokens": 467934,
+    "costo": 0.002087,
+    "costo_opencode": 0.002087
+  }
+}
