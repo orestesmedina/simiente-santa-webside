@@ -45,8 +45,12 @@ import { createAdminContext } from './publicSeed';
  * `Received: "dark"` en lugar de `"light"`:
  *
  *   docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp \
- *     -v "$PWD/..":/work -w /work/frontend mcr.microsoft.com/playwright:v1.63.0-jammy \
+ *     -v "$PWD":/work -w /work/frontend mcr.microsoft.com/playwright:v1.63.0-jammy \
  *     npx playwright test --config e2e/playwright.config.ts qa-bug-color-scheme-panel --workers=1
+ *
+ * (Se ejecuta desde la **raíz del repositorio**; `$PWD` es ese directorio. El
+ * frontend se sirve ya compilado por nginx, así que el arreglo exige
+ * `docker compose up -d --build frontend` antes de correr la spec.)
  *
  * **2.ª iteración (2026-10-17, humano):** con el `color-scheme` ya en claro el
  * panel seguía «sin icono»: el indicador propio del nativo es pequeño y poco
