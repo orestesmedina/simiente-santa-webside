@@ -12,6 +12,7 @@ Corrección del panel tras F10: los campos de **fecha y hora** (p. ej. al crear 
 
 - **Selector de fecha/hora invisible en el panel:** se fuerza `color-scheme: light` en las tres superficies del panel (`AppLayout`, `PanelSurfaceLayout` y `PanelLayout`), de modo que los controles nativos se pintan en claro aunque el tema público esté en oscuro. El sitio público no cambia (sigue oscuro si así se eligió) y los campos continúan siendo nativos, con el *date picker* del navegador.
 - **Iconos visibles para abrir el selector:** además, cada campo de fecha/hora del panel muestra un **botón con icono de calendario/reloj** (siempre visible, accesible por teclado y con nombre para lectores de pantalla) que abre el selector nativo; se oculta el indicador nativo duplicado para que haya **un solo icono** por campo. Cubierto por `Field.test.tsx` y las regresiones e2e `frontend/e2e/qa-bug-color-scheme-panel.spec.ts` y `qa-date-picker-panel-indicador-unico.spec.ts`. Ver `specs/bugs/2026-10-16-date-picker-panel/estado.md`.
+- **Alineación de los campos de la fila de fechas del evento:** los tres campos (fecha, hora de inicio y hora de fin) y el botón «Quitar» quedan alineados **con y sin mensajes de validación** (rejilla de tres pistas con `subgrid`), y en móvil conservan su ritmo vertical. Cubierto por `qa-date-picker-panel-alineacion.spec.ts` y `qa-date-picker-panel-movil.spec.ts`.
 
 ## [0.7.0] — 2026-10-16
 

@@ -8,9 +8,9 @@
 |---|---|
 | Rama | fix/date-picker-panel |
 | Flujo | equipo-bug |
-| Fase | 4/5 · Arreglo (3.ª iteración: alinear también con errores de validación) |
-| Ciclo de corrección | 3/3 |
-| Próximo paso | Reservar la línea del mensaje en los campos de la fila (alineación estable con errores) y extender la prueba; luego validación y cierre |
+| Fase | 5/5 · Validado y cerrado (3.ª iteración); pendiente la aprobación humana del merge del PR #11 |
+| Ciclo de corrección | 3/3 · cerrado (condiciones del revisor resueltas) |
+| Próximo paso | Merge del **PR #11** (lo hace el humano). Si el job de backend cae por el flaky preexistente, relanzar ese job |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -41,6 +41,12 @@
 - **Revisión de código:** botón accesible, un solo icono por campo, `ref` reenviado intacto, pruebas reales, sitio público intacto. **APRUEBA**, con una condición a confirmar visualmente: que el valor de la fecha no se recorte en la rejilla a 640–768 px (`pr-11`); dev y QA lo revisaron con capturas y sin desbordes. Sugerencias no bloqueantes: posible doble icono en Firefox, `aria-label` repetidos entre filas.
 - **Seguridad:** sin impacto (UI + pruebas, sin dependencias ni datos). **APRUEBA**.
 
+## Validación de la 3.ª iteración (alineación)
+
+- **QA:** `npm test` **797/797**, e2e **12/12** (`qa-date-picker-panel-alineacion` ×2, `qa-date-picker-panel-movil` ×2, `qa-date-picker-panel-indicador-unico`, `qa-bug-color-scheme-panel` ×2, `agenda-panel` ×3, `agenda-accesibilidad`, `auditoria`). Centros de los tres campos y «Quitar» a **0 px** de desfase **con y sin error**; móvil (375 px) apila sin desbordes y con 12 px de ritmo vertical. **APRUEBA**.
+- **Revisión de código:** `subgridRow` opcional que no altera el resto de formularios; prueba que reproduce el estado con error (0/+44/−40 px antes) y no debilita aserciones. **APRUEBA** con condiciones **resueltas**: ritmo móvil (12 px), `min-w-0` en el envoltorio, JSDoc del prop y medición del botón «Quitar».
+- **Seguridad:** sin impacto (un prop de layout y pruebas; sin dependencias ni datos). Aprobación previa de la rama vigente.
+
 ## Diagnóstico (causa raíz)
 
 - Los campos **siguen siendo nativos** `<input type="date">` / `<input type="time">` (decisión de UX **D-4** de F4; el código no cambió desde F4). Verificado en el bundle desplegado: hay `type:"date"` (4) y `type:"time"` (6).
@@ -55,7 +61,7 @@
 
 ## Bitácora
 
-- 2026-10-17 — **3.ª iteración** (alineación de los iconos de la fila): prueba que mide la alineación (`410ddb6`), arreglo `sm:items-end` en `DatesEditor` (`a140819`) y estabilización de la captura del indicador nativo en `auditoria` (`dca7e52`). Los **3 commits están solo en local** (la rama va 3 por delante de `origin`). Pendiente: reservar la línea del mensaje para que la alineación se mantenga cuando un campo muestra error de validación, extender la prueba, validar y cerrar.
+- 2026-10-17 — **3.ª iteración cerrada**: alineación estable **con y sin error** (`subgridRow`, `2241534`/`60c410a`), ritmo móvil y `min-w-0` (`48bbd49`), pruebas de alineación/ritmo/«Quitar» (`410ddb6`, `a140819`, `dca7e52`, `2d6af17`). Validada por QA y revisión de código (797/797 unitarias, 12/12 e2e). Pendiente el merge del PR #11.
 - 2026-10-17 — **2.ª iteración** (pedida por el humano: «faltan los iconos para saber dónde dar clic»): botón con icono de calendario/reloj en `Field` para `date`/`time`, que abre `showPicker()`, con un solo icono por campo. Test-first (`47566e5`, `a5c64e9`, `fa5d029`, spec de QA `e23e49a`). Validada por QA/código/seguridad (793/793 unitarias, 8/8 e2e). Pendiente el merge del PR #11.
 - 2026-10-16 — Validación: QA, revisión de código y seguridad **aprueban** (12/12 e2e relacionadas, 782/782 unitarias). Pendiente el PR.
 - 2026-10-16 — Arreglo aplicado (`70c7012`): `[color-scheme:light]` en `AppLayout`, `PanelSurfaceLayout` y `PanelLayout`; la spec del bug pasa.
