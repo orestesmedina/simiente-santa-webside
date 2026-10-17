@@ -7,6 +7,18 @@ export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   /** Texto de ayuda que se asocia al campo. */
   help?: string;
+  /**
+   * El campo se integra como `subgrid` de la rejilla de su fila: la etiqueta,
+   * el control y el mensaje comparten pista con los campos vecinos, así que los
+   * controles —y sus botones con icono— quedan a la misma altura aunque unas
+   * etiquetas ocupen una línea y otras dos, o aunque solo un campo muestre el
+   * mensaje de error (⟲ 3.ª iteración del bug del date picker del panel).
+   *
+   * La rejilla de la fila debe declarar **tres pistas de fila** (etiqueta,
+   * control, mensaje), p. ej. `sm:grid-rows-[auto_auto_auto]`. Por defecto es
+   * `false`: el resto de formularios apila el campo en vertical sin cambios.
+   */
+  subgridRow?: boolean;
 }
 
 /** Tipos nativos con selector del navegador (`showPicker()`). */
@@ -69,7 +81,7 @@ function ClockIcon() {
  * suficiente en móvil. El input conserva su tipo nativo.
  */
 export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
-  { label, error, help, id, required, disabled, type, className = '', ...rest },
+  { label, error, help, id, required, disabled, type, className = '', subgridRow = false, ...rest },
   ref,
 ) {
   const generatedId = useId();
@@ -121,8 +133,17 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
     .filter(Boolean)
     .join(' ');
 
+  // Con `subgridRow`, el campo ocupa tres pistas de fila de la rejilla de la
+  // fila (etiqueta / control / mensaje) en vez de apilarse por su cuenta. La
+  // columna interior es `minmax(0,1fr)`: sin ella, la pista implícita se
+  // dimensiona por el ancho mínimo del input nativo y el campo desborda su
+  // columna (el campo de al lado interceptaba los clics del botón con icono).
+  const rootClasses = subgridRow
+    ? 'flex min-w-0 flex-col gap-1 sm:grid sm:grid-cols-[minmax(0,1fr)] sm:row-span-3 sm:grid-rows-subgrid'
+    : 'flex flex-col gap-1';
+
   return (
-    <div className="flex flex-col gap-1">
+    <div className={rootClasses}>
       <label htmlFor={inputId} className="font-medium text-slate-900">
         {label}
         {required && (

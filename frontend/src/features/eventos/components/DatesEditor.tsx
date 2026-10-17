@@ -39,50 +39,58 @@ export function DatesEditor({ rows, onChange, errors = {}, generalError }: Dates
       {rows.map((row, index) => (
         <div
           key={index}
-          className="grid gap-3 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"
+          className="grid gap-x-3 gap-y-1 border-b border-slate-200 pb-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:grid-rows-[auto_auto_auto]"
         >
-          {/* `minmax(0,1fr)` + `min-w-0` (QA Bug 3): las columnas pueden
-              encogerse por debajo del ancho mínimo de los inputs nativos, así
-              que la fila nunca desborda el ancho del diálogo.
-              `sm:items-end` (QA ⟲, 3.ª iteración): las etiquetas no ocupan lo
-              mismo («Hora de inicio (opcional)» se parte en dos líneas), así
-              que alineando por arriba los inputs —y sus botones con icono—
-              quedaban a distinta altura. Alineando por abajo las etiquetas
-              crecen hacia arriba y fecha, inicio y fin comparten la base del
-              input; el botón «Quitar» también queda a esa altura. En móvil la
-              fila apila en una columna y `sm:items-end` no aplica. */}
-          <div className="min-w-0">
-            <Field
-              id={`agenda-date-${index}`}
-              label={`Fecha ${index + 1}`}
-              type="date"
-              required
-              value={row.date}
-              error={errors[index]?.date}
-              onChange={(event) => update(index, { date: event.target.value })}
-            />
-          </div>
-          <div className="min-w-0">
-            <Field
-              label="Hora de inicio (opcional)"
-              type="time"
-              value={row.startTime}
-              error={errors[index]?.startTime}
-              onChange={(event) => update(index, { startTime: event.target.value })}
-            />
-          </div>
-          <div className="min-w-0">
-            <Field
-              label="Hora de fin (opcional)"
-              type="time"
-              value={row.endTime}
-              error={errors[index]?.endTime}
-              onChange={(event) => update(index, { endTime: event.target.value })}
-            />
-          </div>
+          {/* `minmax(0,1fr)` (QA Bug 3): las columnas pueden encogerse por
+              debajo del ancho mínimo de los inputs nativos, así que la fila
+              nunca desborda el ancho del diálogo.
+
+              Alineación con y sin error (QA ⟲, 3.ª y 4.ª iteración): la fila es
+              una rejilla de **tres pistas** (etiqueta / control / mensaje) y
+              cada `Field` se integra como `subgrid` (`subgridRow`). Así la
+              etiqueta («Hora de inicio (opcional)» se parte en dos líneas),
+              el control y el botón con icono caen siempre en la misma pista que
+              los de los campos vecinos: los tres iconos comparten altura aunque
+              las etiquetas ocupen distinto o aunque un mensaje de error (que se
+              pinta en la tercera pista) aparezca solo bajo un campo. Alinear
+              por arriba o por abajo (`sm:items-end`) movía los controles en
+              cuanto una celda crecía con el mensaje. `gap-y-1` conserva el
+              ritmo vertical de 4 px del campo; en móvil la fila apila en una
+              columna y el `subgrid` (prefijado con `sm:`) no aplica. */}
+          <Field
+            subgridRow
+            id={`agenda-date-${index}`}
+            label={`Fecha ${index + 1}`}
+            type="date"
+            required
+            value={row.date}
+            error={errors[index]?.date}
+            onChange={(event) => update(index, { date: event.target.value })}
+          />
+          <Field
+            subgridRow
+            label="Hora de inicio (opcional)"
+            type="time"
+            value={row.startTime}
+            error={errors[index]?.startTime}
+            onChange={(event) => update(index, { startTime: event.target.value })}
+          />
+          <Field
+            subgridRow
+            label="Hora de fin (opcional)"
+            type="time"
+            value={row.endTime}
+            error={errors[index]?.endTime}
+            onChange={(event) => update(index, { endTime: event.target.value })}
+          />
           <Button
             variant="secondary"
             size="sm"
+            // Pista del control (2.ª fila y 4.ª columna) para alinearse con los
+            // inputs. La posición debe ser explícita en **ambos** ejes: un
+            // elemento con fila fija se coloca antes que los automáticos y
+            // ocuparía la primera columna, desplazando los campos.
+            className="sm:col-start-4 sm:row-start-2 sm:self-end"
             aria-label={`Quitar la fecha ${index + 1}`}
             onClick={() => remove(index)}
           >

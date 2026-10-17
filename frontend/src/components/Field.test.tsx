@@ -26,6 +26,39 @@ describe('Field', () => {
     render(<Field label="Nombre" />);
     expect(screen.getByLabelText('Nombre')).not.toHaveAttribute('aria-invalid');
   });
+
+  /**
+   * ⟲ (2026-10-17, 4.ª iteración del bug del date picker del panel): para que
+   * los controles de una misma fila queden a la misma altura, el campo puede
+   * integrarse como `subgrid` de la rejilla de la fila (etiqueta, control y
+   * mensaje en pistas compartidas). Es opcional: el resto de formularios no
+   * cambia.
+   */
+  it('con subgridRow el campo ocupa las tres pistas de la fila (etiqueta, control, mensaje)', () => {
+    render(<Field label="Fecha 1" type="date" subgridRow />);
+
+    const raiz = screen.getByLabelText('Fecha 1').closest('div')?.parentElement;
+    expect(raiz).not.toBeNull();
+    // La columna interior es `minmax(0,1fr)`: si la pista implícita se
+    // dimensionara por el ancho mínimo del input nativo, el campo desbordaría
+    // su columna e interceptaría los clics del botón del campo vecino.
+    expect(raiz).toHaveClass(
+      'sm:row-span-3',
+      'sm:grid-rows-subgrid',
+      'sm:grid',
+      'sm:grid-cols-[minmax(0,1fr)]',
+      'min-w-0',
+    );
+  });
+
+  it('sin subgridRow el campo se apila en vertical como siempre', () => {
+    render(<Field label="Nombre" />);
+
+    const raiz = screen.getByLabelText('Nombre').closest('div')?.parentElement;
+    expect(raiz).not.toBeNull();
+    expect(raiz).toHaveClass('flex', 'flex-col');
+    expect(raiz).not.toHaveClass('sm:grid-rows-subgrid');
+  });
 });
 
 /**
