@@ -39,9 +39,9 @@ No hay que pedir permisos a nadie ni pagar nada. Solo necesitamos saber **dónde
 
 | Lo que necesitamos | Cómo se obtiene | ¿Lo tenemos? |
 |---|---|---|
-| **El canal de YouTube de la iglesia** (la dirección, p. ej. `youtube.com/@nombre`) | Es público. Nosotros deducimos el identificador interno | ☐ |
-| **La dirección del feed del podcast**, si ya tienen podcast en Spotify/Apple (p. ej. `https://anchor.fm/s/xxxx/podcast/rss`) | Se copia de su servicio de alojamiento: **Spotify for Creators → Ajustes → Availability → RSS Distribution**. Si usan otro servicio, se la piden a ellos | ☐ |
-| **Quién administra esas cuentas** (nombre y correo) | — | ☐ |
+| **El canal de YouTube de la iglesia** (la dirección, p. ej. `youtube.com/@nombre`) | Es público. Nosotros deducimos el identificador interno | https://www.youtube.com/@IglesiaSimienteSanta | 
+| **La dirección del feed del podcast**, si ya tienen podcast en Spotify/Apple (p. ej. `https://anchor.fm/s/xxxx/podcast/rss`) | Se copia de su servicio de alojamiento: **Spotify for Creators → Ajustes → Availability → RSS Distribution**. Si usan otro servicio, se la piden a ellos | https://anchor.fm/s/1116351e8/podcast/rss | 
+| **Quién administra esas cuentas** (nombre y correo) | — | Orestes Medina |
 
 > Un **feed** es una lista que la plataforma publica sola con lo último que han subido. No hay que
 > crearlo ni solicitarlo: ya existe. Lo único que hace falta es **conocer su dirección**.
@@ -85,21 +85,21 @@ Es la más cómoda a largo plazo, pero:
 👉 **Nuestra recomendación:** hacer F9 con la **Opción B** ahora, y dejar la Opción C como
 funcionalidad propia para después del despliegue (ya está anotada en el roadmap como idea futura).
 
-**Respuesta:** ☐ A · ☐ B (recomendada) · ☐ C · ☐ «ustedes deciden»
+**Respuesta:** ☐ A · ☐ B (recomendada) · ☐ C · X «ustedes deciden»
 
 ---
 
 ## 3. Preguntas de contenido
 
 **Q1. ¿Dónde publican hoy las prédicas y los podcasts?**
-☐ Solo en YouTube · ☐ Solo en Spotify · ☐ En YouTube y en Spotify (el mismo contenido) ·
+☐ Solo en YouTube · ☐ Solo en Spotify · X En YouTube y en Spotify (el mismo contenido) ·
 ☐ En otro servicio: ______ · ☐ Todavía no publicamos nada
 
 > Si es **el mismo contenido en los dos lados**, díganlo: hay que decidir si se muestra como **una
 > sola prédica** o como dos entradas (una de video y otra de audio).
 
 **Q2. ¿«Prédicas» y «podcasts» son una sola lista con un tipo, o dos secciones separadas?**
-- ☐ **Una sola sección** «Medios» donde cada elemento se marca como *prédica* o *podcast* y se puede
+- X **Una sola sección** «Medios» donde cada elemento se marca como *prédica* o *podcast* y se puede
   ver por bloques (**recomendada**: menos trabajo, un solo lugar donde buscar; es el mismo patrón que
   ya usamos en Eventos y actividades).
 - ☐ Dos secciones separadas con dos entradas de navegación.
@@ -107,57 +107,57 @@ funcionalidad propia para después del despliegue (ya está anotada en el roadma
 **Q3. ¿Qué datos quiere llenar el equipo por cada episodio?**
 Marquen los que usen. **Título y fecha** son obligatorios en cualquier caso.
 
-☐ Título · ☐ Fecha de publicación · ☐ Descripción o resumen · ☐ Quién predica / autor ·
-☐ Serie o tema · ☐ Invitado · ☐ Imagen (si no se llena, se usa la del video) · ☐ Duración ·
-☐ Tipo (prédica / podcast) · ☐ Otro: ______
+X Título · X Fecha de publicación · X Descripción o resumen · X Quién predica / autor ·
+X Serie o tema · ☐ Invitado · X Imagen (si no se llena, se usa la del video) · ☐ Duración ·
+X Tipo (prédica / podcast) · ☐ Otro: ______
 
 > Nota honesta: la **duración no la entrega el servicio de YouTube** en el modo que recomendamos, así
 > que sería un dato que el equipo escribe a mano. Si prefieren, se omite.
 
 **Q4. ¿El contenido se ingresa en español e inglés, o solo en español?**
-- ☐ **Español obligatorio e inglés opcional**, como el resto del sitio (**recomendada**: es la regla
+- X **Español obligatorio e inglés opcional**, como el resto del sitio (**recomendada**: es la regla
   que ya rige para todo el contenido, decisión 8 del roadmap).
 - ☐ Solo español.
 
 **Q5. ¿Cada episodio se puede dejar en borrador y publicar después?**
-- ☐ **Sí, borrador o publicado, por episodio** (**recomendada**: es la regla que ya usan eventos,
+- X **Sí, borrador o publicado, por episodio** (**recomendada**: es la regla que ya usan eventos,
   ministerios y ofrendas).
 - ☐ No: lo que se carga se ve al instante.
 
 **Q6. ¿Se puede eliminar un episodio?**
-☐ Sí, con confirmación (**recomendada**) · ☐ No, solo se retira a borrador
+X Sí, con confirmación (**recomendada**) · ☐ No, solo se retira a borrador
 
 ---
 
 ## 4. Preguntas de la página pública
 
 **Q7. ¿Cómo se llama la sección y en qué dirección vive?**
-Nombre: ☐ **«Medios»** · ☐ «Prédicas y podcasts» · ☐ Otro: ______
-Dirección: ☐ **`/medios`** (recomendada) · ☐ `/predicas` · ☐ `/podcasts` · ☐ Otro: ______
+Nombre: X **«Medios»** · ☐ «Prédicas y podcasts» · ☐ Otro: ______
+Dirección: X **`/medios`** (recomendada) · ☐ `/predicas` · ☐ `/podcasts` · ☐ Otro: ______
 
 **Q8. ¿Lleva su propia entrada en el menú?**
-☐ **Sí**, junto a las demás secciones (barra de escritorio, menú móvil y mapa del pie) ·
+X **Sí**, junto a las demás secciones (barra de escritorio, menú móvil y mapa del pie) ·
 ☐ No, solo se llega desde el bloque de la portada
 
 **Q9. ¿En qué orden aparecen los episodios?**
-- ☐ **Del más reciente al más antiguo** (**recomendada**: en contenido grabado, lo nuevo es lo que
+- X **Del más reciente al más antiguo** (**recomendada**: en contenido grabado, lo nuevo es lo que
   interesa).
 - ☐ Orden manual, que el equipo decide arrastrando o con un número (como ya se hace en ministerios y
   ofrendas).
 
 **Q10. Si todavía no hay nada publicado, ¿qué pasa al abrir la sección?**
-- ☐ **Se oculta la entrada del menú y la dirección redirige a la portada** (**recomendada**; es lo que
+- X **Se oculta la entrada del menú y la dirección redirige a la portada** (**recomendada**; es lo que
   ya hacen Ministerios y Ofrendas, para no mostrar páginas vacías).
 - ☐ Se muestra la página con un aviso («todavía no hay prédicas publicadas»), sin redirigir (es lo que
   hace Eventos).
 
 **Q11. ¿Hacen falta filtros o búsqueda?**
-☐ No, una lista simple con **«Cargar más»** (**recomendada** para empezar) ·
+X No, una lista simple con **«Cargar más»** (**recomendada** para empezar) ·
 ☐ Sí, filtrar por tipo (prédica / podcast) · ☐ Sí, buscar por predicador o tema · ☐ Otro: ______
 
 **Q12. ¿Quieren un bloque de «Prédicas y podcasts» en la portada?**
 La portada ya tiene: identidad, «Lo que viene» (eventos), quiénes somos, ministerios y ofrendas.
-- ☐ **Sí, al final, después de ofrendas**, con los últimos 5 y un botón «Ver todo» (**recomendada**).
+- X **Sí, al final, después de ofrendas**, con los últimos 5 y un botón «Ver todo» (**recomendada**).
 - ☐ No, solo la sección propia.
 
 ---
@@ -165,25 +165,25 @@ La portada ya tiene: identidad, «Lo que viene» (eventos), quiénes somos, mini
 ## 5. Preguntas del panel y de los enlaces
 
 **Q13. El módulo del panel se llamará «Medios» y usará el permiso que ya existe. ¿De acuerdo?**
-☐ Sí (**recomendada**) · ☐ Otro nombre: ______
+X Sí (**recomendada**) · ☐ Otro nombre: ______
 
 **Q14. ¿Quién puede publicar episodios?**
-☐ Los roles que ustedes creen con el permiso «Medios» (es como funcionan los demás módulos) ·
+X Los roles que ustedes creen con el permiso «Medios» (es como funcionan los demás módulos) ·
 ☐ Solo el rol de administrador
 
 **Q15. Al reproducir dentro del sitio se carga contenido de YouTube o Spotify, que son servicios de
 terceros (usan sus propias cookies). ¿Están de acuerdo?**
 - ☐ **Sí, con el modo de privacidad de YouTube** (que no deja cookies hasta que se reproduce) y un
   aviso claro (**recomendada**).
-- ☐ No: preferimos que el visitante abra el video en YouTube/Spotify con un enlace (sería la Opción A).
+- X No: preferimos que el visitante abra el video en YouTube/Spotify con un enlace (sería la Opción A).
 
 **Q16. Si un video se borra o se vuelve privado en YouTube, ¿qué debería pasar?**
-- ☐ **Se oculta solo de la página pública y el panel lo marca para que el equipo lo revise**
+- X **Se oculta solo de la página pública y el panel lo marca para que el equipo lo revise**
   (**recomendada**).
 - ☐ Se sigue mostrando igual, con un aviso de que no está disponible.
 
 **Q17. ¿Solo enlaces de YouTube y Spotify, o también de otros servicios (Vimeo, Facebook, Instagram)?**
-☐ **YouTube y Spotify se reproducen dentro del sitio; los demás se muestran como enlace**
+X **YouTube y Spotify se reproducen dentro del sitio; los demás se muestran como enlace**
 (**recomendada**) · ☐ Solo YouTube y Spotify, nada más
 
 ---
