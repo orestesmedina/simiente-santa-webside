@@ -8,9 +8,9 @@
 |---|---|
 | Rama | fix/date-picker-panel |
 | Flujo | equipo-bug |
-| Fase | 5/5 · Validado y cerrado (3.ª iteración); pendiente la aprobación humana del merge del PR #11 |
+| Fase | 5/5 · Cerrado (arreglo validado y subido); **PR #11 abierto, pendiente de tu aprobación y merge** |
 | Ciclo de corrección | 3/3 · cerrado (condiciones del revisor resueltas) |
-| Próximo paso | Merge del **PR #11** (lo hace el humano). Si el job de backend cae por el flaky preexistente, relanzar ese job |
+| Próximo paso | Aprobar y fusionar el **PR #11** (lo hace el humano); tras el merge, marcar el bug como terminado en el registro |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | Spec | n/a (bug) | | | |
 | Plan | n/a (bug) | | | |
-| PR / merge | pendiente | | | |
+| PR / merge | abierto (pendiente de tu aprobación y merge) | — | 2026-10-17 | PR #11: https://github.com/orestesmedina/simiente-santa-webside/pull/11 |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
