@@ -8,11 +8,11 @@
 |---|---|
 | Rama | fix/date-picker-panel |
 | Flujo | equipo-bug |
-| Fase | 5/5 · Validado (2.ª iteración); pendiente la aprobación humana del merge del PR #11 |
-| Ciclo de corrección | 1/3 · cerrado (la 2.ª iteración se validó sin bloqueantes) |
-| Próximo paso | Merge del **PR #11** (lo hace el humano). Si el CI vuelve a caer por el flaky preexistente, relanzar el job de backend |
+| Fase | 4/5 · Arreglo (3.ª iteración: alinear también con errores de validación) |
+| Ciclo de corrección | 3/3 |
+| Próximo paso | Reservar la línea del mensaje en los campos de la fila (alineación estable con errores) y extender la prueba; luego validación y cierre |
 | Bloqueado por | — |
-| Actualizado | 2026-10-16 |
+| Actualizado | 2026-10-17 |
 
 ## Aprobaciones
 
@@ -55,6 +55,7 @@
 
 ## Bitácora
 
+- 2026-10-17 — **3.ª iteración** (alineación de los iconos de la fila): prueba que mide la alineación (`410ddb6`), arreglo `sm:items-end` en `DatesEditor` (`a140819`) y estabilización de la captura del indicador nativo en `auditoria` (`dca7e52`). Los **3 commits están solo en local** (la rama va 3 por delante de `origin`). Pendiente: reservar la línea del mensaje para que la alineación se mantenga cuando un campo muestra error de validación, extender la prueba, validar y cerrar.
 - 2026-10-17 — **2.ª iteración** (pedida por el humano: «faltan los iconos para saber dónde dar clic»): botón con icono de calendario/reloj en `Field` para `date`/`time`, que abre `showPicker()`, con un solo icono por campo. Test-first (`47566e5`, `a5c64e9`, `fa5d029`, spec de QA `e23e49a`). Validada por QA/código/seguridad (793/793 unitarias, 8/8 e2e). Pendiente el merge del PR #11.
 - 2026-10-16 — Validación: QA, revisión de código y seguridad **aprueban** (12/12 e2e relacionadas, 782/782 unitarias). Pendiente el PR.
 - 2026-10-16 — Arreglo aplicado (`70c7012`): `[color-scheme:light]` en `AppLayout`, `PanelSurfaceLayout` y `PanelLayout`; la spec del bug pasa.
