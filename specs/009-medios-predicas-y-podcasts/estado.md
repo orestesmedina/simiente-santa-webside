@@ -13,9 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (**34/47** tareas: backend cerrado y base del frontend; faltan pantallas, e2e y cierre) |
+| Fase | 6/9 · Implementar (**40/47** tareas: backend y frontend completos; faltan los e2e y el cierre) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 6, pantallas del frontend (**T933–T938**), luego los e2e (**T939–T943**) y el cierre (**T944–T945**) |
+| Próximo paso | Fase 6, e2e (**T939–T943**) y cierre (**T944–T945**) — **bloqueados por el entorno**: al navegador de Playwright le faltan 5 librerías del sistema y no se pueden instalar sin `sudo` |
+| Bloqueado por | **`libnspr4`, `libnss3`, `libnssutil3`, `libsmime3`, `libasound2`** sin instalar (acción del humano: `sudo npx playwright install-deps chromium` desde `frontend/`). Sin ellas no se pueden **ejecutar** los e2e; escribir las pruebas sí se puede |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -53,6 +54,8 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-18 — **Pantallas terminadas (T933–T938).** Commits `b97ad59`, `640744a`, `c7fc5ed`, `0b075e7`, `94c6cb5`, `0b4ae9e`. Página `/medios` con fichas (carátula, nombre, fecha y descripción corta; **enlaces en pestaña nueva anunciada** y **sin contenido de terceros**), navegación condicional, bloque al final de la portada, panel con la búsqueda y sus resúmenes, listado con estado/origen/marcas, editor de descripción y unión de duplicados con vista previa. **930 pruebas en verde** (129 archivos), `lint` y `typecheck` limpios. Comprobación con **los 10 episodios reales**: 10 fichas ordenadas, el bloque de portada con **exactamente 5**, y el caso frontera de fecha resuelto en la zona de la iglesia (un episodio del 3-jul UTC se pinta como 2 de julio). **40/47 tareas.**
+- 2026-10-18 — ⚠️ **Bloqueo de entorno para los e2e**: el navegador de Playwright **no arranca** porque faltan `libnspr4`, `libnss3`, `libnssutil3`, `libsmime3` y `libasound2`, y no hay `sudo` sin contraseña. Se puede **escribir** las pruebas, pero no **ejecutarlas** hasta que el humano instale las dependencias (`sudo npx playwright install-deps chromium` desde `frontend/`).
 - 2026-10-18 — **Base del frontend terminada (T905, T929–T932).** Commits `035eecd`, `e6b87c8`, `b95783d`, `a766c10`, `3cc3924`. Tipos regenerados desde el contrato 0.9.0 (**sin deriva**), cliente y hooks (público, portada y panel), textos de la sección y del panel tomados de `ux.md`, permiso «medios» activado en el catálogo (sigue en **10**, sin tocar F5/F8), accesos del panel y las **6 etiquetas de auditoría** `media.*`. **847 pruebas en verde** (120 archivos), `lint` y `typecheck` limpios. **34/47 tareas.**
 - 2026-10-18 — **T946 aplicada** (decisión 28): la descripción corta **puede estar vacía** y, cuando lo está, la ficha pública **no pinta esa línea**. Retirado el `minLength: 1` del **delta y del contrato vivo** (sigue 0.9.0), el `PATCH` del panel **puede vaciarla** (`""` → sin descripción, patrón I6, sin `400`), el DTO público la omite y la auditoría sigue registrando el cambio. Verificado con unitarias de servicio y handler, **integración contra PostgreSQL real** y comprobación por `curl` (vaciar → `200`, la ficha sale sin descripción en los dos idiomas, `description_es` queda `NULL`). Commit `3b3bb53`. **29/47 tareas.**
 - 2026-10-18 — 🐞 **Defecto corregido en un artefacto**: el **delta del contrato** (`contracts/openapi.yaml`) **no parseaba como YAML** (tres descripciones con dos puntos sin comillas, introducidas al enmendarlo en la fase 5; el contrato vivo nunca estuvo afectado porque sí parseaba). Corregido: el delta vuelve a ser YAML válido (**7 rutas, 18 esquemas**).

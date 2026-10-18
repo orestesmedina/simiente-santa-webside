@@ -1234,7 +1234,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     excepción queda documentada en la evidencia.
   - **Commit sugerido**: `test(frontend): permisos y accesos con medios (cambio acotado RG9-6)`
 
-- [ ] T933 · `/medios`: sección pública con fichas, enlaces anunciados y **redirección** · `[frontend]` `[P]` (P4)
+- [X] T933 · `/medios`: sección pública con fichas, enlaces anunciados y **redirección** · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/medios/MediosPage.tsx`, `MediosGrid.tsx`,
     `MedioCard.tsx`, `CaratulaNeutra.tsx`, `MedioLinks.tsx`, `CargarMasButton.tsx` y `*.test.tsx`
@@ -1271,7 +1271,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     redirección silenciosa verificada (SC-016).
   - **Commit sugerido**: `feat(frontend): pagina /medios con fichas, enlaces anunciados y redireccion`
 
-- [ ] T934 · `useSiteLinks`: entrada «Medios» condicional · `[frontend]` `[P]` (P4)
+- [X] T934 · `useSiteLinks`: entrada «Medios» condicional · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/hooks/useSiteLinks.ts` y su test (EDITADOS).
   - **Qué hace**: `SiteLinkId` crece con **`'media'`** (alineación §8) y la entrada única
@@ -1291,7 +1291,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     superficies (SC-016) con la fuente de P9-16.
   - **Commit sugerido**: `feat(frontend): navegacion con /medios condicional en barra, menu y pie`
 
-- [ ] T935 · `MediosBlock` + `MedioItem` en la portada · `[frontend]` `[P]` (P4)
+- [X] T935 · `MediosBlock` + `MedioItem` en la portada · `[frontend]` `[P]` (P4)
 
   - **Archivos**: `frontend/src/features/publico/medios/MediosBlock.tsx`, `MedioItem.tsx` y
     `*.test.tsx` (NUEVOS), `frontend/src/features/publico/pages/HomePage.tsx` (EDITADO: **una
@@ -1324,7 +1324,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     y `quickstart.md` §10 ejecutable en navegador.
   - **Commit sugerido**: `feat(frontend): bloque de medios al final de la portada`
 
-- [ ] T936 · Panel: `MediosPage` + búsqueda + resumen + filtros + listado · `[frontend]`
+- [X] T936 · Panel: `MediosPage` + búsqueda + resumen + filtros + listado · `[frontend]`
 
   - **Archivos**: `frontend/src/features/medios/pages/MediosPage.tsx`,
     `components/BuscarEpisodios.tsx`, `components/ResumenImportacion.tsx`,
@@ -1365,7 +1365,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
   - **Criterio de terminado**: `quickstart.md` §2/§3/§6 ejecutables en el panel (US2/US3).
   - **Commit sugerido**: `feat(frontend): panel de medios con busqueda, resumen y listado`
 
-- [ ] T937 · Panel: `DescripcionForm` + `validation.ts` + `errors.ts` · `[frontend]`
+- [X] T937 · Panel: `DescripcionForm` + `validation.ts` + `errors.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/features/medios/components/DescripcionForm.tsx`, `validation.ts`,
     `errors.ts` y tests (NUEVOS).
@@ -1393,7 +1393,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     en la interfaz.
   - **Commit sugerido**: `feat(frontend): editor de la descripcion corta con es/en`
 
-- [ ] T938 · Panel: `UnirDuplicadosDialog` + resolución de marcas · `[frontend]`
+- [X] T938 · Panel: `UnirDuplicadosDialog` + resolución de marcas · `[frontend]`
 
   - **Archivos**: `frontend/src/features/medios/components/UnirDuplicadosDialog.tsx`,
     `ResolverMarcaDialog.tsx` y tests (NUEVOS); `MediosPage.tsx`/`EpisodiosList.tsx` (EDITADOS: las
