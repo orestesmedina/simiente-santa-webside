@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"simiente-santa/backend/internal/platform/audit"
 )
 
 // service_sync_test.go cubre la búsqueda a demanda (T920/T921): la importación
@@ -636,6 +638,566 @@ func TestBuscarNuevosTopeDuro(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Ventana del feed, disponibilidad y carátulas (T921)
+// ---------------------------------------------------------------------------
+
+// TestBuscarNuevosVentanaDelFeed fija FR-017/SC-014 (la regla del «estante de
+// 15»): salir de la ventana del feed **no oculta por sí solo**; se comprueba el
+// enlace y solo un **404/410 confirmado** oculta y marca «no disponible»; un
+// enlace vivo o una comprobación que no se pudo completar dejan la ficha
+// **visible** con su marca de revisión.
+func TestBuscarNuevosVentanaDelFeed(t *testing.T) {
+	casos := []struct {
+		name             string
+		resultado        ResultadoDisponibilidad
+		quierVisibilidad Visibilidad
+		quierMarca       *MarcaDisponibilidad
+		quierOcultos     int
+		quierInconclusos int
+	}{
+		{
+			name:             "enlace confirmado muerto (404) oculta y marca",
+			resultado:        DisponibilidadNoDisponible,
+			quierVisibilidad: VisibilidadOculta,
+			quierMarca:       ptrMarca(MarcaDisponibilidadNoDisponible),
+			quierOcultos:     1,
+		},
+		{
+			name:             "enlace vivo sigue visible y se marca",
+			resultado:        DisponibilidadDisponible,
+			quierVisibilidad: VisibilidadVisible,
+			quierMarca:       ptrMarca(MarcaDisponibilidadFueraDelFeed),
+		},
+		{
+			name:             "comprobación incompleta: nunca oculta",
+			resultado:        DisponibilidadInconclusa,
+			quierVisibilidad: VisibilidadVisible,
+			quierMarca:       ptrMarca(MarcaDisponibilidadFueraDelFeed),
+			quierInconclusos: 1,
+		},
+	}
+	for _, caso := range casos {
+		t.Run(caso.name, func(t *testing.T) {
+			repo := newFakeRepository()
+			// La ficha ya estaba importada y su elemento salió de la ventana del
+			// feed: el feed ya no lo trae.
+			repo.seed(Episodio{Titulo: "Salió de la ventana", PublicadoEn: time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC)})
+			repo.seedFuentes(FuenteEpisodio{
+				EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+				TituloFeed: "Salió de la ventana", Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
+			})
+			probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": caso.resultado}}
+			service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{}, probador, &fakeCaratulas{})
+
+			resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+			if err != nil {
+				t.Fatalf("BuscarNuevos devolvió %v", err)
+			}
+			if len(probador.comprobadas()) != 1 || probador.comprobadas()[0] != "youtube/SimienteAA1" {
+				t.Errorf("comprobaciones = %v, se esperaba una del enlace que salió", probador.comprobadas())
+			}
+			ficha := repo.episodios[0]
+			if ficha.Visibilidad != caso.quierVisibilidad {
+				t.Errorf("visibilidad = %q, se esperaba %q", ficha.Visibilidad, caso.quierVisibilidad)
+			}
+			if !mismoMarca(ficha.MarcaDisponibilidad, caso.quierMarca) {
+				t.Errorf("marca = %v, se esperaba %v", ficha.MarcaDisponibilidad, caso.quierMarca)
+			}
+			if ficha.MarcaDisponibilidadResueltaEn != nil {
+				t.Error("la marca nueva nace abierta")
+			}
+			if ficha.ResultadoDisponibilidad == nil || *ficha.ResultadoDisponibilidad != caso.resultado {
+				t.Errorf("resultado = %v, se esperaba %q", ficha.ResultadoDisponibilidad, caso.resultado)
+			}
+			if ficha.DisponibilidadComprobadaEn == nil {
+				t.Error("la comprobación debe dejar su fecha")
+			}
+			if resumen.Ocultos != caso.quierOcultos {
+				t.Errorf("hiddenCount = %d, se esperaba %d", resumen.Ocultos, caso.quierOcultos)
+			}
+			if resumen.Comprobados != 1 {
+				t.Errorf("availabilityCheckedCount = %d, se esperaba 1", resumen.Comprobados)
+			}
+			if resumen.Inconclusos != caso.quierInconclusos {
+				t.Errorf("availabilityInconclusiveCount = %d, se esperaba %d", resumen.Inconclusos, caso.quierInconclusos)
+			}
+			if resumen.Marcados != 0 {
+				t.Errorf("markedCount cuenta solo «posible duplicado» (B2): %d", resumen.Marcados)
+			}
+		})
+	}
+}
+
+// TestBuscarNuevosAgregacionPorFicha fija la regla M2 (precisión 2): la
+// comprobación es **por fuente** y el resultado de la ficha es **el peor** —un
+// enlace confirmado muerto oculta la ficha entera aunque el otro responda 200—;
+// «ya no aparece en el feed» solo se marca cuando **todas** sus fuentes salieron
+// de su ventana.
+func TestBuscarNuevosAgregacionPorFicha(t *testing.T) {
+	t.Run("un enlace muerto oculta la ficha de dos enlaces", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Unida", PublicadoEn: time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC), Origen: OrigenAmbos})
+		repo.seedFuentes(
+			FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+				TituloFeed: "Unida", Enlace: "https://www.youtube.com/watch?v=SimienteAA1"},
+			FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorPodcast, IDExterno: "guid-01",
+				TituloFeed: "Unida", Enlace: "https://podcasters.spotify.com/pod/show/simiente/episodes/guid-01"},
+		)
+		probador := &fakeProbador{
+			youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": DisponibilidadDisponible},
+			podcast: map[string]ResultadoDisponibilidad{
+				"https://podcasters.spotify.com/pod/show/simiente/episodes/guid-01": DisponibilidadNoDisponible,
+			},
+		}
+		service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{}, probador, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		ficha := repo.episodios[0]
+		if ficha.Visibilidad != VisibilidadOculta {
+			t.Error("un enlace confirmado muerto oculta la ficha entera (precisión 2)")
+		}
+		if !mismoMarca(ficha.MarcaDisponibilidad, ptrMarca(MarcaDisponibilidadNoDisponible)) {
+			t.Errorf("la marca debe ser «no disponible» (el peor gana): %v", ficha.MarcaDisponibilidad)
+		}
+		if ficha.ResultadoDisponibilidad == nil || *ficha.ResultadoDisponibilidad != DisponibilidadNoDisponible {
+			t.Errorf("el resultado agregado es el peor: %v", ficha.ResultadoDisponibilidad)
+		}
+		if resumen.Ocultos != 1 || resumen.Comprobados != 2 {
+			t.Errorf("resumen = %+v, se esperaban 1 oculto y 2 comprobaciones", resumen)
+		}
+		publicos, err := service.GetMedios(context.Background(), LangES, 0, 0)
+		if err != nil {
+			t.Fatalf("GetMedios devolvió %v", err)
+		}
+		if len(publicos.Items) != 0 {
+			t.Errorf("la ficha oculta no puede salir: %v", titulosPublicos(publicos.Items))
+		}
+	})
+
+	t.Run("con una sola fuente fuera de ventana no hay marca", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "A medias fuera", PublicadoEn: time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC), Origen: OrigenAmbos})
+		repo.seedFuentes(
+			// Solo el video salió de su ventana: el podcast sigue en la suya.
+			FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+				TituloFeed: "A medias fuera", Enlace: "https://www.youtube.com/watch?v=SimienteAA1"},
+			FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorPodcast, IDExterno: "guid-01",
+				TituloFeed: "A medias fuera", Enlace: "https://podcasters.spotify.com/pod/show/simiente/episodes/guid-01"},
+		)
+		feedPodcast := ResultadoFeed{Entradas: []EntradaFeed{entradaDePrueba(ProveedorPodcast, "guid-01",
+			"A medias fuera", time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC), "Descripción")}}
+		probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": DisponibilidadDisponible}}
+		service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{podcast: feedPodcast}, probador, &fakeCaratulas{})
+
+		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		ficha := repo.episodios[0]
+		if ficha.MarcaDisponibilidad != nil {
+			t.Errorf("decir «ya no aparece en el feed» sería falso: %v", ficha.MarcaDisponibilidad)
+		}
+		if ficha.Visibilidad != VisibilidadVisible {
+			t.Error("la ficha sigue visible")
+		}
+	})
+}
+
+// TestBuscarNuevosMatrizDeMarcas fija la matriz «par abierto/resuelto × enlace
+// vivo/muerto/inconcluso» (correcciones C1/A3): los dos ejes **conviven**, el par
+// de duplicados **nunca se rompe** al marcar disponibilidad (sigue disponible
+// «Revisar duplicado») y la indisponibilidad confirmada oculta aunque el equipo
+// hubiera resuelto antes la marca.
+func TestBuscarNuevosMatrizDeMarcas(t *testing.T) {
+	base := time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC)
+	casos := []struct {
+		name         string
+		parResuelto  bool
+		resultado    ResultadoDisponibilidad
+		quierMarca   MarcaDisponibilidad
+		quierVisible Visibilidad
+	}{
+		{name: "par abierto y enlace vivo", resultado: DisponibilidadDisponible, quierMarca: MarcaDisponibilidadFueraDelFeed, quierVisible: VisibilidadVisible},
+		{name: "par abierto y enlace muerto", resultado: DisponibilidadNoDisponible, quierMarca: MarcaDisponibilidadNoDisponible, quierVisible: VisibilidadOculta},
+		{name: "par abierto y comprobación incompleta", resultado: DisponibilidadInconclusa, quierMarca: MarcaDisponibilidadFueraDelFeed, quierVisible: VisibilidadVisible},
+		{name: "par resuelto y enlace vivo", parResuelto: true, resultado: DisponibilidadDisponible, quierMarca: MarcaDisponibilidadFueraDelFeed, quierVisible: VisibilidadVisible},
+		{name: "par resuelto y enlace muerto", parResuelto: true, resultado: DisponibilidadNoDisponible, quierMarca: MarcaDisponibilidadNoDisponible, quierVisible: VisibilidadOculta},
+		{name: "par resuelto y comprobación incompleta", parResuelto: true, resultado: DisponibilidadInconclusa, quierMarca: MarcaDisponibilidadFueraDelFeed, quierVisible: VisibilidadVisible},
+	}
+	for _, caso := range casos {
+		t.Run(caso.name, func(t *testing.T) {
+			repo := newFakeRepository()
+			repo.seed(
+				Episodio{Titulo: "Con par", PublicadoEn: base},
+				Episodio{Titulo: "Su par", PublicadoEn: base},
+			)
+			parID := repo.episodios[1].ID
+			repo.episodios[0].DuplicadoDeID = ptrUUID(parID)
+			repo.episodios[1].DuplicadoDeID = ptrUUID(repo.episodios[0].ID)
+			if caso.parResuelto {
+				repo.episodios[0].MarcaDuplicadoResueltaEn = ptrTime(base)
+				repo.episodios[1].MarcaDuplicadoResueltaEn = ptrTime(base)
+			}
+			repo.seedFuentes(FuenteEpisodio{
+				EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+				TituloFeed: "Con par", Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
+			})
+			probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": caso.resultado}}
+			service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{}, probador, &fakeCaratulas{})
+
+			if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+				t.Fatalf("BuscarNuevos devolvió %v", err)
+			}
+			ficha := repo.episodios[0]
+			if !mismoMarca(ficha.MarcaDisponibilidad, ptrMarca(caso.quierMarca)) {
+				t.Errorf("marca de disponibilidad = %v, se esperaba %q", ficha.MarcaDisponibilidad, caso.quierMarca)
+			}
+			if ficha.Visibilidad != caso.quierVisible {
+				t.Errorf("visibilidad = %q, se esperaba %q", ficha.Visibilidad, caso.quierVisible)
+			}
+			// El eje de duplicados queda intacto: el par (y su resolución) siguen.
+			if ficha.DuplicadoDeID == nil || *ficha.DuplicadoDeID != parID {
+				t.Errorf("el par se rompió al marcar disponibilidad: %v", ficha.DuplicadoDeID)
+			}
+			if caso.parResuelto != (ficha.MarcaDuplicadoResueltaEn != nil) {
+				t.Errorf("la resolución del par cambió: %v", ficha.MarcaDuplicadoResueltaEn)
+			}
+			// La marca de disponibilidad nueva nace abierta.
+			if caso.resultado == DisponibilidadNoDisponible && ficha.MarcaDisponibilidadResueltaEn != nil {
+				t.Error("la marca nueva de indisponibilidad nace abierta (A3)")
+			}
+		})
+	}
+}
+
+// TestBuscarNuevosPrecedenciaA3 fija la precisión aprobada en la fase 5 (A3): la
+// **indisponibilidad confirmada manda** — oculta la ficha aunque el equipo
+// hubiera resuelto antes «mantener visible» — y, en el sentido contrario, una
+// marca de la **misma clase** ya resuelta **no se reabre** sin confirmación nueva.
+func TestBuscarNuevosPrecedenciaA3(t *testing.T) {
+	base := time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC)
+
+	t.Run("marca resuelta + 404 confirmado → oculta y marca nueva abierta", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "El equipo la mantuvo visible", PublicadoEn: base,
+			MarcaDisponibilidad:           ptrMarca(MarcaDisponibilidadFueraDelFeed),
+			MarcaDisponibilidadResueltaEn: ptrTime(base),
+		})
+		repo.seedFuentes(FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube,
+			IDExterno: "SimienteAA1", TituloFeed: "El equipo la mantuvo visible",
+			Enlace: "https://www.youtube.com/watch?v=SimienteAA1"})
+		probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": DisponibilidadNoDisponible}}
+		service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{}, probador, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		ficha := repo.episodios[0]
+		if ficha.Visibilidad != VisibilidadOculta {
+			t.Error("la indisponibilidad confirmada manda sobre la resolución previa (A3)")
+		}
+		if !mismoMarca(ficha.MarcaDisponibilidad, ptrMarca(MarcaDisponibilidadNoDisponible)) {
+			t.Errorf("la marca nueva es «no disponible»: %v", ficha.MarcaDisponibilidad)
+		}
+		if ficha.MarcaDisponibilidadResueltaEn != nil {
+			t.Error("la marca nueva nace ABIERTA (cambiar de clase resetea la resolución)")
+		}
+		if resumen.Ocultos != 1 {
+			t.Errorf("hiddenCount = %d, se esperaba 1", resumen.Ocultos)
+		}
+	})
+
+	t.Run("misma clase ya resuelta + enlace vivo → no se reabre", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "Sigue fuera del feed", PublicadoEn: base,
+			MarcaDisponibilidad:           ptrMarca(MarcaDisponibilidadFueraDelFeed),
+			MarcaDisponibilidadResueltaEn: ptrTime(base),
+		})
+		repo.seedFuentes(FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube,
+			IDExterno: "SimienteAA1", TituloFeed: "Sigue fuera del feed",
+			Enlace: "https://www.youtube.com/watch?v=SimienteAA1"})
+		probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": DisponibilidadDisponible}}
+		service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{}, probador, &fakeCaratulas{})
+
+		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		ficha := repo.episodios[0]
+		if ficha.MarcaDisponibilidadResueltaEn == nil {
+			t.Error("la misma causa no reabre una marca resuelta (default #6)")
+		}
+		if !ficha.MarcaDisponibilidadResueltaEn.Equal(base) {
+			t.Errorf("la resolución se movió: %v", ficha.MarcaDisponibilidadResueltaEn)
+		}
+		if ficha.Visibilidad != VisibilidadVisible {
+			t.Error("la ficha sigue visible")
+		}
+	})
+}
+
+// TestBuscarNuevosColaDeComprobacion fija la cola de FR-017: solo se comprueba lo
+// que salió de la ventana y pertenece a fichas **visibles** no absorbidas —una
+// ficha oculta por el equipo no se re-comprueba—, y un feed caído no aporta
+// comprobaciones ni ocultaciones (FR-016).
+func TestBuscarNuevosColaDeComprobacion(t *testing.T) {
+	base := time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC)
+
+	t.Run("una ficha oculta por el equipo no se comprueba", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Oculta", PublicadoEn: base, Visibilidad: VisibilidadOculta})
+		repo.seedFuentes(FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube,
+			IDExterno: "SimienteAA1", TituloFeed: "Oculta", Enlace: "https://www.youtube.com/watch?v=SimienteAA1"})
+		probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": DisponibilidadNoDisponible}}
+		service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{}, probador, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if len(probador.comprobadas()) != 0 {
+			t.Errorf("no se comprueba lo que el equipo ocultó: %v", probador.comprobadas())
+		}
+		if resumen.Comprobados != 0 || resumen.Ocultos != 0 {
+			t.Errorf("resumen = %+v, se esperaban 0 comprobaciones", resumen)
+		}
+		if repo.episodios[0].MarcaDisponibilidad != nil {
+			t.Error("una ficha oculta por el equipo no se marca")
+		}
+	})
+
+	t.Run("un feed caído no comprueba ni oculta nada", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Del podcast", PublicadoEn: base})
+		repo.seedFuentes(FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorPodcast,
+			IDExterno: "guid-01", TituloFeed: "Del podcast",
+			Enlace: "https://podcasters.spotify.com/pod/show/simiente/episodes/guid-01"})
+		probador := &fakeProbador{porDefecto: DisponibilidadNoDisponible}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{errPodcast: errFeedNoDisponible}, probador, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if resumen.EstadoPodcast != string(FeedFallido) {
+			t.Errorf("el feed caído debe informarse: %q", resumen.EstadoPodcast)
+		}
+		if len(probador.comprobadas()) != 0 || resumen.Comprobados != 0 || resumen.Ocultos != 0 {
+			t.Errorf("un feed caído no oculta ni comprueba nada: %+v", resumen)
+		}
+		if repo.episodios[0].Visibilidad != VisibilidadVisible || repo.episodios[0].MarcaDisponibilidad != nil {
+			t.Error("su fuente no cuenta como «fuera de ventana» (FR-016)")
+		}
+	})
+
+	t.Run("el tope de comprobaciones acota la cola", func(t *testing.T) {
+		repo := newFakeRepository()
+		entradas := make([]FuenteEpisodio, 0, maxComprobacionesPorBusqueda+5)
+		for i := 0; i < maxComprobacionesPorBusqueda+5; i++ {
+			repo.seed(Episodio{Titulo: fmt.Sprintf("Viejo %d", i), PublicadoEn: base})
+			entradas = append(entradas, FuenteEpisodio{
+				EpisodioID: repo.episodios[i].ID, Proveedor: ProveedorYouTube,
+				IDExterno: fmt.Sprintf("Simiente%03d", i), TituloFeed: fmt.Sprintf("Viejo %d", i),
+				Enlace: fmt.Sprintf("https://www.youtube.com/watch?v=Simiente%03d", i),
+			})
+		}
+		repo.seedFuentes(entradas...)
+		probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{}}
+		service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{}, probador, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if resumen.Comprobados != maxComprobacionesPorBusqueda {
+			t.Errorf("comprobaciones = %d, se esperaba el tope %d", resumen.Comprobados, maxComprobacionesPorBusqueda)
+		}
+	})
+}
+
+// TestBuscarNuevosCaratulas fija P9-7/SC-005: la carátula del elemento importado
+// se **copia al sitio** (el nombre lo genera el servidor) y un fallo de descarga
+// **nunca** aborta la importación: la ficha entra sin carátula (marcador neutro).
+func TestBuscarNuevosCaratulas(t *testing.T) {
+	fecha := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+
+	t.Run("copia la carátula del elemento importado", func(t *testing.T) {
+		repo := newFakeRepository()
+		entrada := entradaDePrueba(ProveedorYouTube, "SimienteAA1", "Con carátula", fecha, "Descripción")
+		entrada.CaratulaURL = caratulaYouTube
+		caratulas := &fakeCaratulas{archivo: "img_55555555-5555-5555-5555-555555555555.jpg"}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, &fakeProbador{}, caratulas)
+
+		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if len(caratulas.descargadas()) != 1 || caratulas.descargadas()[0] != caratulaYouTube {
+			t.Errorf("carátulas pedidas = %v", caratulas.descargadas())
+		}
+		ficha := repo.episodios[0]
+		if ficha.Caratula == nil || *ficha.Caratula != caratulas.archivo {
+			t.Errorf("la ficha debe quedarse con la copia del sitio: %v", ficha.Caratula)
+		}
+	})
+
+	t.Run("un fallo de descarga deja la ficha sin carátula y no aborta", func(t *testing.T) {
+		repo := newFakeRepository()
+		entrada := entradaDePrueba(ProveedorYouTube, "SimienteAA1", "Con carátula", fecha, "Descripción")
+		entrada.CaratulaURL = caratulaYouTube
+		caratulas := &fakeCaratulas{err: errCaratulaNoDisponible}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, &fakeProbador{}, caratulas)
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("una carátula caída no aborta la importación: %v", err)
+		}
+		if resumen.Importados != 1 || len(repo.episodios) != 1 {
+			t.Errorf("la ficha debía importarse igual: %+v", resumen)
+		}
+		if repo.episodios[0].Caratula != nil {
+			t.Errorf("la ficha entra sin carátula (marcador neutro): %v", repo.episodios[0].Caratula)
+		}
+	})
+
+	t.Run("el tope de carátulas acota las descargas", func(t *testing.T) {
+		repo := newFakeRepository()
+		entradas := make([]EntradaFeed, 0, maxCaratulasPorBusqueda+5)
+		for i := 0; i < maxCaratulasPorBusqueda+5; i++ {
+			entrada := entradaDePrueba(ProveedorYouTube, fmt.Sprintf("Simiente%03d", i),
+				fmt.Sprintf("Sermón %d", i), fecha.Add(-time.Duration(i)*time.Hour), "Descripción")
+			entrada.CaratulaURL = caratulaYouTube
+			entradas = append(entradas, entrada)
+		}
+		caratulas := &fakeCaratulas{}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{youtube: ResultadoFeed{Entradas: entradas}}, &fakeProbador{}, caratulas)
+
+		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if len(caratulas.descargadas()) != maxCaratulasPorBusqueda {
+			t.Errorf("descargas = %d, se esperaba el tope %d", len(caratulas.descargadas()), maxCaratulasPorBusqueda)
+		}
+	})
+}
+
+// TestBuscarNuevosResumenYRegistro fija FR-018/FR-022: cada búsqueda deja **una**
+// fila en `media_sync_runs` con sus conteos y el estado de cada feed, y **una**
+// sola fila `media.sync` (nunca una por elemento), con el extracto del resumen en
+// `targetLabel`.
+func TestBuscarNuevosResumenYRegistro(t *testing.T) {
+	repo := newFakeRepository()
+	service := servicioConFeeds(t, repo, feedRealYouTube(), feedRealPodcast())
+
+	resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("BuscarNuevos devolvió %v", err)
+	}
+	if len(repo.syncRuns) != 1 {
+		t.Fatalf("se registraron %d búsquedas, se esperaba 1", len(repo.syncRuns))
+	}
+	run := repo.syncRuns[0]
+	if run.Importados != resumen.Importados || run.Unidos != resumen.Unidos || run.Marcados != resumen.Marcados ||
+		run.Ocultos != resumen.Ocultos || run.Comprobados != resumen.Comprobados || run.Inconclusos != resumen.Inconclusos {
+		t.Errorf("el registro no coincide con el resumen: %+v vs %+v", run, resumen)
+	}
+	if run.EstadoYouTube != FeedOK || run.EstadoPodcast != FeedOK {
+		t.Errorf("el estado de los feeds debe persistirse: %+v", run)
+	}
+	if run.ActorUserID == nil {
+		t.Error("la búsqueda registra quién la pidió (FR-022)")
+	}
+	if run.TerminadoEn.Before(run.IniciadoEn) {
+		t.Error("la búsqueda no puede terminar antes de empezar")
+	}
+
+	filas := auditoriaDeBusqueda(repo)
+	if len(filas) != 1 {
+		t.Fatalf("se registraron %d filas media.sync, se esperaba exactamente 1", len(filas))
+	}
+	if filas[0].TargetKind != audit.TargetContent || filas[0].Result != audit.ResultSuccess {
+		t.Errorf("fila media.sync = %+v", filas[0])
+	}
+	if !strings.HasPrefix(filas[0].TargetLabel, busquedaLabel) {
+		t.Errorf("targetLabel = %q, se esperaba empezar por %q", filas[0].TargetLabel, busquedaLabel)
+	}
+	if !strings.Contains(filas[0].TargetLabel, "10 entraron") || !strings.Contains(filas[0].TargetLabel, "8 unieron") {
+		t.Errorf("el extracto del resumen debe viajar en targetLabel: %q", filas[0].TargetLabel)
+	}
+	if len([]rune(filas[0].TargetLabel)) > maxTargetLabel {
+		t.Errorf("targetLabel supera %d caracteres", maxTargetLabel)
+	}
+
+	// La segunda búsqueda no duplica nada y deja su propia fila.
+	if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+		t.Fatalf("la segunda búsqueda devolvió %v", err)
+	}
+	if len(repo.syncRuns) != 2 || len(auditoriaDeBusqueda(repo)) != 2 {
+		t.Errorf("cada búsqueda deja su registro: %d runs, %d filas",
+			len(repo.syncRuns), len(auditoriaDeBusqueda(repo)))
+	}
+}
+
+// TestBuscarNuevosPresupuestoAgotado fija P9-3/R9-9: al agotarse el presupuesto la
+// búsqueda cierra con lo hecho —cada elemento ya quedó guardado en su
+// transacción—, el resumen lleva conteos parciales y el registro se persiste
+// igual: nada queda a medias ni se pierde.
+func TestBuscarNuevosPresupuestoAgotado(t *testing.T) {
+	repo := newFakeRepository()
+	ctx, cancelar := context.WithCancel(context.Background())
+	// El contexto se corta al empezar la segunda ficha: la segunda termina en su
+	// transacción (nada a medias) y la tercera ya no arranca.
+	insertadas := 0
+	repo.antesDeInsertar = func() {
+		insertadas++
+		if insertadas == 2 {
+			cancelar()
+		}
+	}
+	entradas := make([]EntradaFeed, 0, 6)
+	for i := 0; i < 6; i++ {
+		entradas = append(entradas, entradaDePrueba(ProveedorYouTube, fmt.Sprintf("Simiente%03d", i),
+			fmt.Sprintf("Sermón %d", i), time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC).Add(-time.Duration(i)*time.Hour),
+			"Descripción"))
+	}
+	service := servicioConDoblesYProbador(t, repo,
+		&fakeFeedSource{youtube: ResultadoFeed{Entradas: entradas}}, &fakeProbador{}, &fakeCaratulas{})
+
+	resumen, err := service.BuscarNuevos(ctx, uuid.New())
+	if err != nil {
+		t.Fatalf("el presupuesto agotado no es un error: %v", err)
+	}
+	if resumen.Importados != 2 {
+		t.Errorf("importados = %d, se esperaban los 2 ya guardados", resumen.Importados)
+	}
+	if len(repo.episodios) != 2 {
+		t.Errorf("fichas = %d, se esperaban 2", len(repo.episodios))
+	}
+	for _, ficha := range repo.episodios {
+		if len(fuentesDe(repo, ficha.ID)) != 1 {
+			t.Errorf("una ficha quedó a medias (sin su fuente): %+v", ficha)
+		}
+	}
+	if len(repo.syncRuns) != 1 {
+		t.Fatalf("la búsqueda parcial también se registra: %d filas", len(repo.syncRuns))
+	}
+	if repo.syncRuns[0].Importados != 2 {
+		t.Errorf("el registro lleva los conteos parciales: %+v", repo.syncRuns[0])
+	}
+	filas := auditoriaDeBusqueda(repo)
+	if len(filas) != 1 || !strings.Contains(filas[0].TargetLabel, "sin terminar") {
+		t.Errorf("el resumen parcial lo dice en su extracto: %+v", filas)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Helpers de prueba de la búsqueda
 // ---------------------------------------------------------------------------
 
@@ -669,6 +1231,46 @@ func zonaDePrueba(t *testing.T) *time.Location {
 		t.Skipf("sin datos de zona horaria (%v): se omite la prueba", err)
 	}
 	return zona
+}
+
+// servicioConDoblesYProbador arma el service con los dobles de la red saliente
+// indicados (feeds, probador y carátulas) y la zona del lugar.
+func servicioConDoblesYProbador(
+	t *testing.T,
+	repo *fakeRepository,
+	feeds FeedSource,
+	probador AvailabilityProber,
+	caratulas CoverFetcher,
+) *service {
+	t.Helper()
+	return NewService(ServiceDeps{
+		Repository:         repo,
+		FeedSource:         feeds,
+		AvailabilityProber: probador,
+		CoverFetcher:       caratulas,
+		Store:              &fakeAlmacen{},
+		Location:           zonaDePrueba(t),
+	})
+}
+
+// mismoMarca compara dos marcas de disponibilidad opcionales.
+func mismoMarca(a, b *MarcaDisponibilidad) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
+}
+
+// auditoriaDeBusqueda devuelve las filas de auditoría de la búsqueda (una sola
+// por ejecución: `media.sync`).
+func auditoriaDeBusqueda(repo *fakeRepository) []audit.Action {
+	out := make([]audit.Action, 0, 1)
+	for _, action := range repo.committed {
+		if action.Code == audit.ActionMediaSync {
+			out = append(out, action)
+		}
+	}
+	return out
 }
 
 // fuentesDe devuelve las fuentes de una ficha (como el `LEFT JOIN` por proveedor).

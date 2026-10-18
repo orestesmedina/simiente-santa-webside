@@ -6,6 +6,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -577,6 +578,9 @@ type fakeRepository struct {
 	// auditFalla fuerza el fallo del registro transaccional: la mutación NO se
 	// aplica (FR-022, fail-closed).
 	auditFalla bool
+	// antesDeInsertar es un gancho de las pruebas (p. ej. para cortar el
+	// presupuesto de la búsqueda a mitad de la importación).
+	antesDeInsertar func()
 
 	// Observaciones.
 	publicParams     []paginate.Params
@@ -803,6 +807,9 @@ func (f *fakeRepository) conEnlaces(episodio Episodio) Episodio {
 }
 
 func (f *fakeRepository) InsertMediaItem(_ context.Context, episodio Episodio, actions ...audit.Action) (Episodio, error) {
+	if f.antesDeInsertar != nil {
+		f.antesDeInsertar()
+	}
 	if f.mutationErr != nil {
 		return Episodio{}, f.mutationErr
 	}
@@ -978,20 +985,22 @@ func paginar[T any](items []T, params paginate.Params) []T {
 
 // fakeProbador es el doble programable de `AvailabilityProber`: devuelve el
 // resultado por enlace (o por proveedor) sin salir a la red y recuerda qué se le
-// pidió (para fijar la cola de comprobación de FR-017).
+// pidió (para fijar la cola de comprobación de FR-017). La búsqueda comprueba con
+// varias comprobaciones en vuelo (P9-3): el registro va con mutex.
 type fakeProbador struct {
 	youtube    map[string]ResultadoDisponibilidad
 	podcast    map[string]ResultadoDisponibilidad
 	porDefecto ResultadoDisponibilidad
 	err        error
 
+	mu          sync.Mutex
 	comprobados []string
 }
 
 var _ AvailabilityProber = (*fakeProbador)(nil)
 
 func (p *fakeProbador) ProbeYouTube(_ context.Context, videoID string) (ResultadoDisponibilidad, error) {
-	p.comprobados = append(p.comprobados, "youtube/"+videoID)
+	p.anotar("youtube/" + videoID)
 	if p.err != nil {
 		return DisponibilidadInconclusa, p.err
 	}
@@ -1002,7 +1011,7 @@ func (p *fakeProbador) ProbeYouTube(_ context.Context, videoID string) (Resultad
 }
 
 func (p *fakeProbador) ProbePodcast(_ context.Context, enlace string) (ResultadoDisponibilidad, error) {
-	p.comprobados = append(p.comprobados, "podcast/"+enlace)
+	p.anotar("podcast/" + enlace)
 	if p.err != nil {
 		return DisponibilidadInconclusa, p.err
 	}
@@ -1012,20 +1021,38 @@ func (p *fakeProbador) ProbePodcast(_ context.Context, enlace string) (Resultado
 	return p.porDefecto, nil
 }
 
+// anotar registra una comprobación (seguro con varias comprobaciones en vuelo).
+func (p *fakeProbador) anotar(clave string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.comprobados = append(p.comprobados, clave)
+}
+
+// comprobadas devuelve una copia del registro de comprobaciones.
+func (p *fakeProbador) comprobadas() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]string(nil), p.comprobados...)
+}
+
 // fakeCaratulas es el doble programable de `CoverFetcher`: guarda en memoria lo
 // que se le pidió y devuelve un nombre generado (o error, sin abortar la
-// importación).
+// importación). Las descargas van con varias en vuelo (P9-3): el registro va con
+// mutex.
 type fakeCaratulas struct {
 	archivo string
 	err     error
 
+	mu      sync.Mutex
 	pedidas []string
 }
 
 var _ CoverFetcher = (*fakeCaratulas)(nil)
 
 func (c *fakeCaratulas) FetchCover(_ context.Context, caratulaURL string) (string, error) {
+	c.mu.Lock()
 	c.pedidas = append(c.pedidas, caratulaURL)
+	c.mu.Unlock()
 	if c.err != nil {
 		return "", c.err
 	}
@@ -1033,6 +1060,13 @@ func (c *fakeCaratulas) FetchCover(_ context.Context, caratulaURL string) (strin
 		return "img_" + uuid.NewString() + ".jpg", nil
 	}
 	return c.archivo, nil
+}
+
+// descargadas devuelve una copia del registro de descargas.
+func (c *fakeCaratulas) descargadas() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]string(nil), c.pedidas...)
 }
 
 // fakeAlmacen es el doble del almacén de archivos para la unión: recuerda los
