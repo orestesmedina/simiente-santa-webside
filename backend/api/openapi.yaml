@@ -3247,6 +3247,10 @@ paths:
       operationId: syncMedios
       summary: "«Buscar episodios nuevos»: importa de los dos feeds lo que falte"
       description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (cadena `AdminChain("medios")`, FR-021: el permiso ya
+        existía en el catálogo de F2 y el catálogo sigue en 10).
+
         La **única** automatización de F9 (FR-011): en esta misma petición el
         servidor (1) lee el feed Atom del canal de YouTube y el RSS del podcast,
         (2) **agrega solo lo que falte** —lo que su identificador externo no
@@ -3315,6 +3319,9 @@ paths:
       operationId: updateMedio
       summary: "Ajusta la descripción corta y/o la visibilidad de una ficha"
       description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (FR-021).
+
         Única edición que F9 permite (FR-019/FR-020): **solo** `descriptionEs`,
         `descriptionEn` (opcional; exige `descriptionEs`, FR-023/Decisión 8) y
         `visibility` (`visible`/`hidden`, FR-015). El nombre, la fecha, la
@@ -3368,6 +3375,9 @@ paths:
       operationId: mergeMedio
       summary: "Une dos entradas del mismo sermón en una sola ficha (confirmación explícita en la interfaz)"
       description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (FR-021).
+
         Unión manual de un par marcado «posible duplicado» (FR-014/FR-019, US3
         esc. 1): la ficha `otherId` **queda absorbida** por `{id}` —que
         conserva nombre, carátula, fecha y descripción y adopta el enlace que
@@ -3429,6 +3439,9 @@ paths:
       operationId: resolveMedioMark
       summary: "Resuelve la marca de revisión de una ficha (y decide su visibilidad)"
       description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (FR-021).
+
         Resolución de marcas (FR-017/US3 esc. 2 y esc. 6): el equipo confirma
         que revisó la marca **indicada en `mark`** —los dos ejes pueden estar
         activos a la vez y se resuelven por separado— y decide con `visibility`
