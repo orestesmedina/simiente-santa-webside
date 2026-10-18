@@ -394,7 +394,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 
 ## Fase 2 — Contrato OpenAPI y tipos
 
-- [ ] T904 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.9.0) · `[backend]` `[P]` (P1)
+- [X] T904 · Fusionar el delta OpenAPI en `backend/api/openapi.yaml` (0.9.0) · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/api/openapi.yaml` (EDITADO). *No* se toca
     `specs/009-medios-predicas-y-podcasts/contracts/openapi.yaml` (snapshot inmutable).
@@ -455,7 +455,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 
 ## Fase 3 — Núcleo de plataforma (`backend/internal/platform/`)
 
-- [ ] T906 · `platform/audit`: 6 códigos `media.*` · `[backend]` `[P]` (P1)
+- [X] T906 · `platform/audit`: 6 códigos `media.*` · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/internal/platform/audit/audit.go` y `audit_test.go` (EDITADOS).
   - **Qué hace**: amplía el registro cerrado del plumbing de F2 (P9-14) con los **6 códigos**
@@ -478,7 +478,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 > `http.RoundTripper` y fixtures XML), sin dependencias nuevas. Es la superficie sensible de F9:
 > **toda la red saliente del backend vive aquí**, detrás de interfaces.
 
-- [ ] T907 · `medios`: `titulo.go` — normalización de títulos y día en `America/Costa_Rica` · `[backend]` `[P]` (P1)
+- [X] T907 · `medios`: `titulo.go` — normalización de títulos y día en `America/Costa_Rica` · `[backend]` `[P]` (P1)
 
   - **Archivos**: `backend/internal/medios/titulo.go` y `titulo_test.go` (NUEVOS).
   - **Qué hace**: funciones **puras** (R9-4, P9-5): `normalizarTitulo` — NFKD + quitar marcas
@@ -500,7 +500,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     de prueba; `golangci-lint` sin comentarios.
   - **Commit sugerido**: `feat(medios): normalizacion de titulos y dia en la zona de la iglesia`
 
-- [ ] T907A · `medios`: `cliente_http.go` — fábrica única del `http.Client` saliente · `[backend]` `[P]` (P1) *(red saliente)*
+- [X] T907A · `medios`: `cliente_http.go` — fábrica única del `http.Client` saliente · `[backend]` `[P]` (P1) *(red saliente)*
 
   - **Archivos**: `backend/internal/medios/cliente_http.go` y `cliente_http_test.go` (NUEVOS).
   - **⚠️ ID con letra**: tarea **añadida en la fase 5** (corrección **A1** del `analyze.md`); la
@@ -529,7 +529,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     consumidor nuevo) y su tabla de pruebas está lista para reutilizarse en T908/T909/T910.
   - **Commit sugerido**: `feat(medios): fabrica unica del cliente HTTP saliente (barreras SSRF)`
 
-- [ ] T908 · `medios`: `feeds.go` — `FeedSource` + parser Atom/RSS + fixtures reales · `[backend]` `[P]` (P1) *(red saliente)*
+- [X] T908 · `medios`: `feeds.go` — `FeedSource` + parser Atom/RSS + fixtures reales · `[backend]` `[P]` (P1) *(red saliente)*
 
   - **Archivos**: `backend/internal/medios/feeds.go`, `feeds_test.go`,
     `fake_feed_source_test.go` (NUEVO) y `backend/internal/medios/testdata/` (NUEVO: los XML
@@ -563,7 +563,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     saliente (A1); 0 dependencias nuevas.
   - **Commit sugerido**: `feat(medios): lector de feeds Atom/RSS con fixtures reales`
 
-- [ ] T909 · `medios`: `disponibilidad.go` — probadores a prueba de fallos · `[backend]` `[P]` (P1) *(red saliente)*
+- [X] T909 · `medios`: `disponibilidad.go` — probadores a prueba de fallos · `[backend]` `[P]` (P1) *(red saliente)*
 
   - **Archivos**: `backend/internal/medios/disponibilidad.go` y `disponibilidad_test.go` (NUEVOS).
   - **Qué hace**: la interfaz **`AvailabilityProber`** con sus tipos de resultado (**declarada aquí;
@@ -588,7 +588,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     probador no hace I/O real en tests y sus peticiones salen **solo** por la fábrica única (A1).
   - **Commit sugerido**: `feat(medios): probadores de disponibilidad a prueba de fallos`
 
-- [ ] T910 · `medios`: `caratula.go` — descarga acotada de carátulas con `platform/storage` · `[backend]` `[P]` (P1) *(red saliente)*
+- [X] T910 · `medios`: `caratula.go` — descarga acotada de carátulas con `platform/storage` · `[backend]` `[P]` (P1) *(red saliente)*
 
   - **Archivos**: `backend/internal/medios/caratula.go` y `caratula_test.go` (NUEVOS).
   - **Qué hace**: la interfaz **`CoverFetcher`** (**declarada aquí; T915 no la redeclara, M1**) con
