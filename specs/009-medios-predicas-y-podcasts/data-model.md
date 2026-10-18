@@ -151,13 +151,6 @@ CREATE TABLE media_items (
     -- F9 (FR-019: la acción es ocultar; la unión deja puntero).
     merged_into_id    UUID NULL REFERENCES media_items(id),
 
-    -- Última comprobación de disponibilidad (FR-017, R9-2): resultado y fecha.
-    -- 'unavailable' solo se fija con 404/410 confirmados; 'inconclusive' nunca
-    -- oculta nada (regla a prueba de fallos).
-    availability_checked_at TIMESTAMPTZ NULL,
-    availability_result     TEXT NULL CHECK (availability_result IN
-                              ('available', 'unavailable', 'inconclusive')),
-
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
 

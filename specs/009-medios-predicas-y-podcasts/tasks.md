@@ -293,7 +293,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 > huecos desde `000001` (F7 terminó en `000013`). **Sin migración de permisos** (P9-15: `medios` ya
 > está sembrado por `000002` y el catálogo sigue en 10).
 
-- [ ] T901 · Migración `000014_create_media_content` · `[db]` `[P]` (P1)
+- [X] T901 · Migración `000014_create_media_content` · `[db]` `[P]` (P1)
 
   - **Archivos**: `backend/migrations/000014_create_media_content.up.sql` y
     `000014_create_media_content.down.sql` (NUEVOS).
@@ -337,7 +337,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     garantizados por la BD (la pareja recíproca del par la garantiza el service: T914/T920).
   - **Commit sugerido**: `feat(db): tablas de medios con fuentes por proveedor y registro de busquedas (000014)`
 
-- [ ] T902 · Migración `000015_extend_admin_actions_for_media` · `[db]` `[P]` (P1)
+- [X] T902 · Migración `000015_extend_admin_actions_for_media` · `[db]` `[P]` (P1)
 
   - **Archivos**: `backend/migrations/000015_extend_admin_actions_for_media.up.sql` y
     `.down.sql` (NUEVOS).
@@ -356,7 +356,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     anterior (§VI).
   - **Commit sugerido**: `feat(db): ampliar admin_actions a medios (000015)`
 
-- [ ] T903 · Consultas sqlc de `medios` + rama de carátulas en `media.sql` · `[db]`
+- [X] T903 · Consultas sqlc de `medios` + rama de carátulas en `media.sql` · `[db]`
 
   - **Archivos**: `backend/internal/db/queries/media_episodes.sql` (NUEVO),
     `media_episode_sources.sql` (NUEVO), `media_sync_runs.sql` (NUEVO), `media.sql` (EDITADO: rama
