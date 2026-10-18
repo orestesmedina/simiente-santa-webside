@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 3/9 · Planificar (plan, research, data-model, contracts y ux.md **listos**; **puerta 2 pendiente**) |
+| Fase | 4/9 · Tareas (plan **aprobado** el 2026-10-17 con 5 precisiones) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | **Puerta 2: aprobación humana del plan** (5 puntos abiertos que señala el plan) → después, fase 4 (`tasks.md`) |
-| Bloqueado por | — (nada: el plan está listo; solo espera tu decisión en la puerta) |
+| Próximo paso | Fase 4: `tasks.md` (`arquitecto`) → fase 5: `analyze` (`revisor-codigo`) → fase 6: implementación por capas |
+| Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
 ## Aprobaciones
@@ -26,7 +26,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
 | Spec | aprobado | humano (cliente) | 2026-10-17 | "Apruebo la spec v2" |
-| Plan | pendiente | | | |
+| Plan | aprobado | humano (cliente) | 2026-10-17 | "Aplica las 5 y apruebo el plan" |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
 
@@ -45,12 +45,15 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 - 2026-10-17 (humano): el cuestionario se le entrega al cliente **antes** de aprobar la spec, para no inventar reglas de negocio.
 - 2026-10-17 (humano): autoriza **cerrar el costo del bug del date picker desde su rama muerta** y traer ese único cambio a `main` con un **cherry-pick** (el PR ya estaba aprobado y fusionado).
 - 2026-10-17 (cliente, por medio del humano): **respuestas al cuestionario** (15 de 17 coinciden con lo recomendado) y **giro de alcance**: F9 se construye con **importación desde los feeds** (YouTube + podcast) y **enlaces que salen del sitio**, con un botón **«Buscar episodios nuevos»** en el panel. Registrado como **decisión 27 del roadmap**; corrige el punto de la decisión 26 que dejaba la sincronización fuera de F9.
+- 2026-10-17 (humano, **puerta 2**): aprueba el plan con **5 precisiones** («Aplica las 5 y apruebo el plan»): (1) solo un «posible duplicado» sin resolver mantiene la ficha fuera del público (una marcada «ya no aparece en el feed» sigue visible); (2) un enlace confirmado como no disponible oculta la **ficha completa**; (3) un episodio sin descripción en el feed se importa igual y la ficha omite esa línea; (4) el «mismo día» de la unión se calcula en `America/Costa_Rica` sin margen y la duda se marca en vez de unir; (5) al unir manda el nombre del feed del video (default #7). **Ninguna cambia el alcance**: quedaron firmadas en `spec.md` y anotadas en `plan.md` (§ «Precisiones aprobadas en la puerta 2»).
 - 2026-10-17 (humano): el **mismo sermón en YouTube y Spotify** se muestra como **una sola entrada con video y audio** (Q18).
 
 ## Bitácora
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-17 — ⚠️ **Incidente de entorno (reparado).** Un reinicio del servidor a mitad de las ediciones dejó **corrupto el archivo de referencia de la rama** (`.git/refs/heads/009-medios-predicas-y-podcasts`, 41 bytes nulos), lo que hizo que git viera el repositorio entero como «todo nuevo» y `HEAD` como roto. **Daño acotado a ese único archivo**: objetos, reflog y todos los archivos del proyecto (verificados byte a byte) estaban intactos. Reparado reescribiendo la referencia al último commit (`037321a`) y limpiando los nulos de los reflogs; la historia y las ediciones se recuperaron completas. **Causa probable**: escritura fallida en el disco de Windows (`/mnt/d/…`), justo lo que advierte `make doctor` («muévelo a Ubuntu para evitar lentitud y problemas de permisos»). **Recomendación**: mover el proyecto a `~/proyectos/` en Ubuntu.
+- 2026-10-17 — **Puerta 2: plan APROBADO** por el humano («Aplica las 5 y apruebo el plan»), con las 5 precisiones aplicadas a `spec.md` y anotadas en `plan.md`. Fase → **4/9 · Tareas**.
 - 2026-10-17 — **Fase 3 entregada**: `plan.md` (18 decisiones técnicas, 12 riesgos), `research.md` (14 incógnitas con evidencia real: XML del feed, pruebas HTTP de disponibilidad), `data-model.md` (3 tablas + 2 migraciones), `contracts/openapi.yaml` (delta aditivo, 0.8.0 → **0.9.0**, 7 endpoints) y `quickstart.md`; `ux.md` con 7 pantallas y los flujos de «Buscar episodios nuevos» y unir duplicados. **Puerta 2 pendiente** con **5 puntos abiertos** señalados por el arquitecto.
 - 2026-10-17 — **Puerta 1: spec v2 APROBADA** por el humano («Apruebo la spec v2»). Fase → **3/9 · Planificar**. Se arranca el plan técnico (`arquitecto`) y `ux.md` (`disenador-ux`).
 - 2026-10-17 — **Ajustes aprobados por el humano antes de la puerta 1** (aplicados a la v2): (1) **regla del «estante de 15»** — un episodio que sale de la ventana del feed **no se oculta**: se comprueba si su enlace sigue disponible y solo se oculta cuando la comprobación **confirma** que ya no lo está, con regla a prueba de fallos (nunca se oculta por falta de certeza); (2) los enlaces externos se abren en **pestaña nueva anunciada**. Queda señalado para la puerta 1 el **default #7** (al unir video y audio manda el nombre del feed de YouTube).

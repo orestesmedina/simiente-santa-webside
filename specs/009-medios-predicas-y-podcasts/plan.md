@@ -655,3 +655,13 @@ Y dos confirmaciones menores (defaults ya señalados por la spec o por precedent
 6. **Desempate del orden con la misma fecha** (default revisable #11): literal «orden de
    importación» = **FIFO** (`created_at ASC`, luego `id`) dentro del orden general
    `published_at DESC`. Invertir la dirección del desempate es una línea + sus pruebas.
+
+## Precisiones aprobadas en la puerta 2 (2026-10-17)
+
+El humano aprobó el plan («Aplica las 5 y apruebo el plan») con estas cinco precisiones. **Ninguna cambia el alcance**: son decisiones de detalle ya previstas, y quedan firmadas en `spec.md`:
+
+1. **Qué se publica con marcas abiertas.** Solo un **«posible duplicado» sin resolver** mantiene la ficha fuera del público; una ficha marcada **«ya no aparece en el feed»** (enlace comprobado como disponible, o comprobación fallida) **sigue visible**. Corrige la redacción de **SC-002**, que contaba «cualquier marca sin resolver» como violación y contradecía a FR-017. → FR-009, FR-017, SC-002.
+2. **Enlace muerto en una ficha con dos enlaces.** Un enlace confirmado como no disponible **oculta la ficha completa** (lectura literal de Q16), no solo ese enlace. → FR-017.
+3. **Sermón sin descripción en el feed.** El episodio **se importa igual**, sin descripción corta, y la ficha pública **omite esa línea** (no se inventa texto ni se deja hueco). → FR-020.
+4. **Frontera del «mismo día»** para unir video y audio: se calcula en **`America/Costa_Rica` sin margen de horas**; si queda en duda por el borde del día, se aplica la regla de duplicado dudoso (entradas separadas y marcadas) en lugar de unir. → FR-013.
+5. **Nombre que manda al unir** (default revisable #7): el del **feed del video (YouTube)**; el del podcast se conserva como dato de origen. → default #7.
