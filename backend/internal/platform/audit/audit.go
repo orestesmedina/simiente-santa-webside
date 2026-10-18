@@ -52,9 +52,9 @@ const (
 
 // Códigos de acción administrativa (FR-023). Son la lista cerrada de la tabla
 // admin_actions: los 8 de F2, los 15 de F3 (`home.*`), los 15 de F4
-// (`event.*`, `activity.*` y `category.*`), los 8 de F6 (`ministry.*`) y los 8
-// de F7 (`donation.*`); la migración 000013 fija ese mismo registro cerrado en
-// la base (§VI).
+// (`event.*`, `activity.*` y `category.*`), los 8 de F6 (`ministry.*`), los 8
+// de F7 (`donation.*`) y los 6 de F9 (`media.*`); la migración 000015 fija ese
+// mismo registro cerrado en la base (§VI).
 const (
 	ActionUserCreate        = "user.create"
 	ActionUserUpdate        = "user.update"
@@ -130,6 +130,22 @@ const (
 	ActionDonationTextUpdate    = "donation.text.update"
 	ActionDonationTextPublish   = "donation.text.publish"
 	ActionDonationTextUnpublish = "donation.text.unpublish"
+
+	// Códigos de F9 (P9-14): medios (prédicas y podcasts). F9 **no** tiene
+	// `create`/`delete` (no hay alta manual ni borrado: FR-019): el alta
+	// importada por la búsqueda se registra **solo** con `media.sync`.
+	// `media.description.update` registra el guardado de la descripción corta
+	// (incluido el primer ajuste); `media.hide`/`media.show` **solo** cambios de
+	// visibilidad (datos y visibilidad a la vez → dos filas); `media.merge` una
+	// unión confirmada (la absorbida se cita en `targetLabel`);
+	// `media.mark.resolve` la resolución de una marca (con la marca concreta y
+	// la visibilidad elegida).
+	ActionMediaSync              = "media.sync"
+	ActionMediaDescriptionUpdate = "media.description.update"
+	ActionMediaHide              = "media.hide"
+	ActionMediaShow              = "media.show"
+	ActionMediaMerge             = "media.merge"
+	ActionMediaMarkResolve       = "media.mark.resolve"
 )
 
 // ActionCodes es la lista cerrada de códigos válidos de FR-023, en el orden de
@@ -189,6 +205,12 @@ var ActionCodes = []string{
 	ActionDonationTextUpdate,
 	ActionDonationTextPublish,
 	ActionDonationTextUnpublish,
+	ActionMediaSync,
+	ActionMediaDescriptionUpdate,
+	ActionMediaHide,
+	ActionMediaShow,
+	ActionMediaMerge,
+	ActionMediaMarkResolve,
 }
 
 // Errores de validación de los tipos de plumbing.
