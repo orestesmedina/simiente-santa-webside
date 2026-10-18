@@ -13,6 +13,7 @@ import (
 
 	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/session"
+	"simiente-santa/backend/internal/platform/testutil"
 )
 
 // Tests de los handlers del panel de medios (T925): el handler real sobre el
@@ -46,6 +47,16 @@ func adminRequest(method, target, body string, withSession bool) *http.Request {
 func withPathValue(req *http.Request, id string) *http.Request {
 	req.SetPathValue("id", id)
 	return req
+}
+
+// newTestHandlerCon construye el handler sobre el service real con las
+// dependencias indicadas (el repositorio falso y el logger siempre van).
+func newTestHandlerCon(t *testing.T, repo Repository, deps ServiceDeps) *Handler {
+	t.Helper()
+	logger, _ := testutil.NewLogger()
+	deps.Repository = repo
+	deps.Logger = logger
+	return NewHandler(HandlerDeps{Service: NewService(deps), Logger: logger})
 }
 
 // --- Listado del panel (T925, FR-018/FR-019) ---
@@ -485,6 +496,163 @@ func TestUpdateMedioHandlerWithoutService(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.UpdateMedio(rec, withPathValue(
 		adminRequest(http.MethodPatch, "/api/v1/admin/medios/"+id.String(), `{"visibility":"hidden"}`, true), id.String()))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+	}
+}
+
+// --- Buscar episodios nuevos (T926, FR-011/FR-016/FR-018) ---
+
+// entradaDePrueba arma un elemento de feed válido para el doble de `FeedSource`.
+func entradaFeedDePrueba(idExterno, titulo string) EntradaFeed {
+	return EntradaFeed{
+		IDExterno:   idExterno,
+		Titulo:      titulo,
+		Enlace:      "https://www.youtube.com/watch?v=" + idExterno,
+		Publicado:   time.Date(2026, time.July, 3, 12, 0, 0, 0, time.UTC),
+		Descripcion: "Un sermón sobre la higuera.",
+	}
+}
+
+// TestBuscarNuevosHandlerOK fija el 200 con el sobre `ResumenBusqueda` completo
+// (FR-018): los conteos, el estado de cada feed y la importación de lo que faltaba
+// (FR-012).
+func TestBuscarNuevosHandlerOK(t *testing.T) {
+	repo := newFakeRepository()
+	feeds := &fakeFeedSource{
+		youtube: ResultadoFeed{Entradas: []EntradaFeed{entradaFeedDePrueba("abc12345678", "Potencial sin Resultados")}},
+	}
+	h := newTestHandlerCon(t, repo, ServiceDeps{FeedSource: feeds})
+
+	rec := httptest.NewRecorder()
+	h.BuscarNuevos(rec, adminRequest(http.MethodPost, "/api/v1/admin/medios/buscar-nuevos", "", true))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got ResumenBusqueda
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es ResumenBusqueda: %v (%s)", err, rec.Body)
+	}
+	if got.Importados != 1 {
+		t.Errorf("importedCount = %d, se esperaba 1", got.Importados)
+	}
+	if got.EstadoYouTube != string(FeedOK) {
+		t.Errorf("youtube = %q, se esperaba ok", got.EstadoYouTube)
+	}
+	if got.IniciadoEn.IsZero() || got.TerminadoEn.IsZero() {
+		t.Errorf("el resumen debe traer sus fechas: %+v", got)
+	}
+	if len(repo.episodios) != 1 {
+		t.Fatalf("el episodio no se importó: %+v", repo.episodios)
+	}
+	// Una búsqueda completa deja **una** fila de auditoría `media.sync` (P9-14).
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaSync {
+		t.Errorf("auditoría = %+v, se esperaba una fila media.sync", repo.committed)
+	}
+}
+
+// TestBuscarNuevosHandlerFeedCaido fija FR-016: un feed que no responde **no** es
+// un error —el resumen lo informa y se importa lo del otro—, así que la respuesta
+// sigue siendo 200 con el estado `failed`.
+func TestBuscarNuevosHandlerFeedCaido(t *testing.T) {
+	repo := newFakeRepository()
+	feeds := &fakeFeedSource{
+		errYoutube: errFeedNoDisponible,
+		podcast:    ResultadoFeed{},
+	}
+	h := newTestHandlerCon(t, repo, ServiceDeps{FeedSource: feeds})
+
+	rec := httptest.NewRecorder()
+	h.BuscarNuevos(rec, adminRequest(http.MethodPost, "/api/v1/admin/medios/buscar-nuevos", "", true))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got ResumenBusqueda
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es ResumenBusqueda: %v (%s)", err, rec.Body)
+	}
+	if got.EstadoYouTube != string(FeedFallido) {
+		t.Errorf("youtube = %q, se esperaba failed", got.EstadoYouTube)
+	}
+	if got.EstadoPodcast != string(FeedOK) {
+		t.Errorf("podcast = %q, se esperaba ok", got.EstadoPodcast)
+	}
+	if got.Ocultos != 0 || got.Marcados != 0 {
+		t.Errorf("un feed caído no oculta ni marca nada: %+v", got)
+	}
+}
+
+// TestBuscarNuevosHandlerNeverLeaksNetworkText fija FR-018: el resumen nunca
+// expone texto técnico de red (nombres de host internos, errores de Go, URLs),
+// aunque los dos feeds fallen.
+func TestBuscarNuevosHandlerNeverLeaksNetworkText(t *testing.T) {
+	repo := newFakeRepository()
+	feeds := &fakeFeedSource{
+		errYoutube: errors.New("dial tcp 169.254.169.254:443: i/o timeout"),
+		errPodcast: errFeedNoDisponible,
+	}
+	h := newTestHandlerCon(t, repo, ServiceDeps{FeedSource: feeds})
+
+	rec := httptest.NewRecorder()
+	h.BuscarNuevos(rec, adminRequest(http.MethodPost, "/api/v1/admin/medios/buscar-nuevos", "", true))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	raw := rec.Body.String()
+	for _, secreto := range []string{
+		"http", "169.254", "dial", "timeout", "youtube.com", "anchor.fm", "Medios", "error",
+	} {
+		if strings.Contains(raw, secreto) {
+			t.Errorf("el resumen filtra %q: %s", secreto, raw)
+		}
+	}
+}
+
+// TestBuscarNuevosHandlerRequiresSession fija el 401 de la red de seguridad.
+func TestBuscarNuevosHandlerRequiresSession(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := httptest.NewRecorder()
+	h.BuscarNuevos(rec, adminRequest(http.MethodPost, "/api/v1/admin/medios/buscar-nuevos", "", false))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, se esperaba 401 (%s)", rec.Code, rec.Body)
+	}
+}
+
+// TestBuscarNuevosHandlerServiceError fija el 500 genérico: un fallo interno (el
+// registro de la búsqueda, la base de datos) no filtra la causa y lo ya importado
+// queda intacto.
+func TestBuscarNuevosHandlerServiceError(t *testing.T) {
+	repo := newFakeRepository()
+	repo.syncRunErr = errors.New("boom")
+	feeds := &fakeFeedSource{}
+	h := newTestHandlerCon(t, repo, ServiceDeps{FeedSource: feeds})
+
+	rec := httptest.NewRecorder()
+	h.BuscarNuevos(rec, adminRequest(http.MethodPost, "/api/v1/admin/medios/buscar-nuevos", "", true))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"internal"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "boom") {
+		t.Errorf("la respuesta filtra la causa interna: %s", rec.Body)
+	}
+}
+
+// TestBuscarNuevosHandlerWithoutService fija el 500 de composición.
+func TestBuscarNuevosHandlerWithoutService(t *testing.T) {
+	h := NewHandler(HandlerDeps{})
+
+	rec := httptest.NewRecorder()
+	h.BuscarNuevos(rec, adminRequest(http.MethodPost, "/api/v1/admin/medios/buscar-nuevos", "", true))
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)

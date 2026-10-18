@@ -31,9 +31,7 @@ func uuidDePrueba() uuid.UUID { return uuid.New() }
 // falso en memoria.
 func newTestHandler(t *testing.T, repo Repository) *Handler {
 	t.Helper()
-	logger, _ := testutil.NewLogger()
-	svc := NewService(ServiceDeps{Repository: repo, Logger: logger})
-	return NewHandler(HandlerDeps{Service: svc, Logger: logger})
+	return newTestHandlerCon(t, repo, ServiceDeps{})
 }
 
 // doGet lanza un handler GET del dominio y devuelve la respuesta.

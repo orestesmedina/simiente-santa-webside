@@ -105,8 +105,43 @@ func (h *Handler) UpdateMedio(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// --- Helpers HTTP compartidos del panel (patrón de F2/F3/F4/F6/F7) ---
+// --- Buscar episodios nuevos (T926, FR-011/FR-016/FR-018) ---
 
+// BuscarNuevos responde POST /api/v1/admin/medios/buscar-nuevos (FR-011): la
+// única automatización de F9, a demanda y **dentro de la misma petición**. El
+// service recibe el contexto de la petición (con su presupuesto de 90 s) y
+// devuelve el resumen de FR-018.
+//
+// La respuesta es `200` **también cuando un feed falló o el presupuesto se agotó**
+// (FR-016/R9-9): eso no es un error, el resumen lo dice y nada se perdió —cada
+// elemento quedó guardado en su transacción—. El `500` queda para un fallo
+// interno (la base de datos, el registro de la búsqueda): lo ya importado sigue
+// intacto.
+//
+// El resumen **nunca** expone texto técnico de red ni información interna del
+// sistema (FR-018): son conteos y el estado de cada feed.
+//
+// Códigos: 200 con ResumenBusqueda; sin sesión → 401; sin permiso → 403 (cadena);
+// fallo interno → 500.
+func (h *Handler) BuscarNuevos(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	identity, ok := h.adminIdentity(ctx, w)
+	if !ok {
+		return
+	}
+	if !h.serviceConfigured(ctx, w) {
+		return
+	}
+
+	resumen, err := h.service.BuscarNuevos(ctx, identity.UserID)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+	httpserver.WriteJSON(w, http.StatusOK, resumen)
+}
+
+// --- Helpers HTTP compartidos del panel (patrón de F2/F3/F4/F6/F7) ---
 // decodeAndValidate decodifica el cuerpo JSON de la petición en dto y lo valida
 // con platform/validate (CWE-20). Devuelve true si el DTO es utilizable; si no, ya
 // escribió el 400 invalid (con `details` por campo cuando la validación lo
