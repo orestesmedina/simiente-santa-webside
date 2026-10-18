@@ -717,7 +717,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 
 ## Fase 6 — Dominio `medios`: servicios
 
-- [ ] T915 · `medios`: `service.go` — interfaces, constantes, validación e invariantes · `[backend]`
+- [X] T915 · `medios`: `service.go` — interfaces, constantes, validación e invariantes · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service.go` y `service_test.go` (NUEVOS).
   - **Qué hace**: **solo** la interfaz `Repository` que consume el service, más el uso de
@@ -745,7 +745,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     sus pruebas; los límites son el único punto de verdad (los usan T916–T921 y los cita el contrato).
   - **Commit sugerido**: `feat(medios): invariantes, validacion y constantes del dominio`
 
-- [ ] T916 · `medios`: `service_public.go` — `GetMedios` (sección con «Cargar más») · `[backend]`
+- [X] T916 · `medios`: `service_public.go` — `GetMedios` (sección con «Cargar más») · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service_public.go` y `service_public_test.go` (NUEVOS).
   - **Qué hace**: `GetMedios(lang, limit, offset)` (FR-002…FR-006): solo fichas **publicables**
@@ -771,7 +771,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     verificables en el service; cobertura medida (`go test -cover`, ≥ 80 % al cierre).
   - **Commit sugerido**: `feat(medios): seccion publica paginada con fallback de idioma`
 
-- [ ] T917 · `medios`: `service_public.go` — `GetPortadaMedios` (tope 5) · `[backend]`
+- [X] T917 · `medios`: `service_public.go` — `GetPortadaMedios` (tope 5) · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service_public.go` (EDITADO) y `service_public_test.go`
     (AMPLIADO).
@@ -789,7 +789,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
   - **Criterio de terminado**: US6/FR-027/SC-015 resueltos a nivel de dominio.
   - **Commit sugerido**: `feat(medios): extracto de la portada con tope 5 en el servidor`
 
-- [ ] T918 · `medios`: `service_admin.go` — `List` (con `lastSync`) y `Update` · `[backend]`
+- [X] T918 · `medios`: `service_admin.go` — `List` (con `lastSync`) y `Update` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service_admin.go` y `service_admin_test.go` (NUEVOS).
   - **Qué hace**: `List` (panel paginado con `platform/paginate`, filtros `visibility`/`reviewMark`/
@@ -817,7 +817,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     cubiertas en el service con sus pruebas.
   - **Commit sugerido**: `feat(medios): gestion del panel con descripcion, visibilidad y auditoria`
 
-- [ ] T919 · `medios`: `service_admin.go` — `Merge` (unión por puntero) y `ResolveMark` · `[backend]`
+- [X] T919 · `medios`: `service_admin.go` — `Merge` (unión por puntero) y `ResolveMark` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service_admin.go` (EDITADO) y `service_admin_test.go`
     (AMPLIADO).
@@ -860,7 +860,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     y la no-reapertura de marcas queda fijada por prueba.
   - **Commit sugerido**: `feat(medios): union por puntero y resolucion de marcas`
 
-- [ ] T920 · `medios`: `service_sync.go` — importación idempotente, recorte y unión/marcado · `[backend]`
+- [X] T920 · `medios`: `service_sync.go` — importación idempotente, recorte y unión/marcado · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service_sync.go` y `service_sync_test.go` (NUEVOS).
   - **Qué hace**: la primera mitad de `BuscarNuevos` (FR-011…FR-016, P9-3/P9-5/P9-9/P9-11/P9-17),
@@ -898,7 +898,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     FR-012…FR-016 están fijadas por prueba con los dos feeds falsos (sin red).
   - **Commit sugerido**: `feat(medios): importacion idempotente con union automatica y marcado`
 
-- [ ] T921 · `medios`: `service_sync.go` — ventana del feed, disponibilidad, carátulas y resumen · `[backend]`
+- [X] T921 · `medios`: `service_sync.go` — ventana del feed, disponibilidad, carátulas y resumen · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service_sync.go` (EDITADO) y `service_sync_test.go`
     (AMPLIADO).
