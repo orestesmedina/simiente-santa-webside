@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { API_BASE_URL } from '../../../api/client';
+import type { MediosPublicos } from '../../../api/medios';
 import type { PortadaPublica } from '../../../api/portada';
 import type { OfrendasPublicas } from '../../../api/ofrendas';
 import { AppProviders } from '../../../app/providers';
@@ -15,6 +16,7 @@ const portadaUrl = `${API_BASE_URL}/api/v1/portada`;
 const upcomingUrl = `${API_BASE_URL}/api/v1/proximamente`;
 const ministriesUrl = `${API_BASE_URL}/api/v1/portada/ministerios`;
 const ofrendasUrl = `${API_BASE_URL}/api/v1/ofrendas`;
+const mediosUrl = `${API_BASE_URL}/api/v1/medios`;
 
 const completa: PortadaPublica = {
   lang: 'es',
@@ -387,5 +389,148 @@ describe('useSiteLinks · sección de ofrendas (P7-8/P7-13, T727)', () => {
 
     expect(screen.queryByRole('link', { name: 'Ofrendas y diezmos' })).toBeNull();
     expect(document.querySelectorAll('a[href="/ofrendas"]')).toHaveLength(0);
+  });
+});
+
+describe('useSiteLinks · sección de medios (P9-16/P7-8, T934)', () => {
+  const conMinisterios = {
+    lang: 'es' as const,
+    items: [{ id: 'min-1', name: 'Alabanza', schedule: 'Todos los viernes' }],
+  };
+  const conMetodos: OfrendasPublicas = {
+    lang: 'es',
+    items: [
+      {
+        id: 'don-1',
+        kind: 'iban',
+        number: 'CR05015202001234567890',
+        institution: 'Banco Nacional de Costa Rica',
+        currency: 'CRC',
+      },
+    ],
+  };
+  const conMedios: MediosPublicos = {
+    lang: 'es',
+    items: [
+      {
+        id: 'med-1',
+        title: 'La Fe y la confianza en el Abba',
+        publishedAt: '2026-07-03T01:58:52Z',
+        videoUrl: 'https://www.youtube.com/watch?v=abc12345678',
+      },
+    ],
+    total: 1,
+    limit: 12,
+    offset: 0,
+  };
+
+  it('con publicables añade «Medios» al final, tras «Ofrendas y diezmos» (⟲ D-1)', () => {
+    const links = buildSiteLinks(completa, conEventos, conMinisterios, conMetodos, conMedios);
+
+    const ultimo = links[links.length - 1];
+    expect(ultimo?.id).toBe('media');
+    expect(ultimo?.href).toBe('/medios');
+    expect(ultimo?.messageKey).toBe('nav.sections.media');
+    expect(links.map((link) => link.id).indexOf('media')).toBeGreaterThan(
+      links.map((link) => link.id).indexOf('offerings'),
+    );
+  });
+
+  it('la presencia bebe del documento de la SECCIÓN (`total`), no del bloque', () => {
+    // `total: 0` con `items: []` (lo que devuelve el servidor sin publicables).
+    expect(
+      buildSiteLinks(completa, conEventos, conMinisterios, conMetodos, {
+        lang: 'es',
+        items: [],
+        total: 0,
+        limit: 12,
+        offset: 0,
+      }).map((link) => link.id),
+    ).not.toContain('media');
+    // Sin la respuesta de la sección tampoco hay ítem.
+    expect(
+      buildSiteLinks(completa, conEventos, conMinisterios, conMetodos).map((link) => link.id),
+    ).not.toContain('media');
+    // Y con contenido, el ítem es el único que queda si no hay nada más.
+    expect(
+      buildSiteLinks(undefined, undefined, undefined, undefined, conMedios).map((l) => l.id),
+    ).toEqual(['media']);
+  });
+
+  it('el resto de enlaces (anclas, /eventos, /ministerios y /ofrendas) no cambia', () => {
+    const sinMedios = buildSiteLinks(completa, conEventos, conMinisterios, conMetodos);
+    const conMediosLinks = buildSiteLinks(
+      completa,
+      conEventos,
+      conMinisterios,
+      conMetodos,
+      conMedios,
+    );
+
+    expect(conMediosLinks.slice(0, sinMedios.length)).toEqual(sinMedios);
+  });
+
+  it('con publicables el ítem aparece en la barra y en el mapa del pie (FR-007)', async () => {
+    server.use(
+      http.get(portadaUrl, () => HttpResponse.json(completa)),
+      http.get(mediosUrl, () => HttpResponse.json(conMedios)),
+    );
+
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route index element={<p>portada</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones de la portada' });
+    expect(await within(nav).findByRole('link', { name: 'Medios' })).toHaveAttribute(
+      'href',
+      '/medios',
+    );
+
+    const sitemap = screen.getByRole('navigation', { name: 'Mapa del sitio' });
+    expect(within(sitemap).getByRole('link', { name: 'Medios' })).toHaveAttribute(
+      'href',
+      '/medios',
+    );
+
+    // Barra + mapa del pie: el menú móvil es la MISMA lista del `<nav>`.
+    expect(document.querySelectorAll('a[href="/medios"]')).toHaveLength(2);
+  });
+
+  it('sin nada publicable el ítem no está en ninguna superficie (FR-008/SC-016)', async () => {
+    let peticiones = 0;
+    server.use(
+      http.get(portadaUrl, () => HttpResponse.json(completa)),
+      http.get(mediosUrl, () => {
+        peticiones += 1;
+        return HttpResponse.json({ lang: 'es', items: [], total: 0, limit: 12, offset: 0 });
+      }),
+    );
+
+    render(
+      <AppProviders>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route index element={<p>portada</p>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AppProviders>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: 'Secciones de la portada' });
+    await within(nav).findByRole('link', { name: 'Quiénes somos' });
+    await waitFor(() => expect(peticiones).toBeGreaterThan(0));
+
+    expect(screen.queryByRole('link', { name: 'Medios' })).toBeNull();
+    expect(document.querySelectorAll('a[href="/medios"]')).toHaveLength(0);
   });
 });

@@ -38,4 +38,13 @@ export const server = setupServer(
   // prueba lo sobrescribe cuando necesita datos.
   http.get(`${API_BASE_URL}/api/v1/ofrendas`, () => HttpResponse.json({ lang: 'es' })),
   http.get(`${API_BASE_URL}/api/v1/portada/ofrendas`, () => HttpResponse.json({ lang: 'es' })),
+  // F9: la presencia de la entrada «Medios» se deduce del **documento de la
+  // sección** (`usePublicMedios`, P9-16), compartido por `queryClient` con la
+  // página `/medios`. Sin handler por defecto, cualquier prueba que monte
+  // `PublicLayout` fallaría por petición no gestionada. Sin publicables
+  // (`total: 0`) —«no hay nada»—, de modo que no añade enlaces ni bloques; cada
+  // prueba lo sobrescribe cuando necesita contenido.
+  http.get(`${API_BASE_URL}/api/v1/medios`, () =>
+    HttpResponse.json({ lang: 'es', items: [], total: 0, limit: 12, offset: 0 }),
+  ),
 );
