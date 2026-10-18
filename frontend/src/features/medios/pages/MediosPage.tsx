@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import type { ResumenBusqueda } from '../../../api/medios';
+import { useCallback, useState } from 'react';
+import type { MedioAdmin, ResumenBusqueda } from '../../../api/medios';
 import { Notice, type NoticeVariant } from '../../../components/Notice';
 import { BuscarEpisodios } from '../components/BuscarEpisodios';
+import { DescripcionForm } from '../components/DescripcionForm';
 import { EpisodiosList } from '../components/EpisodiosList';
 import { FiltroMarcas, type FiltroValue } from '../components/FiltroMarcas';
 import { ResumenImportacion } from '../components/ResumenImportacion';
@@ -36,6 +37,7 @@ export function MediosPage() {
   const [filtro, setFiltro] = useState<FiltroValue>('todo');
   const [resumen, setResumen] = useState<ResumenBusqueda>();
   const [feedback, setFeedback] = useState<{ variant: NoticeVariant; message: string }>();
+  const [editando, setEditando] = useState<MedioAdmin>();
 
   const buscar = useBuscarEpisodios();
   // Catálogo completo (para los conteos del filtro) y vista filtrada. Con «Todo»
@@ -48,12 +50,23 @@ export function MediosPage() {
   const counts = contarPendientes(completo.data?.items ?? []);
   const forbidden = isForbidden(lista.error);
 
+  // Estables: el `Dialog` del formulario re-ejecuta su efecto (y recoloca el
+  // foco) si `onClose` cambia de identidad en cada render.
+  const abrirDescripcion = useCallback((item: MedioAdmin) => setEditando(item), []);
+  const cerrarDescripcion = useCallback(() => setEditando(undefined), []);
+
   const handleBuscar = () => {
     setFeedback(undefined);
     buscar.mutate(undefined, {
       onSuccess: (data) => setResumen(data),
       onError: () => setFeedback({ variant: 'error', message: SYSTEM_ERROR }),
     });
+  };
+
+  /** Cierra el diálogo y deja su aviso en la página (patrón F3/F7). */
+  const handleDescripcionGuardada = (aviso: { message: string }) => {
+    setEditando(undefined);
+    setFeedback({ variant: 'success', message: aviso.message });
   };
 
   return (
@@ -84,8 +97,17 @@ export function MediosPage() {
             filtered={filtro !== 'todo'}
             busy={buscar.isPending}
             onFeedback={(variant, message) => setFeedback({ variant, message })}
+            onEditDescription={abrirDescripcion}
           />
         </>
+      )}
+
+      {editando && (
+        <DescripcionForm
+          item={editando}
+          onDone={handleDescripcionGuardada}
+          onCancel={cerrarDescripcion}
+        />
       )}
     </section>
   );

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
@@ -274,6 +274,31 @@ describe('MediosPage · listado del catálogo (US3, ux.md §4.3/§5.b)', () => {
     expect(within(tabla()).getByText('Del podcast')).toBeInTheDocument();
     expect(within(tabla()).queryByText('Posible duplicado')).toBeNull();
     expect(within(tabla()).queryByText('No disponible')).toBeNull();
+  });
+
+  it('«Editar descripción» abre el diálogo y el guardado deja su aviso en la página (US3)', async () => {
+    responder([makeMedio()]);
+    server.use(
+      http.patch(`${adminUrl}/med-1`, () =>
+        HttpResponse.json(makeMedio({ descriptionEs: 'La higuera, explicada.' })),
+      ),
+    );
+
+    renderPage();
+    await screen.findByRole('table');
+
+    await userEvent.click(within(tabla()).getByRole('button', { name: 'Editar descripción' }));
+
+    const dialogo = await screen.findByRole('dialog');
+    fireEvent.change(within(dialogo).getByLabelText('Español'), {
+      target: { value: 'La higuera, explicada.' },
+    });
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
+
+    expect(
+      await screen.findByText('Cambios guardados: ya visibles en la sección.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('«Ocultar» es directo (sin confirmación) y su aviso dice el efecto real', async () => {
