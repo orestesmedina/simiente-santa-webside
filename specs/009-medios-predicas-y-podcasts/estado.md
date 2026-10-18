@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 1/9 · Especificar (**spec v2** lista y sin preguntas abiertas; **puerta 1 pendiente**) |
+| Fase | 3/9 · Planificar (spec v2 **aprobada** el 2026-10-17) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | **Puerta 1: aprobación humana de la spec v2** (checklist de `docs/GUIA-INICIO.md` §5) |
-| Bloqueado por | — (nada: la spec v2 no tiene marcas `[NECESITA ACLARACIÓN]`) |
+| Próximo paso | Fase 3: `plan.md`, `data-model.md` y `contracts/` (`arquitecto`) + `ux.md` (`disenador-ux`); después **puerta 2** (aprobación del plan) |
+| Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
 ## Aprobaciones
@@ -25,7 +25,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 | Puerta | Estado | Quién | Fecha | Frase |
 |---|---|---|---|---|
-| Spec | pendiente | | | |
+| Spec | aprobado | humano (cliente) | 2026-10-17 | "Apruebo la spec v2" |
 | Plan | pendiente | | | |
 | PR / merge | pendiente | | | |
 | Despliegue | pendiente | | | |
@@ -51,6 +51,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-17 — **Puerta 1: spec v2 APROBADA** por el humano («Apruebo la spec v2»). Fase → **3/9 · Planificar**. Se arranca el plan técnico (`arquitecto`) y `ux.md` (`disenador-ux`).
 - 2026-10-17 — **Ajustes aprobados por el humano antes de la puerta 1** (aplicados a la v2): (1) **regla del «estante de 15»** — un episodio que sale de la ventana del feed **no se oculta**: se comprueba si su enlace sigue disponible y solo se oculta cuando la comprobación **confirma** que ya no lo está, con regla a prueba de fallos (nunca se oculta por falta de certeza); (2) los enlaces externos se abren en **pestaña nueva anunciada**. Queda señalado para la puerta 1 el **default #7** (al unir video y audio manda el nombre del feed de YouTube).
 - 2026-10-17 — **Spec v2** redactada tras las respuestas del cliente: **6 historias de usuario**, **FR-001…FR-030**, **SC-001…SC-017** (criterios manuales SC-008 lector de pantalla y SC-012 usabilidad), **10 consecuencias asumidas**, **16 defaults revisables** y **0 preguntas abiertas**. Limpiadas las referencias técnicas a migraciones que arrastraba la v1. Roadmap: **decisión 27** y corrección de la 26. **Puerta 1 pendiente.**
 - 2026-10-17 — **Cierre de sesión.** Costo del bug del date picker **cerrado** en **68,8 M ≈ $1,41** (desde su rama muerta) y traído a `main` con **cherry-pick** (`ee02ab1`); la rama de F9 quedó **rebasada sobre `main`** y el informe del proyecto ya muestra ese bug como **cerrado**. **`main` quedó 1 commit por delante de `origin`**: el `git push` **falló por falta de credenciales** en el entorno del agente (no hay `gh`, ni llave SSH, ni `credential.helper`, ni token) — **lo empuja el humano**. El mismo problema bloqueará **abrir el PR** en la fase 9 si no se resuelve antes.
