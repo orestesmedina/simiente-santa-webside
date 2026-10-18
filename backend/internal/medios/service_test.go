@@ -407,6 +407,22 @@ func requireInvalid(t *testing.T, err error, campo string) {
 	}
 }
 
+// requireKind comprueba que el error es un *apperr.Error del kind indicado (404,
+// 409…) sin exigir detalles.
+func requireKind(t *testing.T, err error, kind apperr.Kind) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("se esperaba un error de kind %d y no hubo error", kind)
+	}
+	var domainErr *apperr.Error
+	if !errors.As(err, &domainErr) {
+		t.Fatalf("se esperaba un *apperr.Error y llegó %T: %v", err, err)
+	}
+	if domainErr.Kind != kind {
+		t.Fatalf("se esperaba el kind %d y llegó %d (%v)", kind, domainErr.Kind, err)
+	}
+}
+
 // ptr devuelve el puntero de un texto (atajo de las tablas de casos).
 func ptr(valor string) *string { return &valor }
 
@@ -419,14 +435,6 @@ func valorDe(valor *string) string {
 		return "nil"
 	}
 	return *valor
-}
-
-// mismoOpcional compara dos opcionales (nil = ausente).
-func mismoOpcional(a, b *string) bool {
-	if a == nil || b == nil {
-		return a == nil && b == nil
-	}
-	return *a == *b
 }
 
 // ---------------------------------------------------------------------------
@@ -606,6 +614,16 @@ func (f *fakeRepository) seed(episodios ...Episodio) {
 		}
 		ep.ActualizadoEn = ep.CreadoEn
 		f.episodios = append(f.episodios, ep)
+	}
+}
+
+// seedFuentes agrega fuentes de importación al almacén.
+func (f *fakeRepository) seedFuentes(fuentes ...FuenteEpisodio) {
+	for _, fuente := range fuentes {
+		if fuente.ID == uuid.Nil {
+			fuente.ID = uuid.New()
+		}
+		f.fuentes = append(f.fuentes, fuente)
 	}
 }
 
