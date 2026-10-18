@@ -47,4 +47,11 @@ export const server = setupServer(
   http.get(`${API_BASE_URL}/api/v1/medios`, () =>
     HttpResponse.json({ lang: 'es', items: [], total: 0, limit: 12, offset: 0 }),
   ),
+  // F9: el bloque «Medios» de la portada consulta su propio extracto (tope 5
+  // firme en servidor) al montarse `HomePage` (`usePortadaMedios`). Sin handler
+  // por defecto, cualquier prueba que renderice la portada fallaría por petición
+  // no gestionada. Sin ítems —el bloque **no se dibuja**—, de modo que no añade
+  // bloques ni enlaces a las aserciones existentes; cada prueba lo sobrescribe
+  // cuando necesita contenido.
+  http.get(`${API_BASE_URL}/api/v1/portada/medios`, () => HttpResponse.json({ lang: 'es' })),
 );

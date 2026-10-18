@@ -8,6 +8,7 @@ import { ContactSection } from '../components/ContactSection';
 import { IdentityHero } from '../components/IdentityHero';
 import { ProximamenteBlock } from '../eventos/ProximamenteBlock';
 import { MinisteriosBlock } from '../ministerios/MinisteriosBlock';
+import { MediosBlock } from '../medios/MediosBlock';
 import { OfrendasBlock } from '../ofrendas/OfrendasBlock';
 import { ScheduleSection } from '../components/ScheduleSection';
 import { SectionSkeleton } from '../components/SectionSkeleton';
@@ -107,6 +108,14 @@ export function HomePage() {
             alternancia con el bloque de F6 (⟲ D-15). */}
         <Reveal key="ofrendas" from="right">
           <OfrendasBlock />
+        </Reveal>
+        {/* Bloque «Medios» (F9/US6, ux.md §4.9): **una sola inserción**
+            inmediatamente después del bloque de ofrendas y antes de «quiénes
+            somos» (Q12/FR-027). Se oculta por completo sin publicables —sin
+            mensaje, como los de F6/F7—. `from="left"` conserva la alternancia
+            con el bloque de ofrendas (⟲ D-14). */}
+        <Reveal key="medios" from="left">
+          <MediosBlock />
         </Reveal>
         {about && (
           <Reveal key="quienes-somos" from="left">
