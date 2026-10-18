@@ -5,6 +5,7 @@ import {
   CATEGORIAS,
   DONACIONES,
   EVENTOS,
+  MEDIOS,
   MINISTERIOS,
   MODULE_PERMISSIONS,
   PORTADA,
@@ -63,7 +64,7 @@ describe('hasAnyPermission', () => {
 });
 
 describe('MODULE_PERMISSIONS', () => {
-  it('reúne los permisos de módulo construidos (F2, F3, F4, F6 y F7)', () => {
+  it('reúne los permisos de módulo construidos (F2, F3, F4, F6, F7 y F9)', () => {
     expect(MODULE_PERMISSIONS).toEqual([
       ADMIN_USERS_ROLES,
       PORTADA,
@@ -72,6 +73,15 @@ describe('MODULE_PERMISSIONS', () => {
       CATEGORIAS,
       MINISTERIOS,
       DONACIONES,
+      MEDIOS,
     ]);
+  });
+
+  it('«medios» (F9) es un permiso propio: no da acceso a los demás módulos (Decisión 5)', () => {
+    const soloMedios = { permissions: [MEDIOS] };
+    expect(hasPermission(soloMedios, MEDIOS)).toBe(true);
+    expect(hasPermission(soloMedios, DONACIONES)).toBe(false);
+    expect(hasPermission(soloMedios, MINISTERIOS)).toBe(false);
+    expect(hasPermission(soloMedios, ADMIN_USERS_ROLES)).toBe(false);
   });
 });
