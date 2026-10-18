@@ -1096,6 +1096,27 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     `routes.go` (SC-009).
   - **Commit sugerido**: `feat(medios): rutas con AdminChain("medios") y cableado del dominio`
 
+- [ ] T946 · `medios`: permitir la descripción vacía (contrato + validación) · `[backend]` · **decisión posterior (2026-10-18)**
+
+  - **Archivos**: `specs/009-medios-predicas-y-podcasts/contracts/openapi.yaml`, `backend/api/openapi.yaml`,
+    `backend/internal/medios/service_admin.go`, `service.go`, `handler_admin.go` y sus pruebas.
+  - **Qué hace**: **decisión del humano del 2026-10-18** — *la descripción corta puede estar vacía*.
+    (a) El contrato deja de exigir un mínimo de un carácter en la descripción en español (se retira el
+    `minLength: 1`), tanto en el delta como en el **contrato vivo** (sigue en **0.9.0**: F9 no se ha
+    publicado todavía); (b) el `PATCH` del panel **puede vaciarla** (`""` pasa a significar «sin
+    descripción», con el mismo tratamiento que la versión en inglés, patrón I6); (c) el servicio deja
+    de responder `400` en ese caso y **la auditoría sigue registrando el cambio**; (d) el DTO público
+    **omite** la descripción cuando está vacía. *Cubre FR-020 (ampliado) y la decisión del 2026-10-18.*
+    **Nota**: en el frontend, T937 ya contempla **no pintar** la línea de la descripción cuando está vacía.
+  - **Pruebas incluidas** (§III): unitarias de handler y de servicio (vaciar la descripción → `200`, el
+    DTO público sale sin descripción, la auditoría queda registrada) e integración del `PATCH` contra
+    PostgreSQL real. **Cómo se verifica**: `go test ./internal/medios/...` y
+    `go test -tags=integration ./internal/medios/...` en verde; el contrato sigue válido y
+    `make api-gen` sin deriva.
+  - **Criterio de terminado**: el equipo puede dejar un episodio sin descripción desde el panel y la
+    ficha pública no pinta esa línea.
+  - **Commit sugerido**: `feat(medios): permitir dejar la descripcion vacia desde el panel`
+
 ---
 
 ## Fase 8 — Frontend
