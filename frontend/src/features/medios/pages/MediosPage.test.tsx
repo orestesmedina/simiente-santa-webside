@@ -301,6 +301,25 @@ describe('MediosPage · listado del catálogo (US3, ux.md §4.3/§5.b)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('una marca ya resuelta se conserva como registro y no se vuelve a ofrecer resolverla', async () => {
+    responder([
+      makeMedio({
+        availabilityMark: 'unavailable',
+        availabilityMarkResolvedAt: '2026-10-18T21:00:00Z',
+        visibility: 'hidden',
+      }),
+    ]);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    expect(within(tabla()).getByText('Resuelta')).toBeInTheDocument();
+    expect(within(tabla()).getByText('No disponible')).toBeInTheDocument();
+    // Resuelta: ni su resolución ni su explicador de pendiente (FR-017).
+    expect(within(tabla()).queryByRole('button', { name: 'Mantener oculto' })).toBeNull();
+    expect(within(tabla()).queryByRole('button', { name: 'Mostrar de nuevo' })).toBeNull();
+  });
+
   it('«Ocultar» es directo (sin confirmación) y su aviso dice el efecto real', async () => {
     const peticiones: string[] = [];
     responder([makeMedio()]);
@@ -426,6 +445,157 @@ describe('MediosPage · filtro de marcas (⟲ D-10)', () => {
     // Sin duplicar la puerta de importación (⟲ D-33): el único botón de la página
     // sigue siendo el de la zona de búsqueda.
     expect(screen.getAllByRole('button', { name: 'Buscar episodios nuevos' })).toHaveLength(1);
+  });
+});
+
+describe('MediosPage · unión de duplicados y resoluciones (US3, ux.md §4.6/§4.7)', () => {
+  const conPar = (overrides: Partial<MedioAdmin> = {}) =>
+    makeMedio({ id: 'med-1', duplicateOfId: 'med-2', ...overrides });
+  const pareja = () =>
+    makeMedio({
+      id: 'med-2',
+      title: 'Potencial sin Resultados: La Lección de la Higuera',
+      origin: 'audio',
+      visibility: 'hidden',
+      duplicateOfId: 'med-1',
+    });
+
+  it('sin ningún par abierto ninguna fila ofrece «Revisar duplicado» (⟲ D-28)', async () => {
+    responder([makeMedio({ id: 'med-3', title: 'Fe como fruto del Espíritu' })]);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    expect(within(tabla()).queryByRole('button', { name: 'Revisar duplicado' })).toBeNull();
+  });
+
+  it('con un par abierto el diálogo muestra la vista previa y la unión exige confirmarla', async () => {
+    const uniones: string[] = [];
+    responder([conPar(), pareja()]);
+    server.use(
+      http.post(`${adminUrl}/med-1/unir`, async ({ request }) => {
+        uniones.push(await request.text());
+        return HttpResponse.json(makeMedio());
+      }),
+    );
+
+    renderPage();
+    await screen.findByRole('table');
+
+    // Las **dos** fichas del par llevan la marca (FR-014): la acción existe en las dos.
+    const revisar = within(tabla()).getAllByRole('button', { name: 'Revisar duplicado' })[0]!;
+    await userEvent.click(revisar);
+
+    const dialogo = await screen.findByRole('dialog');
+    expect(within(dialogo).getByText('Así quedaría la ficha si las unes.')).toBeInTheDocument();
+
+    // Unir sin confirmar NO llama al servidor.
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Unir' }));
+    expect(uniones).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Unir definitivamente' }));
+
+    expect(
+      await screen.findByText('Unidas en una sola ficha, visible en “Medios”.'),
+    ).toBeInTheDocument();
+    expect(uniones).toEqual(['{"otherId":"med-2"}']);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('«No son el mismo sermón» resuelve la marca del par y avisa del resultado', async () => {
+    const resoluciones: string[] = [];
+    responder([conPar(), pareja()]);
+    server.use(
+      http.post(`${adminUrl}/med-1/marcas/resolver`, async ({ request }) => {
+        resoluciones.push(await request.text());
+        return HttpResponse.json(makeMedio());
+      }),
+    );
+
+    renderPage();
+    await screen.findByRole('table');
+    await userEvent.click(
+      within(tabla()).getAllByRole('button', { name: 'Revisar duplicado' })[0]!,
+    );
+    const dialogo = await screen.findByRole('dialog');
+
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'No son el mismo sermón' }));
+
+    expect(
+      await screen.findByText(
+        'Listo: quedaron las dos como episodios distintos, visibles sin marca.',
+      ),
+    ).toBeInTheDocument();
+    expect(resoluciones).toEqual(['{"mark":"possible_duplicate","visibility":"visible"}']);
+  });
+
+  it('«Mostrar de nuevo» exige su confirmación suave y resuelve solo su eje (⟲ D-28/P9-19)', async () => {
+    const resoluciones: string[] = [];
+    responder([makeMedio({ id: 'med-1', availabilityMark: 'unavailable', visibility: 'hidden' })]);
+    server.use(
+      http.post(`${adminUrl}/med-1/marcas/resolver`, async ({ request }) => {
+        resoluciones.push(await request.text());
+        return HttpResponse.json(makeMedio());
+      }),
+    );
+
+    renderPage();
+    await screen.findByRole('table');
+
+    await userEvent.click(within(tabla()).getByRole('button', { name: 'Mostrar de nuevo' }));
+
+    const confirmacion = await screen.findByRole('dialog');
+    expect(
+      within(confirmacion).getByText(
+        'Si el enlace de “Potencial sin Resultados La Lección de la Higuera” sigue sin funcionar, volverá a quedar oculto la próxima vez que se revise.',
+      ),
+    ).toBeInTheDocument();
+    expect(resoluciones).toHaveLength(0);
+
+    await userEvent.click(within(confirmacion).getByRole('button', { name: 'Mostrar' }));
+
+    expect(
+      await screen.findByText('La marca se cerró y no se vuelve a abrir por esta misma causa.'),
+    ).toBeInTheDocument();
+    expect(resoluciones).toEqual(['{"mark":"unavailable","visibility":"visible"}']);
+  });
+
+  it('con las dos marcas activas la fila ofrece las dos resoluciones, cada una con su eje', async () => {
+    responder([
+      makeMedio({
+        id: 'med-1',
+        duplicateOfId: 'med-2',
+        availabilityMark: 'missing_from_feed',
+      }),
+      pareja(),
+    ]);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    // La marca del par la llevan las dos fichas (FR-014) y la de disponibilidad,
+    // solo la afectada: los dos ejes conviven en la misma pantalla (P9-19).
+    expect(within(tabla()).getAllByText('Posible duplicado')).toHaveLength(2);
+    expect(within(tabla()).getByText('Ya no aparece en el feed')).toBeInTheDocument();
+    expect(within(tabla()).getAllByRole('button', { name: 'Revisar duplicado' })).toHaveLength(2);
+    expect(within(tabla()).getByRole('button', { name: 'Mantener visible' })).toBeInTheDocument();
+  });
+
+  it('al cerrar el diálogo el foco vuelve a la fila que lo abrió', async () => {
+    responder([conPar(), pareja()]);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    // Las **dos** fichas del par llevan la marca (FR-014): la acción existe en las dos.
+    const revisar = within(tabla()).getAllByRole('button', { name: 'Revisar duplicado' })[0]!;
+    await userEvent.click(revisar);
+    await screen.findByRole('dialog');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(revisar).toHaveFocus();
   });
 });
 

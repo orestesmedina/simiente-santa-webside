@@ -34,6 +34,7 @@ import {
   LOADING,
   LOAD_ERROR,
   MARK_CLOSED,
+  MARK_RESOLVED,
   RESOLVE_KEEP_HIDDEN,
   RESOLVE_KEEP_VISIBLE,
   RESOLVE_SHOW_AGAIN,
@@ -43,11 +44,13 @@ import {
   STATE_VISIBLE,
   SYSTEM_ERROR,
   importedOn,
+  markLabel,
 } from '../messages';
 import {
   enlaceDisponible,
   marcaDisponibilidadPendiente,
   marcasPendientes,
+  marcasResueltas,
   parDuplicadoAbierto,
   proveedorDelEpisodio,
 } from '../marcas';
@@ -120,9 +123,11 @@ function Miniatura({ item }: { item: MedioAdmin }) {
  * su **fecha** de publicación, los **chips de formato** («Video»/«Audio», ⟲ D-15),
  * el **origen** con la **fecha de importación** y el detalle de sus fuentes
  * (FR-019/⟲ A2), el estado (`StatusPill` «Visible»/«Oculto»), las **marcas
- * pendientes** con su explicador —puede haber **dos**, una por eje (P9-19)— y las
- * acciones: «Editar descripción» · «Ocultar»/«Mostrar» · «Revisar duplicado»
- * (solo con el par **abierto**) · las resoluciones de la marca de disponibilidad.
+ * pendientes** con su explicador —puede haber **dos**, una por eje (P9-19); una
+ * marca **ya resuelta** se conserva como registro («Resuelta» + cuál era), que
+ * no se reabre por la misma causa— y las acciones: «Editar descripción» ·
+ * «Ocultar»/«Mostrar» · «Revisar duplicado» (solo con el par **abierto**) · las
+ * resoluciones de la marca de disponibilidad.
  *
  * Reglas de las acciones:
  *  · **Ocultar es directo** (sin confirmación: es reversible con «Mostrar») y su
@@ -234,7 +239,21 @@ export function EpisodiosList({
       render: (item) => {
         const marks = marcasPendientes(item);
         if (marks.length === 0) {
-          return null;
+          // Una marca **resuelta** se conserva como registro («Resuelta» + cuál
+          // era): dice que el equipo ya pasó por ahí y que no se reabre por la
+          // misma causa (FR-017/US3 esc. 6).
+          const resueltas = marcasResueltas(item);
+          if (resueltas.length === 0) {
+            return null;
+          }
+          return (
+            <div className="flex flex-col gap-1">
+              <div>
+                <StatusPill value="draft" label={MARK_RESOLVED} />
+              </div>
+              <p className="text-xs text-slate-600">{resueltas.map(markLabel).join(' · ')}</p>
+            </div>
+          );
         }
         return (
           <div className="flex flex-col gap-2">

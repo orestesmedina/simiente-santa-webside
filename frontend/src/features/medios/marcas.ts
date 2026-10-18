@@ -37,6 +37,22 @@ export function marcasPendientes(item: MedioAdmin): MarcaRevision[] {
   return marks;
 }
 
+/**
+ * Marcas que la ficha **ya resolvió** (con su fecha de resolución): la lista las
+ * conserva como **registro** de que el equipo pasó por ahí y no se reabren por la
+ * misma causa (FR-017/US3 esc. 6).
+ */
+export function marcasResueltas(item: MedioAdmin): MarcaRevision[] {
+  const marks: MarcaRevision[] = [];
+  if (item.duplicateOfId && item.duplicateMarkResolvedAt) {
+    marks.push('possible_duplicate');
+  }
+  if (item.availabilityMark && item.availabilityMarkResolvedAt) {
+    marks.push(item.availabilityMark);
+  }
+  return marks;
+}
+
 /** Conteo de pendientes por clase de marca (para las pastillas del filtro, ⟲ D-10). */
 export function contarPendientes(items: MedioAdmin[]): Record<MarcaRevision, number> {
   const counts: Record<MarcaRevision, number> = {
@@ -71,4 +87,35 @@ export function proveedorDelEpisodio(item: MedioAdmin): Proveedor {
 /** `true` si la última comprobación confirmó que el enlace sigue funcionando. */
 export function enlaceDisponible(item: MedioAdmin): boolean {
   return item.availabilityResult === 'available';
+}
+
+/** `true` si la ficha tiene el **video** (su nombre manda al unir, precisión 5). */
+export function tieneVideo(item: MedioAdmin): boolean {
+  return item.origin === 'video' || item.sources.some((source) => source.provider === 'youtube');
+}
+
+/**
+ * Ordena un par «posible duplicado» para la unión (ux.md §4.6, default revisable
+ * #7 / precisión 5 de la puerta 2): **la base es la entrada del feed del video**
+ * —es la que se conserva y la que da nombre, carátula y fecha a la ficha
+ * resultante— y la otra queda absorbida. Si ninguna de las dos tiene video, la
+ * base es la que está **visible** (la primera importada, FR-014) y, si tampoco
+ * se distinguen, la que se estaba mirando.
+ */
+export function parParaUnion(
+  item: MedioAdmin,
+  pareja: MedioAdmin,
+): { base: MedioAdmin; otra: MedioAdmin } {
+  if (tieneVideo(item) && !tieneVideo(pareja)) {
+    return { base: item, otra: pareja };
+  }
+  if (tieneVideo(pareja) && !tieneVideo(item)) {
+    return { base: pareja, otra: item };
+  }
+  if (item.visibility !== pareja.visibility) {
+    return item.visibility === 'visible'
+      ? { base: item, otra: pareja }
+      : { base: pareja, otra: item };
+  }
+  return { base: item, otra: pareja };
 }

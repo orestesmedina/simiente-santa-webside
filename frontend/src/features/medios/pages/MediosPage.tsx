@@ -1,16 +1,19 @@
 import { useCallback, useState } from 'react';
-import type { MedioAdmin, ResumenBusqueda } from '../../../api/medios';
+import type { MarcaDisponibilidad, MedioAdmin, ResumenBusqueda } from '../../../api/medios';
 import { Notice, type NoticeVariant } from '../../../components/Notice';
 import { BuscarEpisodios } from '../components/BuscarEpisodios';
 import { DescripcionForm } from '../components/DescripcionForm';
 import { EpisodiosList } from '../components/EpisodiosList';
 import { FiltroMarcas, type FiltroValue } from '../components/FiltroMarcas';
+import { ResolverMarcaDialog } from '../components/ResolverMarcaDialog';
 import { ResumenImportacion } from '../components/ResumenImportacion';
+import { UnirDuplicadosDialog } from '../components/UnirDuplicadosDialog';
 import { isForbidden } from '../errors';
 import { useBuscarEpisodios } from '../hooks/useBuscarEpisodios';
 import { useMedios } from '../hooks/useMedios';
-import { contarPendientes } from '../marcas';
-import { HELP, NO_PERMISSION_ERROR, SYSTEM_ERROR, TITLE } from '../messages';
+import { useResolverMarca } from '../hooks/useResolverMarca';
+import { contarPendientes, marcaDisponibilidadPendiente } from '../marcas';
+import { HELP, MARK_CLOSED, NO_PERMISSION_ERROR, SYSTEM_ERROR, TITLE } from '../messages';
 
 /**
  * Módulo «Gestión de medios» del panel (`/panel/medios`, ux.md §4.3/§5, US2/US3):
@@ -38,8 +41,14 @@ export function MediosPage() {
   const [resumen, setResumen] = useState<ResumenBusqueda>();
   const [feedback, setFeedback] = useState<{ variant: NoticeVariant; message: string }>();
   const [editando, setEditando] = useState<MedioAdmin>();
+  const [union, setUnion] = useState<{ item: MedioAdmin; pareja: MedioAdmin }>();
+  const [mostrarDeNuevo, setMostrarDeNuevo] = useState<{
+    item: MedioAdmin;
+    mark: MarcaDisponibilidad;
+  }>();
 
   const buscar = useBuscarEpisodios();
+  const resolver = useResolverMarca();
   // Catálogo completo (para los conteos del filtro) y vista filtrada. Con «Todo»
   // las dos consultas comparten clave y TanStack Query resuelve una sola
   // petición; con un filtro activo, cada una pide lo suyo.
@@ -55,6 +64,55 @@ export function MediosPage() {
   const abrirDescripcion = useCallback((item: MedioAdmin) => setEditando(item), []);
   const cerrarDescripcion = useCallback(() => setEditando(undefined), []);
 
+  /**
+   * «Revisar duplicado» (⟲ D-28: solo con un par **abierto**): el diálogo
+   * necesita **las dos** fichas del par, así que la pareja se busca en el
+   * catálogo completo (que incluye las ocultas). Sin pareja no se abre nada.
+   */
+  const abrirUnion = useCallback(
+    (item: MedioAdmin) => {
+      const pareja = (completo.data?.items ?? []).find(
+        (candidata) => candidata.id === item.duplicateOfId,
+      );
+      if (pareja) {
+        setUnion({ item, pareja });
+      }
+    },
+    [completo.data],
+  );
+  const cerrarUnion = useCallback(() => setUnion(undefined), []);
+
+  /** «Mostrar de nuevo»: la única resolución con confirmación suave (⟲ D-28). */
+  const abrirMostrarDeNuevo = useCallback((item: MedioAdmin) => {
+    const mark = marcaDisponibilidadPendiente(item);
+    if (mark) {
+      setMostrarDeNuevo({ item, mark });
+    }
+  }, []);
+  const cerrarMostrarDeNuevo = useCallback(() => setMostrarDeNuevo(undefined), []);
+
+  const confirmarMostrarDeNuevo = () => {
+    if (!mostrarDeNuevo) {
+      return;
+    }
+    resolver.mutate(
+      {
+        id: mostrarDeNuevo.item.id,
+        input: { mark: mostrarDeNuevo.mark, visibility: 'visible' },
+      },
+      {
+        onSuccess: () => {
+          setMostrarDeNuevo(undefined);
+          setFeedback({ variant: 'success', message: MARK_CLOSED });
+        },
+        onError: () => {
+          setMostrarDeNuevo(undefined);
+          setFeedback({ variant: 'error', message: SYSTEM_ERROR });
+        },
+      },
+    );
+  };
+
   const handleBuscar = () => {
     setFeedback(undefined);
     buscar.mutate(undefined, {
@@ -66,6 +124,12 @@ export function MediosPage() {
   /** Cierra el diálogo y deja su aviso en la página (patrón F3/F7). */
   const handleDescripcionGuardada = (aviso: { message: string }) => {
     setEditando(undefined);
+    setFeedback({ variant: 'success', message: aviso.message });
+  };
+
+  /** Cierra el diálogo de unión y deja su aviso (unión o «no son el mismo»). */
+  const handleUnionHecha = (aviso: { message: string }) => {
+    setUnion(undefined);
     setFeedback({ variant: 'success', message: aviso.message });
   };
 
@@ -98,6 +162,8 @@ export function MediosPage() {
             busy={buscar.isPending}
             onFeedback={(variant, message) => setFeedback({ variant, message })}
             onEditDescription={abrirDescripcion}
+            onReviewDuplicate={abrirUnion}
+            onShowAgain={abrirMostrarDeNuevo}
           />
         </>
       )}
@@ -107,6 +173,25 @@ export function MediosPage() {
           item={editando}
           onDone={handleDescripcionGuardada}
           onCancel={cerrarDescripcion}
+        />
+      )}
+
+      {union && (
+        <UnirDuplicadosDialog
+          item={union.item}
+          pareja={union.pareja}
+          onDone={handleUnionHecha}
+          onCancel={cerrarUnion}
+        />
+      )}
+
+      {mostrarDeNuevo && (
+        <ResolverMarcaDialog
+          item={mostrarDeNuevo.item}
+          mark={mostrarDeNuevo.mark}
+          loading={resolver.isPending}
+          onConfirm={confirmarMostrarDeNuevo}
+          onClose={cerrarMostrarDeNuevo}
         />
       )}
     </section>

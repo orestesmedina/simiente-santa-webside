@@ -6,6 +6,7 @@ import {
   marcaDisponibilidadPendiente,
   marcasPendientes,
   parDuplicadoAbierto,
+  parParaUnion,
   proveedorDelEpisodio,
 } from './marcas';
 
@@ -107,5 +108,37 @@ describe('marcas pendientes de una ficha (FR-009/FR-014/FR-017)', () => {
     expect(proveedorDelEpisodio(medio({ origin: 'video' }))).toBe('youtube');
     expect(enlaceDisponible(medio({ availabilityResult: 'available' }))).toBe(true);
     expect(enlaceDisponible(medio({ availabilityResult: 'inconclusive' }))).toBe(false);
+  });
+
+  it('al unir, la base del par es la entrada del video (precisión 5)', () => {
+    const video = medio({ id: 'v', origin: 'video', visibility: 'visible' });
+    const audio = medio({ id: 'a', origin: 'audio', visibility: 'hidden' });
+
+    expect(parParaUnion(video, audio)).toEqual({ base: video, otra: audio });
+    // Da igual la fila que abra el diálogo: manda el video.
+    expect(parParaUnion(audio, video)).toEqual({ base: video, otra: audio });
+
+    // Sin video en ninguna, la base es la que está visible (la primera importada).
+    const soloAudioA = medio({ id: 'a1', origin: 'audio', visibility: 'visible' });
+    const soloAudioB = medio({ id: 'a2', origin: 'audio', visibility: 'hidden' });
+    expect(parParaUnion(soloAudioB, soloAudioA)).toEqual({ base: soloAudioA, otra: soloAudioB });
+
+    // Una ficha con video entre sus fuentes cuenta como la del video.
+    const conFuenteYoutube = medio({
+      id: 'y',
+      origin: 'both',
+      sources: [
+        {
+          provider: 'youtube',
+          externalId: 'x',
+          feedTitle: 'Canal',
+          url: 'https://www.youtube.com/watch?v=x',
+        },
+      ],
+    });
+    expect(parParaUnion(audio, conFuenteYoutube)).toEqual({
+      base: conFuenteYoutube,
+      otra: audio,
+    });
   });
 });
