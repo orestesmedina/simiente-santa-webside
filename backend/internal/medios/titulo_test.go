@@ -122,11 +122,11 @@ func TestDiaEnLugarMismoDia(t *testing.T) {
 		t.Fatalf("parsear la fecha: %v", err)
 	}
 
-	if diaEnLugar(manana, costaRica) != diaEnLugar(tarde, costaRica) {
+	if !diaEnLugar(manana, costaRica).Equal(diaEnLugar(tarde, costaRica)) {
 		t.Errorf("dos instantes del mismo día en Costa Rica no comparten día: %s vs %s",
 			diaEnLugar(manana, costaRica).Format(time.RFC3339), diaEnLugar(tarde, costaRica).Format(time.RFC3339))
 	}
-	if diaEnLugar(manana, costaRica) == diaEnLugar(otro, costaRica) {
+	if diaEnLugar(manana, costaRica).Equal(diaEnLugar(otro, costaRica)) {
 		t.Errorf("dos instantes de días distintos comparten día")
 	}
 	if got := diaEnLugar(manana, costaRica).Format("2006-01-02"); got != "2026-05-25" {

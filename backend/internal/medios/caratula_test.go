@@ -302,12 +302,35 @@ func TestFetchCoverDescargadorBarreras(t *testing.T) {
 	})
 }
 
-// TestDescargadorImplementaCoverFetcher deja explícita la interfaz del dominio
-// (M1: se declara aquí y T915 no la redeclara).
-func TestDescargadorImplementaCoverFetcher(t *testing.T) {
-	var descargador CoverFetcher = (*descargadorCaratulas)(nil)
-	if descargador == nil {
-		t.Fatalf("el descargador no implementa CoverFetcher")
+// TestNuevoDescargadorCaratulasConfiguracion fija la configuración REAL de la
+// descarga (P9-7/P9-18): la allowlist de carátulas, el tope `UPLOAD_MAX_BYTES`
+// como límite del cuerpo, el tiempo de espera de 10 s y el tope de 30 descargas
+// por búsqueda.
+func TestNuevoDescargadorCaratulasConfiguracion(t *testing.T) {
+	almacen, _ := almacenDePrueba(t)
+	descargador, err := nuevoDescargadorCaratulas(almacen, maxBytesPrueba)
+	if err != nil {
+		t.Fatalf("nuevoDescargadorCaratulas() = %v", err)
+	}
+	if len(descargador.cliente.hosts) != 2 {
+		t.Fatalf("allowlist = %v, se esperaban las dos CDN de carátulas", descargador.cliente.hosts)
+	}
+	for _, host := range []string{hostCaratulaYouTube, hostCaratulaPodcast} {
+		if _, ok := descargador.cliente.hosts[host]; !ok {
+			t.Errorf("falta %q en la allowlist de carátulas", host)
+		}
+	}
+	if descargador.cliente.limiteCuerpo != maxBytesPrueba {
+		t.Errorf("tope de cuerpo = %d, se esperaba UPLOAD_MAX_BYTES (%d)", descargador.cliente.limiteCuerpo, maxBytesPrueba)
+	}
+	if descargador.cliente.cliente.Timeout != tiempoEsperaCaratula {
+		t.Errorf("tiempo de espera = %v, se esperaba %v", descargador.cliente.cliente.Timeout, tiempoEsperaCaratula)
+	}
+	if maxCaratulasPorBusqueda != 30 {
+		t.Errorf("tope de descargas por búsqueda = %d, se esperaban 30", maxCaratulasPorBusqueda)
+	}
+	if _, err := nuevoDescargadorCaratulas(almacen, 0); err == nil {
+		t.Errorf("nuevoDescargadorCaratulas(sin tope) = nil, se esperaba un error de configuración")
 	}
 }
 

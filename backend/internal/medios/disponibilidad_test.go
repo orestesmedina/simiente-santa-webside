@@ -237,12 +237,30 @@ func TestProbadorBarreras(t *testing.T) {
 	})
 }
 
-// TestProbadorImplementaAvailabilityProber deja explícita la interfaz del
-// dominio (M1: se declara aquí y T915 no la redeclara).
-func TestProbadorImplementaAvailabilityProber(t *testing.T) {
-	var probador AvailabilityProber = (*probadorDisponibilidad)(nil)
-	if probador == nil {
-		t.Fatalf("el probador no implementa AvailabilityProber")
+// TestNuevoProbadorDisponibilidadConfiguracion fija la configuración REAL del
+// probador (R9-2/P9-18): el endpoint público de oEmbed, el host del episodio del
+// podcast, el tope de cuerpo y el tiempo de espera de 5 s.
+func TestNuevoProbadorDisponibilidadConfiguracion(t *testing.T) {
+	probador, err := nuevoProbadorDisponibilidad()
+	if err != nil {
+		t.Fatalf("nuevoProbadorDisponibilidad() = %v", err)
+	}
+	if urlOEmbedYouTube != "https://www.youtube.com/oembed" {
+		t.Errorf("endpoint de oEmbed = %q, se esperaba el público de YouTube", urlOEmbedYouTube)
+	}
+	if len(probador.cliente.hosts) != 2 {
+		t.Fatalf("allowlist = %v, se esperaban el oEmbed y el host del episodio", probador.cliente.hosts)
+	}
+	for _, host := range []string{hostOEmbedYouTube, hostEpisodioPodcast} {
+		if _, ok := probador.cliente.hosts[host]; !ok {
+			t.Errorf("falta %q en la allowlist del probador", host)
+		}
+	}
+	if probador.cliente.limiteCuerpo != limiteCuerpoProbador {
+		t.Errorf("tope de cuerpo = %d, se esperaba %d", probador.cliente.limiteCuerpo, limiteCuerpoProbador)
+	}
+	if probador.cliente.cliente.Timeout != tiempoEsperaProbador {
+		t.Errorf("tiempo de espera = %v, se esperaba %v", probador.cliente.cliente.Timeout, tiempoEsperaProbador)
 	}
 }
 

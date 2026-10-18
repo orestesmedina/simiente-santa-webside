@@ -345,12 +345,31 @@ func TestLectorFeedsFeedNoDisponible(t *testing.T) {
 	}
 }
 
-// TestLectorFeedsImplementaFeedSource deja explícita la interfaz del dominio
-// (M1: se declara aquí y T915 no la redeclara).
-func TestLectorFeedsImplementaFeedSource(t *testing.T) {
-	var fuente FeedSource = (*lectorFeeds)(nil)
-	if fuente == nil {
-		t.Fatalf("el lector no implementa FeedSource")
+// TestNuevoLectorFeedsConfiguracion fija la configuración REAL del lector
+// (P9-18): las dos URLs de FR-010, su allowlist exacta y los topes y tiempos del
+// dominio. Las barreras de la fábrica única no dependen del cableado: si alguien
+// cambia un host o un tope, esta prueba lo dice.
+func TestNuevoLectorFeedsConfiguracion(t *testing.T) {
+	lector, err := nuevoLectorFeeds()
+	if err != nil {
+		t.Fatalf("nuevoLectorFeeds() = %v", err)
+	}
+	if lector.urlYouTube != urlFeedYouTube || lector.urlPodcast != urlFeedPodcast {
+		t.Errorf("URLs = %q / %q, se esperaban las de FR-010", lector.urlYouTube, lector.urlPodcast)
+	}
+	if len(lector.cliente.hosts) != 2 {
+		t.Fatalf("allowlist = %v, se esperaban los dos hosts de FR-010", lector.cliente.hosts)
+	}
+	for _, host := range []string{hostFeedYouTube, hostFeedPodcast} {
+		if _, ok := lector.cliente.hosts[host]; !ok {
+			t.Errorf("falta %q en la allowlist del lector", host)
+		}
+	}
+	if lector.cliente.limiteCuerpo != limiteCuerpoFeeds {
+		t.Errorf("tope de cuerpo = %d, se esperaba %d", lector.cliente.limiteCuerpo, limiteCuerpoFeeds)
+	}
+	if lector.cliente.cliente.Timeout != tiempoEsperaFeeds {
+		t.Errorf("tiempo de espera = %v, se esperaba %v", lector.cliente.cliente.Timeout, tiempoEsperaFeeds)
 	}
 }
 

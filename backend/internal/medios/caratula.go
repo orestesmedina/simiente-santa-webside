@@ -89,6 +89,9 @@ func nuevoDescargadorCaratulas(store storage.Store, maxBytes int64) (*descargado
 	return nuevoDescargadorCaratulasConCliente(cliente, store), nil
 }
 
+// descargadorCaratulas implementa el puerto del dominio (M1).
+var _ CoverFetcher = (*descargadorCaratulas)(nil)
+
 // nuevoDescargadorCaratulasConCliente permite inyectar la fábrica en las
 // pruebas.
 func nuevoDescargadorCaratulasConCliente(cliente *clienteSaliente, store storage.Store) *descargadorCaratulas {

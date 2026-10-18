@@ -95,6 +95,9 @@ func nuevoProbadorDisponibilidad() (*probadorDisponibilidad, error) {
 	return nuevoProbadorDisponibilidadConCliente(cliente), nil
 }
 
+// probadorDisponibilidad implementa el puerto del dominio (M1).
+var _ AvailabilityProber = (*probadorDisponibilidad)(nil)
+
 // nuevoProbadorDisponibilidadConCliente permite inyectar la fábrica en las
 // pruebas.
 func nuevoProbadorDisponibilidadConCliente(cliente *clienteSaliente) *probadorDisponibilidad {

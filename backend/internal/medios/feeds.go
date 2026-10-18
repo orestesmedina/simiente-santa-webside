@@ -155,6 +155,10 @@ func nuevoLectorFeeds() (*lectorFeeds, error) {
 	return nuevoLectorFeedsConCliente(cliente), nil
 }
 
+// lectorFeeds implementa el puerto del dominio (M1: la interfaz se declara aquí
+// y T915 no la redeclara).
+var _ FeedSource = (*lectorFeeds)(nil)
+
 // nuevoLectorFeedsConCliente permite inyectar la fábrica en las pruebas.
 func nuevoLectorFeedsConCliente(cliente *clienteSaliente) *lectorFeeds {
 	return &lectorFeeds{cliente: cliente, urlYouTube: urlFeedYouTube, urlPodcast: urlFeedPodcast}
