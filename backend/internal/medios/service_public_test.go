@@ -315,9 +315,148 @@ func TestGetMediosPropagaErroresDelRepositorio(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers de prueba de la cara pública
+// Bloque de la portada (T917)
 // ---------------------------------------------------------------------------
 
+// TestGetPortadaMediosTopeFirme fija US6/FR-027/SC-015: con más de 5 publicables
+// el bloque muestra **exactamente los 5 primeros** del orden de la sección (el
+// tope lo aplica el servidor: el contrato no expone ningún parámetro de límite y
+// el resto vive en `/medios`).
+func TestGetPortadaMediosTopeFirme(t *testing.T) {
+	repo := newFakeRepository()
+	base := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+	quier := []string{"episodio 8", "episodio 7", "episodio 6", "episodio 5", "episodio 4"}
+	for i := 8; i >= 1; i-- {
+		repo.seed(Episodio{
+			Titulo:      "episodio " + string(rune('0'+i)),
+			PublicadoEn: base.Add(time.Duration(i) * time.Hour),
+		})
+	}
+	service := serviceDePrueba(repo)
+
+	out, err := service.GetPortadaMedios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMedios devolvió %v", err)
+	}
+	if len(out.Items) != maxPortada {
+		t.Fatalf("el bloque trajo %d fichas, se esperaban %d", len(out.Items), maxPortada)
+	}
+	for i, titulo := range quier {
+		if out.Items[i].Titulo != titulo {
+			t.Errorf("ficha %d = %q, se esperaba %q (%v)", i, out.Items[i].Titulo, titulo, titulosPublicos(out.Items))
+		}
+	}
+	// El tope se resuelve en el servidor: el repositorio recibe `maxPortada`.
+	if len(repo.portadaLimits) != 1 || repo.portadaLimits[0] != maxPortada {
+		t.Errorf("el bloque pidió %v, se esperaba [%d]", repo.portadaLimits, maxPortada)
+	}
+	if maxPortada != 5 {
+		t.Errorf("maxPortada = %d: el tope es firme y vale 5", maxPortada)
+	}
+}
+
+// TestGetPortadaMediosConMenosDeCinco fija US6 esc. 3: con menos de 5 publicables
+// salen exactos los que hay, sin huecos ni marcadores vacíos.
+func TestGetPortadaMediosConMenosDeCinco(t *testing.T) {
+	repo := newFakeRepository()
+	base := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+	repo.seed(
+		Episodio{Titulo: "la más reciente", PublicadoEn: base},
+		Episodio{Titulo: "la anterior", PublicadoEn: base.Add(-time.Hour)},
+		Episodio{Titulo: "oculta", PublicadoEn: base.Add(-2 * time.Hour), Visibilidad: VisibilidadOculta},
+	)
+	service := serviceDePrueba(repo)
+
+	out, err := service.GetPortadaMedios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMedios devolvió %v", err)
+	}
+	if len(out.Items) != 2 {
+		t.Fatalf("el bloque trajo %d fichas, se esperaban 2: %v", len(out.Items), titulosPublicos(out.Items))
+	}
+	if out.Items[0].Titulo != "la más reciente" || out.Items[1].Titulo != "la anterior" {
+		t.Errorf("orden del bloque = %v", titulosPublicos(out.Items))
+	}
+}
+
+// TestGetPortadaMediosSinPublicables fija FR-027/US6 esc. 4: sin ninguna ficha
+// publicable la clave `items` se **omite** (la portada no dibuja el bloque, sin
+// mensaje) y nunca viaja como `null`.
+func TestGetPortadaMediosSinPublicables(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(
+		Episodio{Titulo: "oculta", Visibilidad: VisibilidadOculta},
+		Episodio{Titulo: "par abierto", DuplicadoDeID: ptrUUID(uuid.New())},
+	)
+	service := serviceDePrueba(repo)
+
+	out, err := service.GetPortadaMedios(context.Background(), LangES)
+	if err != nil {
+		t.Fatalf("GetPortadaMedios devolvió %v", err)
+	}
+	if out.Items != nil {
+		t.Errorf("items debe quedar omitida y llegó %v", titulosPublicos(out.Items))
+	}
+	datos, err := json.Marshal(out)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(datos), "items") || strings.Contains(string(datos), "null") {
+		t.Errorf("sin publicables el bloque solo lleva lang: %s", string(datos))
+	}
+}
+
+// TestGetPortadaMediosBilingue fija el mismo fallback `en → es` del servidor que
+// la sección (FR-025) y el rechazo del idioma fuera del registro.
+func TestGetPortadaMediosBilingue(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(
+		Episodio{
+			Titulo:        "Traducida",
+			PublicadoEn:   time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC),
+			DescripcionEs: ptr("Una prédica"),
+			DescripcionEn: ptr("A sermon"),
+		},
+		Episodio{
+			Titulo:        "Solo español",
+			PublicadoEn:   time.Date(2026, 7, 1, 15, 0, 0, 0, time.UTC),
+			DescripcionEs: ptr("Sin traducción"),
+		},
+	)
+	service := serviceDePrueba(repo)
+
+	ingles, err := service.GetPortadaMedios(context.Background(), LangEN)
+	if err != nil {
+		t.Fatalf("GetPortadaMedios(en) devolvió %v", err)
+	}
+	if ingles.Lang != LangEN {
+		t.Errorf("lang = %q, se esperaba %q", ingles.Lang, LangEN)
+	}
+	if ingles.Items[0].Descripcion != "A sermon" || ingles.Items[1].Descripcion != "Sin traducción" {
+		t.Errorf("fallback del bloque = %q / %q", ingles.Items[0].Descripcion, ingles.Items[1].Descripcion)
+	}
+
+	if _, err := service.GetPortadaMedios(context.Background(), "fr"); err == nil {
+		t.Error("un idioma fuera de es|en debía ser invalid")
+	}
+}
+
+// TestGetPortadaMediosPropagaErrores comprueba que el bloque no se dibuja a
+// medias: un fallo del repositorio sube como error (el frontend deja el bloque
+// fuera, sin un título huérfano).
+func TestGetPortadaMediosPropagaErrores(t *testing.T) {
+	repo := newFakeRepository()
+	repo.listErr = errDePrueba
+	service := serviceDePrueba(repo)
+
+	if _, err := service.GetPortadaMedios(context.Background(), LangES); err == nil {
+		t.Fatal("se esperaba el error del repositorio")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Helpers de prueba de la cara pública
+// ---------------------------------------------------------------------------
 // serviceDePrueba arma el service con el repositorio falso y los dobles de la red
 // saliente (nada de red en las pruebas).
 func serviceDePrueba(repo Repository) *service {

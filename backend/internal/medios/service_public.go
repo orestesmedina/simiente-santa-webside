@@ -6,8 +6,9 @@ import (
 	"time"
 )
 
-// service_public.go implementa la cara pública del dominio (T916): la sección
-// `GET /api/v1/medios` —lista simple con «Cargar más»—.
+// service_public.go implementa la cara pública del dominio (T916/T917): la
+// sección `GET /api/v1/medios` —lista simple con «Cargar más»— y el bloque de la
+// portada `GET /api/v1/portada/medios`.
 //
 // Solo salen fichas **publicables** (FR-009/SC-002): el predicado vive en la
 // consulta (repository_episodios.go), de modo que una ficha oculta, absorbida o
@@ -44,6 +45,15 @@ type MedioPublico struct {
 	CaratulaURL string    `json:"coverUrl,omitempty"`
 	VideoURL    string    `json:"videoUrl,omitempty"`
 	AudioURL    string    `json:"audioUrl,omitempty"`
+}
+
+// PortadaMedios es el bloque de la portada (US6/FR-027/SC-015): hasta
+// `maxPortada` fichas publicables con el **mismo esquema de ítem** que la
+// sección. `items` está presente **solo** si hay fichas publicables; sin ninguna
+// la portada no dibuja el bloque (sin mensaje, patrón de F6/F7).
+type PortadaMedios struct {
+	Lang  string         `json:"lang"`
+	Items []MedioPublico `json:"items,omitempty"`
 }
 
 // GetMedios devuelve una tanda de la sección pública resuelta a `lang`
@@ -83,6 +93,35 @@ func (s *service) GetMedios(ctx context.Context, lang string, limit, offset int)
 	}
 	for _, episodio := range episodios {
 		out.Items = append(out.Items, medioPublico(episodio, lang))
+	}
+	return out, nil
+}
+
+// GetPortadaMedios devuelve el extracto del bloque de la portada resuelto a
+// `lang` (US6/FR-027/SC-015): los **mismos** episodios publicables que la
+// sección —mismo predicado, mismo orden y mismo esquema de ítem— acotados al
+// tope FIRME `maxPortada` (5) que aplica el servidor. El contrato no expone
+// ningún parámetro de límite: el bloque no crece con el contenido.
+//
+// Con 0 publicables `items` queda omitida (la portada no dibuja el bloque, sin
+// mensaje) y con menos de 5 salen exactos los que hay, sin huecos.
+func (s *service) GetPortadaMedios(ctx context.Context, lang string) (PortadaMedios, error) {
+	lang, err := normalizeLang(lang)
+	if err != nil {
+		return PortadaMedios{}, err
+	}
+
+	episodios, err := s.repository.ListPortadaMediaItems(ctx, maxPortada)
+	if err != nil {
+		return PortadaMedios{}, fmt.Errorf("listar los episodios publicables de la portada: %w", err)
+	}
+
+	out := PortadaMedios{Lang: lang}
+	if len(episodios) > 0 {
+		out.Items = make([]MedioPublico, 0, len(episodios))
+		for _, episodio := range episodios {
+			out.Items = append(out.Items, medioPublico(episodio, lang))
+		}
 	}
 	return out, nil
 }
