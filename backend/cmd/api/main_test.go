@@ -15,6 +15,7 @@ import (
 	"simiente-santa/backend/internal/agenda"
 	"simiente-santa/backend/internal/donaciones"
 	"simiente-santa/backend/internal/media"
+	"simiente-santa/backend/internal/medios"
 	"simiente-santa/backend/internal/ministerios"
 	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/httpserver"
@@ -184,6 +185,59 @@ func (stubDonacionesRepo) ListDonationTexts(context.Context) ([]donaciones.Texto
 	return nil, nil
 }
 
+// stubMediosRepo satisface medios.Repository para el humo de composición: sin
+// nada publicable la sección responde con `items` vacío y el bloque solo `lang`, y
+// los listados del panel vienen vacíos. El resto de métodos (no ejercitados en el
+// humo) quedan como método no implementado del embedding. Con `actions` captura
+// las filas de auditoría best-effort (denegaciones) que le llegan.
+type stubMediosRepo struct {
+	medios.Repository
+	actions *[]audit.Action
+}
+
+func (s stubMediosRepo) RecordAction(_ context.Context, action audit.Action) error {
+	if s.actions != nil {
+		*s.actions = append(*s.actions, action)
+	}
+	return nil
+}
+
+func (stubMediosRepo) ListPublishedMediaItems(context.Context, paginate.Params) ([]medios.Episodio, error) {
+	return nil, nil
+}
+
+func (stubMediosRepo) CountPublishedMediaItems(context.Context) (int64, error) { return 0, nil }
+
+func (stubMediosRepo) ListPortadaMediaItems(context.Context, int) ([]medios.Episodio, error) {
+	return nil, nil
+}
+
+func (stubMediosRepo) ListMediaItems(context.Context, medios.FiltroPanel, paginate.Params) ([]medios.Episodio, error) {
+	return nil, nil
+}
+
+func (stubMediosRepo) CountMediaItems(context.Context, medios.FiltroPanel) (int64, error) {
+	return 0, nil
+}
+
+func (stubMediosRepo) GetLastMediaSyncRun(context.Context) (medios.SyncRun, bool, error) {
+	return medios.SyncRun{}, false, nil
+}
+
+func (stubMediosRepo) ListMediaEpisodeSourcesByProvider(context.Context, medios.Proveedor) ([]medios.FuenteEpisodio, error) {
+	return nil, nil
+}
+
+// InsertMediaSyncRun cierra la búsqueda del humo (sin red real: los dos orígenes
+// quedan `failed`) y captura la fila de auditoría `media.sync` que la acompaña.
+func (s stubMediosRepo) InsertMediaSyncRun(_ context.Context, run medios.SyncRun, actions ...audit.Action) (medios.SyncRun, error) {
+	run.ID = uuid.New()
+	if s.actions != nil {
+		*s.actions = append(*s.actions, actions...)
+	}
+	return run, nil
+}
+
 // liveSessionStore tiene una sesión viva para cualquier token: permite probar
 // los permisos de los grupos de panel sin Redis.
 type liveSessionStore struct{ userID uuid.UUID }
@@ -312,6 +366,8 @@ type testOptions struct {
 	ministeriosRepo ministerios.Repository
 	// donacionesRepo sustituye al stub por defecto (permite capturar la auditoría).
 	donacionesRepo donaciones.Repository
+	// mediosRepo sustituye al stub por defecto (permite capturar la auditoría).
+	mediosRepo medios.Repository
 }
 
 // testDeps compone las dependencias del mux con dobles, sin base de datos ni
@@ -390,6 +446,23 @@ func testDepsWith(opts testOptions, repo status.Repository, log *slog.Logger) ap
 		Service: donacionesSvc,
 		Logger:  log,
 	})
+	mediosRepo := opts.mediosRepo
+	if mediosRepo == nil {
+		mediosRepo = stubMediosRepo{}
+	}
+	// Como en producción: el service de medios es el Recorder de su cadena y
+	// resuelve método+ruta → acción (T922). La red saliente real no se construye
+	// en el humo: la búsqueda no se ejercita sin sesión y los feeds reales no
+	// deben tocarse en las pruebas.
+	mediosSvc := medios.NewService(medios.ServiceDeps{
+		Repository: mediosRepo,
+		Location:   time.UTC, // APP_TZ: el humo no depende de la zona del lugar
+		Logger:     log,
+	})
+	mediosHandler := medios.NewHandler(medios.HandlerDeps{
+		Service: mediosSvc,
+		Logger:  log,
+	})
 	return apiDeps{
 		statusRepo:  repo,
 		authHandler: handler,
@@ -453,6 +526,16 @@ func testDepsWith(opts testOptions, repo status.Repository, log *slog.Logger) ap
 				Sessions:   opts.sessions,
 				Resolver:   opts.resolver,
 				Recorder:   donacionesSvc,
+				CSRFSecret: "secret",
+				Logger:     log,
+			},
+		},
+		mediosHandler: mediosHandler,
+		mediosAdmin: medios.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions:   opts.sessions,
+				Resolver:   opts.resolver,
+				Recorder:   mediosSvc,
 				CSRFSecret: "secret",
 				Logger:     log,
 			},
@@ -1371,6 +1454,292 @@ func TestDonacionesPermissionsSmoke(t *testing.T) {
 		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/eventos", "", sessionCookie)
 		if resp.Status != http.StatusOK {
 			t.Fatalf("GET eventos con su permiso: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+	})
+}
+
+// TestMediosRoutesSmoke comprueba el humo de composición de F9 (T928): la
+// superficie pública (sección y bloque de la portada) responde sin sesión y sin
+// caché, el grupo de panel exige sesión en sus cinco operaciones, `/healthz` sigue
+// intacto (§8.1.9) y una ruta inexistente responde 404 con sobre.
+func TestMediosRoutesSmoke(t *testing.T) {
+	logger, _ := testutil.NewLogger()
+	srv := httptest.NewServer(httpserver.NewHandler(
+		newMux(testDeps(fakeRepository{}, logger), logger),
+		logger,
+		middleware.Chain(logger, []string{"http://localhost:5173"})...,
+	))
+	t.Cleanup(srv.Close)
+
+	t.Run("la sección pública responde 200 sin sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/medios", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		// Sin nada publicable: `items` vacío y el sobre completo (la redirección
+		// de la SPA es del frontend, P9-16).
+		if body := strings.TrimSpace(string(resp.Body)); body != `{"lang":"es","items":[],"total":0,"limit":12,"offset":0}` {
+			t.Errorf("cuerpo = %s", body)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+		}
+	})
+
+	t.Run("el bloque de la portada responde 200 sin sesión", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/portada/medios", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if body := strings.TrimSpace(string(resp.Body)); body != `{"lang":"es"}` {
+			t.Errorf("cuerpo = %s, se esperaba solo lang (items omitida)", body)
+		}
+		if got := resp.Header.Get("Cache-Control"); got != "no-store" {
+			t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+		}
+	})
+
+	t.Run("lang inválido responde 400", func(t *testing.T) {
+		for _, path := range []string{"/api/v1/medios?lang=fr", "/api/v1/portada/medios?lang=fr"} {
+			resp := testutil.Do(t, srv, http.MethodGet, path, "", nil)
+			if resp.Status != http.StatusBadRequest {
+				t.Fatalf("GET %s: status = %d, se esperaba 400 (%s)", path, resp.Status, resp.Body)
+			}
+			if !strings.Contains(string(resp.Body), `"code":"invalid"`) {
+				t.Errorf("GET %s: cuerpo inesperado: %s", path, resp.Body)
+			}
+		}
+	})
+
+	t.Run("el grupo de panel exige sesión", func(t *testing.T) {
+		for _, probe := range []struct {
+			method string
+			path   string
+		}{
+			{method: http.MethodGet, path: "/api/v1/admin/medios"},
+			{method: http.MethodPost, path: "/api/v1/admin/medios/buscar-nuevos"},
+			{method: http.MethodPatch, path: "/api/v1/admin/medios/" + uuid.New().String()},
+			{method: http.MethodPost, path: "/api/v1/admin/medios/" + uuid.New().String() + "/unir"},
+			{method: http.MethodPost, path: "/api/v1/admin/medios/" + uuid.New().String() + "/marcas/resolver"},
+		} {
+			resp := testutil.Do(t, srv, probe.method, probe.path, "", nil)
+			if resp.Status != http.StatusUnauthorized {
+				t.Fatalf("%s %s: status = %d, se esperaba 401 (%s)", probe.method, probe.path, resp.Status, resp.Body)
+			}
+			if !strings.Contains(string(resp.Body), `"code":"unauthenticated"`) {
+				t.Errorf("%s %s: cuerpo inesperado: %s", probe.method, probe.path, resp.Body)
+			}
+		}
+	})
+
+	t.Run("healthz sigue intacto y las rutas inexistentes dan 404 con sobre", func(t *testing.T) {
+		resp := testutil.Do(t, srv, http.MethodGet, "/healthz", "", nil)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("/healthz: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		for _, path := range []string{
+			"/api/v1/admin/medios/x/y",
+			"/api/v1/medios/extra",
+			"/api/v1/portada/medios/extra",
+		} {
+			resp := testutil.Do(t, srv, http.MethodGet, path, "", nil)
+			if resp.Status != http.StatusNotFound {
+				t.Fatalf("GET %s: status = %d, se esperaba 404 (%s)", path, resp.Status, resp.Body)
+			}
+			if !strings.Contains(string(resp.Body), `"code":"not_found"`) {
+				t.Errorf("GET %s: cuerpo inesperado: %s", path, resp.Body)
+			}
+		}
+	})
+
+	t.Run("la portada de F3 y los demás módulos siguen intactos", func(t *testing.T) {
+		for _, path := range []string{
+			"/api/v1/portada",
+			"/api/v1/proximamente",
+			"/api/v1/ministerios",
+			"/api/v1/ofrendas",
+			"/api/v1/portada/ofrendas",
+		} {
+			resp := testutil.Do(t, srv, http.MethodGet, path, "", nil)
+			if resp.Status != http.StatusOK {
+				t.Fatalf("GET %s: status = %d, se esperaba 200 (%s)", path, resp.Status, resp.Body)
+			}
+		}
+	})
+}
+
+// TestMediosPermissionsSmoke fija SC-009/FR-021 (T928): el permiso `medios` es
+// independiente de los demás y se verifica **en el servidor** a través de la
+// cadena `AdminChain("medios")`. Una cuenta con `medios` no entra en los grupos de
+// F4/F6/F7 y al revés; las denegaciones quedan registradas con la acción de la ruta
+// (`result='denied'`, T922) y las lecturas del panel no dejan fila.
+func TestMediosPermissionsSmoke(t *testing.T) {
+	logger, _ := testutil.NewLogger()
+	userID := uuid.New()
+	itemID := uuid.New()
+
+	t.Run("con medios", func(t *testing.T) {
+		var accionesMedios []audit.Action
+		var accionesAjenas []audit.Action
+		deps := testDepsWith(testOptions{
+			sessions:   liveSessionStore{userID: userID},
+			resolver:   permissionsResolver{permissions: []string{medios.PermissionMedios}},
+			mediosRepo: stubMediosRepo{actions: &accionesMedios},
+			// La denegación de una mutación de OTRO módulo la registra el Recorder
+			// de ESA cadena (el service de F4): aquí se captura desde el
+			// repositorio de agenda para poder comprobarla.
+			agendaRepo: stubAgendaRepo{actions: &accionesAjenas},
+		}, fakeRepository{}, logger)
+
+		srv := httptest.NewServer(httpserver.NewHandler(
+			newMux(deps, logger),
+			logger,
+			middleware.Chain(logger, []string{"http://localhost:5173"})...,
+		))
+		t.Cleanup(srv.Close)
+		sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
+
+		// Con su permiso, el listado responde 200 (vacío) y una lectura no deja
+		// fila (el registro es de mutaciones).
+		resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/medios", "", sessionCookie)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("GET con permiso: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if len(accionesMedios) != 0 {
+			t.Errorf("una lectura del panel no debe dejar fila: %+v", accionesMedios)
+		}
+
+		// La búsqueda con permiso, sesión y CSRF responde 200 con el resumen. El
+		// humo no construye la red saliente real, así que los dos orígenes quedan
+		// `failed`: es exactamente FR-016 (no es un error y nada se oculta).
+		csrf, err := session.NewCSRFToken("secret")
+		if err != nil {
+			t.Fatalf("generar el token CSRF: %v", err)
+		}
+		mutacion := map[string]string{
+			"Cookie":       session.CookieSession + "=token-de-prueba; " + session.CookieCSRF + "=" + csrf,
+			"X-CSRF-Token": csrf,
+			"Content-Type": "application/json",
+		}
+		resp = testutil.Do(t, srv, http.MethodPost, "/api/v1/admin/medios/buscar-nuevos", "", mutacion)
+		if resp.Status != http.StatusOK {
+			t.Fatalf("POST buscar-nuevos: status = %d, se esperaba 200 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"youtube":"failed"`) {
+			t.Errorf("el resumen debe informar del feed caído: %s", resp.Body)
+		}
+		if len(accionesMedios) != 1 {
+			t.Fatalf("auditoría = %+v, se esperaba una fila media.sync", accionesMedios)
+		}
+		if accionesMedios[0].Code != audit.ActionMediaSync || accionesMedios[0].Result != audit.ResultSuccess {
+			t.Errorf("acción = %+v, se esperaba media.sync con result=success", accionesMedios[0])
+		}
+		if accionesMedios[0].ActorUserID == nil || *accionesMedios[0].ActorUserID != userID {
+			t.Errorf("la búsqueda no lleva el actor de la sesión: %+v", accionesMedios[0])
+		}
+
+		// Otro módulo (F4): 403 genérico y sin fila (la lectura no se audita).
+		resp = testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/eventos", "", sessionCookie)
+		if resp.Status != http.StatusForbidden {
+			t.Fatalf("GET eventos: status = %d, se esperaba 403 (%s)", resp.Status, resp.Body)
+		}
+		if !strings.Contains(string(resp.Body), `"code":"forbidden"`) {
+			t.Errorf("cuerpo inesperado: %s", resp.Body)
+		}
+		if len(accionesAjenas) != 0 {
+			t.Errorf("una lectura denegada no debe dejar fila: %+v", accionesAjenas)
+		}
+
+		// Una mutación de otro módulo: 403 y la denegación queda registrada con la
+		// acción de ESA ruta (el Recorder de la cadena es el service de F4).
+		resp = testutil.Do(t, srv, http.MethodPatch, "/api/v1/admin/eventos/"+itemID.String(), "", sessionCookie)
+		if resp.Status != http.StatusForbidden {
+			t.Fatalf("PATCH eventos: status = %d, se esperaba 403 (%s)", resp.Status, resp.Body)
+		}
+		if len(accionesAjenas) != 1 || accionesAjenas[0].Code != "event.update" ||
+			accionesAjenas[0].Result != audit.ResultDenied {
+			t.Fatalf("denegaciones ajenas = %+v, se esperaba event.update con result=denied", accionesAjenas)
+		}
+	})
+
+	t.Run("sin medios", func(t *testing.T) {
+		for _, permission := range []string{
+			agenda.PermissionEventos,
+			agenda.PermissionActividades,
+			agenda.PermissionCategorias,
+			ministerios.PermissionMinisterios,
+			donaciones.PermissionDonaciones,
+		} {
+			t.Run(permission, func(t *testing.T) {
+				var acciones []audit.Action
+				deps := testDepsWith(testOptions{
+					sessions:   liveSessionStore{userID: userID},
+					resolver:   permissionsResolver{permissions: []string{permission}},
+					mediosRepo: stubMediosRepo{actions: &acciones},
+				}, fakeRepository{}, logger)
+
+				srv := httptest.NewServer(httpserver.NewHandler(
+					newMux(deps, logger),
+					logger,
+					middleware.Chain(logger, []string{"http://localhost:5173"})...,
+				))
+				t.Cleanup(srv.Close)
+				sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
+
+				resp := testutil.Do(t, srv, http.MethodGet, "/api/v1/admin/medios", "", sessionCookie)
+				if resp.Status != http.StatusForbidden {
+					t.Fatalf("GET medios con %s: status = %d, se esperaba 403 (%s)", permission, resp.Status, resp.Body)
+				}
+				if !strings.Contains(string(resp.Body), `"code":"forbidden"`) {
+					t.Errorf("cuerpo inesperado: %s", resp.Body)
+				}
+
+				// Una mutación denegada: 403 (authz va antes que CSRF) y la
+				// denegación queda registrada con la acción de la ruta.
+				resp = testutil.Do(t, srv, http.MethodPatch, "/api/v1/admin/medios/"+itemID.String(), "", sessionCookie)
+				if resp.Status != http.StatusForbidden {
+					t.Fatalf("PATCH medios con %s: status = %d, se esperaba 403 (%s)", permission, resp.Status, resp.Body)
+				}
+				if len(acciones) != 1 {
+					t.Fatalf("denegaciones = %+v, se esperaba 1", acciones)
+				}
+				action := acciones[0]
+				if action.Code != audit.ActionMediaDescriptionUpdate || action.Result != audit.ResultDenied {
+					t.Errorf("acción = %+v, se esperaba media.description.update con result=denied", action)
+				}
+				if want := "Medios · " + itemID.String(); action.TargetLabel != want {
+					t.Errorf("targetLabel = %q, se esperaba %q", action.TargetLabel, want)
+				}
+				if action.ActorUserID == nil || *action.ActorUserID != userID {
+					t.Errorf("la denegación no lleva el actor de la sesión: %+v", action)
+				}
+			})
+		}
+	})
+
+	t.Run("y al revés: una cuenta solo de medios no entra en los demás módulos", func(t *testing.T) {
+		deps := testDepsWith(testOptions{
+			sessions: liveSessionStore{userID: userID},
+			resolver: permissionsResolver{permissions: []string{medios.PermissionMedios}},
+		}, fakeRepository{}, logger)
+
+		srv := httptest.NewServer(httpserver.NewHandler(
+			newMux(deps, logger),
+			logger,
+			middleware.Chain(logger, []string{"http://localhost:5173"})...,
+		))
+		t.Cleanup(srv.Close)
+		sessionCookie := map[string]string{"Cookie": session.CookieSession + "=token-de-prueba"}
+
+		for _, path := range []string{
+			"/api/v1/admin/eventos",
+			"/api/v1/admin/ministerios",
+			"/api/v1/admin/donaciones",
+		} {
+			resp := testutil.Do(t, srv, http.MethodGet, path, "", sessionCookie)
+			if resp.Status != http.StatusForbidden {
+				t.Fatalf("GET %s con solo medios: status = %d, se esperaba 403 (%s)", path, resp.Status, resp.Body)
+			}
 		}
 	})
 }
