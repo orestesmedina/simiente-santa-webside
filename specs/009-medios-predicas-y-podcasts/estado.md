@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 3/9 · Planificar (spec v2 **aprobada** el 2026-10-17) |
+| Fase | 3/9 · Planificar (plan, research, data-model, contracts y ux.md **listos**; **puerta 2 pendiente**) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 3: `plan.md`, `data-model.md` y `contracts/` (`arquitecto`) + `ux.md` (`disenador-ux`); después **puerta 2** (aprobación del plan) |
-| Bloqueado por | — |
+| Próximo paso | **Puerta 2: aprobación humana del plan** (5 puntos abiertos que señala el plan) → después, fase 4 (`tasks.md`) |
+| Bloqueado por | — (nada: el plan está listo; solo espera tu decisión en la puerta) |
 | Actualizado | 2026-10-17 |
 
 ## Aprobaciones
@@ -51,6 +51,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-17 — **Fase 3 entregada**: `plan.md` (18 decisiones técnicas, 12 riesgos), `research.md` (14 incógnitas con evidencia real: XML del feed, pruebas HTTP de disponibilidad), `data-model.md` (3 tablas + 2 migraciones), `contracts/openapi.yaml` (delta aditivo, 0.8.0 → **0.9.0**, 7 endpoints) y `quickstart.md`; `ux.md` con 7 pantallas y los flujos de «Buscar episodios nuevos» y unir duplicados. **Puerta 2 pendiente** con **5 puntos abiertos** señalados por el arquitecto.
 - 2026-10-17 — **Puerta 1: spec v2 APROBADA** por el humano («Apruebo la spec v2»). Fase → **3/9 · Planificar**. Se arranca el plan técnico (`arquitecto`) y `ux.md` (`disenador-ux`).
 - 2026-10-17 — **Ajustes aprobados por el humano antes de la puerta 1** (aplicados a la v2): (1) **regla del «estante de 15»** — un episodio que sale de la ventana del feed **no se oculta**: se comprueba si su enlace sigue disponible y solo se oculta cuando la comprobación **confirma** que ya no lo está, con regla a prueba de fallos (nunca se oculta por falta de certeza); (2) los enlaces externos se abren en **pestaña nueva anunciada**. Queda señalado para la puerta 1 el **default #7** (al unir video y audio manda el nombre del feed de YouTube).
 - 2026-10-17 — **Spec v2** redactada tras las respuestas del cliente: **6 historias de usuario**, **FR-001…FR-030**, **SC-001…SC-017** (criterios manuales SC-008 lector de pantalla y SC-012 usabilidad), **10 consecuencias asumidas**, **16 defaults revisables** y **0 preguntas abiertas**. Limpiadas las referencias técnicas a migraciones que arrastraba la v1. Roadmap: **decisión 27** y corrección de la 26. **Puerta 1 pendiente.**
