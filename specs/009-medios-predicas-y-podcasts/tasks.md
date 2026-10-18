@@ -953,7 +953,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     presupuesto y nunca vacía el sitio.
   - **Commit sugerido**: `feat(medios): disponibilidad a prueba de fallos, caratulas y resumen de la busqueda`
 
-- [ ] T922 · `medios`: `service_audit.go` — `audit.Recorder` del dominio · `[backend]`
+- [X] T922 · `medios`: `service_audit.go` — `audit.Recorder` del dominio · `[backend]`
 
   - **Archivos**: `backend/internal/medios/service_audit.go` y `service_audit_test.go` (NUEVOS).
   - **Qué hace**: implementa `audit.Recorder` para el dominio (patrón de F4/F6/F7,
@@ -975,7 +975,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 
 ## Fase 7 — Handlers, rutas y cableado
 
-- [ ] T923 · `handler.go` + `handler_public.go` — `GET /api/v1/medios` · `[backend]`
+- [X] T923 · `handler.go` + `handler_public.go` — `GET /api/v1/medios` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/handler.go`, `handler_public.go` y
     `handler_public_test.go` (NUEVOS).
@@ -995,7 +995,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
   - **Criterio de terminado**: `quickstart.md` §1 es ejecutable tal cual por API (US1).
   - **Commit sugerido**: `feat(medios): endpoint publico de la seccion de medios`
 
-- [ ] T924 · `handler_public.go` — `GET /api/v1/portada/medios` · `[backend]`
+- [X] T924 · `handler_public.go` — `GET /api/v1/portada/medios` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/handler_public.go` (EDITADO) y `handler_public_test.go`
     (AMPLIADO).
@@ -1011,7 +1011,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
   - **Criterio de terminado**: `quickstart.md` §10 es ejecutable tal cual por API (US6).
   - **Commit sugerido**: `feat(medios): endpoint publico del bloque de medios de la portada`
 
-- [ ] T925 · `handler_admin.go` — listado del panel + `PATCH {id}` · `[backend]`
+- [X] T925 · `handler_admin.go` — listado del panel + `PATCH {id}` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/handler_admin.go` y `handler_admin_test.go` (NUEVOS).
   - **Qué hace**: `GET /api/v1/admin/medios` (listado paginado con `limit`/`offset` vía
@@ -1034,7 +1034,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
   - **Criterio de terminado**: `quickstart.md` §6/§7 ejecutables vía API (US3).
   - **Commit sugerido**: `feat(medios): endpoints del panel (listado y edicion de descripcion)`
 
-- [ ] T926 · `handler_admin.go` — `POST buscar-nuevos` · `[backend]`
+- [X] T926 · `handler_admin.go` — `POST buscar-nuevos` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/handler_admin.go` (EDITADO) y `handler_admin_test.go`
     (AMPLIADO).
@@ -1053,7 +1053,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     FR-018 sin filtrar información interna.
   - **Commit sugerido**: `feat(medios): endpoint de buscar episodios nuevos con resumen`
 
-- [ ] T927 · `handler_admin.go` — `POST {id}/unir` y `POST {id}/marcas/resolver` · `[backend]`
+- [X] T927 · `handler_admin.go` — `POST {id}/unir` y `POST {id}/marcas/resolver` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/handler_admin.go` (EDITADO) y `handler_admin_test.go`
     (AMPLIADO).
@@ -1074,7 +1074,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
   - **Criterio de terminado**: `quickstart.md` §5 es ejecutable vía API (US3, SC-003).
   - **Commit sugerido**: `feat(medios): endpoints de union de duplicados y resolucion de marcas`
 
-- [ ] T928 · `routes.go` + `cmd/api/main.go` (`AdminChain("medios")`) + humo · `[backend]`
+- [X] T928 · `routes.go` + `cmd/api/main.go` (`AdminChain("medios")`) + humo · `[backend]`
 
   - **Archivos**: `backend/internal/medios/routes.go` y `routes_test.go` (NUEVOS),
     `backend/cmd/api/main.go` y `main_test.go` (EDITADOS: DI del dominio `medios` — repository,

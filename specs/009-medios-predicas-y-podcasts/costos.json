@@ -383,10 +383,109 @@
         }
       ],
       "hasta_ms": 1792281307288
+    },
+    {
+      "id": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "padre": null,
+      "titulo": "Requisitos para arrancar F9",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-18T20:02:59Z",
+      "desde": "2026-10-18T05:18:11Z",
+      "hasta": "2026-10-18T14:09:43Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 15,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 340628,
+            "output": 8029,
+            "reasoning": 3133,
+            "cache_read": 4664064,
+            "cache_write": 0
+          },
+          "costo": 0.071784,
+          "costo_opencode": 0.071784
+        }
+      ],
+      "hasta_ms": 1792332583616
+    },
+    {
+      "id": "ses_eb0d46797ffeR122xT6xQSFLvH",
+      "padre": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "titulo": "Servicio de sync T915-T921",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-18T20:02:59Z",
+      "desde": "2026-10-18T13:20:19Z",
+      "hasta": "2026-10-18T14:08:27Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 160,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 946201,
+            "output": 113709,
+            "reasoning": 80485,
+            "cache_read": 44153984,
+            "cache_write": 0
+          },
+          "costo": 0.390909,
+          "costo_opencode": 0.390909
+        }
+      ],
+      "hasta_ms": 1792332507784
+    },
+    {
+      "id": "ses_eb0f5d782ffe5AnOEnoUWwHclV",
+      "padre": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "titulo": "Persistencia de medios T911-T914",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-18T20:02:59Z",
+      "desde": "2026-10-18T12:43:48Z",
+      "hasta": "2026-10-18T13:18:49Z",
+      "consumo": [
+        {
+          "agente": "dev-backend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 105,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 505625,
+            "output": 82913,
+            "reasoning": 57182,
+            "cache_read": 22410624,
+            "cache_write": 0
+          },
+          "costo": 0.227133,
+          "costo_opencode": 0.227133
+        }
+      ],
+      "hasta_ms": 1792329529269
     }
   ],
   "totales": {
     "por_agente_modelo": [
+      {
+        "agente": "dev-backend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 489,
+        "tokens": {
+          "input": 2435862,
+          "output": 318675,
+          "reasoning": 215756,
+          "cache_read": 105737216,
+          "cache_write": 0
+        },
+        "costo": 1.00325,
+        "costo_opencode": 1.00325,
+        "sin_precio": false
+      },
       {
         "agente": "arquitecto",
         "modelo": "opencode-go/mimo-v2.6-pro",
@@ -403,18 +502,18 @@
         "sin_precio": false
       },
       {
-        "agente": "dev-backend",
+        "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 224,
+        "respuestas": 110,
         "tokens": {
-          "input": 984036,
-          "output": 122053,
-          "reasoning": 78089,
-          "cache_read": 39172608,
+          "input": 650195,
+          "output": 57304,
+          "reasoning": 58005,
+          "cache_read": 26555904,
           "cache_write": 0
         },
-        "costo": 0.385208,
-        "costo_opencode": 0.385208,
+        "costo": 0.246383,
+        "costo_opencode": 0.246383,
         "sin_precio": false
       },
       {
@@ -430,21 +529,6 @@
         },
         "costo": 0.227798,
         "costo_opencode": 0.227798,
-        "sin_precio": false
-      },
-      {
-        "agente": "orquestador",
-        "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 95,
-        "tokens": {
-          "input": 309567,
-          "output": 49275,
-          "reasoning": 54872,
-          "cache_read": 21891840,
-          "cache_write": 0
-        },
-        "costo": 0.174599,
-        "costo_opencode": 0.174599,
         "sin_precio": false
       },
       {
@@ -478,8 +562,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 114819474,
-    "costo": 1.954168,
-    "costo_opencode": 1.954168
+    "tokens": 188186051,
+    "costo": 2.643994,
+    "costo_opencode": 2.643994
   }
 }
