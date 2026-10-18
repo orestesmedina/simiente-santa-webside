@@ -20,6 +20,11 @@ export const publicMessageKeys = [
   'nav.sections.events',
   'nav.sections.ministries',
   'nav.sections.offerings',
+  // F9 — Medios (prédicas y podcasts, ux.md §7.2): la sección pública se llama
+  // «Medios»; el nombre del episodio, la fecha, la carátula y los enlaces **no**
+  // se traducen (FR-026) y el fallback `en → es` de la descripción lo resuelve
+  // el servidor (FR-025).
+  'nav.sections.media',
   'home.upcoming.title',
   'home.upcoming.subtitle',
   'home.upcoming.seeAll',
@@ -78,6 +83,19 @@ export const publicMessageKeys = [
   'home.offerings.seeAll',
   'home.offerings.badge.iban',
   'home.offerings.badge.sinpe',
+  'media.page.title',
+  'media.page.subtitle',
+  'media.loadMore',
+  'media.loading',
+  'media.error.load',
+  'media.error.retry',
+  'media.error.partial',
+  'media.link.youtube',
+  'media.link.spotify',
+  'media.link.newTab',
+  'home.media.title',
+  'home.media.subtitle',
+  'home.media.seeAll',
   'footer.sitemap.label',
   'footer.sitemap.explore',
   'footer.sitemap.contact',
@@ -132,6 +150,12 @@ export const publicMessageKeys = [
   'a11y.offerings.sinpe',
   'a11y.offerings.copy',
   'a11y.home.offerings.heading',
+  'a11y.media.link.youtube',
+  'a11y.media.link.spotify',
+  'a11y.media.image',
+  'a11y.media.card.heading',
+  'a11y.media.card.newTab',
+  'a11y.home.media.heading',
 ] as const;
 
 export type PublicMessageKey = (typeof publicMessageKeys)[number];

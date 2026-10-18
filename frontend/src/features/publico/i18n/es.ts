@@ -14,6 +14,7 @@ export const es: PublicMessages = {
   'nav.sections.events': 'Eventos y actividades',
   'nav.sections.ministries': 'Ministerios',
   'nav.sections.offerings': 'Ofrendas y diezmos',
+  'nav.sections.media': 'Medios',
   'home.upcoming.title': 'Lo que viene',
   'home.upcoming.subtitle': 'Lo más próximo de nuestra agenda',
   'home.upcoming.seeAll': 'Ver más eventos',
@@ -74,6 +75,20 @@ export const es: PublicMessages = {
   'home.offerings.seeAll': 'Ver formas de ofrendar',
   'home.offerings.badge.iban': 'Cuenta IBAN',
   'home.offerings.badge.sinpe': 'SINPE Móvil',
+  'media.page.title': 'Medios',
+  'media.page.subtitle':
+    'Las prédicas y los podcasts de nuestra iglesia; se abren en YouTube y Spotify, en una pestaña nueva.',
+  'media.loadMore': 'Cargar más',
+  'media.loading': 'Cargando…',
+  'media.error.load': 'No pudimos cargar los medios. Revisa tu conexión y vuelve a intentarlo.',
+  'media.error.retry': 'Volver a intentar',
+  'media.error.partial': 'No pudimos actualizar; ves la última versión disponible.',
+  'media.link.youtube': 'Ver en YouTube',
+  'media.link.spotify': 'Escuchar en Spotify',
+  'media.link.newTab': 'pestaña nueva',
+  'home.media.title': 'Medios',
+  'home.media.subtitle': 'Las últimas prédicas y podcasts',
+  'home.media.seeAll': 'Ver todo',
   'footer.sitemap.label': 'Mapa del sitio',
   'footer.sitemap.explore': 'Explorar',
   'footer.sitemap.contact': 'Contacto',
@@ -132,4 +147,12 @@ export const es: PublicMessages = {
   'a11y.offerings.copy': 'Copiar número de {entidad}',
   'a11y.home.offerings.heading':
     'Ofrendas y diezmos: mira el resumen y entra a la sección completa',
+  'a11y.media.link.youtube':
+    'Abre YouTube en una pestaña nueva para ver {nombre}; sales del sitio de la iglesia.',
+  'a11y.media.link.spotify':
+    'Abre Spotify en una pestaña nueva para escuchar {nombre}; sales del sitio de la iglesia.',
+  'a11y.media.image': 'Carátula del episodio {nombre}',
+  'a11y.media.card.heading': 'Lista de episodios de medios',
+  'a11y.media.card.newTab': '(pestaña nueva)',
+  'a11y.home.media.heading': 'Medios: mira los episodios recientes y entra a la sección completa',
 };
