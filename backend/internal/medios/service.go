@@ -261,6 +261,8 @@ func normalizarPaginacionPublica(limit, offset int) (paginate.Params, error) {
 
 // patchMedio es el `PATCH` ya normalizado: los campos que el cuerpo toca (los
 // punteros del DTO distinguen «ausente» de «valor») con sus textos recortados.
+// `tocaEs` con `descripcionEs == nil` es «sin descripción» (decisión del
+// 2026-10-18: `""`/espacios vacían la descripción, igual que el inglés) y
 // `tocaEn` con `descripcionEn == nil` es «borra la traducción opcional» (patrón
 // I6: `""`/espacios → NULL).
 type patchMedio struct {
@@ -272,11 +274,13 @@ type patchMedio struct {
 }
 
 // patchMedioFromInput normaliza y valida el único cuerpo editable del módulo
-// (FR-019/FR-020): `descriptionEs` obligatoria al rellenarse (1…300, contrato
-// `minLength: 1`), `descriptionEn` opcional (1…300, `""` borra la traducción) y
-// `visibility` dentro del catálogo. Devuelve un `400 invalid` con **un motivo
-// por campo** en `details` (las mismas claves del contrato y de los `CHECK` de
-// la migración 000014: la BD es la última línea de defensa).
+// (FR-019/FR-020): `descriptionEs` opcional de hasta 300 caracteres —`""` o solo
+// espacios la vacían: «sin descripción», con el mismo tratamiento que el inglés
+// (patrón I6, decisión del 2026-10-18)—, `descriptionEn` opcional (1…300, `""`
+// borra la traducción) y `visibility` dentro del catálogo. Devuelve un
+// `400 invalid` con **un motivo por campo** en `details` (las mismas claves del
+// contrato y de los `CHECK` de la migración 000014: la BD es la última línea de
+// defensa).
 //
 // La coherencia «español por campo» (FR-023) se comprueba sobre la ficha
 // FUSIONADA (`validarEpisodio`), porque un `PATCH` que solo trae el inglés debe
@@ -289,14 +293,12 @@ func patchMedioFromInput(patch MedioPatch) (patchMedio, error) {
 
 	if patch.DescriptionEs != nil {
 		out.tocaEs = true
-		texto := colapsarEspacios(*patch.DescriptionEs)
-		switch {
-		case texto == "":
-			details["descriptionEs"] = "Este campo no puede quedar vacío."
-		case len([]rune(texto)) > maxDescripcion:
+		// `""`/espacios significa «sin descripción» (se guarda como NULL): la
+		// ficha omite la línea en la superficie pública (SC-010), igual que la
+		// versión en inglés (patrón I6).
+		out.descripcionEs = normalizarOpcional(*patch.DescriptionEs)
+		if out.descripcionEs != nil && len([]rune(*out.descripcionEs)) > maxDescripcion {
 			details["descriptionEs"] = tooLongMessage(maxDescripcion)
-		default:
-			out.descripcionEs = &texto
 		}
 	}
 
@@ -333,7 +335,10 @@ func patchMedioFromInput(patch MedioPatch) (patchMedio, error) {
 //
 // Reglas: nombre 1…300 (el del feed, no editable); descripción corta 1…300 por
 // idioma con **español por campo** (FR-025: `descriptionEn` exige
-// `descriptionEs`); `visibility` y `origin` dentro de sus catálogos.
+// `descriptionEs`); `visibility` y `origin` dentro de sus catálogos. El vacío
+// nunca llega aquí: la normalización del `PATCH` y de la importación lo
+// convierten en «sin descripción» (NULL) antes de persistir, y un `NULL` es
+// legal (decisión del 2026-10-18/SC-010).
 func validarEpisodio(ep Episodio) error {
 	details := make(map[string]any)
 

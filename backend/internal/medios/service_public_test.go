@@ -274,6 +274,49 @@ func TestMedioPublicoOmiteClavesVaciais(t *testing.T) {
 	}
 }
 
+// TestMedioPublicoSinDescripcionTrasVaciarla fija la decisión del humano del
+// 2026-10-18 en la superficie pública: cuando el equipo **vacía** la
+// descripción desde el panel, la ficha pública **omite** la línea (SC-010) en
+// los dos idiomas, sin caer en el fallback `en → es` (no hay nada que mostrar).
+func TestMedioPublicoSinDescripcionTrasVaciarla(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(Episodio{
+		Titulo:        "Traducida",
+		PublicadoEn:   time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC),
+		DescripcionEs: ptr("Una prédica"),
+		DescripcionEn: ptr("A sermon"),
+	})
+	service := serviceDePrueba(repo)
+	id := repo.episodios[0].ID
+
+	// El equipo deja la ficha sin descripción (vacía las dos: FR-023 exige el
+	// inglés por campo).
+	if _, err := service.Update(context.Background(), uuid.New(), id,
+		MedioPatch{DescriptionEs: ptr(""), DescriptionEn: ptr("")}); err != nil {
+		t.Fatalf("Update devolvió %v", err)
+	}
+
+	for _, lang := range []string{LangES, LangEN} {
+		out, err := service.GetMedios(context.Background(), lang, 0, 0)
+		if err != nil {
+			t.Fatalf("GetMedios(%s) devolvió %v", lang, err)
+		}
+		if len(out.Items) != 1 {
+			t.Fatalf("GetMedios(%s) = %d fichas, se esperaba 1", lang, len(out.Items))
+		}
+		if out.Items[0].Descripcion != "" {
+			t.Errorf("GetMedios(%s): descripción = %q, se esperaba la clave omitida", lang, out.Items[0].Descripcion)
+		}
+		datos, err := json.Marshal(out.Items[0])
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		if strings.Contains(string(datos), `"description"`) {
+			t.Errorf("GetMedios(%s): la ficha sin descripción no debe traer la clave: %s", lang, datos)
+		}
+	}
+}
+
 // TestGetMediosSinPublicables fija el caso «nada visible» (FR-008/SC-016): la
 // respuesta sigue siendo `200` con `items` **vacío** (nunca `null`) y `total: 0`;
 // la redirección de `/medios` es del frontend.

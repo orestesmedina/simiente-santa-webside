@@ -3327,9 +3327,13 @@ paths:
         `visibility` (`visible`/`hidden`, FR-015). El nombre, la fecha, la
         carátula y los enlaces **no se editan** (vienen del feed) y cualquier
         otra clave del cuerpo se rechaza con `400 invalid` (el DTO es
-        `additionalProperties: false`). Texto plano de 1…300 caracteres por
+        `additionalProperties: false`). Texto plano de hasta 300 caracteres por
         idioma, que se guarda íntegro —con tildes, `ñ`, `¿¡` y emojis— y sin
-        interpretar (constitución §IV).
+        interpretar (constitución §IV). La descripción puede quedar **vacía**
+        (decisión del humano del 2026-10-18): `""`/espacios en `descriptionEs`
+        significan «sin descripción» (se guarda como NULL, igual que
+        `descriptionEn`, patrón I6) y la ficha pública **omite** la línea
+        (SC-010).
 
         La descripción guardada pasa a ser del equipo (`descriptionEdited`) y
         **no se regenera ni se pisa** en búsquedas posteriores (FR-015/SC-007).
@@ -6834,8 +6838,9 @@ components:
           maxLength: 300
           description: |
             Descripción corta ya resuelta a `lang` (puede provenir del español
-            por fallback, FR-025). Ausente si el feed no traía descripción y el
-            equipo no la escribió (R9-14.3: la ficha omite la línea).
+            por fallback, FR-025). Ausente si la ficha no tiene descripción: el
+            feed no la traía **o el equipo la dejó vacía** desde el panel
+            (decisión del 2026-10-18; R9-14.3: la ficha omite la línea).
         publishedAt:
           type: string
           format: date-time
@@ -7028,13 +7033,15 @@ components:
       description: |
         Edición permitida (FR-019/FR-020): **solo** `descriptionEs`,
         `descriptionEn` y `visibility`. Cualquier otra clave → `400 invalid`.
-        `descriptionEn` exige `descriptionEs` (FR-023); un `null` explícito
-        borra la traducción opcional. Los límites son 1…300 caracteres por
-        idioma. Texto plano, sin interpretar (constitución §IV).
+        `descriptionEn` exige `descriptionEs` (FR-023); un `null` explícito o
+        `""`/espacios borra el texto (`descriptionEs` deja la ficha **sin
+        descripción**: decisión del humano del 2026-10-18; `descriptionEn`
+        borra la traducción opcional). El límite es de **hasta 300**
+        caracteres por idioma (sin mínimo). Texto plano, sin interpretar
+        (constitución §IV).
       properties:
         descriptionEs:
           type: [string, "null"]
-          minLength: 1
           maxLength: 300
         descriptionEn:
           type: [string, "null"]

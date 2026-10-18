@@ -267,12 +267,14 @@ type SyncRun struct {
 // **solo** la descripción corta en sus dos idiomas y la visibilidad. Cualquier
 // otra clave la rechaza el handler (contrato `additionalProperties: false`).
 //
-// Un campo ausente (nil) no toca nada; `descriptionEn` a `NULL` borra la
-// traducción opcional y `descriptionEs` a `NULL` deja la ficha sin descripción
-// (hueco documentado: la ficha omite la línea, SC-010). La coherencia «español
-// por campo» (FR-023) la aplica el service sobre el resultado ya fusionado.
+// Un campo ausente (nil) no toca nada; `descriptionEs` a `""`/espacios deja la
+// ficha **sin descripción** (se guarda como NULL: decisión del humano del
+// 2026-10-18, mismo tratamiento que el inglés) y `descriptionEn` a `""`/espacios
+// borra la traducción opcional. La ficha pública omite la línea cuando no hay
+// descripción (SC-010). La coherencia «español por campo» (FR-023) la aplica el
+// service sobre el resultado ya fusionado.
 type MedioPatch struct {
-	DescriptionEs *string `json:"descriptionEs" validate:"omitempty,min=1,max=300"`
+	DescriptionEs *string `json:"descriptionEs" validate:"omitempty,max=300"`
 	DescriptionEn *string `json:"descriptionEn" validate:"omitempty,max=300"`
 	Visibility    *string `json:"visibility" validate:"omitempty,oneof=visible hidden"`
 }

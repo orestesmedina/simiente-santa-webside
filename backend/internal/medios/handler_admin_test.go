@@ -304,6 +304,60 @@ func TestUpdateMedioHandlerDescripcion(t *testing.T) {
 	}
 }
 
+// TestUpdateMedioHandlerVaciaLaDescripcion fija la decisión del humano del
+// 2026-10-18: `{"descriptionEs":""}` **vacía** la descripción desde el panel
+// (200, ya no 400), la ficha queda sin descripción —la clave se omite en el DTO
+// del panel (SC-010)—, pasa a ser del equipo (`descriptionEdited`) y la
+// auditoría registra el cambio igual que cualquier otro ajuste (FR-022).
+func TestUpdateMedioHandlerVaciaLaDescripcion(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "vacío", body: `{"descriptionEs":""}`},
+		{name: "solo espacios", body: `{"descriptionEs":"   "}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newFakeRepository()
+			repo.seed(episodioPublicable("Potencial sin Resultados"))
+			id := repo.episodios[0].ID
+			h := newTestHandler(t, repo)
+
+			rec := httptest.NewRecorder()
+			h.UpdateMedio(rec, withPathValue(
+				adminRequest(http.MethodPatch, "/api/v1/admin/medios/"+id.String(), tt.body, true), id.String()))
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+			}
+			var got MedioAdmin
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("cuerpo no es MedioAdmin: %v (%s)", err, rec.Body)
+			}
+			if got.DescripcionEs != nil {
+				t.Errorf("descriptionEs = %v, se esperaba la ficha sin descripción", *got.DescripcionEs)
+			}
+			if strings.Contains(rec.Body.String(), `"descriptionEs"`) {
+				t.Errorf("la descripción vacía no debe viajar en la respuesta: %s", rec.Body)
+			}
+			if !got.DescripcionEditada {
+				t.Error("la descripción vaciada debe quedar marcada como del equipo")
+			}
+			if got.Titulo != "Potencial sin Resultados" || got.Visibilidad != string(VisibilidadVisible) {
+				t.Errorf("el PATCH de un campo no debe tocar los demás: %+v", got)
+			}
+			if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaDescriptionUpdate {
+				t.Fatalf("auditoría = %+v, se esperaba una fila media.description.update", repo.committed)
+			}
+			if repo.committed[0].TargetLabel != "Medios · Potencial sin Resultados" {
+				t.Errorf("targetLabel = %q", repo.committed[0].TargetLabel)
+			}
+		})
+	}
+}
+
 // TestUpdateMedioHandlerVisibilidad fija el cambio de visibilidad: `media.hide`/
 // `media.show` **solo** por el cambio de estado, y las dos cosas a la vez dejan
 // **dos** filas (FR-022).
@@ -371,8 +425,6 @@ func TestUpdateMedioHandlerInvalid(t *testing.T) {
 		body   string
 		detail string
 	}{
-		{name: "descripción vacía", body: `{"descriptionEs":""}`, detail: "descriptionEs"},
-		{name: "descripción con espacios", body: `{"descriptionEs":"   "}`, detail: "descriptionEs"},
 		{
 			name:   "descripción demasiado larga",
 			body:   `{"descriptionEs":"` + strings.Repeat("a", 301) + `"}`,

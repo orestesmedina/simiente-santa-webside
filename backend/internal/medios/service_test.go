@@ -206,9 +206,11 @@ func TestNormalizarOpcional(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // TestPatchMedioFromInput fija la validación del único cuerpo editable del
-// módulo (FR-019/FR-020): descripción 1…300 por idioma, español por campo,
-// `visibility` dentro del catálogo y `""` en inglés como borrado de la
-// traducción opcional.
+// módulo (FR-019/FR-020): descripción de hasta 300 caracteres por idioma,
+// español por campo, `visibility` dentro del catálogo y `""` —en los dos
+// idiomas— como «sin texto» (patrón I6: en español deja la ficha sin
+// descripción, en inglés borra la traducción opcional; decisión del
+// 2026-10-18).
 func TestPatchMedioFromInput(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -230,10 +232,12 @@ func TestPatchMedioFromInput(t *testing.T) {
 			quierEs: ptr(strings.Repeat("á", maxDescripcion)), tocaEs: true,
 		},
 		{
-			name: "descripción en español vacía", patch: MedioPatch{DescriptionEs: ptr("")}, campo: "descriptionEs",
+			name:  "descripción en español vacía deja la ficha sin descripción",
+			patch: MedioPatch{DescriptionEs: ptr("")}, tocaEs: true,
 		},
 		{
-			name: "descripción en español de solo espacios", patch: MedioPatch{DescriptionEs: ptr("   ")}, campo: "descriptionEs",
+			name:  "descripción en español de solo espacios deja la ficha sin descripción",
+			patch: MedioPatch{DescriptionEs: ptr("   ")}, tocaEs: true,
 		},
 		{
 			name: "descripción en español de 301", patch: MedioPatch{DescriptionEs: ptr(strings.Repeat("a", maxDescripcion+1))},

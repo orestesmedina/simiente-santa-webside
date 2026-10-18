@@ -33,7 +33,10 @@
 #   - DESCRIPCIÓN CORTA (FR-020): único campo editable (es/en con español
 #     base por campo, FR-023/FR-025). El nombre, la fecha, la carátula y los
 #     enlaces NO se editan (FR-019): el `PATCH` solo acepta `descriptionEs`,
-#     `descriptionEn` y `visibility`.
+#     `descriptionEn` y `visibility`. La descripción corta PUEDE ESTAR VACÍA
+#     (decisión del humano del 2026-10-18): `""`/espacios en `descriptionEs`
+#     significan «sin descripción» (se guarda como NULL, igual que
+#     `descriptionEn`, patrón I6) y la ficha pública **omite** la línea.
 #   - IMPORTACIÓN A DEMANDA (FR-011): `POST /api/v1/admin/medios/buscar-nuevos`
 #     lee los dos feeds en la MISMA petición (sin cron, worker ni cola) y
 #     devuelve el RESUMEN de FR-018 (cuántos entraron, se unieron, se
@@ -111,6 +114,13 @@
 # traducción. `descriptionEn` sin `descriptionEs` → 400 invalid con
 # `details.descriptionEs` (FR-023).
 #
+# DESCRIPCIÓN VACÍA (decisión del humano del 2026-10-18): `descriptionEs`
+# también acepta "" o solo espacios y se guarda como `null` ("sin
+# descripción", mismo tratamiento que el inglés). El contrato NO exige un
+# mínimo de un carácter y la ficha pública omite la línea cuando no hay
+# descripción (SC-010/precisión 3 de la puerta 2, ampliada). El cambio se
+# registra en la auditoría igual que cualquier otro ajuste de la descripción.
+#
 # Formato uniforme (F1): 2xx → el DTO de la operación; 4xx/5xx → ErrorEnvelope.
 # Convenciones: operaciones en inglés (camelCase), segmentos de URL en español
 # donde el dominio lo pide (arquitectura.md §5.1), campos en camelCase,
@@ -176,7 +186,7 @@ info:
 
     | HTTP | `error.code` | Cuándo |
     |---|---|---|
-    | 400 | `invalid` | datos inválidos/incompletos con `details` por campo (`descriptionEs`/`descriptionEn` vacíos o > 300 caracteres, `descriptionEn` sin `descriptionEs`, `visibility` fuera de `visible`/`hidden`, `otherId` igual a `{id}` o mal formado, `lang`/`limit`/`offset` fuera de rango) |
+    | 400 | `invalid` | datos inválidos/incompletos con `details` por campo (`descriptionEs`/`descriptionEn` de más de 300 caracteres, `descriptionEn` sin `descriptionEs`, `visibility` fuera de `visible`/`hidden`, `otherId` igual a `{id}` o mal formado, `lang`/`limit`/`offset` fuera de rango) |
     | 401 | `unauthenticated` | sin sesión válida en operaciones del panel |
     | 403 | `forbidden` | sin el permiso `medios` (independiente de los demás permisos de módulo), o cuenta con cambio de contraseña pendiente |
     | 404 | `not_found` | ficha inexistente (`{id}`), o `otherId` inexistente/ya absorbida al unir |
@@ -481,9 +491,13 @@ paths:
         `visibility` (`visible`/`hidden`, FR-015). El nombre, la fecha, la
         carátula y los enlaces **no se editan** (vienen del feed) y cualquier
         otra clave del cuerpo se rechaza con `400 invalid` (el DTO es
-        `additionalProperties: false`). Texto plano de 1…300 caracteres por
+        `additionalProperties: false`). Texto plano de hasta 300 caracteres por
         idioma, que se guarda íntegro —con tildes, `ñ`, `¿¡` y emojis— y sin
-        interpretar (constitución §IV).
+        interpretar (constitución §IV). La descripción puede quedar **vacía**
+        (decisión del humano del 2026-10-18): `""`/espacios en `descriptionEs`
+        significan «sin descripción» (se guarda como NULL, igual que
+        `descriptionEn`, patrón I6) y la ficha pública **omite** la línea
+        (SC-010).
 
         La descripción guardada pasa a ser del equipo (`descriptionEdited`) y
         **no se regenera ni se pisa** en búsquedas posteriores (FR-015/SC-007).
@@ -786,8 +800,9 @@ components:
           maxLength: 300
           description: |
             Descripción corta ya resuelta a `lang` (puede provenir del español
-            por fallback, FR-025). Ausente si el feed no traía descripción y el
-            equipo no la escribió (R9-14.3: la ficha omite la línea).
+            por fallback, FR-025). Ausente si la ficha no tiene descripción: el
+            feed no la traía **o el equipo la dejó vacía** desde el panel
+            (decisión del 2026-10-18; R9-14.3: la ficha omite la línea).
         publishedAt:
           type: string
           format: date-time
@@ -980,13 +995,15 @@ components:
       description: |
         Edición permitida (FR-019/FR-020): **solo** `descriptionEs`,
         `descriptionEn` y `visibility`. Cualquier otra clave → `400 invalid`.
-        `descriptionEn` exige `descriptionEs` (FR-023); un `null` explícito
-        borra la traducción opcional. Los límites son 1…300 caracteres por
-        idioma. Texto plano, sin interpretar (constitución §IV).
+        `descriptionEn` exige `descriptionEs` (FR-023); un `null` explícito o
+        `""`/espacios borra el texto (`descriptionEs` deja la ficha **sin
+        descripción**: decisión del humano del 2026-10-18; `descriptionEn`
+        borra la traducción opcional). El límite es de **hasta 300**
+        caracteres por idioma (sin mínimo). Texto plano, sin interpretar
+        (constitución §IV).
       properties:
         descriptionEs:
           type: [string, "null"]
-          minLength: 1
           maxLength: 300
         descriptionEn:
           type: [string, "null"]

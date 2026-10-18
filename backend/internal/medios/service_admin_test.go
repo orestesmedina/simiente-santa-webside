@@ -162,7 +162,9 @@ func TestListMediosDelPanel(t *testing.T) {
 // TestUpdateMedioDescripcion fija la edición de la descripción corta
 // (FR-019/FR-020): validación completa con `details` por campo y **sin guardar
 // nada a medias**, el guardado fija `descriptionEdited` (FR-015/SC-007: la
-// sincronización no la pisa) y los caracteres del español se conservan.
+// sincronización no la pisa), los caracteres del español se conservan y `""`
+// **vacía** la descripción —dejando la ficha sin ella, con su fila de auditoría
+// (decisión del humano del 2026-10-18)— con el mismo tratamiento que el inglés.
 func TestUpdateMedioDescripcion(t *testing.T) {
 	actor := uuid.New()
 	base := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
@@ -212,6 +214,118 @@ func TestUpdateMedioDescripcion(t *testing.T) {
 		}
 	})
 
+	t.Run("vacía la descripción con vacío", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "Sin descripción", PublicadoEn: base,
+			DescripcionEs: ptr("Del feed"), DescripcionEditada: true,
+		})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		out, err := service.Update(context.Background(), actor, id, MedioPatch{DescriptionEs: ptr("")})
+		if err != nil {
+			t.Fatalf("Update devolvió %v", err)
+		}
+		if out.DescripcionEs != nil {
+			t.Errorf("descriptionEs = %v, se esperaba NULL (sin descripción)", *out.DescripcionEs)
+		}
+		if !out.DescripcionEditada {
+			t.Error("descriptionEdited debe quedar en true: el vaciado es del equipo")
+		}
+		if len(repo.updates) != 1 {
+			t.Fatalf("updates = %v, se esperaba una escritura", repo.updates)
+		}
+		if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaDescriptionUpdate {
+			t.Errorf("auditoría = %+v, se esperaba una fila media.description.update", repo.committed)
+		}
+		if repo.committed[0].TargetLabel != "Medios · Sin descripción" {
+			t.Errorf("targetLabel = %q", repo.committed[0].TargetLabel)
+		}
+	})
+
+	t.Run("vacía la descripción con solo espacios", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Sin descripción", PublicadoEn: base, DescripcionEs: ptr("Del feed")})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		out, err := service.Update(context.Background(), actor, id, MedioPatch{DescriptionEs: ptr("   ")})
+		if err != nil {
+			t.Fatalf("Update devolvió %v", err)
+		}
+		if out.DescripcionEs != nil {
+			t.Errorf("descriptionEs = %v, se esperaba NULL (sin descripción)", *out.DescripcionEs)
+		}
+		if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaDescriptionUpdate {
+			t.Errorf("auditoría = %+v, se esperaba una fila media.description.update", repo.committed)
+		}
+	})
+
+	t.Run("vacía las dos descripciones", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "Traducida", PublicadoEn: base,
+			DescripcionEs: ptr("Una prédica"), DescripcionEn: ptr("A sermon"), DescripcionEditada: true,
+		})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		out, err := service.Update(context.Background(), actor, id,
+			MedioPatch{DescriptionEs: ptr(""), DescriptionEn: ptr("")})
+		if err != nil {
+			t.Fatalf("Update devolvió %v", err)
+		}
+		if out.DescripcionEs != nil || out.DescripcionEn != nil {
+			t.Errorf("descripciones = (%v, %v), se esperaban NULL", out.DescripcionEs, out.DescripcionEn)
+		}
+		// Un solo cambio de datos: una sola fila (FR-022).
+		if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaDescriptionUpdate {
+			t.Errorf("auditoría = %+v, se esperaba una fila media.description.update", repo.committed)
+		}
+	})
+
+	t.Run("vaciar el español con traducción presente sigue exigiendo el inglés fuera", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "Traducida", PublicadoEn: base,
+			DescripcionEs: ptr("Una prédica"), DescripcionEn: ptr("A sermon"), DescripcionEditada: true,
+		})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		// FR-023 sigue en pie: el inglés exige el español por campo.
+		_, err := service.Update(context.Background(), actor, id, MedioPatch{DescriptionEs: ptr("")})
+		requireInvalid(t, err, "descriptionEs")
+		if len(repo.updates) != 0 || len(repo.committed) != 0 {
+			t.Error("un rechazo no debe guardar nada ni dejar auditoría de éxito")
+		}
+		if len(repo.recorded) != 1 || repo.recorded[0].Result != audit.ResultFailure {
+			t.Errorf("el rechazo debe quedar registrado best-effort: %+v", repo.recorded)
+		}
+	})
+
+	t.Run("vaciar una descripción que ya estaba vacía no es una operación", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Sin descripción", PublicadoEn: base})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		out, err := service.Update(context.Background(), actor, id, MedioPatch{DescriptionEs: ptr("")})
+		if err != nil {
+			t.Fatalf("Update devolvió %v", err)
+		}
+		if out.DescripcionEs != nil {
+			t.Errorf("descriptionEs = %v, se esperaba NULL", *out.DescripcionEs)
+		}
+		if len(repo.updates) != 0 || len(repo.committed) != 0 {
+			t.Errorf("un PATCH sin cambios no debe escribir ni registrar: %v / %+v", repo.updates, repo.committed)
+		}
+		if repo.episodios[0].DescripcionEditada {
+			t.Error("sin cambio de datos, la descripción no debe quedar marcada como del equipo")
+		}
+	})
+
 	t.Run("inglés sin español", func(t *testing.T) {
 		repo := newFakeRepository()
 		repo.seed(Episodio{Titulo: "Sin descripción", PublicadoEn: base})
@@ -234,7 +348,6 @@ func TestUpdateMedioDescripcion(t *testing.T) {
 			patch MedioPatch
 			campo string
 		}{
-			{name: "descripción en español vacía", patch: MedioPatch{DescriptionEs: ptr("")}, campo: "descriptionEs"},
 			{name: "descripción en español de 301", patch: MedioPatch{DescriptionEs: ptr(strings.Repeat("a", maxDescripcion+1))}, campo: "descriptionEs"},
 			{name: "descripción en inglés de 301", patch: MedioPatch{DescriptionEn: ptr(strings.Repeat("a", maxDescripcion+1))}, campo: "descriptionEn"},
 			{name: "visibilidad fuera del catálogo", patch: MedioPatch{Visibility: ptr("draft")}, campo: "visibility"},
