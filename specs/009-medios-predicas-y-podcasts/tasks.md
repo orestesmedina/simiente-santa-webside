@@ -1096,7 +1096,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     `routes.go` (SC-009).
   - **Commit sugerido**: `feat(medios): rutas con AdminChain("medios") y cableado del dominio`
 
-- [ ] T946 · `medios`: permitir la descripción vacía (contrato + validación) · `[backend]` · **decisión posterior (2026-10-18)**
+- [X] T946 · `medios`: permitir la descripción vacía (contrato + validación) · `[backend]` · **decisión posterior (2026-10-18)**
 
   - **Archivos**: `specs/009-medios-predicas-y-podcasts/contracts/openapi.yaml`, `backend/api/openapi.yaml`,
     `backend/internal/medios/service_admin.go`, `service.go`, `handler_admin.go` y sus pruebas.

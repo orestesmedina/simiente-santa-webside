@@ -374,7 +374,7 @@ paths:
         - name: visibility
           in: query
           required: false
-          description: Filtra por visibilidad (FR-015). Sin valor: todas.
+          description: "Filtra por visibilidad (FR-015). Sin valor: todas."
           schema:
             $ref: "#/components/schemas/Visibilidad"
         - name: reviewMark
@@ -1024,7 +1024,7 @@ components:
         otherId:
           type: string
           format: uuid
-          description: Ficha a absorber; distinta de `{id}` (si no: `400 invalid`).
+          description: "Ficha a absorber; distinta de `{id}` (si no: `400 invalid`)."
       additionalProperties: false
     ResolverMarcaInput:
       type: object
@@ -1070,7 +1070,7 @@ components:
         joinedCount:
           type: integer
           minimum: 0
-          description: Uniones automáticas aplicadas (FR-013: video + audio del mismo sermón).
+          description: "Uniones automáticas aplicadas (FR-013: video + audio del mismo sermón)."
         markedCount:
           type: integer
           minimum: 0
