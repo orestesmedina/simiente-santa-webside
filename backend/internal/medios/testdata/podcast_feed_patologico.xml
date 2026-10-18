@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FIXTURE patológico del feed RSS 2.0 del podcast (RG9-11): un elemento completo
+  (CDATA con HTML, entidades y emoji; `pubDate` con desplazamiento numérico),
+  uno sin carátula ni descripción (defaults documentados: la ficha omite la
+  línea) y uno con el enlace fuera de `podcasters.spotify.com` (descartado con
+  aviso).
+-->
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+	<channel>
+		<title><![CDATA[Servicio dominical Iglesia Simiente Santa]]></title>
+		<link>https://podcasters.spotify.com/pod/show/iglesia-simiente-santa</link>
+		<language><![CDATA[es-cr]]></language>
+		<itunes:image href="https://d3t3ozftmdmh3i.cloudfront.net/staging/podcast_uploaded_nologo/45766890/45766890-1776097995866-18d4d70c5410a.jpg"/>
+		<item>
+			<title><![CDATA[¡Qué día! 🙌 La Lección de la Higuera]]></title>
+			<description><![CDATA[<p>¿Es posible tener mucha fe pero vivir lleno de miedo? <strong>No</strong>: la fe que Dios da se apoya en su carácter &amp; no en las circunstancias.</p><ul><li>Primero: mira la higuera.</li><li>Segundo: toma la decisión.</li></ul><p>Escucha &quot;completo&quot; y compártelo.</p>]]></description>
+			<link>https://podcasters.spotify.com/pod/show/iglesia-simiente-santa/episodes/Que-dia-e3aaaaa</link>
+			<guid isPermaLink="false">guid-patologico-1</guid>
+			<pubDate>Tue, 26 May 2026 03:00:00 +0000</pubDate>
+			<enclosure url="https://anchor.fm/s/1116351e8/podcast/play/1/ejemplo.mp3" length="1" type="audio/mpeg"/>
+			<itunes:image href="https://d3t3ozftmdmh3i.cloudfront.net/staging/podcast_uploaded_nologo/45766890/45766890-1776097995866-18d4d70c5410a.jpg"/>
+		</item>
+		<item>
+			<title><![CDATA[Sin carátula ni descripción]]></title>
+			<guid isPermaLink="false">guid-patologico-2</guid>
+			<link>https://podcasters.spotify.com/pod/show/iglesia-simiente-santa/episodes/Sin-caratula-e3bbbbb</link>
+			<pubDate>Mon, 25 May 2026 18:00:00 GMT</pubDate>
+		</item>
+		<item>
+			<title><![CDATA[Enlace fuera de Spotify]]></title>
+			<description><![CDATA[<p>Su enlace no apunta al podcast.</p>]]></description>
+			<link>https://evil.example/pod/show/otro/episodes/ajeno-e3ccccc</link>
+			<guid isPermaLink="false">guid-patologico-3</guid>
+			<pubDate>Sun, 24 May 2026 18:00:00 GMT</pubDate>
+			<itunes:image href="https://d3t3ozftmdmh3i.cloudfront.net/staging/podcast_uploaded_nologo/45766890/45766890-1776097995866-18d4d70c5410a.jpg"/>
+		</item>
+	</channel>
+</rss>

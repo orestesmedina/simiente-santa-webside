@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FIXTURE de XML roto (RG9-11): el documento se corta a mitad de un elemento.
+  El parser debe devolver un **error claro** y NUNCA elementos a medias.
+-->
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+ <title>Feed truncado</title>
+ <entry>
+  <id>yt:video:SimienteDD1</id>
+  <yt:videoId>SimienteDD1</yt:videoId>
+  <title>Sermón que nunca se completa</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteDD1"/>
+  <published>2026-05-25T15:00:00+00:00</published>
