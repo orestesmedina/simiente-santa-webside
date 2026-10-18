@@ -754,7 +754,7 @@ func (f *fakeRepository) ListMediaItems(_ context.Context, filtro FiltroPanel, p
 	items := make([]Episodio, 0, len(f.episodios))
 	for _, ep := range f.episodios {
 		if coincideFiltro(ep, filtro) {
-			items = append(items, ep)
+			items = append(items, f.conEnlaces(ep))
 		}
 	}
 	ordenSeccion(items)
@@ -779,9 +779,27 @@ func (f *fakeRepository) GetMediaItemByID(_ context.Context, id uuid.UUID) (Epis
 		return Episodio{}, false, f.getErr
 	}
 	if i, ok := f.buscar(id); ok {
-		return f.episodios[i], true, nil
+		return f.conEnlaces(f.episodios[i]), true, nil
 	}
 	return Episodio{}, false, nil
+}
+
+// conEnlaces resuelve `VideoURL`/`AudioURL` desde las fuentes de la ficha, igual
+// que el `LEFT JOIN` por proveedor de las consultas reales (una ficha = 1 video
+// y/o 1 audio). Una ficha sin fuentes conserva lo que se le haya sembrado.
+func (f *fakeRepository) conEnlaces(episodio Episodio) Episodio {
+	for _, fuente := range f.fuentes {
+		if fuente.EpisodioID != episodio.ID {
+			continue
+		}
+		switch fuente.Proveedor {
+		case ProveedorYouTube:
+			episodio.VideoURL = fuente.Enlace
+		case ProveedorPodcast:
+			episodio.AudioURL = fuente.Enlace
+		}
+	}
+	return episodio
 }
 
 func (f *fakeRepository) InsertMediaItem(_ context.Context, episodio Episodio, actions ...audit.Action) (Episodio, error) {

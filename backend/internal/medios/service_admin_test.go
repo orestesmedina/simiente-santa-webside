@@ -373,6 +373,411 @@ func TestUpdateMedioVisibilidad(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Unión por puntero (T919)
+// ---------------------------------------------------------------------------
+
+// TestMergeDejaUnaFichaConLosDosEnlaces fija P9-10/FR-013/FR-019: `{id}` se
+// conserva (con los dos enlaces, `origin='both'` y las dos procedencias) y la
+// otra queda absorbida —`merged_into_id` + oculta, fuera de todas las consultas—
+// **sin ningún DELETE** (la fila sigue existiendo).
+func TestMergeDejaUnaFichaConLosDosEnlaces(t *testing.T) {
+	actor := uuid.New()
+	base := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+
+	t.Run("la absorbida desaparece de la vía pública y del panel por defecto", func(t *testing.T) {
+		repo := newFakeRepository()
+		videoID, podcastID := sembrarVideoYAudio(repo, base)
+		service := serviceDePrueba(repo)
+
+		out, err := service.Merge(context.Background(), actor, podcastID, videoID)
+		if err != nil {
+			t.Fatalf("Merge devolvió %v", err)
+		}
+		if out.Origen != string(OrigenAmbos) {
+			t.Errorf("origin = %q, se esperaba both", out.Origen)
+		}
+		if len(out.Fuentes) != 2 {
+			t.Fatalf("la ficha resultante tiene %d fuentes, se esperaban 2", len(out.Fuentes))
+		}
+		if out.VideoURL == "" || out.AudioURL == "" {
+			t.Errorf("faltan enlaces en la resultante: %+v", out)
+		}
+		if out.DuplicadoDeID != "" || out.MarcaDuplicadoResueltaEn != nil {
+			t.Errorf("el eje de duplicados debe quedar despejado: %+v", out)
+		}
+		if out.Visibilidad != string(VisibilidadVisible) {
+			t.Errorf("la base era visible y debe seguir visible: %q", out.Visibilidad)
+		}
+
+		// Cero DELETE: la absorbida sigue en la tabla, con puntero y oculta.
+		absorbida, ok := repo.episodios[1], false
+		for _, ep := range repo.episodios {
+			if ep.ID == videoID {
+				absorbida, ok = ep, true
+			}
+		}
+		if !ok {
+			t.Fatal("la ficha absorbida desapareció del almacén (FR-019: sin DELETE)")
+		}
+		if absorbida.UnidoAID == nil || *absorbida.UnidoAID != podcastID {
+			t.Errorf("mergedIntoId = %v, se esperaba %s", absorbida.UnidoAID, podcastID)
+		}
+		if absorbida.Visibilidad != VisibilidadOculta {
+			t.Errorf("la absorbida debe quedar oculta, no %q", absorbida.Visibilidad)
+		}
+
+		// El repunte fue en UNA sola transacción (una llamada al repositorio).
+		if len(repo.repoints) != 1 || repo.repoints[0] != [2]uuid.UUID{podcastID, videoID} {
+			t.Errorf("repuntes = %v, se esperaba [{%s %s}]", repo.repoints, podcastID, videoID)
+		}
+		if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaMerge {
+			t.Errorf("auditoría = %+v, se esperaba una fila media.merge", repo.committed)
+		}
+		if !strings.Contains(repo.committed[0].TargetLabel, videoID.String()) {
+			t.Errorf("la absorbida debe citarse en targetLabel: %q", repo.committed[0].TargetLabel)
+		}
+
+		// La absorbida queda fuera de todas las consultas (como el predicado real).
+		publicos, err := service.GetMedios(context.Background(), LangES, 0, 0)
+		if err != nil {
+			t.Fatalf("GetMedios devolvió %v", err)
+		}
+		if len(publicos.Items) != 1 || publicos.Items[0].ID != podcastID.String() {
+			t.Errorf("la vía pública = %v", titulosPublicos(publicos.Items))
+		}
+		panel, err := service.List(context.Background(), FiltroPanel{}, paginate.Params{Limit: 20})
+		if err != nil {
+			t.Fatalf("List devolvió %v", err)
+		}
+		if panel.Total != 1 {
+			t.Errorf("el panel por defecto no debe listar absorbidas: total %d", panel.Total)
+		}
+	})
+
+	t.Run("el nombre, la carátula y la fecha son los del video (precisión 5)", func(t *testing.T) {
+		repo := newFakeRepository()
+		videoID, podcastID := sembrarVideoYAudio(repo, base)
+		service := serviceDePrueba(repo)
+
+		out, err := service.Merge(context.Background(), actor, podcastID, videoID)
+		if err != nil {
+			t.Fatalf("Merge devolvió %v", err)
+		}
+		if out.Titulo != "Potencial sin Resultados La Lección de la Higuera" {
+			t.Errorf("el nombre que manda es el del feed del video: %q", out.Titulo)
+		}
+		if out.CaratulaURL != "/api/v1/media/img_33333333-3333-3333-3333-333333333333.jpg" {
+			t.Errorf("la carátula que manda es la del video: %q", out.CaratulaURL)
+		}
+
+		// El orden inverso (la base es el video) conserva lo suyo.
+		repo2 := newFakeRepository()
+		videoID2, podcastID2 := sembrarVideoYAudio(repo2, base)
+		service2 := serviceDePrueba(repo2)
+		out2, err := service2.Merge(context.Background(), actor, videoID2, podcastID2)
+		if err != nil {
+			t.Fatalf("Merge devolvió %v", err)
+		}
+		if out2.Titulo != "Potencial sin Resultados La Lección de la Higuera" {
+			t.Errorf("unir en el otro orden debe publicar el mismo nombre: %q", out2.Titulo)
+		}
+		if out2.Origen != string(OrigenAmbos) || len(out2.Fuentes) != 2 {
+			t.Errorf("la unión en el otro orden = %+v", out2)
+		}
+	})
+
+	t.Run("manda la descripción editada y sobrevive a la unión", func(t *testing.T) {
+		for _, orden := range []string{"base primero", "absorbida primero"} {
+			t.Run(orden, func(t *testing.T) {
+				repo := newFakeRepository()
+				videoID, podcastID := sembrarVideoYAudio(repo, base)
+				// Solo la ficha del podcast tiene la descripción ajustada.
+				repo.episodios[1].DescripcionEs = ptr("Del equipo")
+				repo.episodios[1].DescripcionEditada = true
+				service := serviceDePrueba(repo)
+
+				baseID, otraID := podcastID, videoID
+				if orden == "absorbida primero" {
+					baseID, otraID = videoID, podcastID
+				}
+				out, err := service.Merge(context.Background(), actor, baseID, otraID)
+				if err != nil {
+					t.Fatalf("Merge devolvió %v", err)
+				}
+				if out.DescripcionEs == nil || *out.DescripcionEs != "Del equipo" || !out.DescripcionEditada {
+					t.Errorf("la descripción del equipo debe sobrevivir: %+v", out)
+				}
+			})
+		}
+	})
+
+	t.Run("el eje de disponibilidad de la base no se toca", func(t *testing.T) {
+		repo := newFakeRepository()
+		videoID, podcastID := sembrarVideoYAudio(repo, base)
+		repo.episodios[1].MarcaDisponibilidad = ptrMarca(MarcaDisponibilidadFueraDelFeed)
+		service := serviceDePrueba(repo)
+
+		out, err := service.Merge(context.Background(), actor, podcastID, videoID)
+		if err != nil {
+			t.Fatalf("Merge devolvió %v", err)
+		}
+		if out.MarcaDisponibilidad != string(MarcaDisponibilidadFueraDelFeed) {
+			t.Errorf("la marca de disponibilidad abierta debe seguir: %+v", out)
+		}
+	})
+
+	t.Run("la carátula de la absorbida que queda sin uso se borra en mejor esfuerzo", func(t *testing.T) {
+		repo := newFakeRepository()
+		videoID, podcastID := sembrarVideoYAudio(repo, base)
+		almacen := &fakeAlmacen{}
+		service := NewService(ServiceDeps{Repository: repo, Store: almacen})
+
+		if _, err := service.Merge(context.Background(), actor, podcastID, videoID); err != nil {
+			t.Fatalf("Merge devolvió %v", err)
+		}
+		if len(almacen.borrados) != 1 || almacen.borrados[0] != "img_44444444-4444-4444-4444-444444444444.jpg" {
+			t.Errorf("borrados = %v, se esperaba la carátula propia del podcast", almacen.borrados)
+		}
+	})
+}
+
+// TestMergeErrores fija los errores del contrato: unir consigo misma es
+// `invalid`, una ficha inexistente o ya absorbida es `not_found` y dos fichas con
+// fuente del **mismo** proveedor (no caben en una ficha: una entrada por sermón)
+// es `conflict`.
+func TestMergeErrores(t *testing.T) {
+	actor := uuid.New()
+	base := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+
+	t.Run("unir consigo misma", func(t *testing.T) {
+		repo := newFakeRepository()
+		videoID, _ := sembrarVideoYAudio(repo, base)
+		service := serviceDePrueba(repo)
+
+		_, err := service.Merge(context.Background(), actor, videoID, videoID)
+		requireInvalid(t, err, "otherId")
+		if len(repo.repoints) != 0 {
+			t.Error("un rechazo no puede tocar las fuentes")
+		}
+	})
+
+	t.Run("ficha inexistente o ya absorbida", func(t *testing.T) {
+		repo := newFakeRepository()
+		videoID, podcastID := sembrarVideoYAudio(repo, base)
+		service := serviceDePrueba(repo)
+
+		_, err := service.Merge(context.Background(), actor, podcastID, uuid.New())
+		requireKind(t, err, apperr.KindNotFound)
+
+		if _, err := service.Merge(context.Background(), actor, podcastID, videoID); err != nil {
+			t.Fatalf("la primera unión devolvió %v", err)
+		}
+		_, err = service.Merge(context.Background(), actor, podcastID, videoID)
+		requireKind(t, err, apperr.KindNotFound)
+	})
+
+	t.Run("dos fuentes del mismo proveedor no caben en una ficha", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(
+			Episodio{Titulo: "Video A", PublicadoEn: base, Origen: OrigenVideo},
+			Episodio{Titulo: "Video B", PublicadoEn: base, Origen: OrigenVideo},
+		)
+		repo.seedFuentes(
+			FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube,
+				IDExterno: "SimienteAA1", TituloFeed: "Video A", Enlace: "https://www.youtube.com/watch?v=SimienteAA1"},
+			FuenteEpisodio{EpisodioID: repo.episodios[1].ID, Proveedor: ProveedorYouTube,
+				IDExterno: "SimienteAA2", TituloFeed: "Video B", Enlace: "https://www.youtube.com/watch?v=SimienteAA2"},
+		)
+		service := serviceDePrueba(repo)
+
+		_, err := service.Merge(context.Background(), actor, repo.episodios[0].ID, repo.episodios[1].ID)
+		requireKind(t, err, apperr.KindConflict)
+	})
+}
+
+// TestResolveMark fija la resolución de marcas (FR-017/US3 esc. 6, P9-19): la
+// operación indica **qué eje** resuelve, la visibilidad la decide el equipo, es
+// idempotente sobre una marca ya resuelta y «no son el mismo sermón» deja **las
+// dos** fichas del par visibles y con el par resuelto.
+func TestResolveMark(t *testing.T) {
+	actor := uuid.New()
+	base := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+
+	t.Run("no son el mismo sermón deja las dos visibles", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(
+			Episodio{Titulo: "Video", PublicadoEn: base, Origen: OrigenVideo},
+			Episodio{Titulo: "Audio", PublicadoEn: base, Origen: OrigenAudio, Visibilidad: VisibilidadOculta},
+		)
+		video, audio := repo.episodios[0].ID, repo.episodios[1].ID
+		repo.episodios[0].DuplicadoDeID = ptrUUID(audio)
+		repo.episodios[1].DuplicadoDeID = ptrUUID(video)
+		service := serviceDePrueba(repo)
+
+		out, err := service.ResolveMark(context.Background(), actor, video, MarcaPosibleDuplicado, VisibilidadVisible)
+		if err != nil {
+			t.Fatalf("ResolveMark devolvió %v", err)
+		}
+		if out.MarcaDuplicadoResueltaEn == nil {
+			t.Error("el par debe quedar resuelto")
+		}
+		if out.DuplicadoDeID != audio.String() {
+			t.Errorf("el par se conserva como índice de no-reapertura: %+v", out.DuplicadoDeID)
+		}
+		otra := repo.episodios[1]
+		if otra.Visibilidad != VisibilidadVisible || otra.MarcaDuplicadoResueltaEn == nil {
+			t.Errorf("la otra ficha del par debe quedar visible y resuelta: %+v", otra)
+		}
+		// Las dos salen al público (US3 esc. 2).
+		publicos, err := service.GetMedios(context.Background(), LangES, 0, 0)
+		if err != nil {
+			t.Fatalf("GetMedios devolvió %v", err)
+		}
+		if len(publicos.Items) != 2 {
+			t.Errorf("el público debe ver las dos: %v", titulosPublicos(publicos.Items))
+		}
+		if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaMarkResolve {
+			t.Errorf("auditoría = %+v, se esperaba una fila media.mark.resolve", repo.committed)
+		}
+		if !strings.Contains(repo.committed[0].TargetLabel, string(MarcaPosibleDuplicado)) ||
+			!strings.Contains(repo.committed[0].TargetLabel, string(VisibilidadVisible)) {
+			t.Errorf("la marca y la visibilidad deben ir en targetLabel: %q", repo.committed[0].TargetLabel)
+		}
+	})
+
+	t.Run("mostrar de nuevo desde no disponible", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "Caída", PublicadoEn: base, Visibilidad: VisibilidadOculta,
+			MarcaDisponibilidad: ptrMarca(MarcaDisponibilidadNoDisponible),
+		})
+		service := serviceDePrueba(repo)
+
+		out, err := service.ResolveMark(context.Background(), actor, repo.episodios[0].ID, MarcaNoDisponible, VisibilidadVisible)
+		if err != nil {
+			t.Fatalf("ResolveMark devolvió %v", err)
+		}
+		if out.Visibilidad != string(VisibilidadVisible) {
+			t.Errorf("«Mostrar de nuevo» debe dejarla visible: %q", out.Visibilidad)
+		}
+		if out.MarcaDisponibilidadResueltaEn == nil || out.MarcaDisponibilidad != string(MarcaDisponibilidadNoDisponible) {
+			t.Errorf("la marca queda cerrada (no borrada): %+v", out)
+		}
+	})
+
+	t.Run("mantener visible cierra la marca de la ventana del feed", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "Fuera del feed", PublicadoEn: base,
+			MarcaDisponibilidad: ptrMarca(MarcaDisponibilidadFueraDelFeed),
+		})
+		service := serviceDePrueba(repo)
+
+		out, err := service.ResolveMark(context.Background(), actor, repo.episodios[0].ID, MarcaFueraDelFeed, VisibilidadVisible)
+		if err != nil {
+			t.Fatalf("ResolveMark devolvió %v", err)
+		}
+		if out.Visibilidad != string(VisibilidadVisible) || out.MarcaDisponibilidadResueltaEn == nil {
+			t.Errorf("«Mantener visible» cierra la marca sin ocultar: %+v", out)
+		}
+	})
+
+	t.Run("idempotente sobre una marca ya resuelta", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: "Fuera del feed", PublicadoEn: base,
+			MarcaDisponibilidad:           ptrMarca(MarcaDisponibilidadFueraDelFeed),
+			MarcaDisponibilidadResueltaEn: ptrTime(base),
+		})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		out, err := service.ResolveMark(context.Background(), actor, id, MarcaFueraDelFeed, VisibilidadVisible)
+		if err != nil {
+			t.Fatalf("ResolveMark devolvió %v", err)
+		}
+		if !out.MarcaDisponibilidadResueltaEn.Equal(base) {
+			t.Errorf("repetir la resolución no debe mover la fecha: %v", out.MarcaDisponibilidadResueltaEn)
+		}
+		if len(repo.updates) != 0 || len(repo.committed) != 0 {
+			t.Errorf("una marca ya resuelta y sin cambio de visibilidad no se reescribe: %+v / %+v",
+				repo.updates, repo.committed)
+		}
+	})
+
+	t.Run("conflicto si la marca indicada no está activa", func(t *testing.T) {
+		repo := newFakeRepository()
+		// Los dos ejes activos a la vez: resolver el que NO está activo es conflicto.
+		repo.seed(Episodio{
+			Titulo: "Par y disponibilidad", PublicadoEn: base,
+			DuplicadoDeID:       ptrUUID(uuid.New()),
+			MarcaDisponibilidad: ptrMarca(MarcaDisponibilidadFueraDelFeed),
+		})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		_, err := service.ResolveMark(context.Background(), actor, id, MarcaNoDisponible, VisibilidadVisible)
+		requireKind(t, err, apperr.KindConflict)
+
+		// Sin ninguna marca de duplicado, resolver «posible duplicado» es conflicto.
+		repo2 := newFakeRepository()
+		repo2.seed(Episodio{Titulo: "Solo disponibilidad", PublicadoEn: base,
+			MarcaDisponibilidad: ptrMarca(MarcaDisponibilidadFueraDelFeed)})
+		service2 := serviceDePrueba(repo2)
+		_, err = service2.ResolveMark(context.Background(), actor, repo2.episodios[0].ID, MarcaPosibleDuplicado, VisibilidadVisible)
+		requireKind(t, err, apperr.KindConflict)
+	})
+
+	t.Run("validación y ficha inexistente", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Ficha", PublicadoEn: base})
+		service := serviceDePrueba(repo)
+		id := repo.episodios[0].ID
+
+		_, err := service.ResolveMark(context.Background(), actor, id, MarcaRevision("otra"), VisibilidadVisible)
+		requireInvalid(t, err, "mark")
+		_, err = service.ResolveMark(context.Background(), actor, id, MarcaNoDisponible, Visibilidad("draft"))
+		requireInvalid(t, err, "visibility")
+		_, err = service.ResolveMark(context.Background(), actor, uuid.New(), MarcaNoDisponible, VisibilidadVisible)
+		requireKind(t, err, apperr.KindNotFound)
+	})
+}
+
+// sembrarVideoYAudio crea el par real del cliente (el video de YouTube y el
+// audio del podcast del mismo sermón) con sus dos procedencias y devuelve sus
+// identificadores: el video primero, el podcast después.
+func sembrarVideoYAudio(repo *fakeRepository, base time.Time) (uuid.UUID, uuid.UUID) {
+	repo.seed(
+		Episodio{
+			Titulo:      "Potencial sin Resultados La Lección de la Higuera",
+			PublicadoEn: base,
+			Origen:      OrigenVideo,
+			Caratula:    ptr("img_33333333-3333-3333-3333-333333333333.jpg"),
+		},
+		Episodio{
+			Titulo:      "Potencial sin Resultados: La Lección de la Higuera",
+			PublicadoEn: base,
+			Origen:      OrigenAudio,
+			Caratula:    ptr("img_44444444-4444-4444-4444-444444444444.jpg"),
+		},
+	)
+	videoID, podcastID := repo.episodios[0].ID, repo.episodios[1].ID
+	repo.seedFuentes(
+		FuenteEpisodio{
+			EpisodioID: videoID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+			TituloFeed: "Potencial sin Resultados La Lección de la Higuera",
+			Enlace:     "https://www.youtube.com/watch?v=SimienteAA1",
+		},
+		FuenteEpisodio{
+			EpisodioID: podcastID, Proveedor: ProveedorPodcast, IDExterno: "guid-podcast",
+			TituloFeed: "Potencial sin Resultados: La Lección de la Higuera",
+			Enlace:     "https://podcasters.spotify.com/pod/show/simiente/episodes/abc",
+		},
+	)
+	return videoID, podcastID
+}
+
+// ---------------------------------------------------------------------------
 // Helpers de prueba del panel
 // ---------------------------------------------------------------------------
 

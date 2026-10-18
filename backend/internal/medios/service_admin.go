@@ -2,8 +2,10 @@ package medios
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -24,6 +26,11 @@ import (
 // (patrón `UpdateDonationMethod` de F7), y compone las filas de auditoría con la
 // regla exacta de códigos de FR-022, que el repository inserta en la MISMA
 // transacción.
+
+// errProveedorRepetido es la causa interna de una unión imposible (las dos
+// fichas traen fuente del mismo proveedor): el mensaje seguro lo arma el
+// service y esta causa nunca se serializa.
+var errProveedorRepetido = errors.New("medios: las dos fichas traen fuente del mismo proveedor")
 
 // --- Etiquetas y helpers de auditoría del dominio (R7-10/000015) ---
 
@@ -262,6 +269,356 @@ func (s *service) Update(ctx context.Context, actorID uuid.UUID, id uuid.UUID, p
 		return MedioAdmin{}, fmt.Errorf("editar el episodio: %w", err)
 	}
 	return s.filaAdmin(ctx, saved)
+}
+
+// --- Unión por puntero y resolución de marcas (FR-013/FR-014/FR-017/FR-019) ---
+
+// Merge une dos entradas en **una sola ficha** (FR-013/FR-014/P9-10): `{id}` es
+// la ficha que se **conserva** —adopta el enlace y la procedencia que le
+// faltaban— y `otherId` la que queda **absorbida**.
+//
+// Reglas de la unión:
+//
+//   - **Base del resultado**: el nombre, la carátula y la fecha son los de la
+//     entrada del **video** (precisión 5 de la puerta 2/default #7), sin importar
+//     cuál de las dos sea `{id}`; el título del podcast se conserva como dato de
+//     origen en `sources`.
+//   - **Descripción**: si solo una de las dos tiene la descripción ajustada por
+//     el equipo, **manda esa** (FR-015/SC-007); si ninguna la ajustó, se conserva
+//     la que exista.
+//   - **Eje de duplicados**: se **despeja** en las dos (el par deja de existir y
+//     su resolución también). El **eje de disponibilidad no se toca**: es
+//     independiente (P9-19) y una marca abierta de la base sigue.
+//   - **Cero DELETE** (FR-019): la absorbida queda con `merged_into_id` y oculta,
+//     fuera de todas las consultas, y sus fuentes se **repuntan** a la resultante
+//     —que queda `origin='both'`— en **una sola transacción** junto con la
+//     auditoría `media.merge` (la absorbida se cita en `target_label`).
+//   - La carátula propia de la absorbida, si queda sin uso, se borra del almacén
+//     **en mejor esfuerzo** (`storage.Delete` es idempotente): si falla, la
+//     unión no se deshace (el archivo queda huérfano, nunca publicado).
+//
+// Errores: `otherId` igual a `{id}` → `invalid`; una ficha inexistente o ya
+// absorbida → `not_found`; dos fichas con fuente del **mismo** proveedor (no
+// caben en una ficha: una entrada por sermón) → `conflict`.
+func (s *service) Merge(ctx context.Context, actorID, id, otherID uuid.UUID) (MedioAdmin, error) {
+	label := etiquetaContenido(id.String())
+	fail := func(err error) (MedioAdmin, error) {
+		s.recordContentFailure(ctx, actorID, audit.ActionMediaMerge, label)
+		return MedioAdmin{}, err
+	}
+
+	if err := validarUnion(id, otherID); err != nil {
+		return fail(err)
+	}
+
+	base, found, err := s.repository.GetMediaItemByID(ctx, id)
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("leer el episodio: %w", err)
+	}
+	if !found || base.UnidoAID != nil {
+		return fail(apperr.NotFound(messageEpisodioNoExiste))
+	}
+	absorbida, found, err := s.repository.GetMediaItemByID(ctx, otherID)
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("leer el episodio que se une: %w", err)
+	}
+	if !found || absorbida.UnidoAID != nil {
+		return fail(apperr.NotFound(messageEpisodioNoExiste))
+	}
+
+	fuentesBase, err := s.repository.ListMediaItemSourcesByItem(ctx, base.ID)
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("leer las fuentes del episodio: %w", err)
+	}
+	fuentesAbsorbida, err := s.repository.ListMediaItemSourcesByItem(ctx, absorbida.ID)
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("leer las fuentes del episodio que se une: %w", err)
+	}
+	if proveedorRepetido(fuentesBase, fuentesAbsorbida) {
+		return fail(apperr.Conflict(
+			"No se pueden unir dos episodios del mismo servicio",
+			apperr.WithCause(errProveedorRepetido),
+		))
+	}
+
+	resultante := fusionarEpisodios(base, absorbida, fuentesBase, fuentesAbsorbida)
+	absorbida.UnidoAID = &resultante.ID
+	absorbida.Visibilidad = VisibilidadOculta
+	// El eje de duplicados se despeja en las dos (el par deja de existir).
+	absorbida.DuplicadoDeID = nil
+	absorbida.MarcaDuplicadoResueltaEn = nil
+
+	label = etiquetaContenido(resultante.Titulo + " · " + otherID.String())
+	actions := []audit.Action{contenidoAction(actorID, audit.ActionMediaMerge, label)}
+
+	movidas, err := s.repository.RepointMediaItemSources(ctx, resultante, absorbida, actions...)
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("unir los episodios: %w", err)
+	}
+
+	// Las carátulas que la unión deja sin uso (la de la absorbida y la que la
+	// base tuviera si el video impuso la suya) se retiran en mejor esfuerzo: el
+	// archivo deja de ser publicable por la rama de IsFilePublished.
+	s.borrarCaratulasSinUso(ctx, resultante.Caratula, base.Caratula, absorbida.Caratula)
+
+	fuentes := make([]FuenteEpisodio, 0, len(fuentesBase)+len(movidas))
+	fuentes = append(fuentes, fuentesBase...)
+	for _, fuente := range movidas {
+		fuente.EpisodioID = resultante.ID
+		fuentes = append(fuentes, fuente)
+	}
+	// Los enlaces no son columnas: los resuelve el `LEFT JOIN` por proveedor de
+	// las consultas. Aquí se completan con las fuentes ya repuntadas, que es
+	// exactamente lo que devolverá la próxima lectura.
+	resultante.VideoURL = enlaceDeProveedor(fuentes, ProveedorYouTube)
+	resultante.AudioURL = enlaceDeProveedor(fuentes, ProveedorPodcast)
+	return medioAdminFrom(resultante, fuentes), nil
+}
+
+// ResolveMark resuelve **la marca indicada** (FR-017/US3 esc. 6, P9-19): los dos
+// ejes pueden estar activos a la vez, así que el cuerpo trae `mark` y el service
+// resuelve el eje que corresponde —`possible_duplicate` el de duplicados;
+// `unavailable`/`missing_from_feed` el de disponibilidad—, fija la fecha de
+// resolución de **ese** eje, aplica la visibilidad elegida por el equipo
+// («Mostrar de nuevo» / «Mantener oculto» / «Mantener visible») y registra
+// `media.mark.resolve` con la marca y la visibilidad en `target_label`.
+//
+// «No son el mismo sermón» (`mark='possible_duplicate'`) resuelve **las dos**
+// fichas del par, que quedan visibles si el equipo así lo decide (US3 esc. 2) y
+// conservan el puntero recíproco como índice de la no-reapertura (default #6).
+//
+// Es **idempotente**: sobre una marca ya resuelta y sin cambio de visibilidad no
+// reescribe ni vuelve a registrar (repetir la operación deja el mismo estado).
+// Resolver una marca que **no está activa** es `conflict` (estado inconsistente);
+// un id inexistente es `not_found`. La indisponibilidad **confirmada** posterior
+// manda sobre esta resolución (precisión A3 de la fase 5): eso lo aplica la
+// búsqueda (service_sync.go), no esta operación.
+func (s *service) ResolveMark(ctx context.Context, actorID, id uuid.UUID, mark MarcaRevision, visibility Visibilidad) (MedioAdmin, error) {
+	label := etiquetaContenido(id.String())
+	fail := func(err error) (MedioAdmin, error) {
+		s.recordContentFailure(ctx, actorID, audit.ActionMediaMarkResolve, label)
+		return MedioAdmin{}, err
+	}
+
+	if err := validarMarca(mark); err != nil {
+		return fail(err)
+	}
+	if err := validarVisibilidad(visibility); err != nil {
+		return fail(err)
+	}
+
+	current, found, err := s.repository.GetMediaItemByID(ctx, id)
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("leer el episodio: %w", err)
+	}
+	if !found {
+		return fail(apperr.NotFound(messageEpisodioNoExiste))
+	}
+	label = etiquetaContenido(current.Titulo + " · " + string(mark) + " · " + string(visibility))
+
+	if mark == MarcaPosibleDuplicado {
+		return s.resolverParDuplicado(ctx, actorID, current, visibility, label, fail)
+	}
+	return s.resolverMarcaDisponibilidad(ctx, actorID, current, mark, visibility, label, fail)
+}
+
+// resolverParDuplicado resuelve el eje de duplicados de las dos fichas del par
+// (P9-19): la marca queda cerrada, la visibilidad elegida se aplica a las dos y
+// el puntero recíproco se conserva. El registro de auditoría viaja con la ficha
+// que pidió la operación.
+func (s *service) resolverParDuplicado(
+	ctx context.Context,
+	actorID uuid.UUID,
+	current Episodio,
+	visibility Visibilidad,
+	label string,
+	fail func(error) (MedioAdmin, error),
+) (MedioAdmin, error) {
+	if current.DuplicadoDeID == nil {
+		return fail(apperr.Conflict("Ese episodio no tiene un posible duplicado que revisar"))
+	}
+	pareja, found, err := s.repository.GetMediaItemByID(ctx, *current.DuplicadoDeID)
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("leer el par del posible duplicado: %w", err)
+	}
+	if !found {
+		return fail(apperr.Conflict("El par del posible duplicado ya no existe"))
+	}
+
+	ahora := time.Now()
+	actualizada := current
+	if actualizada.MarcaDuplicadoResueltaEn == nil {
+		actualizada.MarcaDuplicadoResueltaEn = &ahora
+	}
+	actualizada.Visibilidad = visibility
+	otra := pareja
+	if otra.MarcaDuplicadoResueltaEn == nil {
+		otra.MarcaDuplicadoResueltaEn = &ahora
+	}
+	otra.Visibilidad = visibility
+
+	// La pareja primero y la ficha que pidió la operación después (con su fila de
+	// auditoría): la operación reporta éxito solo cuando su registro se aplicó.
+	if otra != pareja {
+		if _, err := s.repository.UpdateMediaItem(ctx, otra); err != nil {
+			return MedioAdmin{}, fmt.Errorf("resolver el par del posible duplicado: %w", err)
+		}
+	}
+	if actualizada != current {
+		saved, err := s.repository.UpdateMediaItem(ctx, actualizada,
+			contenidoAction(actorID, audit.ActionMediaMarkResolve, label))
+		if err != nil {
+			return MedioAdmin{}, fmt.Errorf("resolver la marca del episodio: %w", err)
+		}
+		return s.filaAdmin(ctx, saved)
+	}
+	return s.filaAdmin(ctx, current)
+}
+
+// resolverMarcaDisponibilidad resuelve la marca del eje de disponibilidad: fija
+// su fecha de resolución (no la borra: es el índice de la no-reapertura) y aplica
+// la visibilidad elegida. El resultado y la fecha de la comprobación se conservan
+// como el dato que motivó la marca.
+func (s *service) resolverMarcaDisponibilidad(
+	ctx context.Context,
+	actorID uuid.UUID,
+	current Episodio,
+	mark MarcaRevision,
+	visibility Visibilidad,
+	label string,
+	fail func(error) (MedioAdmin, error),
+) (MedioAdmin, error) {
+	clase, ok := mark.MarcaDisponibilidad()
+	if !ok || current.MarcaDisponibilidad == nil || *current.MarcaDisponibilidad != clase {
+		return fail(apperr.Conflict("Ese episodio no tiene esa marca de disponibilidad"))
+	}
+
+	actualizada := current
+	if actualizada.MarcaDisponibilidadResueltaEn == nil {
+		ahora := time.Now()
+		actualizada.MarcaDisponibilidadResueltaEn = &ahora
+	}
+	actualizada.Visibilidad = visibility
+	if actualizada == current {
+		// Marca ya resuelta y misma visibilidad: repetir no es una operación.
+		return s.filaAdmin(ctx, current)
+	}
+
+	saved, err := s.repository.UpdateMediaItem(ctx, actualizada,
+		contenidoAction(actorID, audit.ActionMediaMarkResolve, label))
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("resolver la marca de disponibilidad: %w", err)
+	}
+	return s.filaAdmin(ctx, saved)
+}
+
+// borrarCaratulasSinUso retira del almacén las carátulas que la unión dejó sin
+// uso (mejor esfuerzo: un fallo solo se registra en el log, la unión ya está
+// aplicada y el archivo huérfano nunca se publica). Nunca toca la que quedó en
+// uso: es la que sirve el sitio.
+func (s *service) borrarCaratulasSinUso(ctx context.Context, enUso *string, candidatas ...*string) {
+	if s.store == nil {
+		return
+	}
+	for _, candidata := range candidatas {
+		if candidata == nil {
+			continue
+		}
+		if enUso != nil && *candidata == *enUso {
+			continue
+		}
+		if err := s.store.Delete(ctx, *candidata); err != nil {
+			s.logError(ctx, "no se pudo retirar la carátula que quedó sin uso", err)
+		}
+	}
+}
+
+// fusionarEpisodios arma la fila completa de la ficha resultante (P9-10): base
+// del video para el nombre, la carátula y la fecha; la descripción del equipo si
+// solo una la ajustó; `origin` recalculado de las fuentes unidas; y el eje de
+// duplicados despejado. El eje de disponibilidad de la base se conserva tal cual.
+func fusionarEpisodios(base, absorbida Episodio, fuentesBase, fuentesAbsorbida []FuenteEpisodio) Episodio {
+	resultante := base
+
+	// Precisión 5 (default #7): el nombre, la carátula y la fecha son los de la
+	// entrada del video, sea cual sea la ficha que se conserva.
+	if !tieneProveedor(fuentesBase, ProveedorYouTube) && tieneProveedor(fuentesAbsorbida, ProveedorYouTube) {
+		resultante.Titulo = absorbida.Titulo
+		resultante.Caratula = absorbida.Caratula
+		resultante.PublicadoEn = absorbida.PublicadoEn
+	}
+
+	// La descripción del equipo manda (FR-015/SC-007): si solo una está
+	// ajustada, gana esa; si ninguna lo está, se conserva la que exista.
+	switch {
+	case base.DescripcionEditada && !absorbida.DescripcionEditada:
+		// La base ya es la del equipo.
+	case !base.DescripcionEditada && absorbida.DescripcionEditada:
+		resultante.DescripcionEs = absorbida.DescripcionEs
+		resultante.DescripcionEn = absorbida.DescripcionEn
+		resultante.DescripcionEditada = true
+	case base.DescripcionEs == nil && base.DescripcionEn == nil:
+		resultante.DescripcionEs = absorbida.DescripcionEs
+		resultante.DescripcionEn = absorbida.DescripcionEn
+	}
+
+	resultante.Origen = origenDeFuentes(fuentesBase, fuentesAbsorbida)
+	resultante.DuplicadoDeID = nil
+	resultante.MarcaDuplicadoResueltaEn = nil
+	return resultante
+}
+
+// tieneProveedor indica si una lista de fuentes trae una del proveedor indicado.
+func tieneProveedor(fuentes []FuenteEpisodio, proveedor Proveedor) bool {
+	for _, fuente := range fuentes {
+		if fuente.Proveedor == proveedor {
+			return true
+		}
+	}
+	return false
+}
+
+// proveedorRepetido indica si las dos fichas traen fuente del mismo proveedor:
+// una ficha es **una entrada por sermón** con un video y/o un audio, así que dos
+// fuentes del mismo proveedor no caben y la unión es `conflict` (invariante de
+// service, data-model.md).
+func proveedorRepetido(fuentesBase, fuentesAbsorbida []FuenteEpisodio) bool {
+	for _, fuente := range fuentesBase {
+		if tieneProveedor(fuentesAbsorbida, fuente.Proveedor) {
+			return true
+		}
+	}
+	return false
+}
+
+// enlaceDeProveedor devuelve el enlace de la fuente del proveedor indicado ("" si
+// la ficha no tiene esa fuente).
+func enlaceDeProveedor(fuentes []FuenteEpisodio, proveedor Proveedor) string {
+	for _, fuente := range fuentes {
+		if fuente.Proveedor == proveedor {
+			return fuente.Enlace
+		}
+	}
+	return ""
+}
+
+// origenDeFuentes deriva los formatos de la ficha de sus fuentes (FR-003): video
+// (solo YouTube), audio (solo podcast) o both.
+func origenDeFuentes(fuentesBase, fuentesAbsorbida []FuenteEpisodio) OrigenMedio {
+	video := tieneProveedor(fuentesBase, ProveedorYouTube) || tieneProveedor(fuentesAbsorbida, ProveedorYouTube)
+	audio := tieneProveedor(fuentesBase, ProveedorPodcast) || tieneProveedor(fuentesAbsorbida, ProveedorPodcast)
+	switch {
+	case video && audio:
+		return OrigenAmbos
+	case video:
+		return OrigenVideo
+	case audio:
+		return OrigenAudio
+	default:
+		// Una ficha sin fuentes no debería existir; se conserva el catálogo con
+		// el valor más conservador (solo audio no publica ningún enlace).
+		return OrigenAudio
+	}
 }
 
 // --- Mapeo del dominio a los DTOs del panel ---
