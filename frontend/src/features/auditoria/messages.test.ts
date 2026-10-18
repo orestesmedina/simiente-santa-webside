@@ -83,6 +83,33 @@ describe('ACTION_LABELS · etiquetas humanas de la auditoría (ux.md §4.9)', ()
     expect(ACTION_LABELS['ministry.image.upload']).toBe('Subió la imagen de un ministerio');
   });
 
+  it('cubre los 6 códigos `media.*` de F9 (migración `000015`, P9-14)', () => {
+    const F9_ACTIONS = [
+      'media.sync',
+      'media.description.update',
+      'media.hide',
+      'media.show',
+      'media.merge',
+      'media.mark.resolve',
+    ] as const;
+
+    for (const action of F9_ACTIONS) {
+      const label = ACTION_LABELS[action];
+      expect(label, `etiqueta de ${action}`).toBeTruthy();
+      expect(label).not.toBe(action);
+      expect(actionLabel(action)).toBe(label);
+    }
+
+    expect(ACTION_LABELS['media.sync']).toBe('Buscó episodios nuevos');
+    expect(ACTION_LABELS['media.description.update']).toBe(
+      'Modificó la descripción de un episodio',
+    );
+    expect(ACTION_LABELS['media.hide']).toBe('Ocultó un episodio');
+    expect(ACTION_LABELS['media.show']).toBe('Mostró un episodio');
+    expect(ACTION_LABELS['media.merge']).toBe('Unió dos entradas en una sola ficha');
+    expect(ACTION_LABELS['media.mark.resolve']).toBe('Resolvió la marca de un episodio');
+  });
+
   it('un código desconocido se muestra tal cual (nunca en blanco)', () => {
     expect(actionLabel('home.update')).toBe('home.update');
   });

@@ -68,6 +68,15 @@ export const ACTION_LABELS: Record<string, string> = {
   'donation.text.update': 'Modificó el texto introductorio o el de uso',
   'donation.text.publish': 'Publicó el texto introductorio o el de uso',
   'donation.text.unpublish': 'Retiró el texto introductorio o el de uso',
+  // F9 (migración `000015`, P9-14): 6 códigos del módulo de medios, para que el
+  // panel no muestre códigos crudos (ux.md §7.1). F9 no tiene `create`/`delete`:
+  // no hay alta manual ni borrado (FR-019).
+  'media.sync': 'Buscó episodios nuevos',
+  'media.description.update': 'Modificó la descripción de un episodio',
+  'media.hide': 'Ocultó un episodio',
+  'media.show': 'Mostró un episodio',
+  'media.merge': 'Unió dos entradas en una sola ficha',
+  'media.mark.resolve': 'Resolvió la marca de un episodio',
 };
 
 export function actionLabel(action: string): string {
