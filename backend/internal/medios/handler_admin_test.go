@@ -658,3 +658,357 @@ func TestBuscarNuevosHandlerWithoutService(t *testing.T) {
 		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
 	}
 }
+
+// --- Unión de duplicados (T927, FR-014/FR-019) ---
+
+// parUnible siembra dos entradas del mismo sermón (video y podcast) con su
+// procedencia y devuelve el repositorio con sus dos ids.
+func parUnible() (*fakeRepository, uuid.UUID, uuid.UUID) {
+	video := episodioPublicable("Potencial sin Resultados")
+	audio := episodioPublicable("Potencial sin Resultados: La Lección de la Higuera")
+
+	repo := newFakeRepository()
+	repo.seed(video, audio)
+	repo.seedFuentes(
+		FuenteEpisodio{
+			EpisodioID: repo.episodios[0].ID,
+			Proveedor:  ProveedorYouTube,
+			IDExterno:  "abc12345678",
+			TituloFeed: "Potencial sin Resultados",
+			Enlace:     "https://www.youtube.com/watch?v=abc12345678",
+		},
+		FuenteEpisodio{
+			EpisodioID: repo.episodios[1].ID,
+			Proveedor:  ProveedorPodcast,
+			IDExterno:  "episodio-1",
+			TituloFeed: "Potencial sin Resultados: La Lección de la Higuera",
+			Enlace:     "https://podcasters.spotify.com/pod/show/iglesia/episodes/1",
+		},
+	)
+	return repo, repo.episodios[0].ID, repo.episodios[1].ID
+}
+
+// TestUnirMediosHandlerOK fija la unión por puntero (FR-014/FR-019): una sola
+// ficha con los dos enlaces y las dos procedencias, la absorbida oculta y
+// apuntando a la resultante, cero borrados y **una** fila `media.merge`.
+func TestUnirMediosHandlerOK(t *testing.T) {
+	repo, id, otherID := parUnible()
+	h := newTestHandler(t, repo)
+
+	body := `{"otherId":"` + otherID.String() + `"}`
+	rec := httptest.NewRecorder()
+	h.UnirMedios(rec, withPathValue(
+		adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/unir", body, true), id.String()))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got MedioAdmin
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es MedioAdmin: %v (%s)", err, rec.Body)
+	}
+	if got.Origen != string(OrigenAmbos) || got.VideoURL == "" || got.AudioURL == "" {
+		t.Errorf("la ficha resultante debe traer los dos enlaces y origin=both: %+v", got)
+	}
+	if len(got.Fuentes) != 2 {
+		t.Errorf("sources = %+v, se esperaban las dos procedencias", got.Fuentes)
+	}
+	if got.Visibilidad != string(VisibilidadVisible) {
+		t.Errorf("la resultante conserva la visibilidad de la base: %q", got.Visibilidad)
+	}
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaMerge {
+		t.Fatalf("auditoría = %+v, se esperaba una fila media.merge", repo.committed)
+	}
+	// La absorbida queda con el puntero y oculta: fuera de todas las consultas.
+	if _, ok := repo.buscar(otherID); !ok {
+		t.Fatal("la absorbida desapareció (cero DELETE, FR-019)")
+	}
+}
+
+// TestUnirMediosHandlerInvalid fija los 400 de la unión: `otherId` ausente o mal
+// formado (details.otherId), unir una ficha consigo misma (la regla del contrato,
+// que valida el service) y una clave desconocida del cuerpo.
+func TestUnirMediosHandlerInvalid(t *testing.T) {
+	repo, id, otherID := parUnible()
+	h := newTestHandler(t, repo)
+
+	tests := []struct {
+		name   string
+		body   string
+		detail string
+	}{
+		{name: "sin otherId", body: `{}`, detail: "otherId"},
+		{name: "otherId no es uuid", body: `{"otherId":"no-es-uuid"}`, detail: "otherId"},
+		{name: "consigo misma", body: `{"otherId":"` + id.String() + `"}`, detail: "otherId"},
+		{name: "clave desconocida", body: `{"otherId":"` + otherID.String() + `","force":true}`, detail: "force"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			h.UnirMedios(rec, withPathValue(
+				adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/unir", tt.body, true), id.String()))
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+			}
+			if !strings.Contains(rec.Body.String(), tt.detail) {
+				t.Errorf("sin details.%s: %s", tt.detail, rec.Body)
+			}
+			if len(repo.repoints) != 0 {
+				t.Errorf("una unión inválida no debe aplicarse: %+v", repo.repoints)
+			}
+		})
+	}
+}
+
+// TestUnirMediosHandlerNotFound fija el 404 de un `otherId` inexistente o ya
+// absorbido (el service lo distingue del 400 de un id mal formado).
+func TestUnirMediosHandlerNotFound(t *testing.T) {
+	repo, id, _ := parUnible()
+	h := newTestHandler(t, repo)
+
+	rec := httptest.NewRecorder()
+	h.UnirMedios(rec, withPathValue(
+		adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/unir",
+			`{"otherId":"`+uuidDePrueba().String()+`"}`, true), id.String()))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, se esperaba 404 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"not_found"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+}
+
+// TestUnirMediosHandlerRequiresSession fija el 401 de la red de seguridad.
+func TestUnirMediosHandlerRequiresSession(t *testing.T) {
+	repo, id, otherID := parUnible()
+	h := newTestHandler(t, repo)
+
+	rec := httptest.NewRecorder()
+	h.UnirMedios(rec, withPathValue(
+		adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/unir",
+			`{"otherId":"`+otherID.String()+`"}`, false), id.String()))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, se esperaba 401 (%s)", rec.Code, rec.Body)
+	}
+}
+
+// --- Resolución de marcas (T927, FR-017) ---
+
+// TestResolverMarcaHandlerOK fija la resolución **por eje** (P9-19): resolver el
+// par de duplicados deja las dos fichas visibles, con la marca cerrada y su
+// registro `media.mark.resolve`.
+func TestResolverMarcaHandlerOK(t *testing.T) {
+	idA, idB := uuidDePrueba(), uuidDePrueba()
+	primera := episodioPublicable("Par dudoso")
+	primera.ID = idA
+	primera.DuplicadoDeID = &idB
+	segunda := episodioPublicable("Par dudoso: el otro")
+	segunda.ID = idB
+	segunda.DuplicadoDeID = &idA
+
+	repo := newFakeRepository()
+	repo.seed(primera, segunda)
+	id := idA
+	h := newTestHandler(t, repo)
+
+	body := `{"mark":"possible_duplicate","visibility":"visible"}`
+	rec := httptest.NewRecorder()
+	h.ResolverMarca(rec, withPathValue(
+		adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/marcas/resolver", body, true), id.String()))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got MedioAdmin
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es MedioAdmin: %v (%s)", err, rec.Body)
+	}
+	if got.Visibilidad != string(VisibilidadVisible) {
+		t.Errorf("visibility = %q, se esperaba visible", got.Visibilidad)
+	}
+	if got.MarcaDuplicadoResueltaEn == nil {
+		t.Error("la marca debe quedar resuelta con su fecha")
+	}
+	if len(repo.committed) != 1 || repo.committed[0].Code != audit.ActionMediaMarkResolve {
+		t.Fatalf("auditoría = %+v, se esperaba una fila media.mark.resolve", repo.committed)
+	}
+}
+
+// TestResolverMarcaHandlerPorEje fija que los dos ejes son independientes
+// (P9-19): resolver la marca de disponibilidad de una ficha con las dos marcas
+// activas **no** toca el par de duplicados.
+func TestResolverMarcaHandlerPorEje(t *testing.T) {
+	marca := MarcaDisponibilidadFueraDelFeed
+	ep := episodioPublicable("Con dos marcas")
+	idPareja := uuidDePrueba()
+	ep.DuplicadoDeID = &idPareja
+	ep.MarcaDisponibilidad = &marca
+
+	repo := newFakeRepository()
+	repo.seed(ep)
+	id := repo.episodios[0].ID
+	h := newTestHandler(t, repo)
+
+	body := `{"mark":"missing_from_feed","visibility":"visible"}`
+	rec := httptest.NewRecorder()
+	h.ResolverMarca(rec, withPathValue(
+		adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/marcas/resolver", body, true), id.String()))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	var got MedioAdmin
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es MedioAdmin: %v", err)
+	}
+	if got.MarcaDisponibilidadResueltaEn == nil {
+		t.Error("la marca de disponibilidad debe quedar resuelta")
+	}
+	if got.MarcaDuplicadoResueltaEn != nil {
+		t.Error("resolver un eje no debe resolver el otro (P9-19)")
+	}
+	if got.DuplicadoDeID == "" {
+		t.Error("el par de duplicados sigue activo")
+	}
+}
+
+// TestResolverMarcaHandlerInvalid fija los 400 del catálogo cerrado: `mark` y
+// `visibility` solo admiten sus valores.
+func TestResolverMarcaHandlerInvalid(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(episodioPublicable("Potencial sin Resultados"))
+	id := repo.episodios[0].ID
+	h := newTestHandler(t, repo)
+
+	tests := []struct {
+		name   string
+		body   string
+		detail string
+	}{
+		{name: "mark fuera del catálogo", body: `{"mark":"otra","visibility":"visible"}`, detail: "mark"},
+		{name: "visibility fuera del catálogo", body: `{"mark":"unavailable","visibility":"draft"}`, detail: "visibility"},
+		{name: "sin mark", body: `{"visibility":"visible"}`, detail: "mark"},
+		{name: "sin visibility", body: `{"mark":"unavailable"}`, detail: "visibility"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			h.ResolverMarca(rec, withPathValue(
+				adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/marcas/resolver", tt.body, true), id.String()))
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+			}
+			if !strings.Contains(rec.Body.String(), tt.detail) {
+				t.Errorf("sin details.%s: %s", tt.detail, rec.Body)
+			}
+		})
+	}
+}
+
+// TestResolverMarcaHandlerConflict fija el 409 de una ficha **sin** la marca
+// indicada: no hay nada que resolver en ese eje.
+func TestResolverMarcaHandlerConflict(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(episodioPublicable("Sin marcas"))
+	id := repo.episodios[0].ID
+	h := newTestHandler(t, repo)
+
+	for _, mark := range []string{"possible_duplicate", "unavailable", "missing_from_feed"} {
+		t.Run(mark, func(t *testing.T) {
+			body := `{"mark":"` + mark + `","visibility":"visible"}`
+			rec := httptest.NewRecorder()
+			h.ResolverMarca(rec, withPathValue(
+				adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/marcas/resolver", body, true), id.String()))
+
+			if rec.Code != http.StatusConflict {
+				t.Fatalf("status = %d, se esperaba 409 (%s)", rec.Code, rec.Body)
+			}
+			if !strings.Contains(rec.Body.String(), `"code":"conflict"`) {
+				t.Errorf("sobre inesperado: %s", rec.Body)
+			}
+		})
+	}
+}
+
+// TestResolverMarcaHandlerNotFound fija el 404 de una ficha inexistente.
+func TestResolverMarcaHandlerNotFound(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+	id := uuidDePrueba()
+
+	rec := httptest.NewRecorder()
+	h.ResolverMarca(rec, withPathValue(
+		adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/marcas/resolver",
+			`{"mark":"unavailable","visibility":"visible"}`, true), id.String()))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, se esperaba 404 (%s)", rec.Code, rec.Body)
+	}
+}
+
+// TestResolverMarcaHandlerRequiresSession fija el 401 de la red de seguridad.
+func TestResolverMarcaHandlerRequiresSession(t *testing.T) {
+	repo := newFakeRepository()
+	repo.seed(episodioPublicable("Potencial sin Resultados"))
+	id := repo.episodios[0].ID
+	h := newTestHandler(t, repo)
+
+	rec := httptest.NewRecorder()
+	h.ResolverMarca(rec, withPathValue(
+		adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/marcas/resolver",
+			`{"mark":"unavailable","visibility":"visible"}`, false), id.String()))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, se esperaba 401 (%s)", rec.Code, rec.Body)
+	}
+}
+
+// TestUnirResolverHandlerServiceError fija el sobre genérico de las dos
+// operaciones: un fallo interno no filtra la causa.
+func TestUnirResolverHandlerServiceError(t *testing.T) {
+	t.Run("unir", func(t *testing.T) {
+		repo, id, otherID := parUnible()
+		repo.repointErr = errors.New("boom")
+		h := newTestHandler(t, repo)
+
+		rec := httptest.NewRecorder()
+		h.UnirMedios(rec, withPathValue(
+			adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/unir",
+				`{"otherId":"`+otherID.String()+`"}`, true), id.String()))
+
+		if rec.Code != http.StatusInternalServerError {
+			t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+		}
+		if strings.Contains(rec.Body.String(), "boom") {
+			t.Errorf("la respuesta filtra la causa interna: %s", rec.Body)
+		}
+	})
+
+	t.Run("resolver marca", func(t *testing.T) {
+		marca := MarcaDisponibilidadFueraDelFeed
+		repo := newFakeRepository()
+		ep := episodioPublicable("Con marca")
+		ep.MarcaDisponibilidad = &marca
+		repo.seed(ep)
+		repo.mutationErr = errors.New("boom")
+		id := repo.episodios[0].ID
+		h := newTestHandler(t, repo)
+
+		rec := httptest.NewRecorder()
+		h.ResolverMarca(rec, withPathValue(
+			adminRequest(http.MethodPost, "/api/v1/admin/medios/"+id.String()+"/marcas/resolver",
+				`{"mark":"missing_from_feed","visibility":"visible"}`, true), id.String()))
+
+		if rec.Code != http.StatusInternalServerError {
+			t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+		}
+		if strings.Contains(rec.Body.String(), "boom") {
+			t.Errorf("la respuesta filtra la causa interna: %s", rec.Body)
+		}
+	})
+}

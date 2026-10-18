@@ -141,6 +141,67 @@ func (h *Handler) BuscarNuevos(w http.ResponseWriter, r *http.Request) {
 	httpserver.WriteJSON(w, http.StatusOK, resumen)
 }
 
+// --- Unión de duplicados y resolución de marcas (T927) ---
+
+// UnirMedios responde POST /api/v1/admin/medios/{id}/unir (FR-014/FR-019): `{id}`
+// es la ficha que se **conserva** y `otherId` la que queda **absorbida**. El
+// handler valida la forma del cuerpo (`UnirInput`: `otherId` obligatorio y UUID) y
+// delega la operación completa —reglas de la unión, transacción y auditoría— en el
+// service; `otherId` igual a `{id}` es `400 invalid` con `details.otherId`.
+//
+// La unión es **definitiva** (la interfaz pide confirmación explícita antes de
+// llamar) y **no borra filas**: la absorbida queda con su puntero, fuera de todas
+// las consultas.
+//
+// Códigos: 200 con MedioAdmin (la ficha resultante); DTO inválido → 400 con
+// details; id no UUID → 400; inexistente o ya absorbida → 404; estado
+// inconsistente → 409.
+func (h *Handler) UnirMedios(w http.ResponseWriter, r *http.Request) {
+	id, err := medioIDFromRequest(r)
+	if err != nil {
+		httpserver.WriteError(r.Context(), w, h.logger, err)
+		return
+	}
+	h.updateItem(w, r, func(ctx context.Context, actorID uuid.UUID) (any, error) {
+		var in UnirInput
+		if !h.decodeAndValidate(w, r, &in) {
+			return nil, errAlreadyHandled
+		}
+		otherID, err := uuid.Parse(strings.TrimSpace(in.OtherID))
+		if err != nil {
+			return nil, apperr.Invalid(
+				validate.MessageInvalid,
+				apperr.WithDetails(map[string]any{"otherId": "Debe ser un identificador UUID válido"}),
+			)
+		}
+		return h.service.Merge(ctx, actorID, id, otherID)
+	})
+}
+
+// ResolverMarca responde POST /api/v1/admin/medios/{id}/marcas/resolver
+// (FR-017/US3 esc. 2 y 6): el cuerpo trae **`mark`** —qué marca se resuelve: los
+// dos ejes pueden estar activos a la vez (P9-19)— y la `visibility` elegida
+// («Mostrar de nuevo» / «Mantener oculta» / «Mantener visible»). El handler valida
+// el catálogo cerrado del cuerpo y delega en el service, que resuelve **ese** eje,
+// aplica la visibilidad y registra `media.mark.resolve`.
+//
+// Códigos: 200 con MedioAdmin; `mark`/`visibility` fuera del catálogo → 400 con
+// details; id no UUID → 400; inexistente → 404; sin esa marca activa → 409.
+func (h *Handler) ResolverMarca(w http.ResponseWriter, r *http.Request) {
+	id, err := medioIDFromRequest(r)
+	if err != nil {
+		httpserver.WriteError(r.Context(), w, h.logger, err)
+		return
+	}
+	h.updateItem(w, r, func(ctx context.Context, actorID uuid.UUID) (any, error) {
+		var in ResolverMarcaInput
+		if !h.decodeAndValidate(w, r, &in) {
+			return nil, errAlreadyHandled
+		}
+		return h.service.ResolveMark(ctx, actorID, id, MarcaRevision(in.Mark), Visibilidad(in.Visibility))
+	})
+}
+
 // --- Helpers HTTP compartidos del panel (patrón de F2/F3/F4/F6/F7) ---
 // decodeAndValidate decodifica el cuerpo JSON de la petición en dto y lo valida
 // con platform/validate (CWE-20). Devuelve true si el DTO es utilizable; si no, ya
