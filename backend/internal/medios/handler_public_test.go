@@ -3,6 +3,7 @@ package medios
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -290,5 +291,105 @@ func TestGetMediosHandlerWithoutService(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"code":"internal"`) {
 		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+}
+
+// --- Bloque de la portada (T924, US6/FR-027/SC-015) ---
+
+// TestGetPortadaMediosHandlerOK fija el 200 con el sobre del contrato, la
+// cabecera `no-store` y el **tope 5 del servidor**: la ruta no admite ningún
+// parámetro de límite, así que los 8 publicables salen acotados a 5.
+func TestGetPortadaMediosHandlerOK(t *testing.T) {
+	repo := newFakeRepository()
+	for i := 0; i < 8; i++ {
+		ep := episodioPublicable(fmt.Sprintf("Episodio %d", i))
+		ep.PublicadoEn = ep.PublicadoEn.Add(time.Duration(i) * time.Hour)
+		repo.seed(ep)
+	}
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaMedios, "/api/v1/portada/medios?limit=100")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("Cache-Control = %q, se esperaba no-store", got)
+	}
+
+	var got PortadaMedios
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("cuerpo no es PortadaMedios: %v (%s)", err, rec.Body)
+	}
+	if got.Lang != LangES {
+		t.Errorf("lang = %q, se esperaba es", got.Lang)
+	}
+	if len(got.Items) != maxPortada {
+		t.Fatalf("items = %d, se esperaban %d (tope del servidor)", len(got.Items), maxPortada)
+	}
+	// El mismo orden de la sección: los 5 primeros (los más recientes), no otros.
+	if got.Items[0].Titulo != "Episodio 7" {
+		t.Errorf("el bloque no empieza por el más reciente: %+v", got.Items[0])
+	}
+	if raw := rec.Body.String(); strings.Contains(raw, "Episodio 2") {
+		t.Errorf("el bloque publica más allá del tope: %s", raw)
+	}
+}
+
+// TestGetPortadaMediosHandlerOmitsItems fija FR-027/SC-015: sin ninguna ficha
+// publicable la respuesta lleva solo `lang` (nunca `items: null`) y la portada no
+// dibuja el bloque, sin mensaje.
+func TestGetPortadaMediosHandlerOmitsItems(t *testing.T) {
+	repo := newFakeRepository()
+	oculta := episodioPublicable("Oculta")
+	oculta.Visibilidad = VisibilidadOculta
+	repo.seed(oculta)
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaMedios, "/api/v1/portada/medios")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != `{"lang":"es"}` {
+		t.Fatalf("cuerpo = %s, se esperaba solo lang", body)
+	}
+}
+
+// TestGetPortadaMediosHandlerInvalidLang fija el 400 invalid con details.lang.
+func TestGetPortadaMediosHandlerInvalidLang(t *testing.T) {
+	h := newTestHandler(t, newFakeRepository())
+
+	rec := doGet(t, h.GetPortadaMedios, "/api/v1/portada/medios?lang=fr")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, se esperaba 400 (%s)", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":"invalid"`) || !strings.Contains(rec.Body.String(), `"lang"`) {
+		t.Errorf("sobre inesperado: %s", rec.Body)
+	}
+}
+
+// TestGetPortadaMediosHandlerServiceError fija el sobre genérico: un fallo
+// interno no filtra la causa.
+func TestGetPortadaMediosHandlerServiceError(t *testing.T) {
+	repo := newFakeRepository()
+	repo.listErr = errors.New("boom")
+	h := newTestHandler(t, repo)
+
+	rec := doGet(t, h.GetPortadaMedios, "/api/v1/portada/medios")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "boom") {
+		t.Errorf("la respuesta filtra la causa interna: %s", rec.Body)
+	}
+}
+
+// TestGetPortadaMediosHandlerWithoutService fija el 500 de composición.
+func TestGetPortadaMediosHandlerWithoutService(t *testing.T) {
+	logger, _ := testutil.NewLogger()
+	h := NewHandler(HandlerDeps{Logger: logger})
+
+	rec := doGet(t, h.GetPortadaMedios, "/api/v1/portada/medios")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, se esperaba 500 (%s)", rec.Code, rec.Body)
 	}
 }

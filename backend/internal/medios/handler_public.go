@@ -66,6 +66,47 @@ func (h *Handler) GetMedios(w http.ResponseWriter, r *http.Request) {
 	httpserver.WriteJSON(w, http.StatusOK, medios)
 }
 
+// GetPortadaMedios responde GET /api/v1/portada/medios?lang=es|en
+// (US6/FR-027/SC-015): el extracto del bloque de la portada —hasta `maxPortada`
+// (5) fichas publicables— en el **mismo orden** que la sección y con el **mismo
+// esquema de ítem** («el bloque es un extracto de los mismos episodios, no un
+// modelo nuevo»).
+//
+// El tope **5** lo aplica el service: la ruta **no** admite ningún parámetro de
+// límite (el bloque no crece con el contenido). Sin ninguna ficha publicable la
+// respuesta lleva solo `lang` (`items` omitida, nunca `null`) y la portada no
+// renderiza el bloque, sin mensaje.
+//
+// El recurso lo sirve el dominio `medios` aunque la ruta cuelgue del segmento
+// `portada` (que es el agregado de F3): así el contrato no toca ninguna operación
+// de F3 (Complexity 5 del plan).
+//
+// Códigos: 200 con PortadaMedios; `lang` fuera de es|en → 400 invalid con
+// details.lang.
+func (h *Handler) GetPortadaMedios(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !h.serviceConfigured(ctx, w) {
+		return
+	}
+
+	lang, err := normalizeLang(r.URL.Query().Get("lang"))
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+
+	portada, err := h.service.GetPortadaMedios(ctx, lang)
+	if err != nil {
+		httpserver.WriteError(ctx, w, h.logger, err)
+		return
+	}
+
+	// El bloque refleja los cambios guardados en la primera carga: sin caché,
+	// como el resto del público.
+	w.Header().Set("Cache-Control", "no-store")
+	httpserver.WriteJSON(w, http.StatusOK, portada)
+}
+
 // paginacionPublica lee `limit`/`offset` de la query de la sección sin aplicar
 // el defecto del panel (`platform/paginate` usa 20): el ausente viaja como `0` y
 // es el service quien aplica `pageDefault` (12) y el tope `maxPage` (50) —el tope
