@@ -40,13 +40,16 @@
 #     marcaron, qué feeds fallaron y las comprobaciones de disponibilidad).
 #     Puede tardar unos segundos: el contrato lo advierte y el botón del panel
 #     se desactiva mientras corre.
-#   - MARCAS DE REVISIÓN (FR-014/FR-017, research R9-7): `reviewMark`
-#     (`possible_duplicate` | `unavailable` | `missing_from_feed`) con
-#     `markResolvedAt`. SOLO `possible_duplicate` SIN resolver bloquea la
-#     publicación (FR-009/SC-002); `missing_from_feed` sigue visible
-#     (FR-017). La resolución es una operación propia
-#     (`POST …/marcas/resolver`) que el equipo decide (volver a mostrar o
-#     permanecer oculto) y que NO se reabre por la misma causa.
+#   - MARCAS DE REVISIÓN EN DOS EJES (FR-014/FR-017, research R9-7; modelo de la fase 5, C1):
+#     el eje de DUPLICADOS (`duplicateOfId` + `duplicateMarkResolvedAt`) y el eje de
+#     DISPONIBILIDAD (`availabilityMark` = `unavailable` | `missing_from_feed`, con
+#     `availabilityMarkResolvedAt`) son independientes y pueden convivir en la misma ficha.
+#     SOLO un par `possible_duplicate` SIN resolver bloquea la publicación (FR-009/SC-002);
+#     `missing_from_feed` sigue visible (FR-017). La resolución es una operación propia
+#     (`POST …/marcas/resolver`) que indica QUÉ marca resuelve (`mark`) y qué visibilidad
+#     decide el equipo (volver a mostrar o permanecer oculto); una marca resuelta NO se reabre
+#     por la misma causa, pero la indisponibilidad CONFIRMADA manda siempre (precisión aprobada
+#     en la fase 5: oculta aunque el equipo hubiera decidido mantener visible).
 #   - UNIÓN (Q18/FR-013/FR-014): `POST …/{id}/unir` con `otherId` absorbe la
 #     otra entrada en la de `id` (que queda con los dos enlaces, `origin:
 #     both`) con confirmación explícita en la interfaz; es definitiva (sin
@@ -338,11 +341,15 @@ paths:
         Listado paginado **completo** del módulo (exige el permiso `medios`):
         por defecto **sin** las fichas absorbidas por una unión (`mergedIntoId`
         distinto de nulo), con filtros opcionales por `visibility` y por
-        `reviewMark` (para la cola de revisión). Orden: el **mismo que ve el
+        `reviewMark` (para la cola de revisión: solo marcas de esa clase
+        **pendientes** de resolver). Orden: el **mismo que ve el
         visitante** (FR-006). Cada fila (`MedioAdmin`) trae los datos del feed
         no editables, la descripción corta en **ambos idiomas**, la visibilidad,
-        la marca de revisión con su estado (`markResolvedAt`), el resultado de
-        la última comprobación de disponibilidad y las `sources` (procedencia:
+        las marcas **por eje** con su estado (puede haber dos: par de duplicados
+        y disponibilidad — modelo de la fase 5 —), el resultado de
+        la última comprobación de disponibilidad, el **origen** (`origin` y
+        `createdAt`: FR-019 pide «el origen de cada entrada» en la lista) y las
+        `sources` (procedencia:
         proveedor, identificador externo, título del feed y enlace), que es lo
         que el equipo necesita para decidir una unión (US3).
 
@@ -363,7 +370,11 @@ paths:
         - name: reviewMark
           in: query
           required: false
-          description: Filtra por marca de revisión (FR-014/FR-017). Sin valor: todas.
+          description: |
+            Filtra por la marca de esa clase **pendiente** (sin resolver):
+            `possible_duplicate` = par abierto; `unavailable` /
+            `missing_from_feed` = marca de disponibilidad abierta (FR-014/FR-017).
+            Sin valor: todas.
           schema:
             $ref: "#/components/schemas/MarcaRevision"
         - name: includeMerged
@@ -405,7 +416,12 @@ paths:
         el audio del mismo sermón cuando la correspondencia es segura
         (FR-013) o deja el par marcado «posible duplicado» cuando no lo es
         (FR-014), (4) **comprueba la disponibilidad** solo de los enlaces que
-        salieron de la ventana de su feed (FR-017/R9-2) aplicando la regla a
+        salieron de la ventana de su feed y pertenecen a fichas **visibles**
+        (FR-017/R9-2), una por fuente: el resultado de la ficha es el **peor**
+        de sus fuentes comprobadas (un enlace confirmado muerto oculta la ficha
+        entera aunque el otro siga vivo) y «ya no aparece en el feed» solo se
+        marca cuando **todas** sus fuentes salieron de la ventana; aplica la
+        regla a
         prueba de fallos —solo un 404/410 confirmado oculta y marca; cualquier
         otra respuesta solo marca— y (5) devuelve el **resumen** (FR-018).
 
@@ -422,10 +438,14 @@ paths:
         recupera lo que faltaba.
 
         **La sincronización no toca**: la visibilidad decidida por el equipo
-        (salvo la ocultación por indisponibilidad **confirmada** de FR-017), la
+        (salvo la ocultación por indisponibilidad **confirmada** de FR-017 —
+        **precisión aprobada en la fase 5**: manda **aunque** el equipo hubiera
+        resuelto antes «mantener visible»; la ficha queda marcada y el equipo
+        puede «Mostrar de nuevo»—), la
         descripción corta ajustada (`descriptionEdited`) ni las uniones
         confirmadas. Una marca ya **resuelta** por el equipo no se reabre por la
-        misma causa.
+        misma causa (una confirmación **nueva** de indisponibilidad es causa
+        nueva y manda).
 
         Auditoría: **una** fila `media.sync` por búsqueda (con un extracto del
         resumen en `targetLabel`); el resumen completo se registra en
@@ -517,8 +537,10 @@ paths:
         de modo que **ningún identificador externo se reimporta** jamás. Si solo
         una de las dos tenía la descripción ajustada por el equipo, la ficha
         resultante conserva **esa** (FR-015/SC-007). Las marcas «posible
-        duplicado» de ambas se **despejan** («la marca desaparece», US3 esc. 1)
-        y la resultante queda **visible** si lo era la base.
+        duplicado» de ambas se **despejan** («la marca desaparece», US3 esc. 1):
+        se limpia el **eje de duplicados** (par y su resolución) de las dos; las
+        marcas de **disponibilidad no se tocan** (son un eje independiente) y la
+        resultante queda **visible** si lo era la base.
 
         **Es definitiva** (default revisable #8: sin deshacer): la interfaz
         pide **confirmación explícita** mostrando el resultado (nombre, carátula
@@ -569,21 +591,27 @@ paths:
       summary: "Resuelve la marca de revisión de una ficha (y decide su visibilidad)"
       description: |
         Resolución de marcas (FR-017/US3 esc. 2 y esc. 6): el equipo confirma
-        que revisó la marca indicada y decide con `visibility` si la ficha
+        que revisó la marca **indicada en `mark`** —los dos ejes pueden estar
+        activos a la vez y se resuelven por separado— y decide con `visibility`
+        si la ficha
         **vuelve a estar visible** o **permanece oculta**. Aplica a las tres
         marcas: «posible duplicado» resuelto como *no son duplicados* → ambas
         fichas quedan visibles y sin marca activa; «no disponible» → el equipo
-        decide si la reactiva; «ya no aparece en el feed» → solo despeja el
-        aviso. La marca **se conserva como registro** con `markResolvedAt`
+        decide si la reactiva («Mostrar de nuevo»); «ya no aparece en el feed» →
+        solo despeja el
+        aviso. La marca **se conserva como registro** con su fecha de resolución
         (la lista puede mostrar «Resuelta») y **no se reabre por la misma
-        causa** en futuras búsquedas (default revisable #6).
+        causa** en futuras búsquedas (default revisable #6). **Excepción
+        aprobada en la fase 5**: una comprobación que **confirma** que el enlace
+        ya no está vuelve a ocultar y a marcar («Mostrar de nuevo» lo advierte:
+        «si el enlace sigue sin funcionando, volverá a quedar oculto»).
 
         Idempotente sobre una marca ya resuelta: responde `200` con la visibilidad
-        solicitada sin duplicar registros. Una ficha **sin marca** responde
-        `409 conflict` (no hay nada que resolver).
+        solicitada sin duplicar registros. Una ficha **sin la marca indicada**
+        responde `409 conflict` (no hay nada que resolver en ese eje).
 
-        Auditoría: `media.mark.resolve` (con la visibilidad elegida en
-        `targetLabel`).
+        Auditoría: `media.mark.resolve` (con la marca y la visibilidad elegidas
+        en `targetLabel`).
       security:
         - sessionCookie: []
       parameters:
@@ -652,19 +680,35 @@ components:
         Estado de la ficha (Q5/FR-015; F9 **no** usa `publicationState`):
         `visible`/`hidden`. La decide el equipo y la sincronización **nunca** lo
         cambia, salvo la ocultación por indisponibilidad **confirmada**
-        (FR-017). Lo importado entra `visible`, salvo la entrada adicional de un
+        (FR-017), que **manda también sobre una decisión previa del equipo**
+        (precisión aprobada en la fase 5: la ficha queda marcada y el equipo
+        puede «Mostrar de nuevo»). Lo importado entra `visible`, salvo la entrada
+        adicional de un
         par dudoso (FR-014/default revisable #2), que entra `hidden`.
     MarcaRevision:
       type: string
       enum: [possible_duplicate, unavailable, missing_from_feed]
       description: |
-        Marca que el sistema pone y el equipo resuelve (FR-014/FR-017):
-        `possible_duplicate` (par dudoso; **bloquea la publicación** hasta que
-        se resuelve — FR-009/SC-002 —), `unavailable` (la comprobación confirmó
-        que el enlace ya no está; la ficha quedó oculta — Q16 —) y
-        `missing_from_feed` (salió de la ventana de su feed pero su enlace
-        sigue disponible —o no pudo comprobarse—: **sigue visible**, solo es un
-        aviso — FR-017 —).
+        Clase de marca de revisión (FR-014/FR-017). Las marcas viven en **dos
+        ejes independientes** (modelo de la fase 5): `possible_duplicate`
+        pertenece al eje de **duplicados** (`duplicateOfId` +
+        `duplicateMarkResolvedAt`; **bloquea la publicación** hasta que se
+        resuelve — FR-009/SC-002 —) y `unavailable` / `missing_from_feed` al de
+        **disponibilidad** (`availabilityMark` + `availabilityMarkResolvedAt`).
+        `unavailable` = la comprobación confirmó que el enlace ya no está y la
+        ficha quedó oculta (Q16); `missing_from_feed` = salió de la ventana de su
+        feed pero su enlace sigue disponible —o no pudo comprobarse—: **sigue
+        visible**, solo es un aviso (FR-017). Una fila puede tener **dos marcas
+        activas** a la vez; este enum identifica qué marca se resuelve o se
+        filtra.
+    MarcaDisponibilidad:
+      type: string
+      enum: [unavailable, missing_from_feed]
+      description: |
+        Marca del eje de disponibilidad que tiene la ficha (ausente si nunca se
+        marcó). Se resuelve por separado de la de duplicados; cambiar de clase
+        (`unavailable` ↔ `missing_from_feed`) **resetea** la resolución y la marca
+        nueva nace **pendiente**.
     ResultadoDisponibilidad:
       type: string
       enum: [available, unavailable, inconclusive]
@@ -672,7 +716,8 @@ components:
         Resultado de la última comprobación de enlaces (FR-017/R9-2): solo
         `unavailable` (404/410 confirmados) oculta la ficha; `inconclusive`
         (timeout, 5xx, error de red, duda) **nunca** oculta nada (regla a
-        prueba de fallos).
+        prueba de fallos). En una ficha con varias fuentes es el resultado
+        **agregado** de las comprobadas: el **peor** gana (regla de la fase 5).
     EstadoFeed:
       type: string
       enum: [ok, failed]
@@ -817,8 +862,14 @@ components:
         Ficha completa para el panel (FR-019): datos del feed **no editables**
         (`title`, `publishedAt`, `coverUrl`, `videoUrl`, `audioUrl`), la
         descripción corta en ambos idiomas con su marca de edición, la
-        visibilidad, la marca de revisión (con `markResolvedAt` cuando se
-        resolvió), la comprobación de disponibilidad y las `sources` (la
+        visibilidad, el **origen** (`origin` —formato derivado de las fuentes— y
+        `createdAt` —cuándo se importó—: FR-019 pide «el origen de cada entrada»
+        también en la lista), las **marcas por eje** (duplicados:
+        `duplicateOfId`/`duplicateMarkResolvedAt`; disponibilidad:
+        `availabilityMark`/`availabilityMarkResolvedAt` — pueden convivir —), la
+        comprobación de disponibilidad (`availabilityCheckedAt`/
+        `availabilityResult`, el **peor** de sus fuentes comprobadas: regla de la
+        fase 5) y las `sources` (la
         procedencia de cada enlace: proveedor, identificador externo, título del
         feed y URL), que es lo que el equipo revisa antes de unir.
       properties:
@@ -856,16 +907,20 @@ components:
           $ref: "#/components/schemas/OrigenMedio"
         visibility:
           $ref: "#/components/schemas/Visibilidad"
-        reviewMark:
-          $ref: "#/components/schemas/MarcaRevision"
-        markResolvedAt:
-          type: string
-          format: date-time
-          description: "Fecha de resolución de la marca (ausente si está abierta o no hay marca)."
         duplicateOfId:
           type: string
           format: uuid
-          description: "Ficha del par «posible duplicado» (ausente si no hay marca de duplicado)."
+          description: |
+            Ficha del par «posible duplicado» (ausente si no hay par). Con
+            `duplicateOfId` presente y `duplicateMarkResolvedAt` ausente, el par
+            está **pendiente** y bloquea la publicación (FR-009/SC-002).
+        duplicateMarkResolvedAt:
+          type: string
+          format: date-time
+          description: |
+            Cuándo se resolvió la marca «posible duplicado» («no son
+            duplicados»). Ausente si el par está pendiente o si la ficha no tiene
+            par.
         mergedIntoId:
           type: string
           format: uuid
@@ -873,8 +928,17 @@ components:
         availabilityCheckedAt:
           type: string
           format: date-time
+          description: "Momento de la última comprobación de enlaces (ausente si nunca se comprobó)."
         availabilityResult:
           $ref: "#/components/schemas/ResultadoDisponibilidad"
+        availabilityMark:
+          $ref: "#/components/schemas/MarcaDisponibilidad"
+        availabilityMarkResolvedAt:
+          type: string
+          format: date-time
+          description: |
+            Cuándo se resolvió la marca de disponibilidad (ausente si está
+            pendiente o si la ficha no tiene marca).
         sources:
           type: array
           minItems: 1
@@ -947,13 +1011,19 @@ components:
       additionalProperties: false
     ResolverMarcaInput:
       type: object
-      required: [visibility]
+      required: [mark, visibility]
       description: |
-        Resolución de la marca de revisión (FR-017/US3 esc. 6): el equipo
+        Resolución de la marca de revisión (FR-017/US3 esc. 6): `mark` indica
+        **qué marca** se resuelve (los dos ejes pueden estar activos a la vez:
+        `possible_duplicate` resuelve el eje de duplicados — en ambas fichas del
+        par —, `unavailable`/`missing_from_feed` el de disponibilidad) y el equipo
         decide con `visibility` si la ficha vuelve a estar visible o permanece
-        oculta. La marca queda resuelta (`markResolvedAt`) y no se reabre por
-        la misma causa.
+        oculta. La marca queda resuelta (su fecha de resolución) y no se reabre
+        por la misma causa (la indisponibilidad **confirmada** posterior sí manda:
+        precisión aprobada en la fase 5).
       properties:
+        mark:
+          $ref: "#/components/schemas/MarcaRevision"
         visibility:
           $ref: "#/components/schemas/Visibilidad"
       additionalProperties: false
@@ -987,7 +1057,12 @@ components:
         markedCount:
           type: integer
           minimum: 0
-          description: Fichas marcadas «posible duplicado» por correspondencia dudosa (FR-014).
+          description: |
+            Fichas marcadas «posible duplicado» por correspondencia dudosa
+            (FR-014). Cuenta **solo** esa marca (criterio de la fase 5, literal
+            de FR-018): las marcas de disponibilidad nuevas **no** se contemplan
+            aquí — las que ocultan van en `hiddenCount` y su huella numérica en
+            `availability*` —.
         hiddenCount:
           type: integer
           minimum: 0
@@ -1038,6 +1113,7 @@ components:
         markedCount:
           type: integer
           minimum: 0
+          description: "Solo marcas «posible duplicado» de esa búsqueda (criterio de la fase 5, literal de FR-018)."
         hiddenCount:
           type: integer
           minimum: 0

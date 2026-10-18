@@ -161,15 +161,17 @@ usa `frontend/e2e/mediosSeed.ts`):
 ```bash
 docker compose exec -T db psql -U app -d app <<'SQL'
 -- Par «posible duplicado»: mismo día, títulos que NO coinciden ni normalizados.
--- La primera entrada (video) queda visible; la adicional (audio), oculta. Ambas marcadas.
+-- La primera entrada (video) queda visible; la adicional (audio), oculta. Ambas con la marca
+-- ABIERTA (duplicate_of_id recíproco y duplicate_mark_resolved_at NULL) — modelo de dos ejes de
+-- la fase 5 (P9-19): la marca de duplicado vive en su eje y no compite con la de disponibilidad.
 INSERT INTO media_items (id, title, published_at, description_es, origin, visibility,
-                         review_mark, duplicate_of_id)
+                         duplicate_of_id)
 VALUES
   ('11111111-1111-4111-8111-111111111111', 'Sermón de prueba (video)', '2026-05-10T15:00:00Z',
-   'Ficha base del par dudoso.', 'video', 'visible', 'possible_duplicate',
+   'Ficha base del par dudoso.', 'video', 'visible',
    '22222222-2222-4222-8222-222222222222'),
   ('22222222-2222-4222-8222-222222222222', 'Otro título para el mismo día', '2026-05-10T18:00:00Z',
-   'Ficha adicional del par dudoso.', 'audio', 'hidden', 'possible_duplicate',
+   'Ficha adicional del par dudoso.', 'audio', 'hidden',
    '11111111-1111-4111-8111-111111111111');
 
 INSERT INTO media_episode_sources (item_id, provider, external_id, feed_title, url)
@@ -192,9 +194,10 @@ Ahora, en **`$WEB/panel/medios`**:
    marca, y la ficha absorbida desaparece de todas las listas (queda con `mergedIntoId`, no se
    borra: FR-019). La operación aparece en la auditoría (§12).
 3. **Resolver «no son duplicados»** (variante para el caso de sermones de verdad distintos): en
-   lugar de «Unir», usa «Resolver marca» y elige `visible`: **ambas fichas quedan visibles y sin
-   marca activa** (US3 esc. 2) y pasan a publicarse normalmente. La marca queda como «Resuelta» y
-   **las búsquedas no la reabren** (§8).
+   lugar de «Unir», usa «Resolver marca» y elige `visible` (la llamada lleva **`mark:
+   "possible_duplicate"`**: cada resolución indica la marca que resuelve): **ambas fichas quedan
+   visibles y sin marca activa** (US3 esc. 2) y pasan a publicarse normalmente. La marca queda como
+   «Resuelta» y **las búsquedas no la reabren** (§8).
 
 Por API (con `/tmp/mi.jar`):
 
@@ -204,11 +207,12 @@ curl -s -b /tmp/mi.jar -X POST "$API/api/v1/admin/medios/11111111-1111-4111-8111
   -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
   -d '{"otherId":"22222222-2222-4222-8222-222222222222"}' | jq
 
-# Resolver una marca sin unir (ambas visibles, sin marca activa):
+# Resolver una marca sin unir (ambas visibles, sin marca activa). `mark` indica qué marca se
+# resuelve (modelo de dos ejes de la fase 5: aquí 'possible_duplicate'):
 curl -s -b /tmp/mi.jar -X POST \
   "$API/api/v1/admin/medios/22222222-2222-4222-8222-222222222222/marcas/resolver" \
   -H 'Content-Type: application/json' -H "X-CSRF-Token: $CSRF" \
-  -d '{"visibility":"visible"}' | jq
+  -d '{"mark":"possible_duplicate","visibility":"visible"}' | jq
 ```
 
 ## 6. Ocultar y mostrar (US3, FR-009/FR-015, SC-002/SC-007)
@@ -239,6 +243,18 @@ deja de aparecer en su feed, la búsqueda **comprueba su enlace** (gratis y sin 
 sigue disponible → **sigue visible** y se marca «ya no aparece en el feed»; confirmado no
 disponible (404/410) → **se oculta** y se marca «no disponible»; la comprobación falla → **no se
 oculta** (solo marca; regla a prueba de fallos).
+
+**Alcance exacto del disparador (matiz de la fase 5)**: la comprobación **solo** mira lo que **sale
+de la ventana del feed**. Un enlace borrado que **aún** está dentro de la ventana se sigue publicando
+hasta que salga de ella (con los feeds congelados puede tardar indefinidamente): **no es un fallo**,
+es el alcance acordado. Solo se comprueba, además, lo que pertenece a fichas **visibles**: una ficha
+que el equipo ocultó no se re-comprueba.
+
+**Fichas con dos enlaces (regla de agregación de la fase 5)**: se comprueba **cada fuente por
+separado** y el resultado de la ficha es **el peor** de los dos — un enlace confirmado muerto oculta
+**la ficha entera** aunque el otro responda 200 —. La marca «ya no aparece en el feed» solo se pone
+cuando **todas** las fuentes de la ficha salieron de sus ventanas: si solo salió la del podcast y el
+video sigue en el suyo, la ficha queda **sin marca** (decir «ya no aparece en el feed» sería falso).
 
 Para verlo **de forma determinista**, siembra dos fichas con fuentes que **no** están en los feeds
 reales: al pulsar «Buscar episodios nuevos», el sistema detecta que salieron de la ventana y las
@@ -271,8 +287,9 @@ SQL
 Pulsa «Buscar episodios nuevos» y comprueba en el panel:
 
 - «Vivo pero fuera del feed»: **sigue visible** para el visitante, con la marca «ya no aparece en
-  el feed» y `availabilityResult: available` (FR-017).
-- «Borrado de verdad»: **oculta** para el visitante, con la marca «no disponible» y
+  el feed» (`availabilityMark: missing_from_feed`) y `availabilityResult: available` (FR-017).
+- «Borrado de verdad»: **oculta** para el visitante, con la marca «no disponible»
+  (`availabilityMark: unavailable`) y
   `availabilityResult: unavailable`; el resumen la cuenta en `hiddenCount` (Q16/SC-014).
 - **La comprobación que no se completa** (timeout, 5xx, caída de red) **nunca** oculta: solo marca
   y se cuenta en `availabilityInconclusiveCount`. Ese caso se prueba de forma automatizada con un
@@ -283,9 +300,14 @@ Pulsa «Buscar episodios nuevos» y comprueba en el panel:
   host a `127.0.0.1` en `/etc/hosts` del contenedor backend) o desconectando la red: lo importante
   es comprobar que **el resto del catálogo queda intacto** y que, al repetir la búsqueda cuando el
   feed responda, se recupera lo que faltaba.
-- **No reabrir marcas resueltas**: resuelve la marca de «Vivo pero fuera del feed» (elige
-  `visible`) y vuelve a pulsar «Buscar episodios nuevos»: la marca **no se reabre** (default
-  revisable #6).
+- **No reabrir marcas resueltas**: resuelve la marca de «Vivo pero fuera del feed» (elige `visible`;
+  la llamada lleva `mark: "missing_from_feed"`) y vuelve a pulsar «Buscar episodios nuevos»: la marca
+  **no se reabre por esa misma causa** (default revisable #6). **Pero la indisponibilidad confirmada
+  manda (precisión aprobada en la fase 5)**: si una búsqueda posterior **confirma** que el enlace ya
+  no está (404/410), la ficha **se oculta de nuevo** y queda con la marca «no disponible» **abierta**
+  — es lo que promete el aviso de «Mostrar de nuevo» — y el equipo puede volver a mostrarla. Para
+  ver ese caso sin esperar: siembra una ficha ya resuelta como «mantener visible» y apunta su enlace
+  a un episodio inexistente del podcast (404): al buscar, queda **oculta + «no disponible»**.
 
 ## 9. Bilingüe (US4, FR-025/FR-026, SC-011)
 
@@ -338,7 +360,7 @@ anteriores verás filas con etiquetas humanas para los **6 códigos `media.*`**:
 | `media.description.update` | al guardar la descripción corta |
 | `media.hide` / `media.show` | al ocultar/mostrar (un guardado que cambia datos **y** visibilidad deja **dos** filas) |
 | `media.merge` | al confirmar una unión (la ficha absorbida se cita en el detalle) |
-| `media.mark.resolve` | al resolver una marca (con la visibilidad elegida) |
+| `media.mark.resolve` | al resolver una marca (con la marca resuelta y la visibilidad elegida) |
 
 Cada fila indica **quién, qué, sobre qué y cuándo**; los intentos denegados (`denied`) y los
 rechazados (`failure`) también quedan. El registro es de **solo lectura** (0 operaciones de edición

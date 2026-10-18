@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 4/9 · Tareas (plan **aprobado** el 2026-10-17 con 5 precisiones) |
+| Fase | 5/9 · Coherencia (fase 5 cerrada: `analyze` con **todos los hallazgos resueltos**) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 4: `tasks.md` (`arquitecto`) → fase 5: `analyze` (`revisor-codigo`) → fase 6: implementación por capas |
-| Bloqueado por | — |
+| Próximo paso | Fase 6: implementación por capas — **empezar por `[db]` T901 y T902**, luego `[backend]` y `[frontend]` (**46 tareas**, T901–T945 + T907A) |
+| Bloqueado por | — (nada: la implementación puede empezar) |
 | Actualizado | 2026-10-17 |
 
 ## Aprobaciones
@@ -52,6 +52,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-17 — **Fases 4 y 5 cerradas.** `tasks.md` con **46 tareas** (T901–T945 + T907A: 25 backend, 20 frontend, 3 db, 2 infra; 20 paralelizables) y `analyze.md` con **1 crítico, 3 altos, 3 medios y 4 bajos**, **todos resueltos** por el arquitecto: el crítico (el modelo de marcas se contradecía con su propia restricción) quedó partido en **dos ejes independientes** (duplicados y disponibilidad) con su precedencia y sus pruebas; las barreras de red se **centralizaron** en un cliente HTTP único del dominio que usan los tres consumidores (feeds, disponibilidad y carátulas); se **devolvió el origen** a la lista del panel (FR-019); y se aplicó la decisión del humano para A3 (**manda la indisponibilidad confirmada**, con `SC-007` matizado en la spec y el caso fijado por prueba). Cobertura verificada: **30/30 FR y 17/17 SC con tarea**.
 - 2026-10-17 — ⚠️ **Incidente de entorno (reparado).** Un reinicio del servidor a mitad de las ediciones dejó **corrupto el archivo de referencia de la rama** (`.git/refs/heads/009-medios-predicas-y-podcasts`, 41 bytes nulos), lo que hizo que git viera el repositorio entero como «todo nuevo» y `HEAD` como roto. **Daño acotado a ese único archivo**: objetos, reflog y todos los archivos del proyecto (verificados byte a byte) estaban intactos. Reparado reescribiendo la referencia al último commit (`037321a`) y limpiando los nulos de los reflogs; la historia y las ediciones se recuperaron completas. **Causa probable**: escritura fallida en el disco de Windows (`/mnt/d/…`), justo lo que advierte `make doctor` («muévelo a Ubuntu para evitar lentitud y problemas de permisos»). **Recomendación**: mover el proyecto a `~/proyectos/` en Ubuntu.
 - 2026-10-17 — **Puerta 2: plan APROBADO** por el humano («Aplica las 5 y apruebo el plan»), con las 5 precisiones aplicadas a `spec.md` y anotadas en `plan.md`. Fase → **4/9 · Tareas**.
 - 2026-10-17 — **Fase 3 entregada**: `plan.md` (18 decisiones técnicas, 12 riesgos), `research.md` (14 incógnitas con evidencia real: XML del feed, pruebas HTTP de disponibilidad), `data-model.md` (3 tablas + 2 migraciones), `contracts/openapi.yaml` (delta aditivo, 0.8.0 → **0.9.0**, 7 endpoints) y `quickstart.md`; `ux.md` con 7 pantallas y los flujos de «Buscar episodios nuevos» y unir duplicados. **Puerta 2 pendiente** con **5 puntos abiertos** señalados por el arquitecto.
