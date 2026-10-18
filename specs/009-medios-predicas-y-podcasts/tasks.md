@@ -619,7 +619,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 
 ## Fase 5 — Dominio `medios`: repository (integración con `000014`/`000015`)
 
-- [ ] T911 · `medios`: `model.go` + `repository.go` · `[backend]`
+- [X] T911 · `medios`: `model.go` + `repository.go` · `[backend]`
 
   - **Archivos**: `backend/internal/medios/model.go`, `repository.go` y `repository_test.go`
     (NUEVOS).
@@ -638,7 +638,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     T912/T913.
   - **Commit sugerido**: `feat(medios): modelo y base del repository con auditoria transaccional`
 
-- [ ] T912 · `medios`: `repository_episodios.go` (fichas: público, portada, panel y mutaciones) · `[backend]` `[P]` (P2)
+- [X] T912 · `medios`: `repository_episodios.go` (fichas: público, portada, panel y mutaciones) · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/medios/repository_episodios.go` y
     `repository_episodios_integration_test.go` (NUEVOS; `//go:build integration`).
@@ -662,7 +662,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     consulta**, no solo en el servicio (SC-002).
   - **Commit sugerido**: `feat(medios): persistencia de fichas con el predicado publico completo`
 
-- [ ] T913 · `medios`: `repository_fuentes.go` + `repository_sync.go` · `[backend]` `[P]` (P2)
+- [X] T913 · `medios`: `repository_fuentes.go` + `repository_sync.go` · `[backend]` `[P]` (P2)
 
   - **Archivos**: `backend/internal/medios/repository_fuentes.go`, `repository_sync.go`,
     `repository_fuentes_integration_test.go` y `repository_sync_integration_test.go` (NUEVOS;
@@ -685,7 +685,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     datos** (R9-11), incluso con concurrencia.
   - **Commit sugerido**: `feat(medios): fuentes por proveedor idempotentes y registro de busquedas`
 
-- [ ] T914 · Integración: migraciones up→down→up, `CHECK`s, `IsFilePublished` y atomicidad · `[backend]`
+- [X] T914 · Integración: migraciones up→down→up, `CHECK`s, `IsFilePublished` y atomicidad · `[backend]`
 
   - **Archivos**: `backend/internal/medios/repository_migrations_integration_test.go` y
     `repository_audit_integration_test.go` (NUEVOS; `//go:build integration`).

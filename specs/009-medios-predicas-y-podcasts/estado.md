@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (**10/46** tareas: bloque `[db]` + oleada P1 del backend) |
+| Fase | 6/9 · Implementar (**14/46** tareas: bloque `[db]`, oleada P1 y persistencia) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 6: seguir por el dominio (`T911` repositorio, `T912`–`T921` servicio de sincronización) y el frontend en paralelo cuando toque (`T905`, `T929`+) |
+| Próximo paso | Fase 6: el **servicio de sincronización** (T915–T921: unión de duplicados, marcas de dos ejes, resumen, auditoría), luego el frontend (T905, T929+) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -52,6 +52,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-17/18 — **Persistencia terminada (T911–T914).** Commits `5a50da5`, `e54a810`, `b224dea`, `2d060a7`. Modelo del dominio y base del repositorio con **auditoría transaccional**, persistencia de fichas con el **predicado público completo** (ocultas, absorbidas y par abierto fuera; `missing_from_feed` sin resolver dentro), fuentes por proveedor **idempotentes por la base de datos** y registro de búsquedas. Verificado con **84 pruebas** (19 unitarias + integración real): up→down→up de las migraciones, catálogo de permisos en **10**, matriz de marcas «par abierto/resuelto × enlace vivo/muerto/inconcluso», **atomicidad** de mutación + auditoría, y la rama de F9 de `IsFilePublished`. `make lint` limpio y `sqlc-verify` sin deriva. **Nota de entorno**: `sqlc` vive en `$(go env GOPATH)/bin` y `make sqlc-verify` necesita ese directorio en el `PATH`.
 - 2026-10-17 — **Oleada P1 del backend terminada (T904, T906, T907, T907A, T908–T910).** Contrato vivo fusionado a **0.9.0** (55 rutas, 139 `$ref` sin huérfanos), códigos `media.*` en la auditoría, normalización de títulos con el día en la zona de la iglesia, **fábrica única de cliente HTTP saliente** con las barreras contra el abuso de la red (allowlist, rechazo de IPs privadas/metadata, sin redirecciones fuera, límite de cuerpo, firma binaria en imágenes) **aplicada a los tres consumidores** y probada con una tabla compartida, lector de feeds con **fixtures**, probadores de disponibilidad **a prueba de fallos** (solo 404/410 confirman) y descarga acotada de carátulas. **10/46** tareas. `make lint` limpio, `sqlc-verify` sin deriva, `test-backend` completo en verde, cobertura del paquete nuevo **85,6 %**. `golang.org/x/text` pasa de indirecta a directa (sin cambio de versión ni dependencias nuevas).
 - 2026-10-17 — ⚠️ **Riesgo confirmado (RG9-1)**: el **feed de YouTube responde 404 desde direcciones de servidor** (el agente lo intentó 3 veces con variantes y desde su máquina responde bien). El fixture de YouTube reproduce el formato real con los datos reales y **IDs sintéticos**, documentado en su cabecera, y hay que **sustituirlo por una captura real**. En producción, la búsqueda dirá qué feed falló y nunca borrará nada por esa causa, pero **hay que vigilarlo**.
 - 2026-10-17 — **Fase 6 arrancada: bloque `[db]` terminado (T901, T902, T903).** Commits `a112ed9`, `b187028`, `9e43394`. Verificado contra **PostgreSQL real**: ciclo up→down→up de las migraciones `000014`/`000015` (incluido el `down` destructivo de `admin_actions`), **38 + 13 comprobaciones de aserciones en verde**, `sqlc-verify` sin deriva, `make lint` limpio y `make test-backend` completo en verde. El catálogo de permisos sigue en **10**. El `dev-backend` detectó y esquivó un **error de transcripción en `data-model.md`** (declaraba dos veces las mismas columnas de disponibilidad): corregido el documento, la migración es la correcta.
