@@ -146,6 +146,10 @@ type ServiceDeps struct {
 	// Store es el almacén de archivos: lo usa la unión para borrar en mejor
 	// esfuerzo la carátula que quedó sin uso (FR-019).
 	Store storage.Store
+	// Location es la zona horaria del lugar (APP_TZ, decisión 17 de F4): decide
+	// el «mismo día» de la unión automática (FR-013) y el corte de la ventana del
+	// feed (FR-017). nil degrada a UTC (la configuración siempre la aporta).
+	Location *time.Location
 	// Logger registra los fallos best-effort; nil usa el logger por defecto.
 	Logger *slog.Logger
 }
@@ -154,12 +158,13 @@ type ServiceDeps struct {
 // demanda y el registro de auditoría del dominio. Una sola instancia satisface
 // las cuatro responsabilidades; los archivos service_*.go reparten los métodos.
 type service struct {
-	repository Repository
-	feeds      FeedSource
-	probador   AvailabilityProber
-	caratulas  CoverFetcher
-	store      storage.Store
-	logger     *slog.Logger
+	repository  Repository
+	feeds       FeedSource
+	probador    AvailabilityProber
+	caratulas   CoverFetcher
+	store       storage.Store
+	zonaHoraria *time.Location
+	logger      *slog.Logger
 }
 
 // NewService construye el service de medios. Si Logger es nil se usa el logger
@@ -170,13 +175,25 @@ func NewService(deps ServiceDeps) *service {
 		logger = slog.Default()
 	}
 	return &service{
-		repository: deps.Repository,
-		feeds:      deps.FeedSource,
-		probador:   deps.AvailabilityProber,
-		caratulas:  deps.CoverFetcher,
-		store:      deps.Store,
-		logger:     logger,
+		repository:  deps.Repository,
+		feeds:       deps.FeedSource,
+		probador:    deps.AvailabilityProber,
+		caratulas:   deps.CoverFetcher,
+		store:       deps.Store,
+		zonaHoraria: deps.Location,
+		logger:      logger,
 	}
+}
+
+// zona devuelve la zona horaria del lugar (`APP_TZ`, decisión 17 de F4): la llave
+// del «mismo día» de la unión automática (FR-013). Sin configuración degrada a
+// UTC —el corte de día deja de ser el de la iglesia—, así que `cmd/api` siempre
+// pasa la zona que cargó `platform/config`.
+func (s *service) zona() *time.Location {
+	if s.zonaHoraria == nil {
+		return time.UTC
+	}
+	return s.zonaHoraria
 }
 
 // --- Normalización (analyze I6) ---

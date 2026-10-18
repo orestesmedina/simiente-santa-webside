@@ -679,7 +679,7 @@ func (f *fakeRepository) ListPublishedMediaItems(_ context.Context, params pagin
 	items := make([]Episodio, 0, len(f.episodios))
 	for _, ep := range f.episodios {
 		if publicable(ep) {
-			items = append(items, ep)
+			items = append(items, f.conEnlaces(ep))
 		}
 	}
 	ordenSeccion(items)
@@ -709,7 +709,7 @@ func (f *fakeRepository) ListPortadaMediaItems(_ context.Context, limit int) ([]
 	items := make([]Episodio, 0, len(f.episodios))
 	for _, ep := range f.episodios {
 		if publicable(ep) {
-			items = append(items, ep)
+			items = append(items, f.conEnlaces(ep))
 		}
 	}
 	ordenSeccion(items)
