@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (**29/47** tareas: backend cerrado; falta el frontend) |
+| Fase | 6/9 · Implementar (**34/47** tareas: backend cerrado y base del frontend; faltan pantallas, e2e y cierre) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 6, frontend: **T905** (tipos TS) y **T929–T943** (cliente y hooks, sección, navegación, bloque de portada, panel y e2e) → luego el cierre (**T944–T945**) |
+| Próximo paso | Fase 6, pantallas del frontend (**T933–T938**), luego los e2e (**T939–T943**) y el cierre (**T944–T945**) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -53,6 +53,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-18 — **Base del frontend terminada (T905, T929–T932).** Commits `035eecd`, `e6b87c8`, `b95783d`, `a766c10`, `3cc3924`. Tipos regenerados desde el contrato 0.9.0 (**sin deriva**), cliente y hooks (público, portada y panel), textos de la sección y del panel tomados de `ux.md`, permiso «medios» activado en el catálogo (sigue en **10**, sin tocar F5/F8), accesos del panel y las **6 etiquetas de auditoría** `media.*`. **847 pruebas en verde** (120 archivos), `lint` y `typecheck` limpios. **34/47 tareas.**
 - 2026-10-18 — **T946 aplicada** (decisión 28): la descripción corta **puede estar vacía** y, cuando lo está, la ficha pública **no pinta esa línea**. Retirado el `minLength: 1` del **delta y del contrato vivo** (sigue 0.9.0), el `PATCH` del panel **puede vaciarla** (`""` → sin descripción, patrón I6, sin `400`), el DTO público la omite y la auditoría sigue registrando el cambio. Verificado con unitarias de servicio y handler, **integración contra PostgreSQL real** y comprobación por `curl` (vaciar → `200`, la ficha sale sin descripción en los dos idiomas, `description_es` queda `NULL`). Commit `3b3bb53`. **29/47 tareas.**
 - 2026-10-18 — 🐞 **Defecto corregido en un artefacto**: el **delta del contrato** (`contracts/openapi.yaml`) **no parseaba como YAML** (tres descripciones con dos puntos sin comillas, introducidas al enmendarlo en la fase 5; el contrato vivo nunca estuvo afectado porque sí parseaba). Corregido: el delta vuelve a ser YAML válido (**7 rutas, 18 esquemas**).
 - 2026-10-18 — **Backend cerrado (T922–T928).** Commits `cc58b73`, `edb986e`, `40d8b7d`, `ee2e2e1`, `3efb3e5`, `7876694`, `9f9daba`. Auditoría de denegaciones y rechazos, los **7 endpoints** del contrato (2 públicos con `no-store` y `lang` cerrado, 5 de panel con `AdminChain("medios")`), y el **cableado** con la zona horaria (`APP_TZ`) y las implementaciones reales de red. **Prueba manual por API contra los feeds reales**: la búsqueda importó **10 episodios** y **unió 8 pares** video+audio, descargó las carátulas, el bloque de portada devolvió **exactamente 5**, ocultar/mostrar cambió el total público (10 → 9 → 10), el permiso se denegó con `403` a un rol sin «medios», y la **auditoría** registró éxito, rechazo y denegación. 23 paquetes en verde (45 `ok`, 0 `FAIL`), cobertura del servicio **88,3 %**, `make lint` limpio y `sqlc-verify` sin deriva. **28/46 tareas.**

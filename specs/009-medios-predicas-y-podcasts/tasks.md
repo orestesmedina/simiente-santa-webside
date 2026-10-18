@@ -435,7 +435,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     tipos del frontend (T905).
   - **Commit sugerido**: `docs(api): fusionar delta de F9 en el contrato vivo (0.9.0)`
 
-- [ ] T905 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
+- [X] T905 · Regenerar `frontend/src/api/schema.d.ts` · `[frontend]`
 
   - **Archivos**: `frontend/src/api/schema.d.ts` (GENERADO y commiteado).
   - **Qué hace**: ejecuta `make api-gen` contra **`backend/api/openapi.yaml`** (nunca contra el
@@ -1128,7 +1128,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 > redirige, P9-16). Los enlaces externos usan `PublicButton` con `external` (el `target`/`rel` ya los
 > resuelve F10) y **anuncian** servicio, salida del sitio y pestaña nueva (FR-005).
 
-- [ ] T929 · `api/medios.ts` + hooks (público, portada, panel) · `[frontend]` `[P]` (P3)
+- [X] T929 · `api/medios.ts` + hooks (público, portada, panel) · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/api/medios.ts` (NUEVO),
     `frontend/src/features/publico/medios/hooks/usePublicMedios.ts`, `hooks/usePortadaMedios.ts`
@@ -1156,7 +1156,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     solo del contrato vivo (0 `any`).
   - **Commit sugerido**: `feat(frontend): cliente y hooks de medios`
 
-- [ ] T930 · i18n público (§7.2) + `messages.ts` del panel (§7.1) · `[frontend]` `[P]` (P3)
+- [X] T930 · i18n público (§7.2) + `messages.ts` del panel (§7.1) · `[frontend]` `[P]` (P3)
 
   - **Archivos**: `frontend/src/features/publico/i18n/{messages,es,en}.ts` (EDITADOS: claves
     tipadas de `ux.md` §7.2 — `nav.sections.media`, `media.page.title`, `media.page.subtitle`,
@@ -1183,7 +1183,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     T933–T938.
   - **Commit sugerido**: `feat(frontend): textos de medios (i18n publico y panel)`
 
-- [ ] T931 · Permisos, accesos del panel y `ACTION_LABELS` · `[frontend]`
+- [X] T931 · Permisos, accesos del panel y `ACTION_LABELS` · `[frontend]`
 
   - **Archivos**: `frontend/src/lib/permissions.ts` (EDITADO: `MEDIOS = 'medios'` y su entrada en
     `MODULE_PERMISSIONS`), `frontend/src/features/roles/permissions.ts` (EDITADO: el sello
@@ -1210,7 +1210,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     `medios` y la auditoría no muestra códigos crudos de F9.
   - **Commit sugerido**: `feat(frontend): permiso medios, accesos del panel y etiquetas de auditoria`
 
-- [ ] T932 · Actualización **acotada** de las pruebas que fijan permisos/accesos · `[frontend]` *(cambio acotado documentado, RG9-6)*
+- [X] T932 · Actualización **acotada** de las pruebas que fijan permisos/accesos · `[frontend]` *(cambio acotado documentado, RG9-6)*
 
   - **Archivos** (SOLO los que fijen la lista de permisos/accesos; al menos los 4 de RG9-6):
     `frontend/src/features/roles/permissions.test.ts` (hoy fija «el resto del catálogo (F5, F8,
