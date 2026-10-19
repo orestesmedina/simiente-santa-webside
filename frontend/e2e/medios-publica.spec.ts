@@ -34,8 +34,10 @@ import { resetMedios, seedMedios, type MediosSeed } from './mediosSeed';
  *   npx playwright test --config e2e/playwright.config.ts acceso auditoria --workers=1
  *   # Tanda 2 — F4 (agenda)
  *   npx playwright test --config e2e/playwright.config.ts agenda- --workers=1
- *   # Tanda 3 — F3 y F10 (portada, sistema de diseño, tema y estado)
- *   npx playwright test --config e2e/playwright.config.ts portada- diseno- movimiento navegacion- tema- qa- status --workers=1
+ *   # Tanda 3 — F3 y F10 (portada, sistema de diseño, tema y estado). El filtro
+ *   #   excluye `portada-medios.spec.ts` (lo corre la tanda 6): si lo arrastrara
+ *   #   también esta tanda, esa spec correría dos veces.
+ *   npx playwright test --config e2e/playwright.config.ts 'portada-(?!medios)' diseno- movimiento navegacion- tema- qa- status --workers=1
  *   # Tanda 4 — F6 (ministerios y su bloque de portada)
  *   npx playwright test --config e2e/playwright.config.ts ministerios- portada-ministerios --workers=1
  *   # Tanda 5 — F7 (ofrendas)
