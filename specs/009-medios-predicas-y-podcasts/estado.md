@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar (**ciclo 1 corregido**; revalidación en curso) |
-| Ciclo de corrección | 1/3 · QA **APRUEBA**, seguridad **APRUEBA**, código **APRUEBA CON CAMBIOS** → **11 commits de corrección** aplicados |
-| Próximo paso | **Revalidar** (ciclo 1): confirmar que los 3 altos, los 3 medios y los bajos quedaron cerrados y que nada se rompió → después la **puerta 3** (PR) |
-| Bloqueado por | — |
+| Fase | 7/9 · Validar (**ciclos 1 y 2 corregidos y revalidados**; solo falta la decisión del borde de spec y la **puerta 3**) |
+| Ciclo de corrección | 2/3 · **cerrado**: QA y seguridad **APRUEBAN**; código **APRUEBA CON CAMBIOS** con **todos** sus hallazgos resueltos y confirmados (H1–H3, M1–M3, N1–N4, S1 y bajos) |
+| Próximo paso | Decidir el **borde de spec** (tercer elemento dudoso) → actualizar CHANGELOG y `pr.md` con el resultado de la validación → **puerta 3 (PR)** |
+| Bloqueado por | — (nada técnico: `-race`, `make ci`, e2e y las tres validaciones están en verde) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -35,18 +35,15 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-**Corregidos en el ciclo 1 (pendientes de revalidar):**
-- **H1 (alto, frontend)** — `syncMedios` usa el tiempo de espera del cliente (**5 s**) mientras el presupuesto del servidor es de **90 s**: la búsqueda se corta a media importación, se cancela también en el servidor y **el equipo nunca ve el resumen** (FR-018). Corregir con un tiempo de espera propio (120 s) y su prueba.
-- **H2 (alto, backend)** — la sincronización **pisa la carátula** de la ficha al unir (y **borra** el archivo anterior), contra P9-9 y los defaults #7/#10; y con dos carátulas en la misma búsqueda **gana la que termine antes** (aleatorio). Corregir: no tocar fichas que ya tengan carátula y encolar **una sola por ficha** (preferir la de YouTube), con pruebas.
-- **H3 (alto, backend)** — el alta de un elemento son dos escrituras: si dos búsquedas simultáneas importan el mismo elemento, queda una **ficha huérfana visible y sin enlaces** (SC-003 en la carrera). Corregir con una transacción que revierta al conflictuar.
-- **M1–M3 (medios, backend)** — huecos en la invariante de la **pareja recíproca** de duplicados; **`ResolveMark` del par no es atómico**; y la **escritura de fila completa** del sync puede revertir una edición del equipo hecha durante la búsqueda (borde de SC-007).
-- **S1 (bajo, backend, seguridad)** — `offset` sin tope superior en la **ruta pública**: `int32` desborda y la API responde `500` (reproducido en vivo). Acotarlo como ya se hace con `limit`.
-- **S2 (bajo, backend, seguridad)** — la allowlist de red fija el **host pero no el puerto** (defensa en profundidad; no da acceso a red interna).
-- **Bajos menores (revisor)** — conteo UTF-16 frente a runas en el límite de la descripción, código de auditoría impreciso en un `PATCH` de solo visibilidad y listado del panel sin avisar del truncado.
+**Corregidos y revalidados (ciclos 1 y 2):** H1, H2, H3, M1, M2, M3, B1, B2 y los bajos; y los hallazgos de las revalidaciones: **N1** (la unión automática segura quedaba bloqueada por una ficha de par resuelto), **N2** (micro-ventana de la marca de disponibilidad), **N3** (carátula huérfana en el almacén), **N4** (el doble de pruebas no soportaba concurrencia y **el CI ejecuta `-race`**: se habría puesto en rojo) y **S1** (re-escritura de una marca de la misma clase). **`go test -race ./...` en verde en los 22 paquetes del backend.**
+
+**Pendiente de decisión del humano:**
+- **Borde de spec (tercer elemento dudoso)**: si un tercer elemento «dudoso» coincide con un sermón que ya tiene par, hoy entra suelto y visible (solo es problema si resulta ser el mismo sermón). La letra de FR-014/SC-003 lo consideraría desviación, pero cerrarlo toca el modelo aprobado (la pareja es de dos). **Recomendación del revisor y mía**: aceptarlo como **limitación documentada** (mitigación: ocultar a mano), con la extensión del eje como mejora futura.
 
 **Defectos conocidos (preexistentes, ajenos a F9):**
 - Una aserción de tamaño de toque de F3 (`portada-accesibilidad.spec.ts`) falla de vez en cuando por el redondeo interno de Chromium (44 px medidos como 43,98) y **pasa al relanzar**.
-- **Inestabilidad de la suite de integración completa** (`go test -tags=integration ./...`): de vez en cuando falla una prueba de otro paquete por interferencia entre suites sobre la base compartida (los `TRUNCATE` de `users`/`roles`). **Verificado también en el commit base** (`8ee1fcf`), así que no lo introduce F9; `./internal/medios/...` es estable.
+- **Inestabilidad de la suite de integración completa** (`go test -tags=integration ./...`) por interferencia entre suites sobre la base compartida (los `TRUNCATE` de `users`/`roles`). Verificado también en el commit base, así que no lo introduce F9.
+- **`make ci` local no es exactamente el CI**: el CI ejecuta `go test -race` (línea 112 de `ci.yml`) y `make test-backend` **no**. Conviene alinearlo (es del kit).
 
 ## Decisiones y aclaraciones
 
@@ -65,6 +62,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-18/19 — **Ciclos 2 y 3 de corrección: cerrados.** (a) **N1** resuelto (`32a9619`): la unión automática segura vuelve a funcionar contra una ficha de par **resuelto** (antes el mismo sermón podía verse dos veces) y la exclusión queda **solo** en la rama dudosa, con la pareja recíproca intacta; de paso se cerraron **N2** (la marca de disponibilidad ya no puede devolverse ni barrer una resolución) y **N3** (la carátula huérfana se retira solo si no está en uso). (b) La revalidación encontró **N4**: el doble de pruebas **no soportaba concurrencia** y **`go test -race` falla**, que es justo la puerta del CI (`.github/workflows/ci.yml` línea 112) → arreglado (`b69571d`, mutex en el doble, sin relajar aserciones) y **`-race` en verde en los 22 paquetes del backend**, más **S1** (`7dbd8b2`: no re-escribir una marca de la misma clase). Quedan **dos cosas**: la decisión del **borde de spec** (tercer elemento dudoso) y la **puerta 3** (PR).
 - 2026-10-18 — **Ciclo de corrección 1 aplicado (11 commits).** Backend (8): la **carátula ya no se pisa** al unir y se encola **una sola por ficha** prefiriendo la del video; el **alta es atómica** y revierte al conflictuar (se encontró y arregló de paso que el `INSERT` descartaba el puntero del par); cerrados los **huecos de la pareja recíproca**; **`ResolveMark` del par en una transacción**; el sync **escribe solo sus columnas** (ya no puede revertir una edición del equipo); el **`offset` público queda acotado** (antes un valor enorme daba `500`); la **red saliente exige puerto 443**; y el código de auditoría del `PATCH` de visibilidad más la procedencia **por lote** (sin N+1). Frontend (3): **tiempo de espera propio de 120 s** para la búsqueda (antes se cortaba a los 5 s y el equipo no veía el resumen), con mensaje claro si se agota; el **límite de 300 cuenta runas** (antes unidades UTF-16); y el panel **avisa del truncado** y la unión **busca la pareja contra el servidor**. Cada corrección con su prueba **en rojo antes del arreglo**. Verificación: `make lint` limpio, backend unitario + integración en verde, **frontend 946 pruebas**, tanda e2e de F9 **25/25**.
 - 2026-10-18 — **Validación (fase 7) y ciclo de corrección 1/3.** Informes: **QA APRUEBA** (verificación independiente en vivo: `401`/`403` con auditoría, ocultar/mostrar sin filtraciones, portada con exactamente 5, búsqueda real idempotente y **fail-safe en vivo**: con el feed de YouTube caído importó lo del podcast y **no ocultó ni marcó nada**), **seguridad APRUEBA** (barreras de red «reales y sin rodeos»: la fábrica es el único punto que construye un cliente HTTP, conecta a la IP ya validada —sin rebinding— y las URLs de los feeds son constantes no configurables; `govulncheck` y `npm audit` en 0) y **código APRUEBA CON CAMBIOS** (sin bloqueantes, **3 altos**: la búsqueda cortada a los 5 s del cliente, la carátula pisada al unir y la ficha huérfana en una carrera de dos búsquedas; más 3 medios y 3 bajos, dos de ellos de seguridad: `offset` sin tope en la ruta pública y el puerto fuera de la allowlist).
 - 2026-10-18 — **E2E terminados (T939–T943).** Commits `7e2348d`, `d270fc3`, `1f4f155`, `b784b45`, `95ee9cc`. Siembra **por SQL** (patrón nuevo declarado: F9 no tiene alta manual) y **4 suites**: sección pública (enlaces anunciados, **0 peticiones a terceros**, redirección con 0 visibles), panel (marcas, permisos, auditoría, **la búsqueda interceptada y abortada** porque depende de la red), accesibilidad por teclado y bloque de portada. **25/25 en verde**; el resto de tandas también (F2, F4, F7, F10) salvo los dos hallazgos A1/A2. **45/47 tareas.** El navegador de Playwright ya funciona: el humano instaló las 5 librerías que faltaban.
