@@ -1444,7 +1444,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 > (T920/T921) y en el recorrido manual de `quickstart.md` §3–§4. Las specs de panel hacen login: se
 > ejecutan **por tandas** respetando el **límite de intentos de login** de F2 (ver T944).
 
-- [ ] T939 · `mediosSeed.ts` — siembra **por SQL** (patrón nuevo, RG9-7) · `[frontend]`
+- [X] T939 · `mediosSeed.ts` — siembra **por SQL** (patrón nuevo, RG9-7) · `[frontend]`
 
   - **Archivos**: `frontend/e2e/mediosSeed.ts` (NUEVO; usa el contenedor `db` —
     `docker compose exec -T db psql -U app -d app` — con el mismo SQL documentado en
@@ -1478,7 +1478,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     P5 puede arrancar antes.
   - **Commit sugerido**: `test(e2e): fixtures de medios sembrados por SQL`
 
-- [ ] T940 · E2E Playwright `medios-publica.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T940 · E2E Playwright `medios-publica.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/medios-publica.spec.ts` (NUEVO; usa `helpers.ts` y `mediosSeed.ts`).
   - **Qué hace**: recorrido del visitante (US1, US4, US5) según `quickstart.md`
@@ -1503,7 +1503,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     extremo a extremo.
   - **Commit sugerido**: `test(e2e): seccion publica de medios (enlaces anunciados, 0 terceros y redireccion)`
 
-- [ ] T941 · E2E Playwright `medios-panel.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T941 · E2E Playwright `medios-panel.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/medios-panel.spec.ts` (NUEVO).
   - **Qué hace**: recorrido del panel (US2, US3) sobre datos **sembrados por SQL** (RG9-7) según
@@ -1531,7 +1531,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     servidor y la unión/resoluciones probadas en el flujo real.
   - **Commit sugerido**: `test(e2e): gestion de medios en el panel, marcas, permisos y auditoria`
 
-- [ ] T942 · E2E Playwright `medios-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
+- [X] T942 · E2E Playwright `medios-accesibilidad.spec.ts` (teclado y foco) · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/medios-accesibilidad.spec.ts` (NUEVO; patrón de
     `ministerios-accesibilidad.spec.ts` / `ofrendas-accesibilidad.spec.ts`).
@@ -1553,7 +1553,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     existe y corre en `make e2e` junto a las otras specs.
   - **Commit sugerido**: `test(e2e): accesibilidad por teclado de medios (SC-008)`
 
-- [ ] T943 · E2E Playwright `portada-medios.spec.ts` · `[frontend]` `[P]` (P5)
+- [X] T943 · E2E Playwright `portada-medios.spec.ts` · `[frontend]` `[P]` (P5)
 
   - **Archivos**: `frontend/e2e/portada-medios.spec.ts` (NUEVO).
   - **Qué hace**: bloque de la portada (US6, SC-015) según `quickstart.md` §10: con 8 publicables

@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (**40/47** tareas: backend y frontend completos; faltan los e2e y el cierre) |
+| Fase | 6/9 · Implementar (**45/47** tareas: solo falta el cierre) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Fase 6, e2e (**T939–T943**) y cierre (**T944–T945**) — **bloqueados por el entorno**: al navegador de Playwright le faltan 5 librerías del sistema y no se pueden instalar sin `sudo` |
-| Bloqueado por | **`libnspr4`, `libnss3`, `libnssutil3`, `libsmime3`, `libasound2`** sin instalar (acción del humano: `sudo npx playwright install-deps chromium` desde `frontend/`). Sin ellas no se pueden **ejecutar** los e2e; escribir las pruebas sí se puede |
+| Próximo paso | **T944** (verificación de cierre) y **T945** (documentación). Antes hay que resolver **dos interacciones con specs de F3/F6** y el solapamiento de tandas (ver *Hallazgos abiertos*) |
+| Bloqueado por | — (el navegador de Playwright ya funciona: el humano instaló las 5 librerías) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -35,7 +35,10 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- (ninguno: todavía no hay validación)
+- **A1 — Dos specs de accesibilidad anteriores fallan por el bloque de medios (F3 y F6).** El bloque de la portada añade ~11 elementos enfocables (5 fichas × 1–2 enlaces + «Ver todo»), así que el recorrido por teclado de `portada-accesibilidad.spec.ts` (tope **30** pasos) y de `ministerios-accesibilidad.spec.ts` (tope **45**) ya no cierra el ciclo. **Es un tope de esas pruebas, no un defecto del sitio** (el ciclo se recorre entero, solo que con más pasos). **Propuesta**: subir los topes y dejar constancia en el PR.
+- **A2 — El marcador neutro de carátula lleva `alt=""` y la spec de F3 exige «alt no vacío» en todas las imágenes de `main`.** El marcador es **decoración** (el nombre del episodio va justo debajo) y va dentro de un contenedor `aria-hidden="true"`, así que `alt=""` es **la opción correcta** según WCAG. **Propuesta**: refinar la aserción de F3 para que omita los subárboles `aria-hidden` (en vez de darle al marcador un `alt` inventado).
+- **A3 — Solapamiento de tandas e2e**: el patrón `portada-` de la tanda 3 ahora también captura `portada-medios.spec.ts` (nombre fijado por la ficha T943). **Propuesta**: excluirlo o usar lista explícita de archivos en T944.
+- **A4 (entorno, no código)**: las **9 carátulas** de los episodios reales **no existen en el volumen de subidas** (la importación de prueba se hizo con la API en modo manual, con otro `UPLOAD_DIR`, y quedaron en `/tmp`), así que el sitio muestra **marcadores neutros**. Se arregla limpiando las tablas de medios y volviendo a pulsar «Buscar episodios nuevos» con el stack levantado.
 
 ## Decisiones y aclaraciones
 
@@ -54,6 +57,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-18 — **E2E terminados (T939–T943).** Commits `7e2348d`, `d270fc3`, `1f4f155`, `b784b45`, `95ee9cc`. Siembra **por SQL** (patrón nuevo declarado: F9 no tiene alta manual) y **4 suites**: sección pública (enlaces anunciados, **0 peticiones a terceros**, redirección con 0 visibles), panel (marcas, permisos, auditoría, **la búsqueda interceptada y abortada** porque depende de la red), accesibilidad por teclado y bloque de portada. **25/25 en verde**; el resto de tandas también (F2, F4, F7, F10) salvo los dos hallazgos A1/A2. **45/47 tareas.** El navegador de Playwright ya funciona: el humano instaló las 5 librerías que faltaban.
 - 2026-10-18 — **Pantallas terminadas (T933–T938).** Commits `b97ad59`, `640744a`, `c7fc5ed`, `0b075e7`, `94c6cb5`, `0b4ae9e`. Página `/medios` con fichas (carátula, nombre, fecha y descripción corta; **enlaces en pestaña nueva anunciada** y **sin contenido de terceros**), navegación condicional, bloque al final de la portada, panel con la búsqueda y sus resúmenes, listado con estado/origen/marcas, editor de descripción y unión de duplicados con vista previa. **930 pruebas en verde** (129 archivos), `lint` y `typecheck` limpios. Comprobación con **los 10 episodios reales**: 10 fichas ordenadas, el bloque de portada con **exactamente 5**, y el caso frontera de fecha resuelto en la zona de la iglesia (un episodio del 3-jul UTC se pinta como 2 de julio). **40/47 tareas.**
 - 2026-10-18 — ⚠️ **Bloqueo de entorno para los e2e**: el navegador de Playwright **no arranca** porque faltan `libnspr4`, `libnss3`, `libnssutil3`, `libsmime3` y `libasound2`, y no hay `sudo` sin contraseña. Se puede **escribir** las pruebas, pero no **ejecutarlas** hasta que el humano instale las dependencias (`sudo npx playwright install-deps chromium` desde `frontend/`).
 - 2026-10-18 — **Base del frontend terminada (T905, T929–T932).** Commits `035eecd`, `e6b87c8`, `b95783d`, `a766c10`, `3cc3924`. Tipos regenerados desde el contrato 0.9.0 (**sin deriva**), cliente y hooks (público, portada y panel), textos de la sección y del panel tomados de `ux.md`, permiso «medios» activado en el catálogo (sigue en **10**, sin tocar F5/F8), accesos del panel y las **6 etiquetas de auditoría** `media.*`. **847 pruebas en verde** (120 archivos), `lint` y `typecheck` limpios. **34/47 tareas.**
