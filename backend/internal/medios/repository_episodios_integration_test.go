@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"simiente-santa/backend/internal/platform/apperr"
+	"simiente-santa/backend/internal/platform/audit"
 	"simiente-santa/backend/internal/platform/paginate"
 	"simiente-santa/backend/internal/platform/testutil"
 )
@@ -1039,5 +1040,99 @@ func TestIntegrationMarkDuplicatePairEsAtomico(t *testing.T) {
 	}
 	if primeraFinal.DuplicadoDeID == nil || *primeraFinal.DuplicadoDeID != creada.ID {
 		t.Errorf("la pareja del candidato cambió: %+v", primeraFinal.DuplicadoDeID)
+	}
+}
+
+// TestIntegrationResolveDuplicatePairEsAtomico fija M2/FR-022 contra PostgreSQL
+// real: la resolución del par escribe las DOS filas y su auditoría en UNA
+// transacción, así que no existe la ventana en la que la pareja queda resuelta
+// sin su registro (si la auditoría falla, ninguna de las dos cambia).
+//
+// La fila de auditoría de la prueba se escribe con el único código que la BD
+// admite sin actor (`user.create`, patrón de T914): las tablas `users`/`roles`
+// las truncan en paralelo las pruebas de su dominio y el objetivo `content` no
+// lleva FK. Se borra al terminar.
+func TestIntegrationResolveDuplicatePairEsAtomico(t *testing.T) {
+	repo := newMediosRepo(t)
+	pool := repo.pool
+	ctx := context.Background()
+
+	a, b := seedParDuplicado(t, pool, false)
+	actual, found, err := repo.GetMediaItemByID(ctx, a)
+	if err != nil || !found {
+		t.Fatalf("GetMediaItemByID(a) = (%v, %v)", found, err)
+	}
+	pareja, found, err := repo.GetMediaItemByID(ctx, b)
+	if err != nil || !found {
+		t.Fatalf("GetMediaItemByID(b) = (%v, %v)", found, err)
+	}
+
+	ahora := time.Now().UTC().Truncate(time.Millisecond)
+	resuelta := actual
+	resuelta.MarcaDuplicadoResueltaEn = &ahora
+	resuelta.Visibilidad = VisibilidadVisible
+	otra := pareja
+	otra.MarcaDuplicadoResueltaEn = &ahora
+	otra.Visibilidad = VisibilidadVisible
+
+	// La auditoría no se puede escribir (código válido sin etiqueta): la
+	// transacción se revierte entera y la pareja queda como estaba.
+	invalida := audit.Action{
+		Code:       audit.ActionMediaMarkResolve,
+		TargetKind: audit.TargetContent,
+		Result:     audit.ResultSuccess,
+	}
+	if _, err := repo.ResolveDuplicatePair(ctx, resuelta, otra, invalida); err == nil {
+		t.Fatal("se esperaba el fallo del registro de auditoría")
+	}
+	for _, id := range []uuid.UUID{a, b} {
+		ficha, _, err := repo.GetMediaItemByID(ctx, id)
+		if err != nil {
+			t.Fatalf("GetMediaItemByID(%s): %v", id, err)
+		}
+		if ficha.MarcaDuplicadoResueltaEn != nil {
+			t.Errorf("la pareja quedó resuelta sin su registro (%s): %+v", id, ficha.MarcaDuplicadoResueltaEn)
+		}
+		if ficha.Visibilidad != VisibilidadVisible {
+			t.Errorf("la visibilidad cambió sin registro (%s): %q", id, ficha.Visibilidad)
+		}
+	}
+
+	// Con una acción escribible, las dos filas y la fila de auditoría se aplican
+	// juntas.
+	etiqueta := "Medios · Par atómico " + uuid.NewString()
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(),
+			`DELETE FROM admin_actions WHERE target_label = $1`, etiqueta); err != nil {
+			t.Logf("no se pudo limpiar la fila de auditoría de la prueba: %v", err)
+		}
+	})
+	accion := audit.Action{
+		Code:        audit.ActionUserCreate,
+		TargetKind:  audit.TargetContent,
+		TargetLabel: etiqueta,
+		Result:      audit.ResultSuccess,
+	}
+	guardada, err := repo.ResolveDuplicatePair(ctx, resuelta, otra, accion)
+	if err != nil {
+		t.Fatalf("ResolveDuplicatePair: %v", err)
+	}
+	if guardada.MarcaDuplicadoResueltaEn == nil {
+		t.Errorf("la ficha que pidió la operación debe quedar resuelta: %+v", guardada)
+	}
+	for _, id := range []uuid.UUID{a, b} {
+		ficha, _, err := repo.GetMediaItemByID(ctx, id)
+		if err != nil {
+			t.Fatalf("GetMediaItemByID(%s): %v", id, err)
+		}
+		if ficha.MarcaDuplicadoResueltaEn == nil {
+			t.Errorf("las dos fichas del par quedan resueltas (%s): %+v", id, ficha)
+		}
+		if ficha.DuplicadoDeID == nil {
+			t.Errorf("el puntero recíproco se conserva (%s)", id)
+		}
+	}
+	if got := countAdminActionsByLabel(t, pool, etiqueta); got != 1 {
+		t.Errorf("filas de auditoría = %d, se esperaba exactamente una", got)
 	}
 }

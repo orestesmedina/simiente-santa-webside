@@ -190,6 +190,34 @@ func (r *repository) UpdateMediaItem(ctx context.Context, episodio Episodio, act
 	return result, nil
 }
 
+// ResolveDuplicatePair resuelve el eje de duplicados de las DOS fichas del par en
+// UNA sola transacción (M2/FR-022/P9-19): la marca resuelta y la visibilidad
+// elegida de las dos, más su fila de auditoría, o nada. Es la misma mecánica que
+// la unión (`RepointMediaItemSources`), de modo que no existe la ventana en la
+// que la pareja quede cambiada sin su registro: la operación reporta éxito solo
+// cuando su fila se aplicó. Devuelve la fila de la ficha que pidió la operación.
+func (r *repository) ResolveDuplicatePair(ctx context.Context, actualizada, pareja Episodio, actions ...audit.Action) (Episodio, error) {
+	var result Episodio
+	err := r.withTx(ctx, func(tx *repository) error {
+		if _, err := tx.q.UpdateMediaItem(ctx, updateMediaItemParams(pareja)); err != nil {
+			return wrap(err, "update media item", messageEpisodioNoExiste, "")
+		}
+		row, err := tx.q.UpdateMediaItem(ctx, updateMediaItemParams(actualizada))
+		if err != nil {
+			return wrap(err, "update media item", messageEpisodioNoExiste, "")
+		}
+		if err := insertActions(ctx, tx, actions); err != nil {
+			return err
+		}
+		result = mapEpisodio(row)
+		return nil
+	})
+	if err != nil {
+		return Episodio{}, err
+	}
+	return result, nil
+}
+
 // UpdateMediaItemCoverIfNull escribe la carátula copiada al sitio **solo si la
 // ficha todavía no tiene** (P9-9/default #10: la carátula es una instantánea y la
 // búsqueda no la refresca) y devuelve el segundo valor `false` cuando otra

@@ -669,9 +669,11 @@ func ordenSeccion(episodios []Episodio) {
 }
 
 // aplicarAuditoria imita la transacción: o la mutación y sus filas de auditoría,
-// o nada (FR-022, fail-closed).
+// o nada (FR-022, fail-closed). El fallo forzado solo aplica cuando la mutación
+// **tiene** filas que registrar: una escritura sin auditoría no falla (como en la
+// transacción real, donde `insertActions` sin filas es un no-op).
 func (f *fakeRepository) aplicarAuditoria(actions []audit.Action) error {
-	if f.auditFalla {
+	if f.auditFalla && len(actions) > 0 {
 		return apperr.Internal(errors.New("no se pudo registrar la acción administrativa"))
 	}
 	f.committed = append(f.committed, actions...)
@@ -904,6 +906,36 @@ func (f *fakeRepository) altaConFuente(episodio Episodio, fuente FuenteEpisodio)
 	f.fuentes = append(f.fuentes, fuente)
 	f.sourcesInserted = append(f.sourcesInserted, fuente)
 	return episodio, fuente, true, nil
+}
+
+// ResolveDuplicatePair imita la transacción de la resolución del par (M2): las
+// dos filas y la auditoría, o nada —si la auditoría falla no se aplica ninguna—.
+func (f *fakeRepository) ResolveDuplicatePair(_ context.Context, actualizada, pareja Episodio, actions ...audit.Action) (Episodio, error) {
+	if f.mutationErr != nil {
+		return Episodio{}, f.mutationErr
+	}
+	ai, ok := f.buscar(actualizada.ID)
+	if !ok {
+		return Episodio{}, apperr.NotFound(messageEpisodioNoExiste)
+	}
+	pi, ok := f.buscar(pareja.ID)
+	if !ok {
+		return Episodio{}, apperr.NotFound(messageEpisodioNoExiste)
+	}
+	if err := f.aplicarAuditoria(actions); err != nil {
+		return Episodio{}, err
+	}
+	actualizada.CreadoEn = f.episodios[ai].CreadoEn
+	actualizada.ActualizadoEn = time.Now()
+	f.episodios[ai] = actualizada
+	f.updates = append(f.updates, actualizada.ID)
+	if pareja.ID != actualizada.ID {
+		pareja.CreadoEn = f.episodios[pi].CreadoEn
+		pareja.ActualizadoEn = time.Now()
+		f.episodios[pi] = pareja
+		f.updates = append(f.updates, pareja.ID)
+	}
+	return actualizada, nil
 }
 
 // UpdateMediaItemCoverIfNull imita la escritura condicional del repository real:

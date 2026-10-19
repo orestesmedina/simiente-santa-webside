@@ -121,6 +121,9 @@ type Repository interface {
 	// repunta las fuentes de la absorbida, escribe las dos filas y registra la
 	// auditoría (P9-10/FR-019).
 	RepointMediaItemSources(ctx context.Context, resultante, absorbida Episodio, actions ...audit.Action) ([]FuenteEpisodio, error)
+	// ResolveDuplicatePair escribe las dos filas del par y su auditoría en UNA
+	// transacción (M2/FR-022).
+	ResolveDuplicatePair(ctx context.Context, actualizada, pareja Episodio, actions ...audit.Action) (Episodio, error)
 	// UpdateMediaItemCoverIfNull copia la carátula al sitio solo si la ficha
 	// todavía no tiene (P9-9/default #10) y dice si la escribió.
 	UpdateMediaItemCoverIfNull(ctx context.Context, id uuid.UUID, archivo string) (Episodio, bool, error)

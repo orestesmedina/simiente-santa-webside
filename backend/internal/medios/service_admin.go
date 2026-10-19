@@ -424,8 +424,10 @@ func (s *service) ResolveMark(ctx context.Context, actorID, id uuid.UUID, mark M
 
 // resolverParDuplicado resuelve el eje de duplicados de las dos fichas del par
 // (P9-19): la marca queda cerrada, la visibilidad elegida se aplica a las dos y
-// el puntero recíproco se conserva. El registro de auditoría viaja con la ficha
-// que pidió la operación.
+// el puntero recíproco se conserva. Las **dos** filas y la auditoría van en UNA
+// sola transacción (M2/FR-022): o la pareja queda resuelta con su registro, o no
+// cambia nada —nunca una pareja cambiada sin auditoría—. El registro cita la
+// ficha que pidió la operación.
 func (s *service) resolverParDuplicado(
 	ctx context.Context,
 	actorID uuid.UUID,
@@ -457,22 +459,18 @@ func (s *service) resolverParDuplicado(
 	}
 	otra.Visibilidad = visibility
 
-	// La pareja primero y la ficha que pidió la operación después (con su fila de
-	// auditoría): la operación reporta éxito solo cuando su registro se aplicó.
-	if otra != pareja {
-		if _, err := s.repository.UpdateMediaItem(ctx, otra); err != nil {
-			return MedioAdmin{}, fmt.Errorf("resolver el par del posible duplicado: %w", err)
-		}
+	if actualizada == current && otra == pareja {
+		// Marca ya resuelta y misma visibilidad en las dos: repetir no es una
+		// operación (no se reescribe ni se vuelve a registrar).
+		return s.filaAdmin(ctx, current)
 	}
-	if actualizada != current {
-		saved, err := s.repository.UpdateMediaItem(ctx, actualizada,
-			contenidoAction(actorID, audit.ActionMediaMarkResolve, label))
-		if err != nil {
-			return MedioAdmin{}, fmt.Errorf("resolver la marca del episodio: %w", err)
-		}
-		return s.filaAdmin(ctx, saved)
+
+	saved, err := s.repository.ResolveDuplicatePair(ctx, actualizada, otra,
+		contenidoAction(actorID, audit.ActionMediaMarkResolve, label))
+	if err != nil {
+		return MedioAdmin{}, fmt.Errorf("resolver el par del posible duplicado: %w", err)
 	}
-	return s.filaAdmin(ctx, current)
+	return s.filaAdmin(ctx, saved)
 }
 
 // resolverMarcaDisponibilidad resuelve la marca del eje de disponibilidad: fija

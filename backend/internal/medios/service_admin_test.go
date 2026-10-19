@@ -758,6 +758,33 @@ func TestResolveMark(t *testing.T) {
 		}
 	})
 
+	t.Run("si la auditoría falla no se resuelve ninguna de las dos", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(
+			Episodio{Titulo: "Video", PublicadoEn: base, Origen: OrigenVideo},
+			Episodio{Titulo: "Audio", PublicadoEn: base, Origen: OrigenAudio, Visibilidad: VisibilidadOculta},
+		)
+		video, audio := repo.episodios[0].ID, repo.episodios[1].ID
+		repo.episodios[0].DuplicadoDeID = ptrUUID(audio)
+		repo.episodios[1].DuplicadoDeID = ptrUUID(video)
+		repo.auditFalla = true
+		service := serviceDePrueba(repo)
+
+		if _, err := service.ResolveMark(context.Background(), actor, video, MarcaPosibleDuplicado, VisibilidadVisible); err == nil {
+			t.Fatal("se esperaba el fallo del registro")
+		}
+		// La pareja entera sigue como estaba: ni la ficha que pidió la operación
+		// ni su par quedan resueltas (FR-022/M2).
+		for _, ficha := range repo.episodios {
+			if ficha.MarcaDuplicadoResueltaEn != nil {
+				t.Errorf("la pareja no puede quedar resuelta sin su registro: %+v", ficha)
+			}
+		}
+		if repo.episodios[1].Visibilidad != VisibilidadOculta {
+			t.Errorf("la visibilidad de la pareja no se aplica sin auditoría: %q", repo.episodios[1].Visibilidad)
+		}
+	})
+
 	t.Run("mostrar de nuevo desde no disponible", func(t *testing.T) {
 		repo := newFakeRepository()
 		repo.seed(Episodio{
