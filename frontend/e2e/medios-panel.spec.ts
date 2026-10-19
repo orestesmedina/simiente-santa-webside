@@ -137,15 +137,25 @@ async function publicHtml(browser: Browser): Promise<string> {
   }
 }
 
-/** `true` si el bloque de la portada contiene el texto indicado. */
+/** `true` si el bloque de la portada contiene el texto indicado (espera a que cargue). */
 async function portadaContiene(browser: Browser, text: string): Promise<boolean> {
   const visitor = await visitorPage(browser);
   try {
     await visitor.page.goto('/');
-    await expect(visitor.page.locator('#proximamente')).toBeVisible();
-    return (await visitor.page.locator('#medios').count()) > 0
-      ? (await visitor.page.locator('#medios').getByText(text).count()) > 0
-      : false;
+    // El bloque se dibuja desde el principio (esqueleto con `#medios`), así que
+    // hay que esperar a que resuelva su consulta antes de buscar el texto.
+    await visitor.page.locator('#medios').waitFor({ state: 'attached' });
+    const texto = visitor.page.locator('#medios').getByText(text);
+    const bloqueVacio = (await visitor.page.locator('#medios').count()) === 0;
+    if (bloqueVacio) {
+      return false;
+    }
+    try {
+      await expect(texto.first()).toBeVisible({ timeout: 5_000 });
+      return true;
+    } catch {
+      return false;
+    }
   } finally {
     await visitor.close();
   }
