@@ -10,9 +10,11 @@ import { DonacionesPage } from '../features/donaciones/pages/DonacionesPage';
 import { InformationPage } from '../features/informacion/pages/InformationPage';
 import { InicioPage } from '../features/panel/pages/InicioPage';
 import { MinistriesPage } from '../features/ministerios/pages/MinistriesPage';
+import { MediosPage as PanelMediosPage } from '../features/medios/pages/MediosPage';
 import { PublicLayout } from '../features/publico/components/PublicLayout';
 import { EventsPage as PublicEventsPage } from '../features/publico/eventos/EventsPage';
 import { MinisteriosPage as PublicMinisteriosPage } from '../features/publico/ministerios/MinisteriosPage';
+import { MediosPage as PublicMediosPage } from '../features/publico/medios/MediosPage';
 import { OfrendasPage as PublicOfrendasPage } from '../features/publico/ofrendas/OfrendasPage';
 import { HomePage } from '../features/publico/pages/HomePage';
 import { RolesPage } from '../features/roles/pages/RolesPage';
@@ -24,6 +26,7 @@ import {
   CATEGORIAS,
   DONACIONES,
   EVENTOS,
+  MEDIOS,
   MINISTERIOS,
   PORTADA,
 } from '../lib/permissions';
@@ -91,6 +94,10 @@ const appRoutes: RouteObject[] = [
       // entrada de navegación (T727). Sin nada publicado redirige a la portada
       // desde la propia página (Q9/P7-21), no desde aquí.
       { path: 'ofrendas', element: <PublicOfrendasPage /> },
+      // «Medios» es una **ruta real** (⟲ D-1 de F9) y una sola entrada de
+      // navegación (T934). Sin nada publicable redirige a la portada desde la
+      // propia página (Q10/P9-16), no desde aquí.
+      { path: 'medios', element: <PublicMediosPage /> },
     ],
   },
   {
@@ -161,6 +168,12 @@ const appRoutes: RouteObject[] = [
                 // sin permiso nuevo y sin renombrarlo.
                 element: <RequirePermission code={DONACIONES} />,
                 children: [{ path: 'donaciones', element: <DonacionesPage /> }],
+              },
+              {
+                // F9 usa el permiso **ya sembrado** por F2 (P9-15/FR-021): sin
+                // permiso nuevo, sin renombrarlo (Q13) y con el catálogo en 10.
+                element: <RequirePermission code={MEDIOS} />,
+                children: [{ path: 'medios', element: <PanelMediosPage /> }],
               },
             ],
           },

@@ -16,6 +16,7 @@ import (
 	"simiente-santa/backend/internal/agenda"
 	"simiente-santa/backend/internal/donaciones"
 	"simiente-santa/backend/internal/media"
+	"simiente-santa/backend/internal/medios"
 	"simiente-santa/backend/internal/ministerios"
 	"simiente-santa/backend/internal/platform/config"
 	"simiente-santa/backend/internal/platform/database"
@@ -185,6 +186,33 @@ func main() {
 		Logger:  appLog,
 	})
 
+	// Dominio medios (F9): la sección pública de prédicas y podcasts, su bloque en
+	// la portada y la gestión desde el panel. Comparte el almacén de archivos de
+	// F3/F4/F6 (las carátulas se copian al sitio y se sirven como
+	// `/api/v1/media/<file>`), sale a internet **solo** por la fábrica única de
+	// cliente HTTP del dominio (P9-20) y usa la zona del lugar (APP_TZ) para el
+	// «mismo día» de la unión automática (FR-013) y el corte de la ventana de los
+	// feeds (FR-017). El permiso `medios` ya está sembrado por 000002: F9 no añade
+	// permisos y el catálogo sigue en 10 (P9-15).
+	mediosRed, err := medios.NewRedSaliente(portadaStore, cfg.UploadMaxBytes)
+	if err != nil {
+		appLog.Error("crear la red saliente de medios", "error", err)
+		os.Exit(1)
+	}
+	mediosSvc := medios.NewService(medios.ServiceDeps{
+		Repository:         medios.NewRepository(pool),
+		FeedSource:         mediosRed.Feeds,
+		AvailabilityProber: mediosRed.Probador,
+		CoverFetcher:       mediosRed.Caratulas,
+		Store:              portadaStore,
+		Location:           cfg.TimeZone,
+		Logger:             appLog,
+	})
+	mediosHandler := medios.NewHandler(medios.HandlerDeps{
+		Service: mediosSvc,
+		Logger:  appLog,
+	})
+
 	handler := usuarios.NewHandler(usuarios.HandlerDeps{
 		Access:     authSvc,
 		Setup:      initSvc,
@@ -277,6 +305,18 @@ func main() {
 				Logger:     appLog,
 			},
 		},
+		mediosHandler: mediosHandler,
+		mediosAdmin: medios.AdminDeps{
+			Deps: middleware.AdminDeps{
+				Sessions: sessions,
+				Resolver: authSvc,
+				// El Recorder del grupo es el service de F9 (T922): registra las
+				// denegaciones de `media.*` (y los rechazos del módulo).
+				Recorder:   mediosSvc,
+				CSRFSecret: cfg.SessionSecret,
+				Logger:     appLog,
+			},
+		},
 	}
 
 	srv := httpserver.New(newMux(deps, appLog),
@@ -308,13 +348,17 @@ type apiDeps struct {
 	ministeriosAdmin   ministerios.AdminDeps
 	donacionesHandler  *donaciones.Handler
 	donacionesAdmin    donaciones.AdminDeps
+	mediosHandler      *medios.Handler
+	mediosAdmin        medios.AdminDeps
 }
 
 // newMux compone el enrutador con las rutas de status y las de los dominios
 // usuarios (acceso y grupo de panel), portada (superficie pública y panel), media
 // (descarga pública de archivos), agenda («lo que viene» y los tres grupos de
-// panel de F4) y ministerios (sección pública, bloque de la portada y grupo de
-// panel de F6). Recibe las dependencias ya construidas.
+// panel de F4), ministerios (sección pública, bloque de la portada y grupo de
+// panel de F6), donaciones (sección pública, bloque de la portada y grupo de panel
+// de F7) y medios (sección pública de F9, su bloque de la portada y el grupo de
+// panel con el permiso `medios`). Recibe las dependencias ya construidas.
 func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	root := httpserver.NewMuxRegistrar(mux)
@@ -330,5 +374,7 @@ func newMux(deps apiDeps, appLog *slog.Logger) *http.ServeMux {
 	ministerios.RegisterAdmin(root, deps.ministeriosHandler, deps.ministeriosAdmin)
 	donaciones.RegisterPublic(root, deps.donacionesHandler)
 	donaciones.RegisterAdmin(root, deps.donacionesHandler, deps.donacionesAdmin)
+	medios.RegisterPublic(root, deps.mediosHandler)
+	medios.RegisterAdmin(root, deps.mediosHandler, deps.mediosAdmin)
 	return mux
 }

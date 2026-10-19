@@ -39,6 +39,22 @@
 # los 8 códigos `donation.*` de R7-10). F7 **no** toca `GET /api/v1/media/{fileName}`
 # (Q6/FR-020: sin imágenes). El registro de `error.code` **no** cambia.
 #
+# Versión 0.9.0 (F9 "Medios: prédicas y podcasts", 2026-10-17): funde
+# aditivamente el delta de F9 (specs/009-medios-predicas-y-podcasts/contracts/
+# openapi.yaml, P9-2/P9-19) sobre 0.8.0. Añade 7 operaciones —dos públicas
+# (`GET /api/v1/medios`, sección paginada con «Cargar más» —`limit` por defecto
+# 12, tope 50—, y `GET /api/v1/portada/medios`, bloque con tope 5 firme en el
+# servidor) y cinco de panel bajo `/api/v1/admin/medios` (listado, «Buscar
+# episodios nuevos», `PATCH {id}`, unir y resolver marca; permiso `medios`, ya
+# sembrado por 000002: F9 **no** crea permisos nuevos y el catálogo sigue en
+# 10)—, sus esquemas (`MedioPublico`, `MedioAdmin`, `MedioPatch`, `UnirInput`,
+# `ResolverMarcaInput`, `ResumenBusqueda`, `SyncRunAdmin`, `Visibilidad`,
+# `MarcaRevision`, `MarcaDisponibilidad`, `ResultadoDisponibilidad`, `EstadoFeed`
+# …) y el enum de `AdminActionItem.action` (crece con los 6 códigos `media.*` de
+# P9-14). F9 **solo** crece en prosa `GET /api/v1/media/{fileName}` (la rama
+# aditiva de `IsFilePublished` sirve la carátula copiada de una ficha
+# publicable, R9-8). El registro de `error.code` **no** cambia.
+#
 # Formato uniforme de respuestas (FR-012/FR-013, D13 del plan de F1):
 #   - 2xx  → sobre de éxito: el DTO documentado de la operación
 #            (objeto JSON, campos camelCase, additionalProperties: false).
@@ -49,7 +65,7 @@
 openapi: 3.1.0
 info:
   title: API — Iglesia Simiente Santa
-  version: 0.8.0
+  version: 0.9.0
   description: |
     API REST del sitio web de la Iglesia Simiente Santa.
 
@@ -85,6 +101,40 @@ info:
     **ficha del encargado** (nombre y un único medio de contacto opcional) que
     **nace oculta por defecto** (`leaderVisible: false`, decisión del humano del
     2026-10-13) y solo se publica si el equipo enciende el interruptor.
+
+    En F7 (ofrendas y diezmos) añade la **sección pública «Ofrendas y diezmos»**
+    (`GET /api/v1/ofrendas?lang=es|en`), su **bloque en la portada**
+    (`GET /api/v1/portada/ofrendas?lang=es|en`, hasta **5** ítems, oculto por
+    completo sin métodos publicados) y la **gestión** desde el panel
+    (`/api/v1/admin/donaciones`, permiso `donaciones` **ya existente**: el
+    catálogo de F2 sigue en 10). En F9 (medios: prédicas y podcasts) añade la
+    **sección pública «Medios»** (`GET /api/v1/medios?lang=&limit=&offset=`,
+    paginada con «Cargar más»), su **bloque en la portada**
+    (`GET /api/v1/portada/medios?lang=es|en`, hasta **5** ítems, oculto sin
+    fichas publicables) y la **gestión** desde el panel
+    (`/api/v1/admin/medios`, permiso `medios` **ya existente**): importación a
+    demanda desde los dos feeds, ocultar/mostrar, descripción corta, unir
+    duplicados y resolver marcas.
+
+    ## Medios: prédicas y podcasts (F9)
+
+    Cada ficha es **una entrada por sermón** (`MedioPublico`) con los enlaces
+    externos que la importación unió —`videoUrl` (YouTube) y/o `audioUrl`
+    (Spotify for Creators/Anchor)—; el sitio **no reproduce ni carga nada de
+    terceros**: la carátula se **copia al importar** y se sirve como
+    `/api/v1/media/<file>`. El estado es **`visibility`** (`visible`/`hidden`;
+    F9 **no** usa `publicationState`) y las **marcas de revisión viven en dos
+    ejes independientes** (`possible_duplicate` bloquea la publicación hasta
+    resolverse —FR-009/SC-002—; `unavailable`/`missing_from_feed` solo avisan,
+    y «ya no aparece en el feed» **sigue visible**, FR-017). La importación es
+    **a demanda** (`POST …/buscar-nuevos`, sin cron ni cola, con presupuesto de
+    90 s) y **nunca pisa** la visibilidad, la descripción ajustada ni las
+    uniones del equipo, salvo la ocultación por indisponibilidad **confirmada**
+    (404/410). La clave `items` de `PortadaMedios` se **omite** cuando no hay
+    fichas publicables y la ruta SPA `/medios` **redirige** a la portada
+    (decisión del frontend: la operación sigue siendo `200`). `buscar-nuevos`
+    responde `200` con el resumen **también cuando un feed falló** (no es un
+    error: FR-016) y puede tardar unos segundos.
 
     ## Formato uniforme de respuestas (FR-012)
 
@@ -122,7 +172,9 @@ info:
     códigos (`invalid` con `details` por campo, `unauthenticated`, `forbidden`,
     `not_found`, `conflict` —duplicado exacto— e `internal`; un **aviso** como el
     enlace de WhatsApp compartido `whatsappUrlShared` **no** es un error y no se
-    bloquea).
+    bloquea). F9 tampoco: emite `invalid`, `unauthenticated`, `forbidden`,
+    `not_found`, `conflict` e `internal`, todos ya existentes; un feed que no
+    responde **no** es un error (la búsqueda responde `200` con el resumen).
 
     ## Privacidad de la ficha del encargado (F6)
 
@@ -200,6 +252,12 @@ tags:
     description: "Bloque de ofrendas y diezmos de la portada (visitante; hasta 5 ítems, oculto sin métodos publicados)"
   - name: donaciones-admin
     description: Gestión de ofrendas y diezmos desde el panel (permiso `donaciones` de F2)
+  - name: medios
+    description: "Sección pública «Medios» (visitante, sin autenticación; solo fichas publicables, lista con «Cargar más»)"
+  - name: portada-medios
+    description: "Bloque de medios de la portada (visitante; hasta 5 ítems, oculto sin fichas publicables)"
+  - name: medios-admin
+    description: "Gestión de medios desde el panel (permiso `medios` de F2): buscar nuevos, ocultar/mostrar, unir, descripción corta y marcas"
 security:
   - sessionCookie: []
 paths:
@@ -899,16 +957,21 @@ paths:
       summary: Descarga pública de una imagen subida desde el panel
       description: |
         Sirve el archivo de imagen (logo o imagen de portada de F3, la imagen de
-        un evento o una actividad de F4, o la imagen de un ministerio de F6) cuyo
+        un evento o una actividad de F4, la imagen de un ministerio de F6, o la
+        carátula copiada de una ficha de medios de F9) cuyo
         nombre generó el servidor en la
         subida (`img_<uuid>.<ext>`, research R3-8). **Política de publicación
-        (FR-013/SC-002, analyze C4; R4-6 de F4 y R6-7 de F6)**: solo se sirven
+        (FR-013/SC-002, analyze C4; R4-6 de F4, R6-7 de F6 y R9-8 de F9)**: solo se sirven
         archivos **referenciados por contenido publicado y visible hoy** — la
         identidad `published` de la portada, un evento/actividad `published`
         **con una fecha próxima** (la misma regla del servidor que
-        `GET /api/v1/proximamente`, R4-2), o un ministerio `published` (F6: el
+        `GET /api/v1/proximamente`, R4-2), un ministerio `published` (F6: el
         ministerio en borrador **no** sirve su imagen; el archivo no se borra y
-        la misma URL vuelve a responder `200` al publicarlo) —. Un archivo que no
+        la misma URL vuelve a responder `200` al publicarlo) o la **carátula
+        copiada** de una ficha de medios **publicable** (F9: la ficha oculta,
+        absorbida por una unión o con un «posible duplicado» sin resolver **no**
+        sirve su carátula; una ficha con la marca «ya no aparece en el feed»
+        **sí**, porque sigue visible — FR-017/FR-009/SC-002 —) —. Un archivo que no
         esté referenciado
         por contenido publicado y próximo (elemento retirado a borrador, elemento
         cuya fecha ya pasó, subida huérfana o inexistente) responde `404
@@ -2978,6 +3041,465 @@ paths:
         "503":
           $ref: "#/components/responses/DatabaseUnavailable"
 
+  /api/v1/medios:
+    get:
+      tags: [medios]
+      operationId: getMedios
+      summary: "Medios publicados (sección pública «Medios», lista con «Cargar más»)"
+      description: |
+        Devuelve una tanda de fichas **publicables** de prédicas y podcasts
+        (FR-002/FR-006): del más reciente al más antiguo por `publishedAt`
+        (interpretado en `America/Costa_Rica`, decisión 17 de F4) con desempate
+        por orden de importación (`createdAt`, `id`). Paginación por
+        `limit`/`offset` (§8.1.3): **`limit` por defecto 12** (la tanda del
+        default revisable #5; tope 50) y `total` para saber cuántas quedan. El
+        botón «Cargar más» del cliente pide `offset=<ya mostradas>` y suma la
+        tanda al listado (Q11: lista simple, sin filtros, sin búsqueda ni
+        ordenación).
+
+        **Ficha (FR-003)**: `title` (el del feed, no editable), `description`
+        (la descripción corta, ya resuelta a `lang` con fallback `en → es`),
+        `publishedAt`, `coverUrl` (carátula **copiada al sitio**: ruta relativa
+        `/api/v1/media/<file>`; si la ficha no tiene carátula, la clave se
+        **omite** y el cliente pinta el marcador neutro — default revisable #4),
+        `videoUrl` (enlace a YouTube) **solo si hay video** y `audioUrl`
+        (enlace al episodio en Spotify for Creators/Anchor) **solo si hay
+        audio** (Q18: una entrada por sermón con los enlaces que la importación
+        unió). Las claves vacías se **omiten** (SC-010: sin huecos) y nunca son
+        `null`.
+
+        **Publicables (FR-009/SC-002, research R9-7)**: solo fichas con
+        `visibility: visible`, no absorbidas por una unión y **sin marca
+        `possible_duplicate` sin resolver**. Una ficha con la marca
+        «ya no aparece en el feed» **sí** se publica (FR-017: sigue visible);
+        una ficha oculta —por el equipo o por una indisponibilidad
+        confirmada— jamás aparece (SC-014), ni sus datos viajan por ninguna
+        vía.
+
+        **Sin contenido de terceros (FR-004/FR-005)**: esta operación no
+        arrastra nada de YouTube ni de Spotify; los enlaces son texto que el
+        visitante activa y que se abre en pestaña nueva anunciada (presentación
+        del cliente, FR-030). `title`, `publishedAt`, `coverUrl`, `videoUrl` y
+        `audioUrl` **no cambian con el idioma** (FR-026).
+
+        **Sin nada publicable (FR-008/SC-016)**: respuesta `200` con `items`
+        **vacío** y `total: 0`; la navegación oculta la entrada y la ruta SPA
+        `/medios` **redirige a la portada** (decisión del frontend, P7-21: este
+        contrato no cambia — un `3xx` o `404` rompería el sobre —). Con error
+        de red o de servidor el cliente muestra su estado de error y **no**
+        redirige. `Cache-Control: no-store`.
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8).
+          schema:
+            type: string
+            enum: [es, en]
+            default: es
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: "Tanda de fichas publicables resuelta a `lang` (0…`limit` elementos; `total` = publicables)."
+          headers:
+            Cache-Control:
+              description: Siempre `no-store` (los cambios del panel se ven en la primera carga posterior).
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediosPublicos"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/portada/medios:
+    get:
+      tags: [portada-medios]
+      operationId: getPortadaMedios
+      summary: "Bloque de medios de la portada: hasta 5 fichas publicables"
+      description: |
+        Extracto para el bloque de la portada (US6/FR-027/SC-015, Q12): devuelve
+        **hasta 5** fichas publicables —tope **firme del servidor** (FR-027):
+        sin parámetro de límite ni paginación— en el **mismo orden** que la
+        sección y con el **mismo esquema de ítem** `MedioPublico` ("el bloque es
+        un extracto de los mismos episodios, no un modelo nuevo"). El botón
+        «Ver todo» lleva a `/medios` (presentación del cliente) y los enlaces
+        de las fichas se comportan igual que en la sección (pestaña nueva
+        anunciada, FR-004/FR-005).
+
+        Con menos de 5 publicables se devuelven exactos los que hay (sin huecos
+        ni marcadores, SC-015); con más, los 5 primeros del orden de la
+        sección. Cuando **no hay ninguna ficha publicable** la respuesta viene
+        **sin `items`** (clave omitida, equivalente a vacía y nunca `null`) y la
+        portada **no renderiza el bloque en absoluto** (patrón de los bloques de
+        F6/F7: sin mensaje de sección vacía). `Cache-Control: no-store`.
+      security: []
+      parameters:
+        - name: lang
+          in: query
+          required: false
+          description: Idioma de resolución de contenidos. Por defecto `es` (idioma base, Decisión 8).
+          schema:
+            type: string
+            enum: [es, en]
+            default: es
+      responses:
+        "200":
+          description: "Extracto de la portada resuelto a `lang`. Sin fichas publicables la respuesta viene sin `items`: la portada no pinta el bloque."
+          headers:
+            Cache-Control:
+              description: Siempre `no-store`.
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortadaMedios"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/medios:
+    get:
+      tags: [medios-admin]
+      operationId: listMediosAdmin
+      summary: "Listado del módulo Medios para el panel (incluye ocultas y marcas)"
+      description: |
+        Listado paginado **completo** del módulo (exige el permiso `medios`):
+        por defecto **sin** las fichas absorbidas por una unión (`mergedIntoId`
+        distinto de nulo), con filtros opcionales por `visibility` y por
+        `reviewMark` (para la cola de revisión: solo marcas de esa clase
+        **pendientes** de resolver). Orden: el **mismo que ve el
+        visitante** (FR-006). Cada fila (`MedioAdmin`) trae los datos del feed
+        no editables, la descripción corta en **ambos idiomas**, la visibilidad,
+        las marcas **por eje** con su estado (puede haber dos: par de duplicados
+        y disponibilidad — modelo de la fase 5 —), el resultado de
+        la última comprobación de disponibilidad, el **origen** (`origin` y
+        `createdAt`: FR-019 pide «el origen de cada entrada» en la lista) y las
+        `sources` (procedencia:
+        proveedor, identificador externo, título del feed y enlace), que es lo
+        que el equipo necesita para decidir una unión (US3).
+
+        La respuesta incluye `lastSync` (el registro de la **última búsqueda**,
+        FR-018) cuando ya se ejecutó alguna: quién la hizo, cuándo, los
+        conteos y qué feeds fallaron.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+        - name: visibility
+          in: query
+          required: false
+          description: "Filtra por visibilidad (FR-015). Sin valor: todas."
+          schema:
+            $ref: "#/components/schemas/Visibilidad"
+        - name: reviewMark
+          in: query
+          required: false
+          description: |
+            Filtra por la marca de esa clase **pendiente** (sin resolver):
+            `possible_duplicate` = par abierto; `unavailable` /
+            `missing_from_feed` = marca de disponibilidad abierta (FR-014/FR-017).
+            Sin valor: todas.
+          schema:
+            $ref: "#/components/schemas/MarcaRevision"
+        - name: includeMerged
+          in: query
+          required: false
+          description: Incluye las fichas absorbidas por una unión (por defecto `false`).
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Listado paginado del módulo con el registro de la última búsqueda.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedioAdminList"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/medios/buscar-nuevos:
+    post:
+      tags: [medios-admin]
+      operationId: syncMedios
+      summary: "«Buscar episodios nuevos»: importa de los dos feeds lo que falte"
+      description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (cadena `AdminChain("medios")`, FR-021: el permiso ya
+        existía en el catálogo de F2 y el catálogo sigue en 10).
+
+        La **única** automatización de F9 (FR-011): en esta misma petición el
+        servidor (1) lee el feed Atom del canal de YouTube y el RSS del podcast,
+        (2) **agrega solo lo que falte** —lo que su identificador externo no
+        haya importado todavía; nunca duplica, nunca borra, nunca modifica lo
+        que el equipo decidió (FR-012/FR-015/SC-007)—, (3) **une** el video y
+        el audio del mismo sermón cuando la correspondencia es segura
+        (FR-013) o deja el par marcado «posible duplicado» cuando no lo es
+        (FR-014), (4) **comprueba la disponibilidad** solo de los enlaces que
+        salieron de la ventana de su feed y pertenecen a fichas **visibles**
+        (FR-017/R9-2), una por fuente: el resultado de la ficha es el **peor**
+        de sus fuentes comprobadas (un enlace confirmado muerto oculta la ficha
+        entera aunque el otro siga vivo) y «ya no aparece en el feed» solo se
+        marca cuando **todas** sus fuentes salieron de la ventana; aplica la
+        regla a
+        prueba de fallos —solo un 404/410 confirmado oculta y marca; cualquier
+        otra respuesta solo marca— y (5) devuelve el **resumen** (FR-018).
+
+        **Sin proceso programado, sin cron, sin worker, sin cola** (Out of
+        Scope): se ejecuta cuando el equipo pulsa el botón, cuantas veces
+        quiera. La operación **puede tardar unos segundos** (leer 2 feeds, copiar
+        hasta 30 carátulas y hasta 30 comprobaciones, con un presupuesto total
+        de 90 s): el cliente desactiva el botón mientras corre.
+
+        **Un feed que no responde NUNCA se interpreta como que hayan
+        desaparecido episodios** (FR-016): el resumen lo marca como `failed`,
+        se conserva y se importa lo del otro feed y **no se oculta ni se marca
+        nada** por esa causa. Al repetir la búsqueda cuando el feed responda se
+        recupera lo que faltaba.
+
+        **La sincronización no toca**: la visibilidad decidida por el equipo
+        (salvo la ocultación por indisponibilidad **confirmada** de FR-017 —
+        **precisión aprobada en la fase 5**: manda **aunque** el equipo hubiera
+        resuelto antes «mantener visible»; la ficha queda marcada y el equipo
+        puede «Mostrar de nuevo»—), la
+        descripción corta ajustada (`descriptionEdited`) ni las uniones
+        confirmadas. Una marca ya **resuelta** por el equipo no se reabre por la
+        misma causa (una confirmación **nueva** de indisponibilidad es causa
+        nueva y manda).
+
+        Auditoría: **una** fila `media.sync` por búsqueda (con un extracto del
+        resumen en `targetLabel`); el resumen completo se registra en
+        `media_sync_runs` y queda disponible como `lastSync` del listado.
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: |
+            Búsqueda completada (también cuando un feed falló o el presupuesto
+            de tiempo se agotó: el resumen lo dice y nada se perdió).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResumenBusqueda"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/medios/{id}:
+    patch:
+      tags: [medios-admin]
+      operationId: updateMedio
+      summary: "Ajusta la descripción corta y/o la visibilidad de una ficha"
+      description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (FR-021).
+
+        Única edición que F9 permite (FR-019/FR-020): **solo** `descriptionEs`,
+        `descriptionEn` (opcional; exige `descriptionEs`, FR-023/Decisión 8) y
+        `visibility` (`visible`/`hidden`, FR-015). El nombre, la fecha, la
+        carátula y los enlaces **no se editan** (vienen del feed) y cualquier
+        otra clave del cuerpo se rechaza con `400 invalid` (el DTO es
+        `additionalProperties: false`). Texto plano de hasta 300 caracteres por
+        idioma, que se guarda íntegro —con tildes, `ñ`, `¿¡` y emojis— y sin
+        interpretar (constitución §IV). La descripción puede quedar **vacía**
+        (decisión del humano del 2026-10-18): `""`/espacios en `descriptionEs`
+        significan «sin descripción» (se guarda como NULL, igual que
+        `descriptionEn`, patrón I6) y la ficha pública **omite** la línea
+        (SC-010).
+
+        La descripción guardada pasa a ser del equipo (`descriptionEdited`) y
+        **no se regenera ni se pisa** en búsquedas posteriores (FR-015/SC-007).
+        Si la ficha ya está publicada, los cambios guardados son visibles de
+        inmediato (FR-015: se publica al guardar).
+
+        Auditoría: `media.description.update` por los datos; `media.hide` /
+        `media.show` **solo** por cambios de `visibility`; un guardado que
+        cambia **ambos** deja **dos filas** (FR-022).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/MedioItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MedioPatch"
+      responses:
+        "200":
+          description: Ficha actualizada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedioAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/medios/{id}/unir:
+    post:
+      tags: [medios-admin]
+      operationId: mergeMedio
+      summary: "Une dos entradas del mismo sermón en una sola ficha (confirmación explícita en la interfaz)"
+      description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (FR-021).
+
+        Unión manual de un par marcado «posible duplicado» (FR-014/FR-019, US3
+        esc. 1): la ficha `otherId` **queda absorbida** por `{id}` —que
+        conserva nombre, carátula, fecha y descripción y adopta el enlace que
+        faltaba— y queda fuera de todas las consultas (`mergedIntoId`); sus
+        `sources` pasan a la ficha resultante (que queda con `origin: both`),
+        de modo que **ningún identificador externo se reimporta** jamás. Si solo
+        una de las dos tenía la descripción ajustada por el equipo, la ficha
+        resultante conserva **esa** (FR-015/SC-007). Las marcas «posible
+        duplicado» de ambas se **despejan** («la marca desaparece», US3 esc. 1):
+        se limpia el **eje de duplicados** (par y su resolución) de las dos; las
+        marcas de **disponibilidad no se tocan** (son un eje independiente) y la
+        resultante queda **visible** si lo era la base.
+
+        **Es definitiva** (default revisable #8: sin deshacer): la interfaz
+        pide **confirmación explícita** mostrando el resultado (nombre, carátula
+        y enlaces finales) antes de llamar. **No borra filas** (FR-019: la
+        acción del equipo es ocultar; la unión deja puntero) y no hay
+        operación de des-unión.
+
+        Auditoría: `media.merge` sobre la ficha resultante (la absorbida se
+        cita en `targetLabel`). `otherId` igual a `{id}` → `400 invalid`;
+        `otherId` inexistente o ya absorbida → `404 not_found`; estado
+        inconsistente por escritura simultánea → `409 conflict`.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/MedioItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnirInput"
+      responses:
+        "200":
+          description: "Ficha resultante de la unión (con los dos enlaces y sus fuentes)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedioAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
+  /api/v1/admin/medios/{id}/marcas/resolver:
+    post:
+      tags: [medios-admin]
+      operationId: resolveMedioMark
+      summary: "Resuelve la marca de revisión de una ficha (y decide su visibilidad)"
+      description: |
+        Exige el permiso `medios` verificado **en el servidor** junto con la
+        sesión y el CSRF (FR-021).
+
+        Resolución de marcas (FR-017/US3 esc. 2 y esc. 6): el equipo confirma
+        que revisó la marca **indicada en `mark`** —los dos ejes pueden estar
+        activos a la vez y se resuelven por separado— y decide con `visibility`
+        si la ficha
+        **vuelve a estar visible** o **permanece oculta**. Aplica a las tres
+        marcas: «posible duplicado» resuelto como *no son duplicados* → ambas
+        fichas quedan visibles y sin marca activa; «no disponible» → el equipo
+        decide si la reactiva («Mostrar de nuevo»); «ya no aparece en el feed» →
+        solo despeja el
+        aviso. La marca **se conserva como registro** con su fecha de resolución
+        (la lista puede mostrar «Resuelta») y **no se reabre por la misma
+        causa** en futuras búsquedas (default revisable #6). **Excepción
+        aprobada en la fase 5**: una comprobación que **confirma** que el enlace
+        ya no está vuelve a ocultar y a marcar («Mostrar de nuevo» lo advierte:
+        «si el enlace sigue sin funcionando, volverá a quedar oculto»).
+
+        Idempotente sobre una marca ya resuelta: responde `200` con la visibilidad
+        solicitada sin duplicar registros. Una ficha **sin la marca indicada**
+        responde `409 conflict` (no hay nada que resolver en ese eje).
+
+        Auditoría: `media.mark.resolve` (con la marca y la visibilidad elegidas
+        en `targetLabel`).
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/MedioItemId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolverMarcaInput"
+      responses:
+        "200":
+          description: Marca resuelta y visibilidad aplicada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MedioAdmin"
+        "400":
+          $ref: "#/components/responses/Invalid"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/DatabaseUnavailable"
+
 components:
   securitySchemes:
     sessionCookie:
@@ -3105,6 +3627,15 @@ components:
       schema:
         type: string
         enum: [intro, usage]
+
+    MedioItemId:
+      name: id
+      in: path
+      required: true
+      description: Identificador (UUID) de la ficha del episodio.
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     SystemStatus:
@@ -3708,6 +4239,12 @@ components:
             - donation.text.update
             - donation.text.publish
             - donation.text.unpublish
+            - media.sync
+            - media.description.update
+            - media.hide
+            - media.show
+            - media.merge
+            - media.mark.resolve
           description: |
             Qué se hizo (FR-023). La inicialización del administrador inicial
             (FR-007) se registra como `user.create` sin actor: cuenta como
@@ -3750,6 +4287,21 @@ components:
             `donation.text.publish`/`donation.text.unpublish` **solo** cambios de
             estado de un texto; datos y estado en el mismo guardado → una fila por
             operación. F7 **no** tiene imágenes (Q6/FR-020).
+
+            F9 (FR-022) añade los 6 códigos `media.*` (P9-14/R9-12 de plan):
+            `media.sync` registra **una** fila por cada «Buscar episodios nuevos»
+            completada (el resumen numérico vive en `media_sync_runs` y un
+            extracto —p. ej. «3 entraron, 1 unió, 2 marcaron»— viaja en
+            `targetLabel`); `media.description.update` el guardado de la
+            descripción corta (incluido el primer ajuste); `media.hide`/
+            `media.show` **solo** cambios de `visibility` (datos y visibilidad en
+            el mismo guardado → **dos** filas); `media.merge` una unión
+            confirmada (sobre la ficha resultante; la absorbida se cita en
+            `targetLabel`); `media.mark.resolve` la resolución de una marca (con
+            la marca concreta y la visibilidad elegida). F9 **no** tiene
+            `create`/`delete` (no hay alta manual ni borrado: FR-019) y el alta
+            importada por la búsqueda **nunca** emite `media.*` extra (solo
+            `media.sync`). `targetKind` **no** cambia (las fichas son `content`).
         targetKind:
           type: string
           enum: [user, role, content]
@@ -6154,6 +6706,482 @@ components:
           maxLength: 2000
         publicationState:
           $ref: "#/components/schemas/PublicationState"
+      additionalProperties: false
+
+    # ------------------------------------------------------------ comunes
+    Proveedor:
+      type: string
+      enum: [youtube, podcast]
+      description: |
+        Origen de importación (FR-010/R9-5): `youtube` = feed Atom del canal
+        (`@IglesiaSimienteSanta`) y `podcast` = RSS del podcast en Spotify for
+        Creators/Anchor («Servicio dominical Iglesia Simiente Santa»). Son los
+        **únicos** orígenes admitidos (Q17 anulada por Q15).
+    OrigenMedio:
+      type: string
+      enum: [video, audio, both]
+      description: |
+        Formatos que ofrece la ficha, derivados de sus fuentes (FR-003/Q18):
+        `video` = solo YouTube, `audio` = solo podcast, `both` = el sermón está
+        en los dos lados (una sola ficha con los dos enlaces). No es contenido
+        traducible (FR-026).
+    Visibilidad:
+      type: string
+      enum: [visible, hidden]
+      description: |
+        Estado de la ficha (Q5/FR-015; F9 **no** usa `publicationState`):
+        `visible`/`hidden`. La decide el equipo y la sincronización **nunca** lo
+        cambia, salvo la ocultación por indisponibilidad **confirmada**
+        (FR-017), que **manda también sobre una decisión previa del equipo**
+        (precisión aprobada en la fase 5: la ficha queda marcada y el equipo
+        puede «Mostrar de nuevo»). Lo importado entra `visible`, salvo la entrada
+        adicional de un
+        par dudoso (FR-014/default revisable #2), que entra `hidden`.
+    MarcaRevision:
+      type: string
+      enum: [possible_duplicate, unavailable, missing_from_feed]
+      description: |
+        Clase de marca de revisión (FR-014/FR-017). Las marcas viven en **dos
+        ejes independientes** (modelo de la fase 5): `possible_duplicate`
+        pertenece al eje de **duplicados** (`duplicateOfId` +
+        `duplicateMarkResolvedAt`; **bloquea la publicación** hasta que se
+        resuelve — FR-009/SC-002 —) y `unavailable` / `missing_from_feed` al de
+        **disponibilidad** (`availabilityMark` + `availabilityMarkResolvedAt`).
+        `unavailable` = la comprobación confirmó que el enlace ya no está y la
+        ficha quedó oculta (Q16); `missing_from_feed` = salió de la ventana de su
+        feed pero su enlace sigue disponible —o no pudo comprobarse—: **sigue
+        visible**, solo es un aviso (FR-017). Una fila puede tener **dos marcas
+        activas** a la vez; este enum identifica qué marca se resuelve o se
+        filtra.
+    MarcaDisponibilidad:
+      type: string
+      enum: [unavailable, missing_from_feed]
+      description: |
+        Marca del eje de disponibilidad que tiene la ficha (ausente si nunca se
+        marcó). Se resuelve por separado de la de duplicados; cambiar de clase
+        (`unavailable` ↔ `missing_from_feed`) **resetea** la resolución y la marca
+        nueva nace **pendiente**.
+    ResultadoDisponibilidad:
+      type: string
+      enum: [available, unavailable, inconclusive]
+      description: |
+        Resultado de la última comprobación de enlaces (FR-017/R9-2): solo
+        `unavailable` (404/410 confirmados) oculta la ficha; `inconclusive`
+        (timeout, 5xx, error de red, duda) **nunca** oculta nada (regla a
+        prueba de fallos). En una ficha con varias fuentes es el resultado
+        **agregado** de las comprobadas: el **peor** gana (regla de la fase 5).
+    EstadoFeed:
+      type: string
+      enum: [ok, failed]
+      description: |
+        Estado de cada feed en una búsqueda (FR-016): `failed` significa que no
+        respondió y que **nada** se ocultó ni se marcó por esa causa.
+
+    # ------------------------------------------------------------- público
+    MediosPublicos:
+      type: object
+      required: [lang, items, total, limit, offset]
+      description: |
+        Tanda de la sección «Medios» resuelta a `lang` (FR-002/FR-006). Solo
+        fichas publicables (FR-009/SC-002) en el orden de la sección.
+        `items` puede ser **vacío** (nada publicable: la ruta SPA redirige a la
+        portada —decisión del frontend— y este documento sigue siendo `200`).
+        Nunca es `null`.
+      properties:
+        lang:
+          type: string
+          enum: [es, en]
+          description: Idioma en el que se resolvieron los contenidos.
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MedioPublico"
+        total:
+          type: integer
+          minimum: 0
+          description: Total de fichas publicables (para el botón «Cargar más»).
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          description: Tamaño de tanda aplicado (por defecto 12; tope 50).
+        offset:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    MedioPublico:
+      type: object
+      required: [id, title, publishedAt]
+      description: |
+        Ficha **publicable** de un sermón para el visitante (FR-001…FR-005):
+        `title` (el del feed), `description` (corta, ya localizada con fallback
+        `en → es`), `publishedAt` y, cuando existen, `coverUrl` (carátula
+        **copiada al sitio**: ruta relativa `/api/v1/media/<file>`,
+        **nunca** un recurso de YouTube/Spotify — SC-005 —), `videoUrl`
+        (YouTube) y `audioUrl` (Spotify for Creators/Anchor). Las claves
+        opcionales se **omiten** cuando no aplican (SC-010: sin líneas vacías ni
+        marcadores): una ficha de solo audio no trae `videoUrl` y viceversa.
+        `title`, `publishedAt`, `coverUrl`, `videoUrl` y `audioUrl` son
+        **idénticos en ambos idiomas** (FR-026).
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 300
+          description: |
+            Nombre del episodio tal como lo trae el feed (FR-003; al unir, el
+            del feed del video — default revisable #7 —). No traducible.
+        description:
+          type: string
+          maxLength: 300
+          description: |
+            Descripción corta ya resuelta a `lang` (puede provenir del español
+            por fallback, FR-025). Ausente si la ficha no tiene descripción: el
+            feed no la traía **o el equipo la dejó vacía** desde el panel
+            (decisión del 2026-10-18; R9-14.3: la ficha omite la línea).
+        publishedAt:
+          type: string
+          format: date-time
+          description: Fecha de publicación del feed (se presenta en `America/Costa_Rica`, FR-006).
+        coverUrl:
+          type: string
+          description: |
+            Ruta relativa de la carátula copiada al sitio (`/api/v1/media/<file>`).
+            Ausente si la ficha no tiene carátula (el cliente pinta el marcador
+            neutro, default revisable #4).
+        videoUrl:
+          type: string
+          description: |
+            Enlace al video en YouTube (`youtube.com/watch?v=…`). Ausente si el
+            sermón no tiene video. Se abre en una pestaña nueva anunciada
+            (FR-005/FR-030).
+        audioUrl:
+          type: string
+          description: |
+            Enlace al episodio del podcast (Spotify for Creators/Anchor). Ausente
+            si el sermón no tiene audio. Se abre en una pestaña nueva anunciada.
+      additionalProperties: false
+    PortadaMedios:
+      type: object
+      required: [lang]
+      description: |
+        Bloque de medios de la portada (US6/FR-027/SC-015): hasta **5** fichas
+        publicables en el orden de la sección (tope firme del servidor). `items`
+        está presente **solo** si hay fichas publicables; sin ninguna la portada
+        **no renderiza el bloque** (sin mensaje). Nunca es `null`.
+      properties:
+        lang:
+          type: string
+          enum: [es, en]
+          description: Idioma en el que se resolvieron los contenidos.
+        items:
+          type: array
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/MedioPublico"
+      additionalProperties: false
+
+    # ------------------------------------------------------------- panel
+    MedioAdminList:
+      type: object
+      required: [items, total, limit, offset]
+      description: |
+        Listado paginado del módulo para el panel (§8.1.2/§8.1.3). `lastSync`
+        solo existe tras la primera «Buscar episodios nuevos» (FR-018).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MedioAdmin"
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+        offset:
+          type: integer
+          minimum: 0
+        lastSync:
+          $ref: "#/components/schemas/SyncRunAdmin"
+      additionalProperties: false
+    MedioAdmin:
+      type: object
+      required:
+        [id, title, publishedAt, origin, visibility, descriptionEdited, sources, createdAt, updatedAt]
+      description: |
+        Ficha completa para el panel (FR-019): datos del feed **no editables**
+        (`title`, `publishedAt`, `coverUrl`, `videoUrl`, `audioUrl`), la
+        descripción corta en ambos idiomas con su marca de edición, la
+        visibilidad, el **origen** (`origin` —formato derivado de las fuentes— y
+        `createdAt` —cuándo se importó—: FR-019 pide «el origen de cada entrada»
+        también en la lista), las **marcas por eje** (duplicados:
+        `duplicateOfId`/`duplicateMarkResolvedAt`; disponibilidad:
+        `availabilityMark`/`availabilityMarkResolvedAt` — pueden convivir —), la
+        comprobación de disponibilidad (`availabilityCheckedAt`/
+        `availabilityResult`, el **peor** de sus fuentes comprobadas: regla de la
+        fase 5) y las `sources` (la
+        procedencia de cada enlace: proveedor, identificador externo, título del
+        feed y URL), que es lo que el equipo revisa antes de unir.
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 300
+        descriptionEs:
+          type: [string, "null"]
+          maxLength: 300
+          description: Descripción corta en español (opcional; R9-14.3).
+        descriptionEn:
+          type: [string, "null"]
+          maxLength: 300
+        descriptionEdited:
+          type: boolean
+          description: |
+            `true` cuando la descripción corta es del equipo: la sincronización
+            jamás la regenera ni la pisa (FR-015/SC-007).
+        publishedAt:
+          type: string
+          format: date-time
+        coverUrl:
+          type: string
+          description: Ruta relativa de la carátula copiada (`/api/v1/media/<file>`); ausente si no hay.
+        videoUrl:
+          type: string
+          description: Enlace al video (YouTube); ausente si no hay video.
+        audioUrl:
+          type: string
+          description: Enlace al audio (Spotify for Creators/Anchor); ausente si no hay audio.
+        origin:
+          $ref: "#/components/schemas/OrigenMedio"
+        visibility:
+          $ref: "#/components/schemas/Visibilidad"
+        duplicateOfId:
+          type: string
+          format: uuid
+          description: |
+            Ficha del par «posible duplicado» (ausente si no hay par). Con
+            `duplicateOfId` presente y `duplicateMarkResolvedAt` ausente, el par
+            está **pendiente** y bloquea la publicación (FR-009/SC-002).
+        duplicateMarkResolvedAt:
+          type: string
+          format: date-time
+          description: |
+            Cuándo se resolvió la marca «posible duplicado» («no son
+            duplicados»). Ausente si el par está pendiente o si la ficha no tiene
+            par.
+        mergedIntoId:
+          type: string
+          format: uuid
+          description: "Ficha que la absorbió en una unión (solo visible con `includeMerged=true`)."
+        availabilityCheckedAt:
+          type: string
+          format: date-time
+          description: "Momento de la última comprobación de enlaces (ausente si nunca se comprobó)."
+        availabilityResult:
+          $ref: "#/components/schemas/ResultadoDisponibilidad"
+        availabilityMark:
+          $ref: "#/components/schemas/MarcaDisponibilidad"
+        availabilityMarkResolvedAt:
+          type: string
+          format: date-time
+          description: |
+            Cuándo se resolvió la marca de disponibilidad (ausente si está
+            pendiente o si la ficha no tiene marca).
+        sources:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/FuenteAdmin"
+        createdAt:
+          type: string
+          format: date-time
+          description: Momento de importación (el desempate del orden público, FR-006/default #11).
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    FuenteAdmin:
+      type: object
+      required: [provider, externalId, feedTitle, url]
+      description: |
+        Procedencia de un enlace de la ficha (R9-11): una fila por elemento de
+        feed importado. `externalId` es único por proveedor (garantía de que
+        una búsqueda repetida no duplica) y `feedTitle` conserva el título de
+        **ese** feed (default revisable #7: al unir, el del podcast se conserva
+        como dato de origen).
+      properties:
+        provider:
+          $ref: "#/components/schemas/Proveedor"
+        externalId:
+          type: string
+          maxLength: 120
+        feedTitle:
+          type: string
+          maxLength: 300
+        url:
+          type: string
+          maxLength: 500
+      additionalProperties: false
+    MedioPatch:
+      type: object
+      description: |
+        Edición permitida (FR-019/FR-020): **solo** `descriptionEs`,
+        `descriptionEn` y `visibility`. Cualquier otra clave → `400 invalid`.
+        `descriptionEn` exige `descriptionEs` (FR-023); un `null` explícito o
+        `""`/espacios borra el texto (`descriptionEs` deja la ficha **sin
+        descripción**: decisión del humano del 2026-10-18; `descriptionEn`
+        borra la traducción opcional). El límite es de **hasta 300**
+        caracteres por idioma (sin mínimo). Texto plano, sin interpretar
+        (constitución §IV).
+      properties:
+        descriptionEs:
+          type: [string, "null"]
+          maxLength: 300
+        descriptionEn:
+          type: [string, "null"]
+          maxLength: 300
+        visibility:
+          $ref: "#/components/schemas/Visibilidad"
+      additionalProperties: false
+    UnirInput:
+      type: object
+      required: [otherId]
+      description: |
+        Unión de dos entradas (FR-014/FR-019): `{id}` es la ficha que se
+        **conserva** (base: nombre, carátula, fecha y descripción; adopta el
+        enlace que faltaba) y `otherId` la que queda **absorbida**. La
+        interfaz confirma el resultado antes de llamar (la unión es
+        definitiva, default revisable #8).
+      properties:
+        otherId:
+          type: string
+          format: uuid
+          description: "Ficha a absorber; distinta de `{id}` (si no: `400 invalid`)."
+      additionalProperties: false
+    ResolverMarcaInput:
+      type: object
+      required: [mark, visibility]
+      description: |
+        Resolución de la marca de revisión (FR-017/US3 esc. 6): `mark` indica
+        **qué marca** se resuelve (los dos ejes pueden estar activos a la vez:
+        `possible_duplicate` resuelve el eje de duplicados — en ambas fichas del
+        par —, `unavailable`/`missing_from_feed` el de disponibilidad) y el equipo
+        decide con `visibility` si la ficha vuelve a estar visible o permanece
+        oculta. La marca queda resuelta (su fecha de resolución) y no se reabre
+        por la misma causa (la indisponibilidad **confirmada** posterior sí manda:
+        precisión aprobada en la fase 5).
+      properties:
+        mark:
+          $ref: "#/components/schemas/MarcaRevision"
+        visibility:
+          $ref: "#/components/schemas/Visibilidad"
+      additionalProperties: false
+    ResumenBusqueda:
+      type: object
+      required:
+        [startedAt, finishedAt, importedCount, joinedCount, markedCount, hiddenCount,
+         availabilityCheckedCount, availabilityInconclusiveCount, youtube, podcast]
+      description: |
+        Resumen de una «Buscar episodios nuevos» (FR-018): cuántos entraron, se
+        unieron, se marcaron, cuántos se ocultaron por indisponibilidad
+        **confirmada** (FR-017/Q16), las comprobaciones de disponibilidad
+        realizadas y las que no se pudieron completar (regla a prueba de
+        fallos), y el estado de cada feed. Sin información interna del sistema
+        (nunca mensajes técnicos ni de red).
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        importedCount:
+          type: integer
+          minimum: 0
+          description: Fichas nuevas creadas (una por sermón; puede incluir uniones automáticas).
+        joinedCount:
+          type: integer
+          minimum: 0
+          description: "Uniones automáticas aplicadas (FR-013: video + audio del mismo sermón)."
+        markedCount:
+          type: integer
+          minimum: 0
+          description: |
+            Fichas marcadas «posible duplicado» por correspondencia dudosa
+            (FR-014). Cuenta **solo** esa marca (criterio de la fase 5, literal
+            de FR-018): las marcas de disponibilidad nuevas **no** se contemplan
+            aquí — las que ocultan van en `hiddenCount` y su huella numérica en
+            `availability*` —.
+        hiddenCount:
+          type: integer
+          minimum: 0
+          description: Fichas ocultas por enlace confirmado no disponible (FR-017/Q16).
+        availabilityCheckedCount:
+          type: integer
+          minimum: 0
+        availabilityInconclusiveCount:
+          type: integer
+          minimum: 0
+          description: |
+            Comprobaciones que no se pudieron completar (timeout, 5xx, red):
+            **ninguna ficha se ocultó** por esa causa (FR-017/SC-014).
+        youtube:
+          $ref: "#/components/schemas/EstadoFeed"
+        podcast:
+          $ref: "#/components/schemas/EstadoFeed"
+      additionalProperties: false
+    SyncRunAdmin:
+      type: object
+      required:
+        [id, startedAt, finishedAt, importedCount, joinedCount, markedCount, hiddenCount,
+         availabilityCheckedCount, availabilityInconclusiveCount, youtube, podcast]
+      description: |
+        Registro persistido de una búsqueda (FR-018, tabla `media_sync_runs`):
+        el mismo resumen de arriba con su identificador y el actor. Se expone
+        como `lastSync` del listado del panel.
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorUserId:
+          type: string
+          format: uuid
+          description: Cuenta del panel que pulsó el botón (ausente si no se pudo registrar).
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        importedCount:
+          type: integer
+          minimum: 0
+        joinedCount:
+          type: integer
+          minimum: 0
+        markedCount:
+          type: integer
+          minimum: 0
+          description: "Solo marcas «posible duplicado» de esa búsqueda (criterio de la fase 5, literal de FR-018)."
+        hiddenCount:
+          type: integer
+          minimum: 0
+        availabilityCheckedCount:
+          type: integer
+          minimum: 0
+        availabilityInconclusiveCount:
+          type: integer
+          minimum: 0
+        youtube:
+          $ref: "#/components/schemas/EstadoFeed"
+        podcast:
+          $ref: "#/components/schemas/EstadoFeed"
       additionalProperties: false
 
   responses:

@@ -65,8 +65,17 @@ test.describe.configure({ mode: 'serial' });
 
 /** Nombre accesible de la lista de fichas (i18n `es`). */
 const SECTION = 'Ministerios de la iglesia';
-/** Tope de pasos del recorrido por teclado (la sección añade fichas al ciclo). */
-const MAX_TAB_STEPS = 45;
+/**
+ * Tope de pasos del recorrido por teclado. El recorrido de la **portada** es el
+ * más largo (el de `/ministerios` son 29 pasos reales): con los bloques de
+ * F4/F6/F7 y el de **medios** de F9 —que suma ~11 enfocables: 5 fichas × 1–2
+ * enlaces externos + «Ver todo»— el ciclo real medido en la portada es de **52
+ * pasos**. El tope queda en 80 (margen amplio, porque la base es compartida y
+ * las secciones publicadas —medios, ministerios, ofrendas— varían entre
+ * corridas). Subirlo no relaja nada: si el ciclo no cerrara, el recorrido
+ * agotaría el tope y las aserciones seguirían fallando.
+ */
+const MAX_TAB_STEPS = 80;
 
 interface TabStep {
   label: string;

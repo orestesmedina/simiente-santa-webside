@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { ProximamentePublica } from '../../../api/agenda';
+import type { MediosPublicos } from '../../../api/medios';
 import type { PortadaMinisterios } from '../../../api/ministerios';
 import type { OfrendasPublicas } from '../../../api/ofrendas';
 import type { PortadaPublica } from '../../../api/portada';
@@ -9,6 +10,7 @@ import {
   hasPortadaMinistryContent,
   usePortadaMinisterios,
 } from '../ministerios/hooks/usePortadaMinisterios';
+import { hasPublicMediosContent, usePublicMedios } from '../medios/hooks/usePublicMedios';
 import { hasPublicOfrendasContent, usePublicOfrendas } from '../ofrendas/hooks/usePublicOfrendas';
 import { presentSections, type PublicSectionId } from '../sections';
 import { usePublicHomeData } from './usePublicHomeData';
@@ -16,9 +18,9 @@ import { usePublicHomeData } from './usePublicHomeData';
 /**
  * Identificador de un enlace del sitio público: las secciones de la portada
  * (ancla dentro de `/`) y las secciones que son una **ruta** propia (agenda,
- * ministerios y ofrendas).
+ * ministerios, ofrendas y medios).
  */
-export type SiteLinkId = PublicSectionId | 'events' | 'ministries' | 'offerings';
+export type SiteLinkId = PublicSectionId | 'events' | 'ministries' | 'offerings' | 'media';
 
 /**
  * Enlace navegable del sitio público. Es la pieza común que alimenta **tanto**
@@ -75,6 +77,18 @@ const OFFERINGS_LINK: SiteLink = {
 };
 
 /**
+ * Enlace único de la sección de medios (F9/P9-16, ⟲ D-1): «Medios» es una
+ * **ruta real** (`/medios`) y va **al final** de la lista, después de «Ofrendas
+ * y diezmos». La clave i18n es `nav.sections.media` (ux.md §7.2) y la consumen a
+ * la vez `PublicNav`, `MobileMenu` y `FooterSiteMap`.
+ */
+const MEDIA_LINK: SiteLink = {
+  id: 'media',
+  messageKey: 'nav.sections.media',
+  href: '/medios',
+};
+
+/**
  * Ruta de la portada: los enlaces de sección son **absolutos** a la raíz
  * (`/#ancla`, QA Bug 1). Como se pintan con `<a>` nativos desde cualquier ruta
  * —incluida `/eventos`—, un ancla relativa (`#ancla`) se resolvería contra la
@@ -88,10 +102,11 @@ const HOME_PATH = '/';
  * sección de agenda **solo** existe si el documento público trae algún evento o
  * actividad publicado y próximo, la sección de ministerios **solo** si el
  * documento del **bloque de la portada** trae al menos un ministerio publicado
- * (P6-9/T628) y la de ofrendas **solo** si el **documento de la sección**
- * (`usePublicOfrendas`) trae métodos **o** textos publicados (P7-8/P7-13/T727).
- * Cero enlaces rotos o huérfanos en las tres superficies, que beben de esta
- * única función.
+ * (P6-9/T628), la de ofrendas **solo** si el **documento de la sección**
+ * (`usePublicOfrendas`) trae métodos **o** textos publicados (P7-8/P7-13/T727) y
+ * la de medios **solo** si el **documento de la sección** (`usePublicMedios`)
+ * trae al menos un episodio publicable (P9-16/T934). Cero enlaces rotos o
+ * huérfanos en las tres superficies, que beben de esta única función.
  *
  * Es una función pura para poder probarla sin React; el hook la envuelve sobre
  * las consultas compartidas por `queryClient`.
@@ -101,6 +116,7 @@ export function buildSiteLinks(
   upcoming?: ProximamentePublica,
   portadaMinisterios?: PortadaMinisterios,
   ofrendas?: OfrendasPublicas,
+  medios?: MediosPublicos,
 ): SiteLink[] {
   const links: SiteLink[] = presentSections(data).map((section) => ({
     id: section.id,
@@ -120,6 +136,13 @@ export function buildSiteLinks(
   if (hasPublicOfrendasContent(ofrendas)) {
     links.push(OFFERINGS_LINK);
   }
+  // P9-16/P7-8: la presencia de «Medios» sale del **documento de la sección**
+  // (`usePublicMedios`, compartido por `queryClient` con la página `/medios`):
+  // existe solo con `total > 0` publicables. El bloque de la portada
+  // (`usePortadaMedios`) **no** es fuente de navegación.
+  if (hasPublicMediosContent(medios)) {
+    links.push(MEDIA_LINK);
+  }
   return links;
 }
 
@@ -132,21 +155,26 @@ export function buildSiteLinks(
  * `queryClient` con `MinisteriosBlock`: una sola petición paga bloque + barra +
  * menú + pie) y la de «Ofrendas y diezmos» del **documento de la sección**
  * (`usePublicOfrendas`, P7-8/T727 —compartida por `queryClient` con la página
- * `/ofrendas`—: existe con ≥1 método **o** ≥1 texto publicado, P7-13). La
- * consumen a la vez la cabecera, el menú móvil y el mapa del sitio del pie.
+ * `/ofrendas`—: existe con ≥1 método **o** ≥1 texto publicado, P7-13) y la de
+ * «Medios» del **documento de la sección** (`usePublicMedios`, P9-16/T934
+ * —compartida por `queryClient` con la página `/medios`—: existe solo con
+ * `total > 0` publicables). La consumen a la vez la cabecera, el menú móvil y el
+ * mapa del sitio del pie.
  *
  * **No** consume la consulta de la sección `/ministerios` (`usePublicMinistries`):
  * esa decide **su** redirección (P6-21) y son dos consultas a propósito. El
  * bloque `usePortadaOfrendas` tampoco alimenta esta lista (FR-022: solo mira
- * métodos).
+ * métodos) y el bloque `usePortadaMedios` **no** es fuente de navegación (P9-16:
+ * esa sale del documento de la sección).
  */
 export function useSiteLinks(): SiteLink[] {
   const { data } = usePublicHomeData();
   const { data: upcoming } = useUpcomingEvents();
   const { data: portadaMinisterios } = usePortadaMinisterios();
   const { data: ofrendas } = usePublicOfrendas();
+  const { data: medios } = usePublicMedios();
   return useMemo(
-    () => buildSiteLinks(data, upcoming, portadaMinisterios, ofrendas),
-    [data, upcoming, portadaMinisterios, ofrendas],
+    () => buildSiteLinks(data, upcoming, portadaMinisterios, ofrendas, medios),
+    [data, upcoming, portadaMinisterios, ofrendas, medios],
   );
 }

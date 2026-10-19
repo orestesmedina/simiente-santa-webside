@@ -36,7 +36,15 @@ export const MINISTERIOS = 'ministerios';
 export const DONACIONES = 'donaciones';
 
 /**
- * Permisos de módulo construidos hasta hoy (F2, F3, F4, F6 y F7). Lo usa el
+ * Permiso del módulo «Medios» (F9, FR-021). Ya existía en el catálogo de F2
+ * (`medios`, etiqueta «Medios (prédicas y podcasts)»); F9 lo **activa** en la
+ * interfaz: no se crea ningún permiso nuevo, el nombre **no** cambia (Q13) y el
+ * catálogo del backend sigue en **10**.
+ */
+export const MEDIOS = 'medios';
+
+/**
+ * Permisos de módulo construidos hasta hoy (F2, F3, F4, F6, F7 y F9). Lo usa el
  * inicio del panel para decidir si hay algún acceso rápido que ofrecer y la
  * lista de roles para saber qué módulos existen de verdad (FR-015 de F2/FR-012
  * de F4).
@@ -49,6 +57,7 @@ export const MODULE_PERMISSIONS = [
   CATEGORIAS,
   MINISTERIOS,
   DONACIONES,
+  MEDIOS,
 ] as const;
 
 /** Forma mínima de sesión que necesita la comprobación de permisos. */

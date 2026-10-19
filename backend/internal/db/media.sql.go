@@ -61,6 +61,23 @@ SELECT EXISTS (
         FROM ministries m
         WHERE m.publication_state = 'published'
           AND m.image_file = $1::text
+
+        UNION ALL
+
+        -- F9 (R9-8): la carátula copiada de una ficha PUBLICABLE. Rama
+        -- aditiva: una ficha oculta, absorbida o con «posible duplicado»
+        -- abierto NO sirve su carátula y el archivo no se borra (al volver a
+        -- ser publicable, la misma URL responde 200). El predicado es el mismo
+        -- de ` + "`" + `ListPublishedMediaItems` + "`" + ` (R9-7/FR-009/SC-002): una marca de
+        -- disponibilidad sin resolver («ya no aparece en el feed») **sí**
+        -- sirve su carátula (FR-017: la ficha sigue visible).
+        SELECT mi.id
+        FROM media_items mi
+        WHERE mi.cover_file = $1::text
+          AND mi.visibility = 'visible'
+          AND mi.merged_into_id IS NULL
+          AND (mi.duplicate_of_id IS NULL
+               OR mi.duplicate_mark_resolved_at IS NOT NULL)
     ) AS referenced
 ) AS published
 `
@@ -79,12 +96,15 @@ type IsFilePublishedParams struct {
 //
 // `IsFilePublished` sustituye a `IsHomeFilePublished` (de `home.sql`): responde
 // TRUE solo si el nombre está referenciado por contenido **publicado y visible
-// hoy** (decisión firme de la puerta 2, R4-6; F6 añade la tercera rama, R6-7):
+// hoy** (decisión firme de la puerta 2, R4-6; F6 añade la tercera rama, R6-7 y F9
+// la cuarta, R9-8):
 //   - `home_identity` publicada (F3: logo e imagen de portada), sin fecha;
 //   - `agenda_events` / `agenda_activities` publicados **y próximos** según la
 //     regla R4-2 (`today`/`now_time` que el service calcula en `APP_TZ` y pasa
-//     parametrizados); y
-//   - `ministries` publicado (F6: la imagen del ministerio, sin fecha).
+//     parametrizados);
+//   - `ministries` publicado (F6: la imagen del ministerio, sin fecha); y
+//   - `media_items` **publicable** (F9: la carátula copiada al importar, con el
+//     mismo predicado público de R9-7).
 //
 // Un elemento vencido deja de servir su imagen **sin borrar el archivo** y la
 // misma URL vuelve a responder 200 al cargarle una fecha próxima; igual en F6: el

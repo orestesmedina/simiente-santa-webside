@@ -200,6 +200,55 @@ type LoginEvent struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type MediaEpisodeSource struct {
+	ID         pgtype.UUID
+	ItemID     pgtype.UUID
+	Provider   string
+	ExternalID string
+	FeedTitle  string
+	Url        string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type MediaItem struct {
+	ID                         pgtype.UUID
+	Title                      string
+	PublishedAt                pgtype.Timestamptz
+	DescriptionEs              pgtype.Text
+	DescriptionEn              pgtype.Text
+	DescriptionEdited          bool
+	CoverFile                  pgtype.Text
+	Origin                     string
+	Visibility                 string
+	DuplicateOfID              pgtype.UUID
+	DuplicateMarkResolvedAt    pgtype.Timestamptz
+	AvailabilityCheckedAt      pgtype.Timestamptz
+	AvailabilityResult         pgtype.Text
+	AvailabilityMark           pgtype.Text
+	AvailabilityMarkResolvedAt pgtype.Timestamptz
+	MergedIntoID               pgtype.UUID
+	CreatedAt                  pgtype.Timestamptz
+	UpdatedAt                  pgtype.Timestamptz
+}
+
+type MediaSyncRun struct {
+	ID                            pgtype.UUID
+	ActorUserID                   pgtype.UUID
+	StartedAt                     pgtype.Timestamptz
+	FinishedAt                    pgtype.Timestamptz
+	ImportedCount                 int32
+	JoinedCount                   int32
+	MarkedCount                   int32
+	HiddenCount                   int32
+	AvailabilityCheckedCount      int32
+	AvailabilityInconclusiveCount int32
+	YoutubeStatus                 string
+	PodcastStatus                 string
+	CreatedAt                     pgtype.Timestamptz
+	UpdatedAt                     pgtype.Timestamptz
+}
+
 type Ministry struct {
 	ID               pgtype.UUID
 	NameEs           string

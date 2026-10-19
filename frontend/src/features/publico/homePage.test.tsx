@@ -337,6 +337,92 @@ describe('HomePage · secciones publicadas (US1, SC-012)', () => {
     expect(screen.queryByRole('heading', { level: 2, name: 'Ofrendas y diezmos' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Ver formas de ofrendar' })).toBeNull();
   });
+
+  it('inserta el bloque «Medios» tras ofrendas y antes de «quiénes somos» (F9/US6)', async () => {
+    responder(completa);
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/portada/ministerios`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [{ id: 'min-1', name: 'Alabanza', schedule: 'Todos los viernes' }],
+        }),
+      ),
+      http.get(`${API_BASE_URL}/api/v1/portada/ofrendas`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [
+            {
+              id: 'don-1',
+              kind: 'iban',
+              number: 'CR05015202001234567890',
+              institution: 'Banco Nacional de Costa Rica',
+              currency: 'CRC',
+            },
+          ],
+        }),
+      ),
+      http.get(`${API_BASE_URL}/api/v1/portada/medios`, () =>
+        HttpResponse.json({
+          lang: 'es',
+          items: [
+            {
+              id: 'med-1',
+              title: 'La Fe y la confianza en el Abba',
+              description: 'Confiar es un acto diario.',
+              publishedAt: '2026-07-03T01:58:52Z',
+              coverUrl: '/api/v1/media/img_abba.jpg',
+              videoUrl: 'https://www.youtube.com/watch?v=abc12345678',
+            },
+          ],
+        }),
+      ),
+    );
+
+    renderHome();
+
+    await screen.findByRole('link', { name: 'Ver todo' });
+
+    // Una sola inserción: entre ofrendas y «quiénes somos», sin tocar el resto
+    // de la secuencia de F3 (Q12/FR-027).
+    const ofrendas = screen.getByRole('heading', { level: 2, name: 'Ofrendas y diezmos' });
+    const medios = screen.getByRole('heading', { level: 2, name: 'Medios' });
+    const quienesSomos = screen.getByRole('heading', { level: 2, name: 'Quiénes somos' });
+    expect(ofrendas.compareDocumentPosition(medios)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(medios.compareDocumentPosition(quienesSomos)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    // Ficha compacta con sus enlaces externos y sin fecha (⟲ D-32).
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'La Fe y la confianza en el Abba' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: 'Abre YouTube en una pestaña nueva para ver La Fe y la confianza en el Abba; sales del sitio de la iglesia.',
+      }),
+    ).toHaveAttribute('href', 'https://www.youtube.com/watch?v=abc12345678');
+    expect(screen.queryByText('jueves 2 de julio')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Ver todo' })).toHaveAttribute('href', '/medios');
+  });
+
+  it('sin medios publicables la portada no gana bloque ni mensaje (FR-027)', async () => {
+    responder(completa);
+    let peticiones = 0;
+    server.use(
+      http.get(`${API_BASE_URL}/api/v1/portada/medios`, () => {
+        peticiones += 1;
+        return HttpResponse.json({ lang: 'es' });
+      }),
+    );
+
+    renderHome();
+    await screen.findByRole('heading', { name: 'Iglesia Simiente Santa' });
+    await waitFor(() => expect(peticiones).toBe(1));
+    await screen.findByRole('table');
+
+    expect(screen.queryByRole('heading', { level: 2, name: 'Medios' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Ver todo' })).toBeNull();
+    // Y las demás secciones de la portada se renderizan igual que antes.
+    expect(screen.getByRole('heading', { level: 2, name: 'Quiénes somos' })).toBeInTheDocument();
+  });
 });
 
 describe('HomePage · contenido y enlaces (US1, SC-009)', () => {

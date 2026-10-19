@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FIXTURE del feed Atom del canal de YouTube (FR-010, research R9-5).
+
+  El origen https://www.youtube.com/feeds/videos.xml?channel_id=UCXXJbgowcGnjI7BDsPnKOTw
+  respondió **404** desde este entorno (IPs de datacenter: RG9-1/R9-1) y el
+  quickstart §0.1 pide capturarlo desde un entorno donde responda. Mientras
+  tanto este archivo reproduce el **formato Atom real de YouTube** (mismos
+  espacios de nombres, `yt:videoId`, `link rel="alternate"`, `published` RFC3339,
+  `media:group` con `media:thumbnail` y `media:description`) con los **datos
+  reales de los sermones** verificados el 2026-10-17 (spec §Datos de origen y
+  research R9-5): los 8 sermones que también están en el feed del podcast —con
+  el par real «Potencial sin Resultados La Lección de la Higuera» / «Potencial
+  sin Resultados: La Lección de la Higuera»— y el exclusivo de YouTube «A Mayor
+  Fe, Mayor Presión» (2026-05-17). Los identificadores de video son sintéticos
+  (11 caracteres, forma válida); el equipo debe reemplazar este archivo por la
+  captura real (`curl` del quickstart §0.1) desde su entorno.
+-->
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+ <link rel="self" href="http://www.youtube.com/feeds/videos.xml?channel_id=UCXXJbgowcGnjI7BDsPnKOTw"/>
+ <id>yt:channel:UCXXJbgowcGnjI7BDsPnKOTw</id>
+ <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+ <title>Iglesia Simiente Santa</title>
+ <link rel="alternate" href="https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw"/>
+ <author>
+  <name>Iglesia Simiente Santa</name>
+  <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+ </author>
+ <published>2026-04-13T16:34:08+00:00</published>
+ <entry>
+  <id>yt:video:SimienteAA1</id>
+  <yt:videoId>SimienteAA1</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>La Fe y la confianza en el Abba</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA1"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-07-02T15:00:00+00:00</published>
+  <updated>2026-07-02T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>La Fe y la confianza en el Abba</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA1?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA1/hqdefault.jpg" width="480" height="360"/>
+   <media:description>En este servicio hablamos de la fe que descansa en el carácter de Dios y no en las circunstancias. La confianza en el Abba no es un sentimiento pasajero: es una decisión que se sostiene cuando la respuesta tarda. Recorrimos la historia de Abraham y la carta a los Hebreos para mostrar por qué la fe bíblica siempre tiene un objeto claro &amp; una promesa firme. Si hoy estás esperando algo que no llega, este mensaje es para ti: Dios no se olvida de sus hijos. Comparte esta prédica con quien necesite recordarlo. ¡Que Dios te bendiga!</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA2</id>
+  <yt:videoId>SimienteAA2</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>La Fe y la herida. Deja de esconderte: atrévete a sanar tus heridas hoy</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA2"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-06-27T15:00:00+00:00</published>
+  <updated>2026-06-27T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>La Fe y la herida. Deja de esconderte: atrévete a sanar tus heridas hoy</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA2?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA2/hqdefault.jpg" width="480" height="360"/>
+   <media:description>¿Sientes que el mismo problema te persigue sin importar a dónde vayas? A menudo las heridas no sanadas dirigen nuestras decisiones. Hablamos de la fe que se atreve a mirar la herida de frente y a llevarla al único que puede sanarla.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA3</id>
+  <yt:videoId>SimienteAA3</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>La Fe y la Actitud Parte II: Rompiendo la Fábrica de Excusas</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA3"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-06-20T15:00:00+00:00</published>
+  <updated>2026-06-20T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>La Fe y la Actitud Parte II: Rompiendo la Fábrica de Excusas</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA3?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA3/hqdefault.jpg" width="480" height="360"/>
+   <media:description>¿Qué historia te estás contando a ti mismo cuando las cosas no salen como esperabas? Segunda parte de la serie sobre la actitud: aprender a identificar las excusas &amp; a cambiarlas por obediencia.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA4</id>
+  <yt:videoId>SimienteAA4</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>La Fe y la Actitud: Por Qué Tu Mentalidad lo Cambia Todo</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA4"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-06-10T15:00:00+00:00</published>
+  <updated>2026-06-10T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>La Fe y la Actitud: Por Qué Tu Mentalidad lo Cambia Todo</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA4?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA4/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Es fácil tener fe cuando todo va bien, pero ¿qué pasa con nuestra actitud cuando llega la prueba? La mentalidad correcta no niega el problema: lo pone en las manos de Dios.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA5</id>
+  <yt:videoId>SimienteAA5</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>La Fe y La Impaciencia: El Peligro de No Saber Esperar</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA5"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-06-06T15:00:00+00:00</published>
+  <updated>2026-06-06T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>La Fe y La Impaciencia: El Peligro de No Saber Esperar</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA5?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA5/hqdefault.jpg" width="480" height="360"/>
+   <media:description>En la palabra de hoy enfrentamos uno de los retos más grandes de la vida cristiana: esperar. La impaciencia nos hace tomar atajos que después lamentamos; la fe madura sabe aguardar el tiempo de Dios.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA6</id>
+  <yt:videoId>SimienteAA6</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>Potencial sin Resultados La Lección de la Higuera</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA6"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-05-25T15:00:00+00:00</published>
+  <updated>2026-05-25T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>Potencial sin Resultados La Lección de la Higuera</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA6?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA6/hqdefault.jpg" width="480" height="360"/>
+   <media:description>En este episodio nos enfrentamos a una verdad profunda: tener un gran potencial no garantiza que vayas a dar fruto. Basado en la historia de Jesús y la higuera en Marcos 11, este mensaje nos reta a evaluar si solo estamos mostrando las &#39;hojas&#39; de nuestras habilidades o si realmente estamos tomando las decisiones correctas.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA7</id>
+  <yt:videoId>SimienteAA7</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>El Síndrome del Microondas: Por qué tu fe no está dando resultados</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA7"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-05-19T15:00:00+00:00</published>
+  <updated>2026-05-19T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>El Síndrome del Microondas: Por qué tu fe no está dando resultados</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA7?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA7/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Todos queremos ver la gloria de Dios en nuestras vidas, nuestras familias y nuestros proyectos, pero queremos verla ya. El síndrome del microondas nos hace abandonar procesos que Dios todavía está cocinando.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA8</id>
+  <yt:videoId>SimienteAA8</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>La paternidad de Dios y la fe</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA8"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-04-19T15:00:00+00:00</published>
+  <updated>2026-04-19T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>La paternidad de Dios y la fe</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA8?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA8/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Cierra tus ojos y escucha: no estás solo en esta subida. En el servicio de hoy recordamos que la fe nace de saber quién es nuestro Padre.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteAA9</id>
+  <yt:videoId>SimienteAA9</yt:videoId>
+  <yt:channelId>UCXXJbgowcGnjI7BDsPnKOTw</yt:channelId>
+  <title>A Mayor Fe, Mayor Presión</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteAA9"/>
+  <author>
+   <name>Iglesia Simiente Santa</name>
+   <uri>https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw</uri>
+  </author>
+  <published>2026-05-17T15:00:00+00:00</published>
+  <updated>2026-05-17T15:00:00+00:00</updated>
+  <media:group>
+   <media:title>A Mayor Fe, Mayor Presión</media:title>
+   <media:content url="https://www.youtube.com/v/SimienteAA9?version=3" type="application/x-shockwave-flash" width="640" height="390"/>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteAA9/hqdefault.jpg" width="480" height="360"/>
+   <media:description>A mayor fe, mayor presión: la fe que Dios nos da también nos expone. Un mensaje sobre sostener la convicción cuando el entorno aprieta.</media:description>
+   <media:community>
+    <media:starRating count="0" average="0.00" min="1" max="5"/>
+    <media:statistics views="0"/>
+   </media:community>
+  </media:group>
+ </entry>
+</feed>

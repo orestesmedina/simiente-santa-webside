@@ -10,6 +10,7 @@ import {
   CATEGORIAS,
   DONACIONES,
   EVENTOS,
+  MEDIOS,
   MINISTERIOS,
   PORTADA,
   hasPermission,
@@ -114,6 +115,9 @@ export function PanelLayout() {
   }
   if (hasPermission(session, DONACIONES)) {
     items.push({ to: '/panel/donaciones', label: 'Gestión de donaciones' });
+  }
+  if (hasPermission(session, MEDIOS)) {
+    items.push({ to: '/panel/medios', label: 'Gestión de medios' });
   }
   if (hasPermission(session, ADMIN_USERS_ROLES)) {
     items.push(

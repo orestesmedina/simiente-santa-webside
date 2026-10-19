@@ -50,6 +50,21 @@ interface StepInfo {
   indicator: boolean;
 }
 
+/**
+ * Tope de pasos del recorrido por teclado (y tope del ciclo cerrado: la prueba
+ * exige que el ciclo **vuelva al enlace de salto** antes de agotarlo, es decir,
+ * que no haya trampas de foco).
+ *
+ * La portada fue creciendo con los bloques de F4/F6/F7/F9 y el de **medios**
+ * (F9, T935) suma ~11 enfocables —5 fichas × 1–2 enlaces externos + «Ver todo»—,
+ * así que el ciclo tarda más en cerrar. El recorrido real medido en esta portada
+ * es de **38 pasos**; el tope queda en 60 (margen amplio, porque la base de
+ * datos es compartida y las secciones publicadas —medios, ministerios,
+ * ofrendas— varían entre corridas). Subirlo no relaja nada: si el ciclo no
+ * cerrara, el recorrido agotaría el tope y la aserción seguiría fallando.
+ */
+const MAX_TAB_STEPS = 60;
+
 async function csrfToken(page: Page): Promise<string> {
   const cookies = await page.context().cookies(API_URL);
   const csrf = cookies.find((cookie) => cookie.name === 'csrf_token');
@@ -58,7 +73,7 @@ async function csrfToken(page: Page): Promise<string> {
 }
 
 /** Recorre con Tab hasta cerrar el ciclo (vuelve al enlace de salto). */
-async function tabCycle(page: Page, maxSteps = 30): Promise<TabStep[]> {
+async function tabCycle(page: Page, maxSteps = MAX_TAB_STEPS): Promise<TabStep[]> {
   const path: TabStep[] = [];
   for (let i = 0; i < maxSteps; i++) {
     // El salto inicial puede requerir más de un Tab si la SPA aún no montó
@@ -225,12 +240,23 @@ test.describe('Portada pública — accesibilidad WCAG 2.1 AA (SC-008)', () => {
 
       // `lang` correcto e imágenes con alt no vacío (FR-019).
       await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+      // WCAG 2.1 AA (1.1.1 «Contenido no textual»): toda imagen **de contenido**
+      // lleva texto alternativo no vacío; la **decoración** lleva `alt=""` a
+      // propósito (no se anuncia: repetiría el texto que ya está al lado). El
+      // marcador neutro de carátula de F9 (`CaratulaNeutra`, episodio sin
+      // carátula o cuya copia local falla) es decoración —el nombre del episodio
+      // va justo debajo— y vive dentro de un contenedor `aria-hidden="true"`,
+      // así que su `alt=""` es lo correcto. Se omiten del recuento **solo** las
+      // imágenes que cuelgan de un subárbol `aria-hidden`: la regla sigue
+      // exigiéndose intacta a todas las imágenes de contenido (incluidas las
+      // carátulas reales de los episodios, que sí llevan `alt` anunciado).
       const imagesWithoutAlt = await page.evaluate(() =>
         [...document.querySelectorAll('img')]
+          .filter((img) => img.closest('[aria-hidden="true"]') === null)
           .filter((img) => !img.alt || img.alt.trim() === '')
           .map((img) => img.src),
       );
-      expect(imagesWithoutAlt, 'todas las imágenes con alt').toEqual([]);
+      expect(imagesWithoutAlt, 'todas las imágenes de contenido con alt no vacío').toEqual([]);
       await expect(
         page.getByRole('img', { name: `Logotipo de ${identityName}` }).first(),
       ).toBeVisible();
@@ -307,7 +333,7 @@ test.describe('Portada pública — accesibilidad WCAG 2.1 AA (SC-008)', () => {
       expect(
         path.length,
         'el ciclo de foco cierra volviendo al inicio (sin trampa de foco)',
-      ).toBeLessThan(30);
+      ).toBeLessThan(MAX_TAB_STEPS);
 
       // Flechas del grupo de radios: sobre el radio marcado, una flecha mueve
       // la selección al otro idioma (quickstart §10.3, activable solo con

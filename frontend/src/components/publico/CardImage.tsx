@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { ImagenPublica } from '../../api/agenda';
 import { mediaUrl } from '../../api/client';
 
 export interface CardImageProps {
   image?: ImagenPublica;
+  /**
+   * Qué pintar cuando **no hay** imagen o cuando la copia local falla al cargar
+   * (`onError`). Por defecto nada: la tarjeta se queda sin marco de imagen y
+   * conserva el resto de su contenido (comportamiento de F4/F6).
+   *
+   * F9 (T933) lo usa para el **marcador neutro** de un episodio sin carátula
+   * (⟲ D-4): mismo marco 16:9 con la identidad de la iglesia, de modo que la
+   * grilla no «salte» de forma ni quede un hueco, tampoco si la copia falla.
+   */
+  fallback?: ReactNode;
 }
 
 /**
@@ -17,11 +27,11 @@ export interface CardImageProps {
  * reutilizarla en las fichas y el extracto de ministerios; F4 la sigue usando
  * **sin cambios de props ni de textos**.
  */
-export function CardImage({ image }: CardImageProps) {
+export function CardImage({ image, fallback }: CardImageProps) {
   const [failed, setFailed] = useState(false);
   const src = mediaUrl(image?.url);
   if (!src || failed) {
-    return null;
+    return fallback ?? null;
   }
 
   return (

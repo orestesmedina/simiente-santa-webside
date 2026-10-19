@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FIXTURE patológico del feed Atom de YouTube (RG9-11): un elemento válido y
+  tres descartables —enlace a un host ajeno, fecha imposible de parsear y título
+  vacío— para fijar que el parser **descarta el elemento con aviso** y nunca
+  inventa fecha ni acepta un enlace fuera del host del proveedor.
+-->
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+ <id>yt:channel:UCXXJbgowcGnjI7BDsPnKOTw</id>
+ <title>Iglesia Simiente Santa</title>
+ <link rel="alternate" href="https://www.youtube.com/channel/UCXXJbgowcGnjI7BDsPnKOTw"/>
+ <entry>
+  <id>yt:video:SimienteCC1</id>
+  <yt:videoId>SimienteCC1</yt:videoId>
+  <title>Sermón correcto con tildes, ñ y ¡signos!</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteCC1"/>
+  <published>2026-05-25T15:00:00+00:00</published>
+  <media:group>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteCC1/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Descripción correcta.</media:description>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteCC2</id>
+  <yt:videoId>SimienteCC2</yt:videoId>
+  <title>Enlace a un host ajeno</title>
+  <link rel="alternate" href="https://evil.example/watch?v=SimienteCC2"/>
+  <published>2026-05-24T15:00:00+00:00</published>
+  <media:group>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteCC2/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Su enlace no apunta a YouTube.</media:description>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteCC3</id>
+  <yt:videoId>SimienteCC3</yt:videoId>
+  <title>Fecha imposible</title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteCC3"/>
+  <published>el martes pasado</published>
+  <media:group>
+   <media:thumbnail url="https://i.ytimg.com/vi/SimienteCC3/hqdefault.jpg" width="480" height="360"/>
+   <media:description>Su fecha no se puede interpretar.</media:description>
+  </media:group>
+ </entry>
+ <entry>
+  <id>yt:video:SimienteCC4</id>
+  <yt:videoId>SimienteCC4</yt:videoId>
+  <title>   </title>
+  <link rel="alternate" href="https://www.youtube.com/watch?v=SimienteCC4"/>
+  <published>2026-05-22T15:00:00+00:00</published>
+  <media:group>
+   <media:description>Sin título no hay ficha.</media:description>
+  </media:group>
+ </entry>
+</feed>

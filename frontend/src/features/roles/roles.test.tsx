@@ -59,9 +59,9 @@ describe('RolesPage · listado', () => {
     expect(within(table).getByText('2 cuentas')).toBeInTheDocument();
   });
 
-  it('los permisos de agenda (F4), ministerios (F6) y donaciones (F7) ya no llevan el sello «Disponible más adelante»', async () => {
+  it('los permisos de agenda (F4), ministerios (F6), donaciones (F7) y medios (F9) ya no llevan el sello «Disponible más adelante»', async () => {
     const role = makeRole({
-      permissions: ['eventos', 'actividades', 'categorias', 'ministerios', 'donaciones'],
+      permissions: ['eventos', 'actividades', 'categorias', 'ministerios', 'donaciones', 'medios'],
     });
     server.use(
       http.get(rolesUrl, () =>
@@ -75,6 +75,7 @@ describe('RolesPage · listado', () => {
             { code: 'categorias', label: 'Categorías de agenda' },
             { code: 'ministerios', label: 'Ministerios' },
             { code: 'donaciones', label: 'Donaciones' },
+            { code: 'medios', label: 'Medios (prédicas y podcasts)' },
           ],
         }),
       ),
@@ -86,10 +87,11 @@ describe('RolesPage · listado', () => {
     expect(await within(table).findByText('Eventos')).toBeInTheDocument();
     expect(within(table).getByText('Actividades')).toBeInTheDocument();
     expect(within(table).getByText('Categorías de agenda')).toBeInTheDocument();
-    // Los permisos `ministerios` (F6) y `donaciones` (F7), ya sembrados por F2,
-    // se ofrecen sin sello (FR-011).
+    // Los permisos `ministerios` (F6), `donaciones` (F7) y `medios` (F9), ya
+    // sembrados por F2, se ofrecen sin sello (FR-011/FR-021).
     expect(within(table).getByText('Ministerios')).toBeInTheDocument();
     expect(within(table).getByText('Donaciones')).toBeInTheDocument();
+    expect(within(table).getByText('Medios (prédicas y podcasts)')).toBeInTheDocument();
     expect(within(table).queryByText(/Disponible más adelante/)).toBeNull();
   });
 
