@@ -1,10 +1,10 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { renderHook, waitFor } from '@testing-library/react';
-import { http, HttpResponse } from 'msw';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { delay, http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { API_BASE_URL, ApiError } from '../../../api/client';
-import type { MedioAdmin, ResumenBusqueda } from '../../../api/medios';
+import { SYNC_TIMEOUT_MS, type MedioAdmin, type ResumenBusqueda } from '../../../api/medios';
 import { createQueryClientForTest } from '../../../test/queryClient';
 import { server } from '../../../test/server';
 import { PORTADA_MEDIOS_QUERY_KEY } from '../../publico/medios/hooks/usePortadaMedios';
@@ -213,6 +213,52 @@ describe('useBuscarEpisodios (FR-011/FR-018)', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.youtube).toBe('failed');
+  });
+
+  /**
+   * H1 de la revisión de código: el cliente esperaba 5 s (D20) mientras el
+   * presupuesto del **servidor** es de 90 s, así que una búsqueda real se
+   * abortaba a media importación —y el abort cortaba también el trabajo del
+   * servidor— dejando al equipo sin el resumen de FR-018. La búsqueda tiene
+   * ahora su propio tiempo de espera (120 s) y esta prueba lo fija: un servidor
+   * que tarda 6 s (más que los 5 s del cliente) sigue entregando el resumen.
+   */
+  it('no se aborta a los 5 s del cliente: espera su presupuesto propio (H1)', async () => {
+    vi.useFakeTimers();
+    try {
+      let abortada = false;
+      server.use(
+        http.post(`${adminUrl}/buscar-nuevos`, async ({ request }) => {
+          request.signal.addEventListener('abort', () => {
+            abortada = true;
+          });
+          await delay(6000);
+          return HttpResponse.json(resumen);
+        }),
+      );
+
+      const { wrapper } = makeWrapper();
+      const { result } = renderHook(() => useBuscarEpisodios(), { wrapper });
+
+      result.current.mutate();
+
+      // Se avanza el reloj en tramos: el servidor tarda 6 s (> 5 s del cliente).
+      await act(async () => {
+        for (let segundo = 0; segundo < 10; segundo += 1) {
+          await vi.advanceTimersByTimeAsync(1000);
+        }
+      });
+
+      expect(abortada).toBe(false);
+      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.data?.importedCount).toBe(10);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('el tiempo de espera propio supera el presupuesto del servidor (90 s)', () => {
+    expect(SYNC_TIMEOUT_MS).toBeGreaterThan(90_000);
   });
 
   it('propaga el `500` del servidor', async () => {

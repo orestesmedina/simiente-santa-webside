@@ -1,12 +1,18 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { API_BASE_URL } from '../../../api/client';
-import type { MarcaRevision, MedioAdmin, ResumenBusqueda } from '../../../api/medios';
+import {
+  SYNC_TIMEOUT_MS,
+  type MarcaRevision,
+  type MedioAdmin,
+  type ResumenBusqueda,
+} from '../../../api/medios';
 import { AppProviders } from '../../../app/providers';
 import { server } from '../../../test/server';
 import { marcasPendientes } from '../marcas';
+import { SEARCH_TIMEOUT_ERROR } from '../messages';
 import { MediosPage } from './MediosPage';
 
 /**
@@ -195,6 +201,47 @@ describe('MediosPage · zona de búsqueda (US2, ux.md §4.3/§4.4)', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Buscar episodios nuevos' }));
       expect(await screen.findByText(caso.esperado)).toBeInTheDocument();
       unmount();
+    }
+  });
+
+  /**
+   * H1 de la revisión: la búsqueda espera 120 s (más que los 90 s del
+   * servidor). Si aun así se agota, el aviso **lo dice** —no un «error del
+   * sistema» genérico— y sin prometer un resumen que no llegó.
+   */
+  it('si la búsqueda agota su tiempo, el aviso lo dice con claridad (H1)', async () => {
+    vi.useFakeTimers();
+    try {
+      responder([makeMedio()]);
+      server.use(
+        http.post(buscarUrl, async () => {
+          await delay(SYNC_TIMEOUT_MS + 1000);
+          return HttpResponse.json(resumen());
+        }),
+      );
+
+      renderPage();
+      // La zona de búsqueda no depende del listado: está en el primer render.
+      fireEvent.click(screen.getByRole('button', { name: 'Buscar episodios nuevos' }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      // Con una espera larga la interfaz sigue igual: botón deshabilitado y
+      // `role="status"` anunciando que la búsqueda corre (⟲ D-16/D-17).
+      expect(screen.getByRole('button', { name: 'Buscando…' })).toBeDisabled();
+      expect(
+        screen.getByText('Buscando episodios nuevos en YouTube y en el podcast…'),
+      ).toHaveAttribute('role', 'status');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS + 1000);
+      });
+
+      expect(screen.getByText(SEARCH_TIMEOUT_ERROR)).toBeInTheDocument();
+      // Y el botón vuelve a estar disponible: repetir la búsqueda es seguro.
+      expect(screen.getByRole('button', { name: 'Buscar episodios nuevos' })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
     }
   });
 

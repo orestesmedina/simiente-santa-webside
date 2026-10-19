@@ -8,7 +8,7 @@ import { FiltroMarcas, type FiltroValue } from '../components/FiltroMarcas';
 import { ResolverMarcaDialog } from '../components/ResolverMarcaDialog';
 import { ResumenImportacion } from '../components/ResumenImportacion';
 import { UnirDuplicadosDialog } from '../components/UnirDuplicadosDialog';
-import { isForbidden } from '../errors';
+import { isForbidden, searchErrorMessage } from '../errors';
 import { useBuscarEpisodios } from '../hooks/useBuscarEpisodios';
 import { useMedios } from '../hooks/useMedios';
 import { useResolverMarca } from '../hooks/useResolverMarca';
@@ -117,7 +117,10 @@ export function MediosPage() {
     setFeedback(undefined);
     buscar.mutate(undefined, {
       onSuccess: (data) => setResumen(data),
-      onError: () => setFeedback({ variant: 'error', message: SYSTEM_ERROR }),
+      // El tiempo agotado se explica aparte (H1): la búsqueda tiene 120 s de
+      // espera —más que los 90 s del servidor— y si aun así se corta, el aviso
+      // lo dice sin prometer un resumen que no llegó.
+      onError: (error) => setFeedback({ variant: 'error', message: searchErrorMessage(error) }),
     });
   };
 

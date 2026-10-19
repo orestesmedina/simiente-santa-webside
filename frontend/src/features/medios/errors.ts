@@ -1,5 +1,5 @@
 import { ApiError } from '../../api/client';
-import { NO_PERMISSION_ERROR, SYSTEM_ERROR } from './messages';
+import { NO_PERMISSION_ERROR, SEARCH_TIMEOUT_ERROR, SYSTEM_ERROR } from './messages';
 
 /**
  * Errores del módulo «Medios» del panel (patrón F4/F6/F7): el `403` del servidor
@@ -28,4 +28,16 @@ export function detailMessage(error: unknown, field: string): string | undefined
 /** Mensaje de aviso para los errores que no dependen de un campo. */
 export function generalErrorMessage(error: unknown): string {
   return isForbidden(error) ? NO_PERMISSION_ERROR : SYSTEM_ERROR;
+}
+
+/**
+ * Mensaje del fallo de «Buscar episodios nuevos» (H1): el tiempo agotado —el
+ * único desenlace que el aviso genérico no explicaba— se cuenta aparte, para que
+ * el equipo sepa que la búsqueda se interrumpió a medias y que puede repetirla.
+ */
+export function searchErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.reason === 'timeout') {
+    return SEARCH_TIMEOUT_ERROR;
+  }
+  return SYSTEM_ERROR;
 }

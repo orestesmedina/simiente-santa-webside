@@ -28,6 +28,15 @@ export const SEARCH_SUPPORT =
 export const SEARCHING = 'Buscando…';
 export const SEARCHING_STATUS = 'Buscando episodios nuevos en YouTube y en el podcast…';
 
+/**
+ * La búsqueda agotó su tiempo de espera (H1): el servidor tiene 90 s y el
+ * cliente espera 120 s, así que llegar aquí es raro —pero se dice en palabras
+ * de la iglesia y sin prometer un resumen que no llegó. Nada se borra nunca
+ * (FR-012): lo que ya estaba sigue igual y volver a pulsar es seguro.
+ */
+export const SEARCH_TIMEOUT_ERROR =
+  'La búsqueda tardó más de lo previsto y se interrumpió antes de dar el resumen. Nada se borró: lo que ya había sigue igual. Vuelve a pulsarla en un rato.';
+
 /* ── Resumen de la búsqueda (ux.md §4.4/§7.1) ────────────────────────── */
 
 /**

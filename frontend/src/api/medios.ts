@@ -129,14 +129,29 @@ export async function listMedios(params: MediosListParams = {}): Promise<MedioAd
 }
 
 /**
+ * Tiempo de espera **propio** de la búsqueda de episodios: 120 s, por encima del
+ * presupuesto del servidor (90 s). El resto de consultas usa los 5 s del cliente
+ * (`REQUEST_TIMEOUT_MS`, D20), pero una primera importación real (dos feeds,
+ * hasta 30 elementos y hasta 30 descargas de carátula) tarda entre 3 y 30 s:
+ * con el tiempo del cliente la búsqueda se abortaba a media importación —y el
+ * abort cancelaba también el trabajo del servidor—, de modo que el equipo veía
+ * «error del sistema» y **nunca** el resumen de FR-018 (H1 de la revisión).
+ */
+export const SYNC_TIMEOUT_MS = 120_000;
+
+/**
  * «Buscar episodios nuevos» (FR-011/FR-018): la **única** automatización del
  * módulo. Lee los dos feeds, agrega solo lo que falte, une lo que corresponde y
  * devuelve el resumen —también cuando un feed falló o el presupuesto de tiempo se
  * agotó: eso no es error y nada se pierde (FR-016)—. Puede tardar unos segundos
- * (presupuesto de 90 s): quien llama desactiva la interfaz mientras corre.
+ * (presupuesto de 90 s en el servidor): quien llama desactiva la interfaz
+ * mientras corre y espera con `SYNC_TIMEOUT_MS`, no con el tiempo del cliente.
  */
 export async function syncMedios(): Promise<ResumenBusqueda> {
-  return apiFetch<ResumenBusqueda>(`${MEDIOS_BASE}/buscar-nuevos`, { method: 'POST' });
+  return apiFetch<ResumenBusqueda>(`${MEDIOS_BASE}/buscar-nuevos`, {
+    method: 'POST',
+    timeoutMs: SYNC_TIMEOUT_MS,
+  });
 }
 
 /**
