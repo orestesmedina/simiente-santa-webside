@@ -251,8 +251,11 @@ func normalizeLang(lang string) (string, error) {
 
 // normalizarPaginacionPublica normaliza la tanda de la sección (R9-10): sin
 // indicar usa `pageDefault` (12), un valor por encima del tope se acota a
-// `maxPage` (50) —el tope nunca es un error— y un valor negativo es
-// `400 invalid` con su campo en `details` (§8.1.3).
+// `maxPage` (50) —el tope nunca es un error—, un `offset` por encima del tope se
+// acota a `paginate.MaxOffset` (misma regla: la página está vacía igual y el
+// valor no cabe en el `int32` de la consulta, que devolvería un error de
+// PostgreSQL) y un valor negativo es `400 invalid` con su campo en `details`
+// (§8.1.3).
 func normalizarPaginacionPublica(limit, offset int) (paginate.Params, error) {
 	switch {
 	case limit < 0:
@@ -271,6 +274,9 @@ func normalizarPaginacionPublica(limit, offset int) (paginate.Params, error) {
 	}
 	if limit > maxPage {
 		limit = maxPage
+	}
+	if offset > paginate.MaxOffset {
+		offset = paginate.MaxOffset
 	}
 	return paginate.Params{Limit: limit, Offset: offset}, nil
 }

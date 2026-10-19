@@ -155,6 +155,19 @@ func TestGetMediosPaginacion(t *testing.T) {
 	if _, err := service.GetMedios(context.Background(), LangES, 0, -1); err == nil {
 		t.Error("un offset negativo debía ser invalid")
 	}
+
+	// Un offset por encima del tope se acota (como `limit`): la página está vacía
+	// igual y el valor no cabe en el `int32` de la consulta (B1).
+	acotado, err := service.GetMedios(context.Background(), LangES, 0, paginate.MaxOffset+1)
+	if err != nil {
+		t.Fatalf("GetMedios devolvió %v", err)
+	}
+	if acotado.Offset != paginate.MaxOffset {
+		t.Errorf("offset = %d, se esperaba el tope %d", acotado.Offset, paginate.MaxOffset)
+	}
+	if len(acotado.Items) != 0 {
+		t.Errorf("más allá del final no hay fichas: %d", len(acotado.Items))
+	}
 	if _, err := service.GetMedios(context.Background(), "fr", 0, 0); err == nil {
 		t.Error("un idioma fuera de es|en debía ser invalid")
 	}

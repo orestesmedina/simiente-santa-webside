@@ -75,6 +75,43 @@ func TestFromValuesCapsLimit(t *testing.T) {
 	}
 }
 
+// TestFromValuesCapsOffset fija el tope de `offset` (§8.1.3): un valor por encima
+// de MaxOffset se acota (no es un error, como `limit`) para que nunca desborde el
+// `int32` de las consultas —un `OFFSET` negativo es un error de PostgreSQL—.
+func TestFromValuesCapsOffset(t *testing.T) {
+	tests := []struct {
+		name   string
+		offset string
+	}{
+		{name: "justo por encima de MaxInt32", offset: "2147483648"},
+		{name: "muy por encima", offset: "9999999999999"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := FromValues(url.Values{"offset": {tt.offset}})
+			if err != nil {
+				t.Fatalf("FromValues() error inesperado: %v", err)
+			}
+			if got.Offset != MaxOffset {
+				t.Errorf("offset = %d, se esperaba el tope %d", got.Offset, MaxOffset)
+			}
+			if got.Limit != DefaultLimit {
+				t.Errorf("limit = %d, se esperaba el defecto %d", got.Limit, DefaultLimit)
+			}
+		})
+	}
+
+	// Dentro del tope el valor se respeta tal cual.
+	got, err := FromValues(url.Values{"offset": {"12345"}})
+	if err != nil {
+		t.Fatalf("FromValues() error inesperado: %v", err)
+	}
+	if got.Offset != 12345 {
+		t.Errorf("offset = %d, se esperaba 12345", got.Offset)
+	}
+}
+
 func TestFromValuesInvalid(t *testing.T) {
 	tests := []struct {
 		name      string

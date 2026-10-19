@@ -1214,3 +1214,34 @@ func TestIntegrationSyncWritesOnlyItsColumns(t *testing.T) {
 		t.Errorf("la unión pisó el eje de disponibilidad: %+v", unida.MarcaDisponibilidad)
 	}
 }
+
+// TestIntegrationPaginacionConOffsetEnElTope fija B1 contra PostgreSQL real: un
+// `offset` acotado al tope (`paginate.MaxOffset`) es una **página vacía**, no un
+// error. Antes del arreglo el valor por encima de `MaxInt32` desbordaba el
+// `int32` de la consulta y PostgreSQL rechazaba el `OFFSET` negativo (500 en la
+// ruta pública).
+func TestIntegrationPaginacionConOffsetEnElTope(t *testing.T) {
+	repo := newMediosRepo(t)
+	pool := repo.pool
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		seedFicha(t, pool, map[string]any{"title": fmt.Sprintf("Sermón %02d", i)})
+	}
+
+	items, err := repo.ListPublishedMediaItems(ctx, paginate.Params{Limit: 12, Offset: paginate.MaxOffset})
+	if err != nil {
+		t.Fatalf("ListPublishedMediaItems(offset en el tope) = %v, se esperaba una página vacía", err)
+	}
+	if len(items) != 0 {
+		t.Errorf("items = %d, se esperaba 0 (más allá del final)", len(items))
+	}
+
+	// El valor sin acotar (el que desbordaba) sí es un error de PostgreSQL: es la
+	// razón del tope.
+	if _, err := repo.ListPublishedMediaItems(ctx, paginate.Params{
+		Limit: 12, Offset: paginate.MaxOffset + 1,
+	}); err == nil {
+		t.Error("un offset sin acotar debía fallar en la base (por eso se acota en el service)")
+	}
+}

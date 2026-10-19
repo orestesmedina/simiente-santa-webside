@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"simiente-santa/backend/internal/platform/paginate"
 	"simiente-santa/backend/internal/platform/testutil"
 )
 
@@ -166,6 +167,25 @@ func TestGetMediosHandlerPaginacion(t *testing.T) {
 		}
 		if len(got.Items) != 1 || got.Offset != pageDefault {
 			t.Errorf("sobre = {%d items, offset %d}, se esperaba {1, %d}", len(got.Items), got.Offset, pageDefault)
+		}
+	})
+
+	t.Run("un offset por encima del tope se acota (B1)", func(t *testing.T) {
+		// `?offset=2147483648` desbordaba el `int32` de la consulta y la API
+		// respondía 500: el tope lo deja en una página vacía.
+		rec := doGet(t, h.GetMedios, "/api/v1/medios?offset=2147483648")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, se esperaba 200 (%s)", rec.Code, rec.Body)
+		}
+		var got MediosPublicos
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatalf("cuerpo no es MediosPublicos: %v", err)
+		}
+		if got.Offset != paginate.MaxOffset {
+			t.Errorf("offset = %d, se esperaba el tope %d", got.Offset, paginate.MaxOffset)
+		}
+		if len(got.Items) != 0 || got.Total != 13 {
+			t.Errorf("sobre = {%d items, total %d}, se esperaba {0, 13}", len(got.Items), got.Total)
 		}
 	})
 
