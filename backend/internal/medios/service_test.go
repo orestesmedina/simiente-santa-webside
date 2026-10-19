@@ -844,6 +844,23 @@ func (f *fakeRepository) UpdateMediaItem(_ context.Context, episodio Episodio, a
 	return episodio, nil
 }
 
+// UpdateMediaItemCoverIfNull imita la escritura condicional del repository real:
+// escribe la carátula **solo** si la ficha todavía no tiene (y solo ese campo: lo
+// demás del equipo queda intacto) y devuelve false cuando ya había carátula.
+func (f *fakeRepository) UpdateMediaItemCoverIfNull(_ context.Context, id uuid.UUID, archivo string) (Episodio, bool, error) {
+	if f.mutationErr != nil {
+		return Episodio{}, false, f.mutationErr
+	}
+	i, ok := f.buscar(id)
+	if !ok || f.episodios[i].Caratula != nil {
+		return Episodio{}, false, nil
+	}
+	f.episodios[i].Caratula = &archivo
+	f.episodios[i].ActualizadoEn = time.Now()
+	f.updates = append(f.updates, id)
+	return f.episodios[i], true, nil
+}
+
 func (f *fakeRepository) RepointMediaItemSources(_ context.Context, resultante, absorbida Episodio, actions ...audit.Action) ([]FuenteEpisodio, error) {
 	if f.repointErr != nil {
 		return nil, f.repointErr
@@ -1045,7 +1062,10 @@ func (p *fakeProbador) comprobadas() []string {
 // mutex.
 type fakeCaratulas struct {
 	archivo string
-	err     error
+	// porURL devuelve un nombre distinto por carátula pedida: permite comprobar
+	// cuál de las dos carátulas de un mismo sermón se copió.
+	porURL map[string]string
+	err    error
 
 	mu      sync.Mutex
 	pedidas []string
@@ -1059,6 +1079,9 @@ func (c *fakeCaratulas) FetchCover(_ context.Context, caratulaURL string) (strin
 	c.mu.Unlock()
 	if c.err != nil {
 		return "", c.err
+	}
+	if nombre, ok := c.porURL[caratulaURL]; ok {
+		return nombre, nil
 	}
 	if c.archivo == "" {
 		return "img_" + uuid.NewString() + ".jpg", nil

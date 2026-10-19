@@ -717,3 +717,56 @@ func (q *Queries) UpdateMediaItem(ctx context.Context, arg UpdateMediaItemParams
 	)
 	return i, err
 }
+
+const updateMediaItemCoverIfNull = `-- name: UpdateMediaItemCoverIfNull :one
+UPDATE media_items
+SET cover_file = $1,
+    updated_at = now()
+WHERE id = $2
+  AND cover_file IS NULL
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at
+`
+
+type UpdateMediaItemCoverIfNullParams struct {
+	CoverFile pgtype.Text
+	ID        pgtype.UUID
+}
+
+// La búsqueda copia al sitio la carátula de un elemento importado **solo si la
+// ficha todavía no tiene**: la carátula es una instantánea (P9-9/default #10) y,
+// cuando el mismo sermón la trae de los dos feeds, manda la del **video**
+// (default #7) — la elección la hace el service antes de descargar.
+//
+// La condición viaja en el `WHERE` (y no en una lectura previa), de modo que dos
+// búsquedas simultáneas no se pisan: la segunda no devuelve fila y su copia queda
+// sin uso (el service la retira del almacén). Escribe **solo** `cover_file` y
+// `updated_at`: una edición del equipo hecha mientras la búsqueda corría (o una
+// decisión de visibilidad) sigue intacta (FR-015/SC-007).
+func (q *Queries) UpdateMediaItemCoverIfNull(ctx context.Context, arg UpdateMediaItemCoverIfNullParams) (MediaItem, error) {
+	row := q.db.QueryRow(ctx, updateMediaItemCoverIfNull, arg.CoverFile, arg.ID)
+	var i MediaItem
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.PublishedAt,
+		&i.DescriptionEs,
+		&i.DescriptionEn,
+		&i.DescriptionEdited,
+		&i.CoverFile,
+		&i.Origin,
+		&i.Visibility,
+		&i.DuplicateOfID,
+		&i.DuplicateMarkResolvedAt,
+		&i.AvailabilityCheckedAt,
+		&i.AvailabilityResult,
+		&i.AvailabilityMark,
+		&i.AvailabilityMarkResolvedAt,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

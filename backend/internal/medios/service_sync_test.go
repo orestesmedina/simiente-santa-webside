@@ -1088,6 +1088,89 @@ func TestBuscarNuevosCaratulas(t *testing.T) {
 	})
 }
 
+// TestBuscarNuevosNoPisaLaCaratula fija P9-9/default #10 y el default #7: la
+// carátula es una instantánea —la búsqueda **no** refresca la que ya tiene una
+// ficha— y, cuando el mismo sermón la trae de los dos feeds, manda la del
+// **video**. Ninguna de las dos reglas dependía del orden en que terminaran las
+// descargas.
+func TestBuscarNuevosNoPisaLaCaratula(t *testing.T) {
+	fecha := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+	tituloVideo := "Potencial sin Resultados La Lección de la Higuera"
+	tituloPodcast := "Potencial sin Resultados: La Lección de la Higuera"
+
+	t.Run("unir no pisa la carátula del video ni borra su archivo", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{
+			Titulo: tituloVideo, PublicadoEn: fecha, Origen: OrigenVideo,
+			Caratula: ptr("img_11111111-1111-1111-1111-111111111111.jpg"),
+		})
+		repo.seedFuentes(FuenteEpisodio{
+			EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+			TituloFeed: tituloVideo, Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
+		})
+		entrada := entradaDePrueba(ProveedorPodcast, "guid-01", tituloPodcast, fecha, "Descripción")
+		entrada.CaratulaURL = caratulaPodcast
+		caratulas := &fakeCaratulas{porURL: map[string]string{caratulaPodcast: "img_22222222-2222-2222-2222-222222222222.jpg"}}
+		almacen := &fakeAlmacen{}
+		service := NewService(ServiceDeps{
+			Repository:         repo,
+			FeedSource:         &fakeFeedSource{podcast: ResultadoFeed{Entradas: []EntradaFeed{entrada}}},
+			AvailabilityProber: &fakeProbador{},
+			CoverFetcher:       caratulas,
+			Store:              almacen,
+			Location:           zonaDePrueba(t),
+		})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if resumen.Unidos != 1 || len(repo.episodios) != 1 {
+			t.Fatalf("el elemento del podcast debía unirse: %+v", resumen)
+		}
+		ficha := repo.episodios[0]
+		if ficha.Caratula == nil || *ficha.Caratula != "img_11111111-1111-1111-1111-111111111111.jpg" {
+			t.Errorf("la carátula del video debe seguir siendo la de la ficha: %v", ficha.Caratula)
+		}
+		if descargas := caratulas.descargadas(); len(descargas) != 0 {
+			t.Errorf("no se descarga la carátula de una ficha que ya tiene: %v", descargas)
+		}
+		if len(almacen.borrados) != 0 {
+			t.Errorf("el archivo del video no se puede borrar: %v", almacen.borrados)
+		}
+	})
+
+	t.Run("con las dos carátulas del mismo sermón gana la del video", func(t *testing.T) {
+		repo := newFakeRepository()
+		entradaVideo := entradaDePrueba(ProveedorYouTube, "SimienteAA1", tituloVideo, fecha, "Descripción")
+		entradaVideo.CaratulaURL = caratulaYouTube
+		entradaPodcast := entradaDePrueba(ProveedorPodcast, "guid-01", tituloPodcast, fecha, "Descripción")
+		entradaPodcast.CaratulaURL = caratulaPodcast
+		caratulas := &fakeCaratulas{porURL: map[string]string{
+			caratulaYouTube: "img_33333333-3333-3333-3333-333333333333.jpg",
+			caratulaPodcast: "img_44444444-4444-4444-4444-444444444444.jpg",
+		}}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{
+				youtube: ResultadoFeed{Entradas: []EntradaFeed{entradaVideo}},
+				podcast: ResultadoFeed{Entradas: []EntradaFeed{entradaPodcast}},
+			}, &fakeProbador{}, caratulas)
+
+		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if len(repo.episodios) != 1 {
+			t.Fatalf("el sermón debe quedar en una sola ficha: %d", len(repo.episodios))
+		}
+		if descargas := caratulas.descargadas(); len(descargas) != 1 || descargas[0] != caratulaYouTube {
+			t.Errorf("descargas = %v, se esperaba solo la del video", descargas)
+		}
+		if ficha := repo.episodios[0]; ficha.Caratula == nil || *ficha.Caratula != "img_33333333-3333-3333-3333-333333333333.jpg" {
+			t.Errorf("la ficha debe quedarse con la carátula del video: %v", ficha.Caratula)
+		}
+	})
+}
+
 // TestBuscarNuevosResumenYRegistro fija FR-018/FR-022: cada búsqueda deja **una**
 // fila en `media_sync_runs` con sus conteos y el estado de cada feed, y **una**
 // sola fila `media.sync` (nunca una por elemento), con el extracto del resumen en

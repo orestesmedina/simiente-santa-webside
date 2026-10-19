@@ -114,6 +114,9 @@ type Repository interface {
 	// repunta las fuentes de la absorbida, escribe las dos filas y registra la
 	// auditoría (P9-10/FR-019).
 	RepointMediaItemSources(ctx context.Context, resultante, absorbida Episodio, actions ...audit.Action) ([]FuenteEpisodio, error)
+	// UpdateMediaItemCoverIfNull copia la carátula al sitio solo si la ficha
+	// todavía no tiene (P9-9/default #10) y dice si la escribió.
+	UpdateMediaItemCoverIfNull(ctx context.Context, id uuid.UUID, archivo string) (Episodio, bool, error)
 
 	// Fuentes de importación (R9-11): `ON CONFLICT (provider, external_id) DO
 	// NOTHING` = idempotencia de la búsqueda, sin refrescar la instantánea.

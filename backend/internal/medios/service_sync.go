@@ -202,9 +202,12 @@ type comprobacion struct {
 }
 
 // caratulaPendiente es una carátula que hay que copiar al sitio: la del elemento
-// que se acaba de importar, en su ficha.
+// que se acaba de importar, en su ficha. `proveedor` es el del elemento que la
+// trajo: cuando el mismo sermón la trae de los dos feeds manda la del video
+// (default #7).
 type caratulaPendiente struct {
 	episodioID  uuid.UUID
+	proveedor   Proveedor
 	caratulaURL string
 }
 
@@ -460,11 +463,17 @@ func gravedadDisponibilidad(resultado ResultadoDisponibilidad) int {
 // visitante no pide nada a YouTube ni a Spotify (SC-005). Un fallo **nunca**
 // aborta la importación: la ficha entra sin carátula (marcador neutro) y la
 // búsqueda sigue.
+//
+// La carátula es una **instantánea** (P9-9/default #10): una ficha que ya tiene
+// carátula **no se toca** —ni se descarga la otra— y, cuando el mismo sermón trae
+// carátula de los dos feeds, manda la del **video** (default #7). Por eso cada
+// ficha tiene **una sola** descarga: el ganador no depende de qué goroutine
+// termine antes.
 func (b *busqueda) copiarCaratulas() error {
 	if b.servicio.caratulas == nil || len(b.caratulas) == 0 {
 		return nil
 	}
-	tareas := b.caratulas
+	tareas := b.caratulasPorFicha()
 	if len(tareas) > maxCaratulasPorBusqueda {
 		tareas = tareas[:maxCaratulasPorBusqueda]
 	}
@@ -473,7 +482,7 @@ func (b *busqueda) copiarCaratulas() error {
 		mu      sync.Mutex
 		wg      sync.WaitGroup
 		enVuelo = make(chan struct{}, maxEnVuelo)
-		copias  = make(map[uuid.UUID]string, len(tareas))
+		fallo   error
 	)
 	for _, tarea := range tareas {
 		if b.presupuestoAgotado() {
@@ -484,39 +493,71 @@ func (b *busqueda) copiarCaratulas() error {
 		go func(tarea caratulaPendiente) {
 			defer wg.Done()
 			defer func() { <-enVuelo }()
-			archivo, err := b.servicio.caratulas.FetchCover(b.ctx, tarea.caratulaURL)
-			if err != nil {
-				b.servicio.logError(b.ctx, "no se pudo copiar la carátula del episodio", err)
-				return
+			if err := b.copiarCaratula(tarea); err != nil {
+				mu.Lock()
+				if fallo == nil {
+					fallo = err
+				}
+				mu.Unlock()
 			}
-			mu.Lock()
-			defer mu.Unlock()
-			copias[tarea.episodioID] = archivo
 		}(tarea)
 	}
 	wg.Wait()
 
-	for episodioID, archivo := range copias {
-		ficha, encontrada, err := b.fichaActual(episodioID)
-		if err != nil {
-			if b.presupuestoAgotado() {
-				return nil
-			}
-			return err
-		}
-		if !encontrada || (ficha.Caratula != nil && *ficha.Caratula == archivo) {
+	if fallo != nil && !b.presupuestoAgotado() {
+		return fallo
+	}
+	return nil
+}
+
+// caratulasPorFicha devuelve **una** carátula por ficha, en el orden en que se
+// encolaron: el mismo sermón puede traer carátula del video y del podcast y el
+// ganador no puede depender del orden en que terminen las descargas (default #7:
+// manda la del video).
+func (b *busqueda) caratulasPorFicha() []caratulaPendiente {
+	elegidas := make([]caratulaPendiente, 0, len(b.caratulas))
+	posicion := make(map[uuid.UUID]int, len(b.caratulas))
+	for _, pendiente := range b.caratulas {
+		i, vista := posicion[pendiente.episodioID]
+		if !vista {
+			posicion[pendiente.episodioID] = len(elegidas)
+			elegidas = append(elegidas, pendiente)
 			continue
 		}
-		anterior := ficha.Caratula
-		actualizada := ficha
-		actualizada.Caratula = &archivo
-		if _, err := b.servicio.repository.UpdateMediaItem(b.ctx, actualizada); err != nil {
-			if b.presupuestoAgotado() {
-				return nil
-			}
-			return fmt.Errorf("guardar la carátula del episodio: %w", err)
+		if pendiente.proveedor == ProveedorYouTube && elegidas[i].proveedor != ProveedorYouTube {
+			elegidas[i] = pendiente
 		}
-		b.servicio.borrarCaratulasSinUso(b.ctx, actualizada.Caratula, anterior)
+	}
+	return elegidas
+}
+
+// copiarCaratula copia la carátula de UNA ficha y la deja escrita si la ficha
+// sigue sin carátula. Lee la fila viva (sin la caché de la búsqueda: este paso
+// corre en paralelo) y la escritura condicional resuelve la carrera con otra
+// búsqueda. La copia que no se usa se retira del almacén en mejor esfuerzo.
+func (b *busqueda) copiarCaratula(tarea caratulaPendiente) error {
+	ficha, encontrada, err := b.servicio.repository.GetMediaItemByID(b.ctx, tarea.episodioID)
+	if err != nil {
+		return fmt.Errorf("leer el episodio de la carátula: %w", err)
+	}
+	if !encontrada || ficha.Caratula != nil {
+		// La ficha ya tiene carátula (la del video, la de otra búsqueda o la que
+		// el equipo puso): la instantánea no se refresca (P9-9/default #10) y la
+		// descarga ni se intenta.
+		return nil
+	}
+
+	archivo, err := b.servicio.caratulas.FetchCover(b.ctx, tarea.caratulaURL)
+	if err != nil {
+		b.servicio.logError(b.ctx, "no se pudo copiar la carátula del episodio", err)
+		return nil
+	}
+
+	if _, aplicada, err := b.servicio.repository.UpdateMediaItemCoverIfNull(b.ctx, tarea.episodioID, archivo); err != nil {
+		return fmt.Errorf("guardar la carátula del episodio: %w", err)
+	} else if !aplicada {
+		// Otra búsqueda simultánea se adelantó: su copia es la que sirve el sitio.
+		b.servicio.borrarCaratulasSinUso(b.ctx, nil, &archivo)
 	}
 	return nil
 }
@@ -792,9 +833,12 @@ func (b *busqueda) insertarFuente(proveedor Proveedor, entrada EntradaFeed, epis
 		// de la búsqueda encuentra así las fichas que acaba de crear el primero.
 		b.fuentes[fuente.Proveedor] = append(b.fuentes[fuente.Proveedor], insertada)
 		if entrada.CaratulaURL != "" {
-			// La carátula se copia al sitio al importar (P9-7/SC-005).
+			// La carátula se copia al sitio al importar (P9-7/SC-005): se encola
+			// con su proveedor y la elección por ficha (el video manda) la hace
+			// `caratulasPorFicha` (default #7).
 			b.caratulas = append(b.caratulas, caratulaPendiente{
 				episodioID:  episodioID,
+				proveedor:   proveedor,
 				caratulaURL: entrada.CaratulaURL,
 			})
 		}

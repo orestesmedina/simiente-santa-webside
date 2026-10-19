@@ -252,6 +252,27 @@ RETURNING id, title, published_at, description_es, description_en, description_e
           availability_checked_at, availability_result, availability_mark,
           availability_mark_resolved_at, merged_into_id, created_at, updated_at;
 
+-- name: UpdateMediaItemCoverIfNull :one
+-- La búsqueda copia al sitio la carátula de un elemento importado **solo si la
+-- ficha todavía no tiene**: la carátula es una instantánea (P9-9/default #10) y,
+-- cuando el mismo sermón la trae de los dos feeds, manda la del **video**
+-- (default #7) — la elección la hace el service antes de descargar.
+--
+-- La condición viaja en el `WHERE` (y no en una lectura previa), de modo que dos
+-- búsquedas simultáneas no se pisan: la segunda no devuelve fila y su copia queda
+-- sin uso (el service la retira del almacén). Escribe **solo** `cover_file` y
+-- `updated_at`: una edición del equipo hecha mientras la búsqueda corría (o una
+-- decisión de visibilidad) sigue intacta (FR-015/SC-007).
+UPDATE media_items
+SET cover_file = sqlc.arg('cover_file'),
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+  AND cover_file IS NULL
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at;
+
 -- name: RepointMediaItemSources :many
 -- Unión por puntero (R9-12/P9-10): mueve las fuentes de la ficha absorbida a la
 -- resultante (la procedencia no se pierde y **nunca** se borra una fuente: FR-019

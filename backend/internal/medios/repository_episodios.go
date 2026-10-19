@@ -190,6 +190,28 @@ func (r *repository) UpdateMediaItem(ctx context.Context, episodio Episodio, act
 	return result, nil
 }
 
+// UpdateMediaItemCoverIfNull escribe la carátula copiada al sitio **solo si la
+// ficha todavía no tiene** (P9-9/default #10: la carátula es una instantánea y la
+// búsqueda no la refresca) y devuelve el segundo valor `false` cuando otra
+// escritura se le adelantó. La condición vive en el `UPDATE`
+// (`cover_file IS NULL`), sin lectura previa, así que dos búsquedas simultáneas
+// no se pisan: exactamente una escribe y la otra retira su copia. La consulta
+// toca únicamente `cover_file`/`updated_at`: nada del equipo se reescribe.
+func (r *repository) UpdateMediaItemCoverIfNull(ctx context.Context, id uuid.UUID, archivo string) (Episodio, bool, error) {
+	row, err := r.q.UpdateMediaItemCoverIfNull(ctx, gendb.UpdateMediaItemCoverIfNullParams{
+		CoverFile: pgText(archivo),
+		ID:        pgUUID(id),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// La ficha ya tenía carátula (o desapareció): no se escribe nada.
+			return Episodio{}, false, nil
+		}
+		return Episodio{}, false, wrap(err, "update media item cover if null", messageEpisodioNoExiste, "")
+	}
+	return mapEpisodio(row), true, nil
+}
+
 // RepointMediaItemSources aplica la **unión por puntero** (R9-12/P9-10/FR-019)
 // en UNA sola transacción: mueve las fuentes de la ficha absorbida a la
 // resultante y escribe la fila completa ya fusionada de las dos —la absorbida
