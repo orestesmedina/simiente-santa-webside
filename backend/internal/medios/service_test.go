@@ -599,6 +599,10 @@ type fakeRepository struct {
 	publicCalls      int
 	portadaCalls     int
 	countPublicCalls int
+	// sourceCallsByItem y sourceBatchCalls distinguen la procedencia leída ficha
+	// a ficha de la leída por lote (hallazgo B3).
+	sourceCallsByItem int
+	sourceBatchCalls  int
 }
 
 var _ Repository = (*fakeRepository)(nil)
@@ -1079,9 +1083,30 @@ func (f *fakeRepository) ListMediaItemSourcesByItem(_ context.Context, itemID uu
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
+	f.sourceCallsByItem++
 	fuentes := make([]FuenteEpisodio, 0, 2)
 	for _, fuente := range f.fuentes {
 		if fuente.EpisodioID == itemID {
+			fuentes = append(fuentes, fuente)
+		}
+	}
+	return fuentes, nil
+}
+
+// ListMediaItemSourcesByItems imita la consulta POR LOTE del listado (B3): una
+// sola llamada devuelve la procedencia de todas las fichas de la página.
+func (f *fakeRepository) ListMediaItemSourcesByItems(_ context.Context, itemIDs []uuid.UUID) ([]FuenteEpisodio, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	f.sourceBatchCalls++
+	buscados := make(map[uuid.UUID]bool, len(itemIDs))
+	for _, id := range itemIDs {
+		buscados[id] = true
+	}
+	fuentes := make([]FuenteEpisodio, 0, len(itemIDs))
+	for _, fuente := range f.fuentes {
+		if buscados[fuente.EpisodioID] {
 			fuentes = append(fuentes, fuente)
 		}
 	}

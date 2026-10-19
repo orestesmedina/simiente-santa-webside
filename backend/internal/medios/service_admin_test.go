@@ -159,6 +159,45 @@ func TestListMediosDelPanel(t *testing.T) {
 	})
 }
 
+// TestListMediosProcedenciaPorLote fija el hallazgo B3: el listado del panel lee
+// la procedencia de toda la página en UNA consulta (consulta por lote), no una
+// por fila. Con el tope de 100 del contrato, el N+1 eran 100 consultas por carga.
+func TestListMediosProcedenciaPorLote(t *testing.T) {
+	base := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+	repo := newFakeRepository()
+	for i := 0; i < 3; i++ {
+		repo.seed(Episodio{Titulo: "episodio " + string(rune('a'+i)), PublicadoEn: base.Add(-time.Duration(i) * time.Hour)})
+	}
+	repo.seedFuentes(
+		FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+			TituloFeed: "episodio a", Enlace: "https://www.youtube.com/watch?v=SimienteAA1"},
+		FuenteEpisodio{EpisodioID: repo.episodios[1].ID, Proveedor: ProveedorPodcast, IDExterno: "guid-01",
+			TituloFeed: "episodio b", Enlace: "https://podcasters.spotify.com/pod/show/x/episodes/1"},
+	)
+	service := serviceDePrueba(repo)
+
+	out, err := service.List(context.Background(), FiltroPanel{}, paginate.Params{Limit: 100})
+	if err != nil {
+		t.Fatalf("List devolvió %v", err)
+	}
+	if len(out.Items) != 3 {
+		t.Fatalf("listado = %d fichas, se esperaban 3", len(out.Items))
+	}
+	if repo.sourceCallsByItem != 0 {
+		t.Errorf("el listado leyó la procedencia ficha a ficha (%d consultas): es el N+1 de B3", repo.sourceCallsByItem)
+	}
+	if repo.sourceBatchCalls != 1 {
+		t.Errorf("consultas por lote = %d, se esperaba exactamente una", repo.sourceBatchCalls)
+	}
+	// La procedencia sigue viajando en cada fila.
+	if len(out.Items[0].Fuentes) != 1 || out.Items[0].Fuentes[0].IDExterno != "SimienteAA1" {
+		t.Errorf("la procedencia de la primera fila = %+v", out.Items[0].Fuentes)
+	}
+	if len(out.Items[2].Fuentes) != 0 {
+		t.Errorf("una ficha sin fuentes lleva el arreglo vacío: %+v", out.Items[2].Fuentes)
+	}
+}
+
 // TestUpdateMedioDescripcion fija la edición de la descripción corta
 // (FR-019/FR-020): validación completa con `details` por campo y **sin guardar
 // nada a medias**, el guardado fija `descriptionEdited` (FR-015/SC-007: la
@@ -395,6 +434,40 @@ func TestUpdateMedioDescripcion(t *testing.T) {
 
 		_, err := service.Update(context.Background(), actor, uuid.New(), MedioPatch{DescriptionEs: ptr("Nueva")})
 		requireKind(t, err, apperr.KindNotFound)
+	})
+
+	t.Run("el intento fallido se audita con la operación intentada", func(t *testing.T) {
+		// Un `PATCH` que solo trae visibilidad es un ocultar/mostrar: el registro
+		// del fallo lleva ese código (FR-022), como el camino de éxito.
+		repo := newFakeRepository()
+		service := serviceDePrueba(repo)
+		_, err := service.Update(context.Background(), actor, uuid.New(), MedioPatch{Visibility: ptr("hidden")})
+		requireKind(t, err, apperr.KindNotFound)
+		if len(repo.recorded) != 1 || repo.recorded[0].Code != audit.ActionMediaHide ||
+			repo.recorded[0].Result != audit.ResultFailure {
+			t.Errorf("intento de ocultar = %+v, se esperaba media.hide con result=failure", repo.recorded)
+		}
+
+		repo2 := newFakeRepository()
+		service2 := serviceDePrueba(repo2)
+		_, err = service2.Update(context.Background(), actor, uuid.New(), MedioPatch{Visibility: ptr("visible")})
+		requireKind(t, err, apperr.KindNotFound)
+		if len(repo2.recorded) != 1 || repo2.recorded[0].Code != audit.ActionMediaShow {
+			t.Errorf("intento de mostrar = %+v, se esperaba media.show", repo2.recorded)
+		}
+
+		// Con datos (o con una visibilidad fuera del catálogo) sigue siendo la
+		// edición de la descripción.
+		repo3 := newFakeRepository()
+		service3 := serviceDePrueba(repo3)
+		_, err = service3.Update(context.Background(), actor, uuid.New(), MedioPatch{
+			DescriptionEs: ptr("Texto"),
+			Visibility:    ptr("hidden"),
+		})
+		requireKind(t, err, apperr.KindNotFound)
+		if len(repo3.recorded) != 1 || repo3.recorded[0].Code != audit.ActionMediaDescriptionUpdate {
+			t.Errorf("intento con datos = %+v, se esperaba media.description.update", repo3.recorded)
+		}
 	})
 
 	t.Run("si la auditoría falla no se aplica nada", func(t *testing.T) {

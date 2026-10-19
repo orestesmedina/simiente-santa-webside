@@ -67,3 +67,21 @@ SELECT id,
 FROM media_episode_sources
 WHERE provider = sqlc.arg('provider')
   AND external_id = sqlc.arg('external_id');
+
+-- name: ListMediaItemSourcesByItems :many
+-- Fuentes de VARIAS fichas en UNA sola consulta: es la procedencia que el panel
+-- muestra en cada fila de su listado (FR-019). Sin esta consulta por lote el
+-- listado haría una consulta por fila (N+1) y, con el tope de 100 filas del
+-- contrato, una carga del panel son 100 consultas (hallazgo B3). Mismo orden de
+-- importación (FIFO) que la consulta de una sola ficha, agrupado por ficha.
+SELECT id,
+       item_id,
+       provider,
+       external_id,
+       feed_title,
+       url,
+       created_at,
+       updated_at
+FROM media_episode_sources
+WHERE item_id = ANY(sqlc.arg('item_ids')::uuid[])
+ORDER BY item_id, created_at, id;

@@ -497,3 +497,53 @@ func TestIntegrationListMediaItemSourcesByItem(t *testing.T) {
 		t.Errorf("fuentes de la segunda ficha = %+v", solaUna)
 	}
 }
+
+// TestIntegrationListMediaItemSourcesByItems fija la consulta POR LOTE del
+// listado del panel (hallazgo B3): una sola llamada devuelve la procedencia de
+// todas las fichas de la página, agrupada por ficha y en orden de importación, y
+// una lista vacía no consulta nada.
+func TestIntegrationListMediaItemSourcesByItems(t *testing.T) {
+	repo := newMediosRepo(t)
+	ctx := context.Background()
+
+	primera := seedFicha(t, repo.pool, map[string]any{"title": "Sermón 1"})
+	segunda := seedFicha(t, repo.pool, map[string]any{"title": "Sermón 2"})
+	tercera := seedFicha(t, repo.pool, map[string]any{"title": "Sermón 3"})
+	seedFuente(t, repo.pool, primera, "youtube", "abcdefghijk", "https://www.youtube.com/watch?v=abcdefghijk")
+	seedFuente(t, repo.pool, primera, "podcast", "episodio-1", "https://podcasters.spotify.com/pod/show/x/episodes/y")
+	seedFuente(t, repo.pool, segunda, "youtube", "lmnopqrstuv", "https://www.youtube.com/watch?v=lmnopqrstuv")
+
+	fuentes, err := repo.ListMediaItemSourcesByItems(ctx, []uuid.UUID{primera, segunda, tercera})
+	if err != nil {
+		t.Fatalf("ListMediaItemSourcesByItems: %v", err)
+	}
+	if len(fuentes) != 3 {
+		t.Fatalf("fuentes = %d, se esperaban las 3 de las dos primeras fichas", len(fuentes))
+	}
+	// Agrupadas por ficha (las de una ficha son contiguas) y en orden de
+	// importación dentro de cada una; la ficha sin fuentes no aparece.
+	porFicha := make(map[uuid.UUID][]FuenteEpisodio, 3)
+	for _, fuente := range fuentes {
+		porFicha[fuente.EpisodioID] = append(porFicha[fuente.EpisodioID], fuente)
+	}
+	if len(porFicha[primera]) != 2 || porFicha[primera][0].Proveedor != ProveedorYouTube ||
+		porFicha[primera][1].Proveedor != ProveedorPodcast {
+		t.Errorf("las fuentes de la primera ficha = %+v, se esperaban video y audio en orden", porFicha[primera])
+	}
+	if len(porFicha[segunda]) != 1 || porFicha[segunda][0].IDExterno != "lmnopqrstuv" {
+		t.Errorf("las fuentes de la segunda ficha = %+v", porFicha[segunda])
+	}
+	if _, hay := porFicha[tercera]; hay {
+		t.Errorf("la ficha sin fuentes no debe aparecer: %+v", porFicha[tercera])
+	}
+
+	// Una sola ficha y una lista vacía también funcionan (la vacía no consulta).
+	unaSola, err := repo.ListMediaItemSourcesByItems(ctx, []uuid.UUID{segunda})
+	if err != nil || len(unaSola) != 1 {
+		t.Fatalf("ListMediaItemSourcesByItems(una) = (%d, %v)", len(unaSola), err)
+	}
+	vacia, err := repo.ListMediaItemSourcesByItems(ctx, nil)
+	if err != nil || len(vacia) != 0 {
+		t.Fatalf("ListMediaItemSourcesByItems(nil) = (%d, %v)", len(vacia), err)
+	}
+}

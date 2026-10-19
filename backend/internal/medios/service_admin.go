@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,6 +84,20 @@ func visibilidadCode(visibilidad Visibilidad) string {
 	return audit.ActionMediaHide
 }
 
+// codigoIntentoMedio traduce el `PATCH` recibido a la acción que se **intentaba**
+// (FR-022): un cuerpo que solo trae visibilidad es un ocultar/mostrar —también
+// cuando la operación acaba fallando— y cualquier otro (o una visibilidad fuera
+// del catálogo, que no identifica ninguna operación) es la edición de la
+// descripción. Es el mismo criterio del camino de éxito.
+func codigoIntentoMedio(patch MedioPatch) string {
+	if patch.DescriptionEs == nil && patch.DescriptionEn == nil && patch.Visibility != nil {
+		if visibilidad := Visibilidad(strings.TrimSpace(*patch.Visibility)); visibilidad.Valid() {
+			return visibilidadCode(visibilidad)
+		}
+	}
+	return audit.ActionMediaDescriptionUpdate
+}
+
 // recordActionBestEffort persiste una acción que ya va a fallar (rechazo o
 // denegación) sin cambiar la respuesta: su fallo se queda en el log (R7-10).
 func (s *service) recordActionBestEffort(ctx context.Context, action audit.Action) {
@@ -157,13 +172,14 @@ func (s *service) List(ctx context.Context, filtro FiltroPanel, params paginate.
 		return MedioAdminList{}, fmt.Errorf("listar los episodios del panel: %w", err)
 	}
 
+	fuentesPorFicha, err := s.fuentesDeLaPagina(ctx, episodios)
+	if err != nil {
+		return MedioAdminList{}, err
+	}
+
 	items := make([]MedioAdmin, 0, len(episodios))
 	for _, episodio := range episodios {
-		fila, err := s.filaAdmin(ctx, episodio)
-		if err != nil {
-			return MedioAdminList{}, err
-		}
-		items = append(items, fila)
+		items = append(items, medioAdminFrom(episodio, fuentesPorFicha[episodio.ID]))
 	}
 
 	out := MedioAdminList{Items: items, Total: total, Limit: params.Limit, Offset: params.Offset}
@@ -178,10 +194,33 @@ func (s *service) List(ctx context.Context, filtro FiltroPanel, params paginate.
 	return out, nil
 }
 
-// filaAdmin compone la fila del panel con su procedencia. La procedencia se lee
-// por ficha (una consulta por fila, `ListMediaItemSourcesByItem`): una ficha
-// tiene 1 o 2 fuentes y el listado va paginado (20 por defecto), así que el
-// coste es acotado y constante por página.
+// fuentesDeLaPagina lee la procedencia de **todas** las fichas de la página en
+// UNA sola consulta y la agrupa por ficha (hallazgo B3): sin el lote, el listado
+// hacía una consulta por fila y el panel pide el tope del contrato (100), así que
+// una carga eran 100 consultas. El orden dentro de cada ficha es el de
+// importación (FIFO), el mismo de `ListMediaItemSourcesByItem`.
+func (s *service) fuentesDeLaPagina(ctx context.Context, episodios []Episodio) (map[uuid.UUID][]FuenteEpisodio, error) {
+	if len(episodios) == 0 {
+		return nil, nil
+	}
+	ids := make([]uuid.UUID, 0, len(episodios))
+	for _, episodio := range episodios {
+		ids = append(ids, episodio.ID)
+	}
+	fuentes, err := s.repository.ListMediaItemSourcesByItems(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("leer las fuentes de la página: %w", err)
+	}
+	porFicha := make(map[uuid.UUID][]FuenteEpisodio, len(episodios))
+	for _, fuente := range fuentes {
+		porFicha[fuente.EpisodioID] = append(porFicha[fuente.EpisodioID], fuente)
+	}
+	return porFicha, nil
+}
+
+// filaAdmin compone la fila del panel con su procedencia: lo usan las respuestas
+// de **una** ficha (editar, unir y resolver una marca). El listado usa la
+// consulta por lote (`fuentesDeLaPagina`), no esta.
 func (s *service) filaAdmin(ctx context.Context, episodio Episodio) (MedioAdmin, error) {
 	fuentes, err := s.repository.ListMediaItemSourcesByItem(ctx, episodio.ID)
 	if err != nil {
@@ -209,7 +248,7 @@ func (s *service) filaAdmin(ctx context.Context, episodio Episodio) (MedioAdmin,
 func (s *service) Update(ctx context.Context, actorID uuid.UUID, id uuid.UUID, patch MedioPatch) (MedioAdmin, error) {
 	label := etiquetaContenido(id.String())
 	fail := func(err error) (MedioAdmin, error) {
-		s.recordContentFailure(ctx, actorID, audit.ActionMediaDescriptionUpdate, label)
+		s.recordContentFailure(ctx, actorID, codigoIntentoMedio(patch), label)
 		return MedioAdmin{}, err
 	}
 

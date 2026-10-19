@@ -163,3 +163,51 @@ func (q *Queries) ListMediaEpisodeSourcesByProvider(ctx context.Context, provide
 	}
 	return items, nil
 }
+
+const listMediaItemSourcesByItems = `-- name: ListMediaItemSourcesByItems :many
+SELECT id,
+       item_id,
+       provider,
+       external_id,
+       feed_title,
+       url,
+       created_at,
+       updated_at
+FROM media_episode_sources
+WHERE item_id = ANY($1::uuid[])
+ORDER BY item_id, created_at, id
+`
+
+// Fuentes de VARIAS fichas en UNA sola consulta: es la procedencia que el panel
+// muestra en cada fila de su listado (FR-019). Sin esta consulta por lote el
+// listado haría una consulta por fila (N+1) y, con el tope de 100 filas del
+// contrato, una carga del panel son 100 consultas (hallazgo B3). Mismo orden de
+// importación (FIFO) que la consulta de una sola ficha, agrupado por ficha.
+func (q *Queries) ListMediaItemSourcesByItems(ctx context.Context, itemIds []pgtype.UUID) ([]MediaEpisodeSource, error) {
+	rows, err := q.db.Query(ctx, listMediaItemSourcesByItems, itemIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MediaEpisodeSource
+	for rows.Next() {
+		var i MediaEpisodeSource
+		if err := rows.Scan(
+			&i.ID,
+			&i.ItemID,
+			&i.Provider,
+			&i.ExternalID,
+			&i.FeedTitle,
+			&i.Url,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

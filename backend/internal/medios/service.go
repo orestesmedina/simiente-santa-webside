@@ -139,6 +139,9 @@ type Repository interface {
 	ListMediaEpisodeSourcesByProvider(ctx context.Context, proveedor Proveedor) ([]FuenteEpisodio, error)
 	GetMediaEpisodeSource(ctx context.Context, proveedor Proveedor, idExterno string) (FuenteEpisodio, bool, error)
 	ListMediaItemSourcesByItem(ctx context.Context, itemID uuid.UUID) ([]FuenteEpisodio, error)
+	// ListMediaItemSourcesByItems es la consulta POR LOTE del listado del panel
+	// (hallazgo B3: sin ella la página hacía una consulta por fila).
+	ListMediaItemSourcesByItems(ctx context.Context, itemIDs []uuid.UUID) ([]FuenteEpisodio, error)
 
 	// Registro de búsquedas (FR-018).
 	InsertMediaSyncRun(ctx context.Context, run SyncRun, actions ...audit.Action) (SyncRun, error)

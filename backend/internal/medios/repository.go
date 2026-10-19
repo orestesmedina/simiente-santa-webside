@@ -215,6 +215,16 @@ func pgEnumPtr[T ~string](v *T) pgtype.Text {
 	return pgtype.Text{String: string(*v), Valid: true}
 }
 
+// pgUUIDs traduce una lista de identificadores del dominio al parámetro de sqlc
+// (`uuid[]`), que es `[]pgtype.UUID`.
+func pgUUIDs(ids []uuid.UUID) []pgtype.UUID {
+	out := make([]pgtype.UUID, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, pgUUID(id))
+	}
+	return out
+}
+
 // --- Mapeo de filas sqlc → dominio ---
 
 // mapEpisodio traduce la fila de una ficha devuelta por una escritura

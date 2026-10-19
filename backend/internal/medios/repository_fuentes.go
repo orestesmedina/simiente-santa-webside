@@ -103,6 +103,25 @@ func (r *repository) GetMediaEpisodeSource(ctx context.Context, proveedor Provee
 	return mapFuenteEpisodio(row), true, nil
 }
 
+// ListMediaItemSourcesByItems devuelve las fuentes de **varias** fichas en una
+// sola consulta (hallazgo B3): el listado del panel resuelve así la procedencia
+// de toda la página sin el N+1 (una consulta por fila). El resultado viene
+// agrupado por ficha y, dentro de cada una, en orden de importación (FIFO).
+func (r *repository) ListMediaItemSourcesByItems(ctx context.Context, itemIDs []uuid.UUID) ([]FuenteEpisodio, error) {
+	if len(itemIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.q.ListMediaItemSourcesByItems(ctx, pgUUIDs(itemIDs))
+	if err != nil {
+		return nil, wrap(err, "list media item sources by items", "", "")
+	}
+	fuentes := make([]FuenteEpisodio, 0, len(rows))
+	for _, row := range rows {
+		fuentes = append(fuentes, mapFuenteEpisodio(row))
+	}
+	return fuentes, nil
+}
+
 // ListMediaItemSourcesByItem devuelve las fuentes de una ficha en orden de
 // importación: la procedencia que el panel muestra (`FuentesList`), el detalle
 // que el equipo revisa antes de unir y la comprobación del resultado de la
