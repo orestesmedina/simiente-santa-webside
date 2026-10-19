@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 7/9 · Validar (**cerrada**) — lista para la **puerta 3** |
-| Ciclo de corrección | 2/3 · **cerrado**: QA y seguridad **APRUEBAN**; código **APRUEBA CON CAMBIOS** con **todos** los hallazgos resueltos y confirmados (H1–H3, M1–M3, N1–N4, S1 y bajos) |
-| Próximo paso | **Puerta 3: abrir el Pull Request** (lo abre el humano: el entorno no tiene credenciales ni `gh`), revisarlo y aprobar el merge |
-| Bloqueado por | — (nada técnico; solo falta abrir el PR) |
+| Fase | 9/9 · Entregar (PR **[#13](https://github.com/orestesmedina/simiente-santa-webside/pull/13)** abierto; pendiente tu aprobación y el merge) |
+| Ciclo de corrección | 2/3 · **cerrado**: QA y seguridad **APRUEBAN**; código **APRUEBA CON CAMBIOS** con **todos** los hallazgos resueltos y confirmados |
+| Próximo paso | Revisar y **aprobar el PR #13**; al aprobarlo, cierro el costo (`make costos CERRAR=1`) y lo dejo commiteado en la rama; después el **merge (squash)** y marco F9 terminada |
+| Bloqueado por | — (nada técnico: el PR está abierto) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -28,7 +28,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano (cliente) | 2026-10-17 | "Apruebo la spec v2" |
 | Plan | aprobado | humano (cliente) | 2026-10-17 | "Aplica las 5 y apruebo el plan" |
-| PR / merge | pendiente | | | |
+| PR / merge | abierto (pendiente de tu revisión y aprobación) | — | 2026-10-19 | PR [#13](https://github.com/orestesmedina/simiente-santa-webside/pull/13) abierto por el humano |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -64,6 +64,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-19 — **PR #13 abierto** por el humano (91 commits contra `main`), roadmap → **en revisión**. ⚠️ El PR se creó **sin descripción** y con el título de la rama: falta pegar el cuerpo de `specs/009-medios-predicas-y-podcasts/pr.md` (que ya incluye la validación de las tres rondas y la evidencia de cierre).
 - 2026-10-19 — **Cierre documental.** CHANGELOG (0.8.0) con el resultado real de la validación (tres rondas, 14 commits de corrección) y una sección «Conocido»; `pr.md` reescrito y **listo para pegar**; limitación del tercer elemento dudoso documentada en `spec.md`, `data-model.md` y las notas de entrega. **Fase 7 cerrada**: lista para la **puerta 3**.
 - 2026-10-18/19 — **Ciclos 2 y 3 de corrección: cerrados.** (a) **N1** resuelto (`32a9619`): la unión automática segura vuelve a funcionar contra una ficha de par **resuelto** (antes el mismo sermón podía verse dos veces) y la exclusión queda **solo** en la rama dudosa, con la pareja recíproca intacta; de paso se cerraron **N2** (la marca de disponibilidad ya no puede devolverse ni barrer una resolución) y **N3** (la carátula huérfana se retira solo si no está en uso). (b) La revalidación encontró **N4**: el doble de pruebas **no soportaba concurrencia** y **`go test -race` falla**, que es justo la puerta del CI (`.github/workflows/ci.yml` línea 112) → arreglado (`b69571d`, mutex en el doble, sin relajar aserciones) y **`-race` en verde en los 22 paquetes del backend**, más **S1** (`7dbd8b2`: no re-escribir una marca de la misma clase). Quedan **dos cosas**: la decisión del **borde de spec** (tercer elemento dudoso) y la **puerta 3** (PR).
 - 2026-10-18 — **Ciclo de corrección 1 aplicado (11 commits).** Backend (8): la **carátula ya no se pisa** al unir y se encola **una sola por ficha** prefiriendo la del video; el **alta es atómica** y revierte al conflictuar (se encontró y arregló de paso que el `INSERT` descartaba el puntero del par); cerrados los **huecos de la pareja recíproca**; **`ResolveMark` del par en una transacción**; el sync **escribe solo sus columnas** (ya no puede revertir una edición del equipo); el **`offset` público queda acotado** (antes un valor enorme daba `500`); la **red saliente exige puerto 443**; y el código de auditoría del `PATCH` de visibilidad más la procedencia **por lote** (sin N+1). Frontend (3): **tiempo de espera propio de 120 s** para la búsqueda (antes se cortaba a los 5 s y el equipo no veía el resumen), con mensaje claro si se agota; el **límite de 300 cuenta runas** (antes unidades UTF-16); y el panel **avisa del truncado** y la unión **busca la pareja contra el servidor**. Cada corrección con su prueba **en rojo antes del arreglo**. Verificación: `make lint` limpio, backend unitario + integración en verde, **frontend 946 pruebas**, tanda e2e de F9 **25/25**.
