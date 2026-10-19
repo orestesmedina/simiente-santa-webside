@@ -646,6 +646,103 @@ describe('MediosPage · unión de duplicados y resoluciones (US3, ux.md §4.6/§
   });
 });
 
+describe('MediosPage · catálogo mayor que la página (B3)', () => {
+  /** Responde el listado paginado como el servidor (`limit`/`offset`/`total`). */
+  function responderPaginado(items: MedioAdmin[]) {
+    const consultas: string[] = [];
+    server.use(
+      http.get(adminUrl, ({ request }) => {
+        consultas.push(request.url);
+        const url = new URL(request.url);
+        const limit = Number(url.searchParams.get('limit') ?? 100);
+        const offset = Number(url.searchParams.get('offset') ?? 0);
+        const reviewMark = url.searchParams.get('reviewMark') as MarcaRevision | null;
+        const filtrados = reviewMark
+          ? items.filter((item) => marcasPendientes(item).includes(reviewMark))
+          : items;
+        return HttpResponse.json({
+          items: filtrados.slice(offset, offset + limit),
+          total: filtrados.length,
+          limit,
+          offset,
+        });
+      }),
+    );
+    return consultas;
+  }
+
+  it('con más de 100 fichas la lista avisa de que hay más (no trunca en silencio)', async () => {
+    const items = Array.from({ length: 101 }, (_, indice) =>
+      makeMedio({ id: `med-${indice}`, title: `Episodio ${indice}` }),
+    );
+    responderPaginado(items);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    expect(
+      screen.getByText(
+        'Esta lista muestra 100 de 101 episodios. Las fichas que no aparecen siguen publicadas, pero no se listan aquí: revisa las marcas pendientes de las que sí aparecen.',
+      ),
+    ).toBeInTheDocument();
+    // La página trae las 100 fichas del tope (más la fila de cabecera).
+    expect(within(tabla()).getAllByRole('row')).toHaveLength(101);
+  });
+
+  it('con el catálogo dentro del tope no hay aviso de truncamiento', async () => {
+    responder([makeMedio(), makeMedio({ id: 'med-2', title: 'Fe como fruto del Espíritu' })]);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    expect(screen.queryByText(/Esta lista muestra/)).toBeNull();
+  });
+
+  it('«Revisar duplicado» trae la pareja del servidor cuando quedó fuera de la página', async () => {
+    // La pareja no está en las primeras 100 fichas: solo se ve la primera del par.
+    const conPar = makeMedio({ id: 'med-1', title: 'La del par', duplicateOfId: 'med-fuera' });
+    const relleno = Array.from({ length: 99 }, (_, indice) =>
+      makeMedio({ id: `med-r${indice}`, title: `Relleno ${indice}` }),
+    );
+    const pareja = makeMedio({
+      id: 'med-fuera',
+      title: 'La pareja fuera de la página',
+      origin: 'audio',
+      visibility: 'hidden',
+      duplicateOfId: 'med-1',
+    });
+    const consultas = responderPaginado([conPar, ...relleno, pareja]);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    expect(within(tabla()).queryByText('La pareja fuera de la página')).toBeNull();
+
+    await userEvent.click(within(tabla()).getByRole('button', { name: 'Revisar duplicado' }));
+
+    const dialogo = await screen.findByRole('dialog');
+    expect(within(dialogo).getByText('La pareja fuera de la página')).toBeInTheDocument();
+    // La pareja se buscó por identificador contra el servidor (segunda página).
+    expect(consultas.some((url) => url.includes('offset=100'))).toBe(true);
+  });
+
+  it('si la pareja ya no existe, se dice por qué en vez de no hacer nada', async () => {
+    responder([makeMedio({ id: 'med-1', duplicateOfId: 'med-ya-no-esta' })]);
+
+    renderPage();
+    await screen.findByRole('table');
+
+    await userEvent.click(within(tabla()).getByRole('button', { name: 'Revisar duplicado' }));
+
+    expect(
+      await screen.findByText(
+        'No se encontró la otra entrada de este par: puede que ya se haya unido o resuelto. Actualiza la página para ver el estado actual.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
 describe('MediosPage · estados (ux.md §5.b, FR-021)', () => {
   it('el catálogo vacío remite a la zona de importación sin duplicar el botón (⟲ D-33)', async () => {
     responder([]);

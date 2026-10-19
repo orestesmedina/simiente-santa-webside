@@ -143,6 +143,24 @@ export const LOADING = 'Cargando los episodios…';
 export const LOAD_ERROR = 'No se pudo cargar los episodios.';
 export const RETRY = 'Reintentar';
 
+/**
+ * Aviso de listado truncado (B3 de la revisión): el panel pide el tope del
+ * contrato (100 fichas) y el catálogo puede tener más. Antes se cortaba en
+ * silencio —y una marca de duplicado podía quedar fuera de la vista sin que
+ * nadie lo supiera—; ahora se dice cuántas hay y cuántas se ven.
+ */
+export function listTruncated(total: number, shown: number): string {
+  return `Esta lista muestra ${shown} de ${total} episodios. Las fichas que no aparecen siguen publicadas, pero no se listan aquí: revisa las marcas pendientes de las que sí aparecen.`;
+}
+
+/**
+ * La pareja de un par de duplicados no apareció en el catálogo (B3): la unión
+ * la busca por identificador contra el servidor, así que llegar aquí significa
+ * que ya no existe (p. ej. otra persona la unió).
+ */
+export const PAIR_NOT_FOUND =
+  'No se encontró la otra entrada de este par: puede que ya se haya unido o resuelto. Actualiza la página para ver el estado actual.';
+
 /* ── Filtro de marcas (⟲ D-10) ───────────────────────────────────────── */
 
 export const FILTER_ALL = 'Todo';

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { findMedio } from '../../../api/medios';
 import type { MarcaDisponibilidad, MedioAdmin, ResumenBusqueda } from '../../../api/medios';
 import { Notice, type NoticeVariant } from '../../../components/Notice';
 import { BuscarEpisodios } from '../components/BuscarEpisodios';
@@ -13,7 +14,14 @@ import { useBuscarEpisodios } from '../hooks/useBuscarEpisodios';
 import { useMedios } from '../hooks/useMedios';
 import { useResolverMarca } from '../hooks/useResolverMarca';
 import { contarPendientes, marcaDisponibilidadPendiente } from '../marcas';
-import { HELP, MARK_CLOSED, NO_PERMISSION_ERROR, SYSTEM_ERROR, TITLE } from '../messages';
+import {
+  HELP,
+  MARK_CLOSED,
+  NO_PERMISSION_ERROR,
+  PAIR_NOT_FOUND,
+  SYSTEM_ERROR,
+  TITLE,
+} from '../messages';
 
 /**
  * Módulo «Gestión de medios» del panel (`/panel/medios`, ux.md §4.3/§5, US2/US3):
@@ -42,6 +50,8 @@ export function MediosPage() {
   const [feedback, setFeedback] = useState<{ variant: NoticeVariant; message: string }>();
   const [editando, setEditando] = useState<MedioAdmin>();
   const [union, setUnion] = useState<{ item: MedioAdmin; pareja: MedioAdmin }>();
+  /** `true` mientras se trae del servidor la pareja que no está en la página. */
+  const [buscandoPareja, setBuscandoPareja] = useState(false);
   const [mostrarDeNuevo, setMostrarDeNuevo] = useState<{
     item: MedioAdmin;
     mark: MarcaDisponibilidad;
@@ -66,8 +76,12 @@ export function MediosPage() {
 
   /**
    * «Revisar duplicado» (⟲ D-28: solo con un par **abierto**): el diálogo
-   * necesita **las dos** fichas del par, así que la pareja se busca en el
-   * catálogo completo (que incluye las ocultas). Sin pareja no se abre nada.
+   * necesita **las dos** fichas del par, así que la pareja se busca primero en
+   * el catálogo cargado (que incluye las ocultas) y, si no está —el panel pide
+   * el tope de 100 fichas y el par puede quedar fuera (B3)—, **por
+   * identificador contra el servidor** (`findMedio`), de modo que la acción no
+   * dependa de la página actual. Sin pareja (ya unida o inexistente) no se abre
+   * nada y se dice por qué.
    */
   const abrirUnion = useCallback(
     (item: MedioAdmin) => {
@@ -76,7 +90,23 @@ export function MediosPage() {
       );
       if (pareja) {
         setUnion({ item, pareja });
+        return;
       }
+      if (!item.duplicateOfId) {
+        return;
+      }
+
+      setBuscandoPareja(true);
+      void findMedio(item.duplicateOfId)
+        .then((encontrada) => {
+          if (encontrada) {
+            setUnion({ item, pareja: encontrada });
+          } else {
+            setFeedback({ variant: 'error', message: PAIR_NOT_FOUND });
+          }
+        })
+        .catch(() => setFeedback({ variant: 'error', message: SYSTEM_ERROR }))
+        .finally(() => setBuscandoPareja(false));
     },
     [completo.data],
   );
@@ -157,12 +187,13 @@ export function MediosPage() {
 
           <EpisodiosList
             items={lista.data?.items ?? []}
+            total={lista.data?.total}
             loading={lista.isPending && !lista.data}
             error={lista.isError}
             hasData={Boolean(lista.data)}
             onRetry={() => void lista.refetch()}
             filtered={filtro !== 'todo'}
-            busy={buscar.isPending}
+            busy={buscar.isPending || buscandoPareja}
             onFeedback={(variant, message) => setFeedback({ variant, message })}
             onEditDescription={abrirDescripcion}
             onReviewDuplicate={abrirUnion}

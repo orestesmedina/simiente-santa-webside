@@ -60,6 +60,14 @@ export const MEDIOS_BASE = '/api/v1/admin/medios';
  */
 export const MEDIOS_PAGE_LIMIT = 12;
 
+/**
+ * Tope de página del listado del **panel**: el máximo que admite el contrato
+ * (`Limit`). El panel pide «todo» el catálogo con este tope (criterio heredado
+ * de F7); cuando el catálogo lo supera, la lista **lo dice** en vez de truncar
+ * en silencio (B3 de la revisión).
+ */
+export const MEDIOS_ADMIN_PAGE_LIMIT = 100;
+
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const;
 
 /** Paginación y filtros del listado del panel (FR-015/FR-017). */
@@ -138,6 +146,32 @@ export async function listMedios(params: MediosListParams = {}): Promise<MedioAd
  * «error del sistema» y **nunca** el resumen de FR-018 (H1 de la revisión).
  */
 export const SYNC_TIMEOUT_MS = 120_000;
+
+/**
+ * Busca una ficha del panel por identificador contra el servidor (B3).
+ *
+ * El contrato no tiene `GET /api/v1/admin/medios/{id}`, así que recorre las
+ * páginas del listado (tope `MEDIOS_ADMIN_PAGE_LIMIT`) hasta encontrarla o
+ * agotar `total`. Con esto la unión de duplicados no depende de que la pareja
+ * esté en la página que el panel tiene cargada: si el par quedó fuera de las
+ * primeras 100 fichas, se trae igual.
+ *
+ * Devuelve `undefined` cuando la ficha no existe (p. ej. ya se unió a otra).
+ */
+export async function findMedio(id: string): Promise<MedioAdmin | undefined> {
+  let offset = 0;
+  for (;;) {
+    const pagina = await listMedios({ limit: MEDIOS_ADMIN_PAGE_LIMIT, offset });
+    const encontrada = pagina.items.find((item) => item.id === id);
+    if (encontrada) {
+      return encontrada;
+    }
+    offset += pagina.items.length;
+    if (pagina.items.length === 0 || offset >= pagina.total) {
+      return undefined;
+    }
+  }
+}
 
 /**
  * «Buscar episodios nuevos» (FR-011/FR-018): la **única** automatización del

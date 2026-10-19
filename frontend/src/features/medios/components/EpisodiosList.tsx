@@ -44,6 +44,7 @@ import {
   STATE_VISIBLE,
   SYSTEM_ERROR,
   importedOn,
+  listTruncated,
   markLabel,
 } from '../messages';
 import {
@@ -68,6 +69,11 @@ const FORMATS_BY_ORIGIN: Record<OrigenMedio, string[]> = {
 export interface EpisodiosListProps {
   /** Catálogo tal como lo entregó el servidor (mismo orden que ve el visitante). */
   items: MedioAdmin[];
+  /**
+   * Total de fichas del catálogo (`total` del contrato): si supera lo listado,
+   * la lista **avisa** de que hay más (B3) en vez de truncar en silencio.
+   */
+  total?: number;
   /** Primera carga sin datos en caché. */
   loading: boolean;
   /** La consulta falló (con o sin caché previa). */
@@ -146,6 +152,7 @@ function Miniatura({ item }: { item: MedioAdmin }) {
  */
 export function EpisodiosList({
   items,
+  total,
   loading,
   error,
   hasData,
@@ -381,9 +388,12 @@ export function EpisodiosList({
     return <EmptyState message={filtered ? FILTER_EMPTY : `${EMPTY_TITLE} ${EMPTY_HELP}`} />;
   }
 
+  const truncated = typeof total === 'number' && total > items.length;
+
   return (
     <div className="space-y-3">
       {error && hasData && <Notice variant="warning">{LOAD_ERROR}</Notice>}
+      {truncated && <Notice variant="warning">{listTruncated(total, items.length)}</Notice>}
       <Table
         columns={columns}
         rows={items}
