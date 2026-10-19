@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -781,8 +782,9 @@ func TestBuscarNuevosNoRevierteUnaResolucionDeMarca(t *testing.T) {
 	// El equipo resuelve la marca justo entre la lectura de la ficha y la
 	// escritura del sync (el gancho corre dentro de esa escritura).
 	resuelto := base.Add(time.Hour)
+	id := repo.episodios[0].ID
 	repo.antesDeEscribirDisponibilidad = func() {
-		repo.episodios[0].MarcaDisponibilidadResueltaEn = &resuelto
+		repo.mutarFicha(id, func(ficha *Episodio) { ficha.MarcaDisponibilidadResueltaEn = &resuelto })
 	}
 
 	service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{podcast: feedPodcast}, probador, &fakeCaratulas{})
@@ -806,18 +808,21 @@ func TestBuscarNuevosNoRevierteUnaResolucionDeMarca(t *testing.T) {
 // probadorQueEdita es el doble del probador que, al comprobar el enlace, simula
 // una **edición del equipo** (la descripción corta) hecha mientras la búsqueda
 // corría: es la carrera de SC-007/M3 (la ventana de la búsqueda llega a los 90 s).
+// La edición entra al almacén con el mutex del doble (`mutarFicha`): el probador
+// corre en goroutines en vuelo (P9-3).
 type probadorQueEdita struct {
-	repo   *fakeRepository
-	indice int
-	hecho  bool
+	repo *fakeRepository
+	id   uuid.UUID
+	una  sync.Once
 }
 
 func (p *probadorQueEdita) ProbeYouTube(context.Context, string) (ResultadoDisponibilidad, error) {
-	if !p.hecho {
-		p.hecho = true
-		p.repo.episodios[p.indice].DescripcionEs = ptr("Descripción del equipo")
-		p.repo.episodios[p.indice].DescripcionEditada = true
-	}
+	p.una.Do(func() {
+		p.repo.mutarFicha(p.id, func(ficha *Episodio) {
+			ficha.DescripcionEs = ptr("Descripción del equipo")
+			ficha.DescripcionEditada = true
+		})
+	})
 	return DisponibilidadInconclusa, nil
 }
 
@@ -843,7 +848,7 @@ func TestBuscarNuevosNoRevierteUnaEdicionDuranteLaBusqueda(t *testing.T) {
 	// El feed responde con otro elemento: la ficha sembrada queda fuera de la
 	// ventana y entra en la cola de comprobación.
 	entrada := entradaDePrueba(ProveedorYouTube, "SimienteAA9", "Otro sermón", fecha, "Descripción")
-	probador := &probadorQueEdita{repo: repo}
+	probador := &probadorQueEdita{repo: repo, id: repo.episodios[0].ID}
 	service := servicioConDoblesYProbador(t, repo,
 		&fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, probador, &fakeCaratulas{})
 
@@ -1401,8 +1406,8 @@ func TestBuscarNuevosNoPisaLaCaratula(t *testing.T) {
 		if descargas := caratulas.descargadas(); len(descargas) != 0 {
 			t.Errorf("no se descarga la carátula de una ficha que ya tiene: %v", descargas)
 		}
-		if len(almacen.borrados) != 0 {
-			t.Errorf("el archivo del video no se puede borrar: %v", almacen.borrados)
+		if retirados := almacen.retirados(); len(retirados) != 0 {
+			t.Errorf("el archivo del video no se puede borrar: %v", retirados)
 		}
 	})
 
@@ -1468,8 +1473,8 @@ func TestBuscarNuevosNoDejaCaratulasHuerfanas(t *testing.T) {
 		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err == nil {
 			t.Fatal("el fallo de la escritura de la carátula debe propagarse")
 		}
-		if len(almacen.borrados) != 1 || almacen.borrados[0] != archivo {
-			t.Errorf("la copia sin uso debe retirarse del almacén: %v", almacen.borrados)
+		if retirados := almacen.retirados(); len(retirados) != 1 || retirados[0] != archivo {
+			t.Errorf("la copia sin uso debe retirarse del almacén: %v", retirados)
 		}
 	})
 
@@ -1477,15 +1482,17 @@ func TestBuscarNuevosNoDejaCaratulasHuerfanas(t *testing.T) {
 		repo := newFakeRepository()
 		repo.coverErr = errors.New("respuesta perdida")
 		// La escritura sí llegó a la base: la fila viva usa ese archivo.
-		repo.antesDeCover = func() { repo.episodios[0].Caratula = &archivo }
+		repo.antesDeCover = func(id uuid.UUID) {
+			repo.mutarFicha(id, func(ficha *Episodio) { ficha.Caratula = &archivo })
+		}
 		almacen := &fakeAlmacen{}
 		service := preparar(repo, almacen)
 
 		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err == nil {
 			t.Fatal("el error de la escritura debe propagarse")
 		}
-		if len(almacen.borrados) != 0 {
-			t.Errorf("el archivo en uso no se puede borrar: %v", almacen.borrados)
+		if retirados := almacen.retirados(); len(retirados) != 0 {
+			t.Errorf("el archivo en uso no se puede borrar: %v", retirados)
 		}
 		if repo.episodios[0].Caratula == nil || *repo.episodios[0].Caratula != archivo {
 			t.Errorf("la ficha conserva su carátula: %v", repo.episodios[0].Caratula)

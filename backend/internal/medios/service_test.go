@@ -561,7 +561,22 @@ func ptrMarca(marca MarcaDisponibilidad) *MarcaDisponibilidad { return &marca }
 // las fuentes por `(provider, external_id)`, el repunte de la unión y el
 // registro de búsquedas) y recuerda lo que se le pidió, para comprobar los
 // topes, los parámetros y las filas de auditoría.
+//
+// El repository real (pgxpool) es **seguro** para uso concurrente y la búsqueda
+// escribe desde varias goroutines en vuelo (las comprobaciones de disponibilidad
+// y las descargas de carátulas), así que el doble también tiene que serlo: sin el
+// mutex, dos goroutines de `copiarCaratulas` corren una carrera sobre
+// `episodios` que el código de producción no tiene (N4).
+//
+// Los ayudantes internos (`buscar`, `conEnlaces`, `aplicarAuditoria`) se llaman
+// **con el mutex ya tomado**; los ganchos de las pruebas corren antes de tomarlo,
+// para que puedan volver a entrar al almacén (`mutarFicha`, `seedFuentes`). Lo
+// que escribe **mientras la búsqueda está en vuelo** (ganchos y dobles de la red
+// saliente) entra por `mutarFicha`; el sembrado y las comprobaciones posteriores
+// de las pruebas leen el almacén directamente: no hay nada en vuelo.
 type fakeRepository struct {
+	mu sync.Mutex
+
 	episodios []Episodio
 	fuentes   []FuenteEpisodio
 	syncRuns  []SyncRun
@@ -590,10 +605,10 @@ type fakeRepository struct {
 	// `UPDATE` (la ventana de N2).
 	antesDeEscribirDisponibilidad func()
 	// coverErr fuerza el fallo de la escritura condicional de la carátula y
-	// antesDeCover corre justo antes de ella (N3: el error de respuesta de una
-	// escritura que sí se aplicó).
+	// antesDeCover corre justo antes de ella, con el id de la ficha (N3: el error
+	// de respuesta de una escritura que sí se aplicó).
 	coverErr     error
-	antesDeCover func()
+	antesDeCover func(id uuid.UUID)
 
 	// Observaciones.
 	publicParams     []paginate.Params
@@ -620,6 +635,8 @@ func newFakeRepository() *fakeRepository { return &fakeRepository{} }
 
 // seed agrega fichas al almacén sin pasar por el service.
 func (f *fakeRepository) seed(episodios ...Episodio) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	for _, ep := range episodios {
 		if ep.ID == uuid.Nil {
 			ep.ID = uuid.New()
@@ -640,6 +657,8 @@ func (f *fakeRepository) seed(episodios ...Episodio) {
 
 // seedFuentes agrega fuentes de importación al almacén.
 func (f *fakeRepository) seedFuentes(fuentes ...FuenteEpisodio) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	for _, fuente := range fuentes {
 		if fuente.ID == uuid.Nil {
 			fuente.ID = uuid.New()
@@ -648,7 +667,8 @@ func (f *fakeRepository) seedFuentes(fuentes ...FuenteEpisodio) {
 	}
 }
 
-// buscar devuelve la ficha del almacén por id.
+// buscar devuelve la posición de la ficha en el almacén por id. El llamador
+// tiene que sostener el mutex (los métodos del doble lo toman antes de usarlo).
 func (f *fakeRepository) buscar(id uuid.UUID) (int, bool) {
 	for i, ep := range f.episodios {
 		if ep.ID == id {
@@ -656,6 +676,20 @@ func (f *fakeRepository) buscar(id uuid.UUID) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+// mutarFicha aplica un cambio directo a una ficha del almacén con el mutex
+// tomado: es el camino de los ganchos y de los dobles que escriben «como lo haría
+// el equipo» mientras la búsqueda corre (una edición fuera del service).
+func (f *fakeRepository) mutarFicha(id uuid.UUID, cambio func(*Episodio)) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	i, ok := f.buscar(id)
+	if !ok {
+		return false
+	}
+	cambio(&f.episodios[i])
+	return true
 }
 
 // publicable aplica el predicado público COMPLETO de R9-7 (el mismo de la
@@ -694,6 +728,8 @@ func (f *fakeRepository) aplicarAuditoria(actions []audit.Action) error {
 }
 
 func (f *fakeRepository) ListPublishedMediaItems(_ context.Context, params paginate.Params) ([]Episodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.publicCalls++
 	f.publicParams = append(f.publicParams, params)
 	if f.listErr != nil {
@@ -710,6 +746,8 @@ func (f *fakeRepository) ListPublishedMediaItems(_ context.Context, params pagin
 }
 
 func (f *fakeRepository) CountPublishedMediaItems(context.Context) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.countPublicCalls++
 	if f.listErr != nil {
 		return 0, f.listErr
@@ -724,6 +762,8 @@ func (f *fakeRepository) CountPublishedMediaItems(context.Context) (int64, error
 }
 
 func (f *fakeRepository) ListPortadaMediaItems(_ context.Context, limit int) ([]Episodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.portadaCalls++
 	f.portadaLimits = append(f.portadaLimits, limit)
 	if f.listErr != nil {
@@ -769,6 +809,8 @@ func coincideFiltro(ep Episodio, filtro FiltroPanel) bool {
 }
 
 func (f *fakeRepository) ListMediaItems(_ context.Context, filtro FiltroPanel, params paginate.Params) ([]Episodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.panelFiltros = append(f.panelFiltros, filtro)
 	f.panelParams = append(f.panelParams, params)
 	if f.listErr != nil {
@@ -785,6 +827,8 @@ func (f *fakeRepository) ListMediaItems(_ context.Context, filtro FiltroPanel, p
 }
 
 func (f *fakeRepository) CountMediaItems(_ context.Context, filtro FiltroPanel) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.listErr != nil {
 		return 0, f.listErr
 	}
@@ -798,6 +842,8 @@ func (f *fakeRepository) CountMediaItems(_ context.Context, filtro FiltroPanel) 
 }
 
 func (f *fakeRepository) GetMediaItemByID(_ context.Context, id uuid.UUID) (Episodio, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.getErr != nil {
 		return Episodio{}, false, f.getErr
 	}
@@ -826,9 +872,9 @@ func (f *fakeRepository) conEnlaces(episodio Episodio) Episodio {
 }
 
 func (f *fakeRepository) InsertMediaItem(_ context.Context, episodio Episodio, actions ...audit.Action) (Episodio, error) {
-	if f.antesDeInsertar != nil {
-		f.antesDeInsertar()
-	}
+	f.correrGanchoDeInsercion()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.mutationErr != nil {
 		return Episodio{}, f.mutationErr
 	}
@@ -842,6 +888,8 @@ func (f *fakeRepository) InsertMediaItem(_ context.Context, episodio Episodio, a
 }
 
 func (f *fakeRepository) UpdateMediaItem(_ context.Context, episodio Episodio, actions ...audit.Action) (Episodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.mutationErr != nil {
 		return Episodio{}, f.mutationErr
 	}
@@ -863,13 +911,29 @@ func (f *fakeRepository) UpdateMediaItem(_ context.Context, episodio Episodio, a
 // ficha solo queda escrita si su fuente entra, así que un conflicto de fuente no
 // deja ninguna ficha huérfana.
 func (f *fakeRepository) InsertMediaItemWithSource(_ context.Context, episodio Episodio, fuente FuenteEpisodio) (Episodio, FuenteEpisodio, bool, error) {
+	f.correrGanchoDeInsercion()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return f.altaConFuente(episodio, fuente)
+}
+
+// correrGanchoDeInsercion llama al gancho de las pruebas **antes** de tomar el
+// mutex: el gancho siembra estado en el almacén (p. ej. la fuente que otra
+// búsqueda acaba de importar) y volver a entrar con el mutex tomado sería un
+// interbloqueo.
+func (f *fakeRepository) correrGanchoDeInsercion() {
+	if f.antesDeInsertar != nil {
+		f.antesDeInsertar()
+	}
 }
 
 // MarkDuplicatePair imita la transacción del par dudoso (FR-014/H3/M1): o queda
 // la ficha adicional con su fuente y la pareja recíproca, o no queda nada —ni
 // cuando la fuente ya estaba importada ni cuando el candidato ya tiene pareja—.
 func (f *fakeRepository) MarkDuplicatePair(_ context.Context, nueva Episodio, fuente FuenteEpisodio, candidatoID uuid.UUID) (Episodio, FuenteEpisodio, bool, error) {
+	f.correrGanchoDeInsercion()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	i, ok := f.buscar(candidatoID)
 	if !ok {
 		return Episodio{}, FuenteEpisodio{}, false, apperr.NotFound(messageEpisodioNoExiste)
@@ -892,11 +956,9 @@ func (f *fakeRepository) MarkDuplicatePair(_ context.Context, nueva Episodio, fu
 
 // altaConFuente es el doble de la transacción del alta (ficha + fuente): el
 // conflicto de la fuente (`ON CONFLICT DO NOTHING` sin fila) **no** escribe la
-// ficha, igual que la transacción real revertida.
+// ficha, igual que la transacción real revertida. El llamador sostiene el mutex
+// (y ya corrió el gancho de inserción).
 func (f *fakeRepository) altaConFuente(episodio Episodio, fuente FuenteEpisodio) (Episodio, FuenteEpisodio, bool, error) {
-	if f.antesDeInsertar != nil {
-		f.antesDeInsertar()
-	}
 	if f.mutationErr != nil {
 		return Episodio{}, FuenteEpisodio{}, false, f.mutationErr
 	}
@@ -926,9 +988,14 @@ func (f *fakeRepository) altaConFuente(episodio Episodio, fuente FuenteEpisodio)
 // descripción del equipo, el nombre, la fecha y el eje de duplicados siguen
 // intactos.
 func (f *fakeRepository) UpdateMediaItemAvailability(_ context.Context, id uuid.UUID, cambio CambioDisponibilidad) (Episodio, error) {
+	// El gancho corre **antes** de tomar el mutex (escribe en el almacén como lo
+	// haría el equipo) y la ventana que simula sigue intacta: entre la lectura de
+	// la ficha y este `UPDATE`.
 	if f.antesDeEscribirDisponibilidad != nil {
 		f.antesDeEscribirDisponibilidad()
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.mutationErr != nil {
 		return Episodio{}, f.mutationErr
 	}
@@ -959,6 +1026,8 @@ func (f *fakeRepository) UpdateMediaItemAvailability(_ context.Context, id uuid.
 // UpdateMediaItemJoin imita la escritura por columnas de la unión automática
 // (M3): solo el nombre, la fecha y el `origin`.
 func (f *fakeRepository) UpdateMediaItemJoin(_ context.Context, id uuid.UUID, titulo string, publicadoEn time.Time, origen OrigenMedio) (Episodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.mutationErr != nil {
 		return Episodio{}, f.mutationErr
 	}
@@ -977,6 +1046,8 @@ func (f *fakeRepository) UpdateMediaItemJoin(_ context.Context, id uuid.UUID, ti
 // ResolveDuplicatePair imita la transacción de la resolución del par (M2): las
 // dos filas y la auditoría, o nada —si la auditoría falla no se aplica ninguna—.
 func (f *fakeRepository) ResolveDuplicatePair(_ context.Context, actualizada, pareja Episodio, actions ...audit.Action) (Episodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.mutationErr != nil {
 		return Episodio{}, f.mutationErr
 	}
@@ -1012,9 +1083,14 @@ func (f *fakeRepository) ResolveDuplicatePair(_ context.Context, actualizada, pa
 // antes: las pruebas lo usan para simular un error de **respuesta** de una
 // escritura que sí se aplicó.
 func (f *fakeRepository) UpdateMediaItemCoverIfNull(_ context.Context, id uuid.UUID, archivo string) (Episodio, bool, error) {
+	// El gancho corre **antes** de tomar el mutex: escribe en el almacén como lo
+	// haría otra búsqueda y volver a entrar con el mutex tomado sería un
+	// interbloqueo.
 	if f.antesDeCover != nil {
-		f.antesDeCover()
+		f.antesDeCover(id)
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.coverErr != nil {
 		return Episodio{}, false, f.coverErr
 	}
@@ -1032,6 +1108,8 @@ func (f *fakeRepository) UpdateMediaItemCoverIfNull(_ context.Context, id uuid.U
 }
 
 func (f *fakeRepository) RepointMediaItemSources(_ context.Context, resultante, absorbida Episodio, actions ...audit.Action) ([]FuenteEpisodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.repointErr != nil {
 		return nil, f.repointErr
 	}
@@ -1065,6 +1143,8 @@ func (f *fakeRepository) RepointMediaItemSources(_ context.Context, resultante, 
 }
 
 func (f *fakeRepository) InsertMediaEpisodeSource(_ context.Context, fuente FuenteEpisodio) (FuenteEpisodio, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.sourceErr != nil {
 		return FuenteEpisodio{}, false, f.sourceErr
 	}
@@ -1083,6 +1163,8 @@ func (f *fakeRepository) InsertMediaEpisodeSource(_ context.Context, fuente Fuen
 }
 
 func (f *fakeRepository) ListMediaEpisodeSourcesByProvider(_ context.Context, proveedor Proveedor) ([]FuenteEpisodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
@@ -1096,6 +1178,8 @@ func (f *fakeRepository) ListMediaEpisodeSourcesByProvider(_ context.Context, pr
 }
 
 func (f *fakeRepository) GetMediaEpisodeSource(_ context.Context, proveedor Proveedor, idExterno string) (FuenteEpisodio, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.getErr != nil {
 		return FuenteEpisodio{}, false, f.getErr
 	}
@@ -1108,6 +1192,8 @@ func (f *fakeRepository) GetMediaEpisodeSource(_ context.Context, proveedor Prov
 }
 
 func (f *fakeRepository) ListMediaItemSourcesByItem(_ context.Context, itemID uuid.UUID) ([]FuenteEpisodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
@@ -1124,6 +1210,8 @@ func (f *fakeRepository) ListMediaItemSourcesByItem(_ context.Context, itemID uu
 // ListMediaItemSourcesByItems imita la consulta POR LOTE del listado (B3): una
 // sola llamada devuelve la procedencia de todas las fichas de la página.
 func (f *fakeRepository) ListMediaItemSourcesByItems(_ context.Context, itemIDs []uuid.UUID) ([]FuenteEpisodio, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
@@ -1142,6 +1230,8 @@ func (f *fakeRepository) ListMediaItemSourcesByItems(_ context.Context, itemIDs 
 }
 
 func (f *fakeRepository) InsertMediaSyncRun(_ context.Context, run SyncRun, actions ...audit.Action) (SyncRun, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.syncRunErr != nil {
 		return SyncRun{}, f.syncRunErr
 	}
@@ -1154,6 +1244,8 @@ func (f *fakeRepository) InsertMediaSyncRun(_ context.Context, run SyncRun, acti
 }
 
 func (f *fakeRepository) GetLastMediaSyncRun(context.Context) (SyncRun, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.lastSyncCalls++
 	if f.syncRunErr != nil {
 		return SyncRun{}, false, f.syncRunErr
@@ -1171,6 +1263,8 @@ func (f *fakeRepository) GetLastMediaSyncRun(context.Context) (SyncRun, bool, er
 }
 
 func (f *fakeRepository) RecordAction(_ context.Context, action audit.Action) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.recordErr != nil {
 		return f.recordErr
 	}
@@ -1290,9 +1384,15 @@ func (c *fakeCaratulas) descargadas() []string {
 // fakeAlmacen es el doble del almacén de archivos para la unión: recuerda los
 // borrados best-effort de la carátula que quedó sin uso (el camino feliz del
 // guardado lo cubre `fakeStore` de caratula_test.go, T910).
+//
+// Los borrados llegan de las descargas de carátulas en vuelo (`copiarCaratulas`),
+// así que el registro va con mutex, como el doble del probador y el de las
+// carátulas (N4): el almacén real es seguro para uso concurrente.
 type fakeAlmacen struct {
+	err error
+
+	mu       sync.Mutex
 	borrados []string
-	err      error
 }
 
 var _ storage.Store = (*fakeAlmacen)(nil)
@@ -1304,6 +1404,15 @@ func (a *fakeAlmacen) Save(context.Context, []byte) (storage.File, error) {
 func (a *fakeAlmacen) Open(context.Context, string) (io.ReadCloser, error) { return nil, a.err }
 
 func (a *fakeAlmacen) Delete(_ context.Context, name string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.borrados = append(a.borrados, name)
 	return a.err
+}
+
+// retirados devuelve una copia del registro de borrados (con el mutex tomado).
+func (a *fakeAlmacen) retirados() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]string(nil), a.borrados...)
 }

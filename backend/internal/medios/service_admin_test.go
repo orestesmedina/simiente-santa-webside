@@ -721,8 +721,8 @@ func TestMergeDejaUnaFichaConLosDosEnlaces(t *testing.T) {
 		if _, err := service.Merge(context.Background(), actor, podcastID, videoID); err != nil {
 			t.Fatalf("Merge devolvió %v", err)
 		}
-		if len(almacen.borrados) != 1 || almacen.borrados[0] != "img_44444444-4444-4444-4444-444444444444.jpg" {
-			t.Errorf("borrados = %v, se esperaba la carátula propia del podcast", almacen.borrados)
+		if retirados := almacen.retirados(); len(retirados) != 1 || retirados[0] != "img_44444444-4444-4444-4444-444444444444.jpg" {
+			t.Errorf("borrados = %v, se esperaba la carátula propia del podcast", retirados)
 		}
 	})
 }
