@@ -28,6 +28,7 @@ import {
 import {
   descripcionFieldsFrom,
   descripcionFieldsSchema,
+  descriptionLength,
   issuesToErrors,
   overDescriptionLimit,
   type DescripcionFields,
@@ -173,7 +174,8 @@ export function DescripcionForm({ item, onDone, onCancel }: DescripcionFormProps
   );
   const showGeneralError = actualizar.error && Object.keys(serverErrors).length === 0;
   const current = langTab === 'es' ? fields.descriptionEs : fields.descriptionEn;
-  const count = current.length;
+  // El contador cuenta runas, igual que el tope y que el servidor (B1).
+  const count = descriptionLength(current);
   const overCurrent = overDescriptionLimit(current);
 
   return (

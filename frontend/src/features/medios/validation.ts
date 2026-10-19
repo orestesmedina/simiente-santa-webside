@@ -37,11 +37,23 @@ export function descripcionFieldsFrom(
   };
 }
 
+/**
+ * Cuenta **runas** (puntos de código), como el servidor (`len([]rune(…))`) y la
+ * base de datos (`char_length`), y no unidades UTF-16: un emoji —que en UTF-16
+ * ocupa un par sustituto— cuenta **1**, no 2. Con `value.length` un texto de 300
+ * caracteres reales con emojis se rechazaba antes de tiempo y el mensaje de
+ * «cuánto recortar» contaba de más (B1 de la revisión).
+ */
+export function descriptionLength(value: string): number {
+  return Array.from(value).length;
+}
+
 /** Un texto por idioma: sin mínimo y con el tope del contrato. */
 function descriptionText(): z.ZodType<string> {
   return z.string().superRefine((value, ctx) => {
-    if (value.length > DESCRIPTION_MAX) {
-      ctx.addIssue({ code: 'custom', message: descriptionLimitMessage(value.length) });
+    const count = descriptionLength(value);
+    if (count > DESCRIPTION_MAX) {
+      ctx.addIssue({ code: 'custom', message: descriptionLimitMessage(count) });
     }
   });
 }
@@ -71,5 +83,5 @@ export function issuesToErrors(error: z.ZodError): Record<string, string> {
 
 /** `true` si el texto supera el tope (contador en error y «Guardar» deshabilitado). */
 export function overDescriptionLimit(value: string): boolean {
-  return value.length > DESCRIPTION_MAX;
+  return descriptionLength(value) > DESCRIPTION_MAX;
 }

@@ -155,6 +155,17 @@ describe('DescripcionForm · edición de la descripción corta (US3, FR-020)', (
     expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
   });
 
+  it('el contador vivo cuenta runas: 300 caracteres reales con emojis no desbordan (B1)', () => {
+    renderForm(makeMedio({ descriptionEs: '' }));
+
+    // 40 familias (secuencia ZWJ) + 20 letras = 300 runas, 460 unidades UTF-16.
+    const conEmojis = '👩‍👩‍👧‍👦'.repeat(40) + 'a'.repeat(20);
+    fireEvent.change(screen.getByLabelText('Español'), { target: { value: conEmojis } });
+
+    expect(screen.getByText('300/300')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
+  });
+
   it('un `400` del servidor con `details` se pinta junto a su campo (FR-023)', async () => {
     server.use(
       http.patch(patchUrl, () =>

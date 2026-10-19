@@ -3,6 +3,7 @@ import { DESCRIPTION_MAX, descriptionLimitMessage } from './messages';
 import {
   descripcionFieldsFrom,
   descripcionFieldsSchema,
+  descriptionLength,
   issuesToErrors,
   overDescriptionLimit,
 } from './validation';
@@ -40,6 +41,35 @@ describe('validación de la descripción corta (FR-020/FR-023)', () => {
     }
     expect(overDescriptionLimit(largo)).toBe(true);
     expect(overDescriptionLimit(justo)).toBe(false);
+  });
+
+  it('cuenta runas y no unidades UTF-16: 300 caracteres reales con emojis son válidos (B1)', () => {
+    // Cada familia es una secuencia ZWJ: 7 runas (280 en 40 familias) pero 11
+    // unidades UTF-16 (440): contar con `value.length` la rechazaría de más.
+    const familia = '👩‍👩‍👧‍👦';
+    const conEmojis = familia.repeat(40) + 'a'.repeat(20);
+    expect(conEmojis.length).toBe(460);
+    expect(descriptionLength(conEmojis)).toBe(300);
+
+    expect(
+      descripcionFieldsSchema.safeParse({ descriptionEs: conEmojis, descriptionEn: '' }).success,
+    ).toBe(true);
+    expect(overDescriptionLimit(conEmojis)).toBe(false);
+
+    // Una runa de más sí se rechaza, y el mensaje cuenta runas (no 461).
+    const unaDeMas = familia.repeat(40) + 'a'.repeat(21);
+    const parsed = descripcionFieldsSchema.safeParse({
+      descriptionEs: unaDeMas,
+      descriptionEn: '',
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(issuesToErrors(parsed.error).descriptionEs).toBe(
+        '301 de 300 caracteres. Recorta 1 para poder guardar.',
+      );
+    }
+    expect(overDescriptionLimit(unaDeMas)).toBe(true);
   });
 
   it('el inglés sin español bloquea el guardado y dice qué falta (FR-023/FR-025)', () => {
