@@ -908,6 +908,50 @@ func (f *fakeRepository) altaConFuente(episodio Episodio, fuente FuenteEpisodio)
 	return episodio, fuente, true, nil
 }
 
+// UpdateMediaItemAvailability imita la escritura por columnas del repository real
+// (M3): solo el eje de disponibilidad —y la visibilidad cuando viaja— cambia; la
+// descripción del equipo, el nombre, la fecha y el eje de duplicados siguen
+// intactos.
+func (f *fakeRepository) UpdateMediaItemAvailability(_ context.Context, id uuid.UUID, cambio CambioDisponibilidad) (Episodio, error) {
+	if f.mutationErr != nil {
+		return Episodio{}, f.mutationErr
+	}
+	i, ok := f.buscar(id)
+	if !ok {
+		return Episodio{}, apperr.NotFound(messageEpisodioNoExiste)
+	}
+	comprobada := cambio.ComprobadaEn
+	resultado := cambio.Resultado
+	f.episodios[i].DisponibilidadComprobadaEn = &comprobada
+	f.episodios[i].ResultadoDisponibilidad = &resultado
+	f.episodios[i].MarcaDisponibilidad = cambio.Marca
+	f.episodios[i].MarcaDisponibilidadResueltaEn = cambio.MarcaResueltaEn
+	if cambio.Visibilidad != nil {
+		f.episodios[i].Visibilidad = *cambio.Visibilidad
+	}
+	f.episodios[i].ActualizadoEn = time.Now()
+	f.updates = append(f.updates, id)
+	return f.episodios[i], nil
+}
+
+// UpdateMediaItemJoin imita la escritura por columnas de la unión automática
+// (M3): solo el nombre, la fecha y el `origin`.
+func (f *fakeRepository) UpdateMediaItemJoin(_ context.Context, id uuid.UUID, titulo string, publicadoEn time.Time, origen OrigenMedio) (Episodio, error) {
+	if f.mutationErr != nil {
+		return Episodio{}, f.mutationErr
+	}
+	i, ok := f.buscar(id)
+	if !ok {
+		return Episodio{}, apperr.NotFound(messageEpisodioNoExiste)
+	}
+	f.episodios[i].Titulo = titulo
+	f.episodios[i].PublicadoEn = publicadoEn
+	f.episodios[i].Origen = origen
+	f.episodios[i].ActualizadoEn = time.Now()
+	f.updates = append(f.updates, id)
+	return f.episodios[i], nil
+}
+
 // ResolveDuplicatePair imita la transacción de la resolución del par (M2): las
 // dos filas y la auditoría, o nada —si la auditoría falla no se aplica ninguna—.
 func (f *fakeRepository) ResolveDuplicatePair(_ context.Context, actualizada, pareja Episodio, actions ...audit.Action) (Episodio, error) {

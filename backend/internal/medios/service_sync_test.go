@@ -687,6 +687,69 @@ func TestBuscarNuevosNoPisaLoDelEquipo(t *testing.T) {
 	}
 }
 
+// probadorQueEdita es el doble del probador que, al comprobar el enlace, simula
+// una **edición del equipo** (la descripción corta) hecha mientras la búsqueda
+// corría: es la carrera de SC-007/M3 (la ventana de la búsqueda llega a los 90 s).
+type probadorQueEdita struct {
+	repo   *fakeRepository
+	indice int
+	hecho  bool
+}
+
+func (p *probadorQueEdita) ProbeYouTube(context.Context, string) (ResultadoDisponibilidad, error) {
+	if !p.hecho {
+		p.hecho = true
+		p.repo.episodios[p.indice].DescripcionEs = ptr("Descripción del equipo")
+		p.repo.episodios[p.indice].DescripcionEditada = true
+	}
+	return DisponibilidadInconclusa, nil
+}
+
+func (p *probadorQueEdita) ProbePodcast(context.Context, string) (ResultadoDisponibilidad, error) {
+	return DisponibilidadInconclusa, nil
+}
+
+// TestBuscarNuevosNoRevierteUnaEdicionDuranteLaBusqueda fija M3/SC-007: la
+// búsqueda escribe **solo las columnas que le competen**, así que una edición del
+// equipo guardada mientras la búsqueda corría (la descripción, aquí) sobrevive a
+// la escritura del eje de disponibilidad.
+func TestBuscarNuevosNoRevierteUnaEdicionDuranteLaBusqueda(t *testing.T) {
+	fecha := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+	repo := newFakeRepository()
+	repo.seed(Episodio{
+		Titulo: "Sermón viejo", PublicadoEn: fecha, Origen: OrigenVideo,
+		DescripcionEs: ptr("Del feed"),
+	})
+	repo.seedFuentes(FuenteEpisodio{
+		EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+		TituloFeed: "Sermón viejo", Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
+	})
+	// El feed responde con otro elemento: la ficha sembrada queda fuera de la
+	// ventana y entra en la cola de comprobación.
+	entrada := entradaDePrueba(ProveedorYouTube, "SimienteAA9", "Otro sermón", fecha, "Descripción")
+	probador := &probadorQueEdita{repo: repo}
+	service := servicioConDoblesYProbador(t, repo,
+		&fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, probador, &fakeCaratulas{})
+
+	resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+	if err != nil {
+		t.Fatalf("BuscarNuevos devolvió %v", err)
+	}
+	if resumen.Comprobados != 1 {
+		t.Fatalf("comprobaciones = %d, se esperaba la de la ficha fuera de ventana", resumen.Comprobados)
+	}
+	ficha := repo.episodios[0]
+	if ficha.DescripcionEs == nil || *ficha.DescripcionEs != "Descripción del equipo" || !ficha.DescripcionEditada {
+		t.Errorf("la búsqueda no puede revertir la edición del equipo: %+v", ficha)
+	}
+	if ficha.DisponibilidadComprobadaEn == nil || ficha.ResultadoDisponibilidad == nil {
+		t.Errorf("el resultado de la comprobación sí se escribe: %+v", ficha)
+	}
+	if ficha.MarcaDisponibilidad == nil || *ficha.MarcaDisponibilidad != MarcaDisponibilidadFueraDelFeed {
+		t.Errorf("la marca de la ventana del feed sí se escribe: %+v", ficha.MarcaDisponibilidad)
+	}
+}
+
 // TestBuscarNuevosTopeDuro fija el tope de P9-3 (30 elementos por búsqueda): el
 // resto se recupera en la siguiente búsqueda, sin perder ni ocultar nada.
 func TestBuscarNuevosTopeDuro(t *testing.T) {

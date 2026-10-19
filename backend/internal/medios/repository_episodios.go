@@ -3,6 +3,7 @@ package medios
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -188,6 +189,55 @@ func (r *repository) UpdateMediaItem(ctx context.Context, episodio Episodio, act
 		return Episodio{}, err
 	}
 	return result, nil
+}
+
+// CambioDisponibilidad reúne lo que la búsqueda escribe en el **eje de
+// disponibilidad** de una ficha (nunca un campo del equipo): el resultado de la
+// comprobación, la marca del eje con su resolución y —solo cuando una
+// indisponibilidad confirmada la oculta— la visibilidad. `Visibilidad` a nil
+// conserva la que el equipo haya decidido mientras la búsqueda corría (SC-007).
+type CambioDisponibilidad struct {
+	ComprobadaEn    time.Time
+	Resultado       ResultadoDisponibilidad
+	Marca           *MarcaDisponibilidad
+	MarcaResueltaEn *time.Time
+	Visibilidad     *Visibilidad
+}
+
+// UpdateMediaItemAvailability aplica el cambio del eje de disponibilidad con una
+// escritura **por columnas** (M3/SC-007): escribe la comprobación, la marca y,
+// si viaja, la visibilidad; la descripción del equipo, el nombre, la fecha, la
+// carátula y el eje de duplicados no se tocan —una edición del equipo hecha
+// durante la búsqueda sobrevive por construcción—.
+func (r *repository) UpdateMediaItemAvailability(ctx context.Context, id uuid.UUID, cambio CambioDisponibilidad) (Episodio, error) {
+	row, err := r.q.UpdateMediaItemAvailability(ctx, gendb.UpdateMediaItemAvailabilityParams{
+		AvailabilityCheckedAt:      pgTime(cambio.ComprobadaEn),
+		AvailabilityResult:         pgEnumPtr(&cambio.Resultado),
+		AvailabilityMark:           pgEnumPtr(cambio.Marca),
+		AvailabilityMarkResolvedAt: pgTimePtr(cambio.MarcaResueltaEn),
+		Visibility:                 pgEnumPtr(cambio.Visibilidad),
+		ID:                         pgUUID(id),
+	})
+	if err != nil {
+		return Episodio{}, wrap(err, "update media item availability", messageEpisodioNoExiste, "")
+	}
+	return mapEpisodio(row), nil
+}
+
+// UpdateMediaItemJoin aplica la unión automática con una escritura **por
+// columnas** (M3/SC-007): solo el nombre, la fecha y el `origin` que la unión
+// decide; la descripción del equipo y todo lo demás siguen intactos.
+func (r *repository) UpdateMediaItemJoin(ctx context.Context, id uuid.UUID, titulo string, publicadoEn time.Time, origen OrigenMedio) (Episodio, error) {
+	row, err := r.q.UpdateMediaItemJoin(ctx, gendb.UpdateMediaItemJoinParams{
+		Title:       titulo,
+		PublishedAt: pgTime(publicadoEn),
+		Origin:      string(origen),
+		ID:          pgUUID(id),
+	})
+	if err != nil {
+		return Episodio{}, wrap(err, "update media item join", messageEpisodioNoExiste, "")
+	}
+	return mapEpisodio(row), nil
 }
 
 // ResolveDuplicatePair resuelve el eje de duplicados de las DOS fichas del par en

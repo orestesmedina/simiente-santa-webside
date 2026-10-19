@@ -1136,3 +1136,81 @@ func TestIntegrationResolveDuplicatePairEsAtomico(t *testing.T) {
 		t.Errorf("filas de auditoría = %d, se esperaba exactamente una", got)
 	}
 }
+
+// TestIntegrationSyncWritesOnlyItsColumns fija M3/SC-007 contra PostgreSQL real:
+// las dos escrituras del sync —el eje de disponibilidad y la unión automática—
+// tocan **solo** sus columnas. Una edición del equipo hecha durante la búsqueda
+// (descripción con su marca de edición, carátula, visibilidad y el eje de
+// duplicados) sobrevive a las dos.
+func TestIntegrationSyncWritesOnlyItsColumns(t *testing.T) {
+	repo := newMediosRepo(t)
+	pool := repo.pool
+	ctx := context.Background()
+
+	pareja := seedFicha(t, pool, map[string]any{"title": "La pareja del par"})
+	caratula := "img_66666666-6666-6666-6666-666666666666.jpg"
+	ficha := seedFicha(t, pool, map[string]any{
+		"title":                      "Sermón editado por el equipo",
+		"description_es":             "Descripción del equipo",
+		"description_edited":         true,
+		"cover_file":                 caratula,
+		"duplicate_of_id":            pareja.String(),
+		"duplicate_mark_resolved_at": time.Now(),
+	})
+
+	// Eje de disponibilidad: confirmada muerta (oculta y con la marca abierta).
+	ahora := time.Now().UTC().Truncate(time.Millisecond)
+	oculta := VisibilidadOculta
+	marca := MarcaDisponibilidadNoDisponible
+	guardada, err := repo.UpdateMediaItemAvailability(ctx, ficha, CambioDisponibilidad{
+		ComprobadaEn: ahora,
+		Resultado:    DisponibilidadNoDisponible,
+		Marca:        &marca,
+		Visibilidad:  &oculta,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMediaItemAvailability: %v", err)
+	}
+	if guardada.Visibilidad != VisibilidadOculta || guardada.MarcaDisponibilidad == nil ||
+		*guardada.MarcaDisponibilidad != MarcaDisponibilidadNoDisponible {
+		t.Errorf("el eje de disponibilidad no se escribió: %+v", guardada)
+	}
+	if guardada.ResultadoDisponibilidad == nil || *guardada.ResultadoDisponibilidad != DisponibilidadNoDisponible {
+		t.Errorf("el resultado de la comprobación no se escribió: %+v", guardada.ResultadoDisponibilidad)
+	}
+	if guardada.DescripcionEs == nil || *guardada.DescripcionEs != "Descripción del equipo" || !guardada.DescripcionEditada {
+		t.Errorf("la descripción del equipo se pisó: %+v", guardada)
+	}
+	if guardada.Caratula == nil || *guardada.Caratula != caratula {
+		t.Errorf("la carátula se pisó: %v", guardada.Caratula)
+	}
+	if guardada.DuplicadoDeID == nil || *guardada.DuplicadoDeID != pareja ||
+		guardada.MarcaDuplicadoResueltaEn == nil {
+		t.Errorf("el eje de duplicados se pisó: %+v", guardada)
+	}
+
+	// Unión automática: nombre, fecha y `origin` del video.
+	publicado := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Millisecond)
+	unida, err := repo.UpdateMediaItemJoin(ctx, ficha, "Título del video", publicado, OrigenAmbos)
+	if err != nil {
+		t.Fatalf("UpdateMediaItemJoin: %v", err)
+	}
+	if unida.Titulo != "Título del video" || !unida.PublicadoEn.Equal(publicado) || unida.Origen != OrigenAmbos {
+		t.Errorf("la unión no se escribió: %+v", unida)
+	}
+	if unida.DescripcionEs == nil || *unida.DescripcionEs != "Descripción del equipo" || !unida.DescripcionEditada {
+		t.Errorf("la unión pisó la descripción del equipo: %+v", unida)
+	}
+	if unida.Caratula == nil || *unida.Caratula != caratula {
+		t.Errorf("la unión pisó la carátula: %v", unida.Caratula)
+	}
+	if unida.Visibilidad != VisibilidadOculta {
+		t.Errorf("la unión pisó la visibilidad: %q", unida.Visibilidad)
+	}
+	if unida.DuplicadoDeID == nil || *unida.DuplicadoDeID != pareja {
+		t.Errorf("la unión pisó el eje de duplicados: %+v", unida.DuplicadoDeID)
+	}
+	if unida.MarcaDisponibilidad == nil || *unida.MarcaDisponibilidad != MarcaDisponibilidadNoDisponible {
+		t.Errorf("la unión pisó el eje de disponibilidad: %+v", unida.MarcaDisponibilidad)
+	}
+}

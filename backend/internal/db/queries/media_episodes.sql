@@ -278,6 +278,44 @@ RETURNING id, title, published_at, description_es, description_en, description_e
           availability_checked_at, availability_result, availability_mark,
           availability_mark_resolved_at, merged_into_id, created_at, updated_at;
 
+-- name: UpdateMediaItemAvailability :one
+-- El resultado agregado de la comprobación de disponibilidad de una ficha
+-- (P9-19/FR-017) y, cuando corresponde, la marca del eje y la visibilidad que
+-- impone una indisponibilidad **confirmada**. Escribe SOLO las columnas de ese
+-- eje: la descripción del equipo (y su marca de edición), el nombre, la fecha, la
+-- carátula y el eje de duplicados quedan fuera del alcance de la búsqueda
+-- (FR-015/SC-007). `visibility` viaja como `narg`: NULL conserva la que el equipo
+-- haya decidido mientras la búsqueda corría.
+UPDATE media_items
+SET availability_checked_at = sqlc.arg('availability_checked_at'),
+    availability_result = sqlc.arg('availability_result'),
+    availability_mark = sqlc.narg('availability_mark'),
+    availability_mark_resolved_at = sqlc.narg('availability_mark_resolved_at'),
+    visibility = COALESCE(sqlc.narg('visibility'), visibility),
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at;
+
+-- name: UpdateMediaItemJoin :one
+-- La unión automática del elemento nuevo con la ficha del mismo sermón (FR-013,
+-- precisión 5/default #7): el nombre y la fecha que impone el video y el `origin`
+-- resultante (`both`). Escribe SOLO esas tres columnas: la descripción del
+-- equipo, su marca de edición, la carátula, la visibilidad y los dos ejes de
+-- marcas quedan intactos (SC-007: la sincronización nunca pisa lo del equipo).
+UPDATE media_items
+SET title = sqlc.arg('title'),
+    published_at = sqlc.arg('published_at'),
+    origin = sqlc.arg('origin'),
+    updated_at = now()
+WHERE id = sqlc.arg('id')
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at;
+
 -- name: MarkMediaItemDuplicate :one
 -- Marca el par recíproco de «posible duplicado» (FR-014/P9-19): el candidato
 -- apunta a la ficha nueva y su marca queda **abierta** (resolución NULL). Escribe

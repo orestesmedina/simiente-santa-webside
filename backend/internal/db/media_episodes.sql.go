@@ -781,6 +781,70 @@ func (q *Queries) UpdateMediaItem(ctx context.Context, arg UpdateMediaItemParams
 	return i, err
 }
 
+const updateMediaItemAvailability = `-- name: UpdateMediaItemAvailability :one
+UPDATE media_items
+SET availability_checked_at = $1,
+    availability_result = $2,
+    availability_mark = $3,
+    availability_mark_resolved_at = $4,
+    visibility = COALESCE($5, visibility),
+    updated_at = now()
+WHERE id = $6
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at
+`
+
+type UpdateMediaItemAvailabilityParams struct {
+	AvailabilityCheckedAt      pgtype.Timestamptz
+	AvailabilityResult         pgtype.Text
+	AvailabilityMark           pgtype.Text
+	AvailabilityMarkResolvedAt pgtype.Timestamptz
+	Visibility                 pgtype.Text
+	ID                         pgtype.UUID
+}
+
+// El resultado agregado de la comprobación de disponibilidad de una ficha
+// (P9-19/FR-017) y, cuando corresponde, la marca del eje y la visibilidad que
+// impone una indisponibilidad **confirmada**. Escribe SOLO las columnas de ese
+// eje: la descripción del equipo (y su marca de edición), el nombre, la fecha, la
+// carátula y el eje de duplicados quedan fuera del alcance de la búsqueda
+// (FR-015/SC-007). `visibility` viaja como `narg`: NULL conserva la que el equipo
+// haya decidido mientras la búsqueda corría.
+func (q *Queries) UpdateMediaItemAvailability(ctx context.Context, arg UpdateMediaItemAvailabilityParams) (MediaItem, error) {
+	row := q.db.QueryRow(ctx, updateMediaItemAvailability,
+		arg.AvailabilityCheckedAt,
+		arg.AvailabilityResult,
+		arg.AvailabilityMark,
+		arg.AvailabilityMarkResolvedAt,
+		arg.Visibility,
+		arg.ID,
+	)
+	var i MediaItem
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.PublishedAt,
+		&i.DescriptionEs,
+		&i.DescriptionEn,
+		&i.DescriptionEdited,
+		&i.CoverFile,
+		&i.Origin,
+		&i.Visibility,
+		&i.DuplicateOfID,
+		&i.DuplicateMarkResolvedAt,
+		&i.AvailabilityCheckedAt,
+		&i.AvailabilityResult,
+		&i.AvailabilityMark,
+		&i.AvailabilityMarkResolvedAt,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateMediaItemCoverIfNull = `-- name: UpdateMediaItemCoverIfNull :one
 UPDATE media_items
 SET cover_file = $1,
@@ -810,6 +874,62 @@ type UpdateMediaItemCoverIfNullParams struct {
 // decisión de visibilidad) sigue intacta (FR-015/SC-007).
 func (q *Queries) UpdateMediaItemCoverIfNull(ctx context.Context, arg UpdateMediaItemCoverIfNullParams) (MediaItem, error) {
 	row := q.db.QueryRow(ctx, updateMediaItemCoverIfNull, arg.CoverFile, arg.ID)
+	var i MediaItem
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.PublishedAt,
+		&i.DescriptionEs,
+		&i.DescriptionEn,
+		&i.DescriptionEdited,
+		&i.CoverFile,
+		&i.Origin,
+		&i.Visibility,
+		&i.DuplicateOfID,
+		&i.DuplicateMarkResolvedAt,
+		&i.AvailabilityCheckedAt,
+		&i.AvailabilityResult,
+		&i.AvailabilityMark,
+		&i.AvailabilityMarkResolvedAt,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateMediaItemJoin = `-- name: UpdateMediaItemJoin :one
+UPDATE media_items
+SET title = $1,
+    published_at = $2,
+    origin = $3,
+    updated_at = now()
+WHERE id = $4
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at
+`
+
+type UpdateMediaItemJoinParams struct {
+	Title       string
+	PublishedAt pgtype.Timestamptz
+	Origin      string
+	ID          pgtype.UUID
+}
+
+// La unión automática del elemento nuevo con la ficha del mismo sermón (FR-013,
+// precisión 5/default #7): el nombre y la fecha que impone el video y el `origin`
+// resultante (`both`). Escribe SOLO esas tres columnas: la descripción del
+// equipo, su marca de edición, la carátula, la visibilidad y los dos ejes de
+// marcas quedan intactos (SC-007: la sincronización nunca pisa lo del equipo).
+func (q *Queries) UpdateMediaItemJoin(ctx context.Context, arg UpdateMediaItemJoinParams) (MediaItem, error) {
+	row := q.db.QueryRow(ctx, updateMediaItemJoin,
+		arg.Title,
+		arg.PublishedAt,
+		arg.Origin,
+		arg.ID,
+	)
 	var i MediaItem
 	err := row.Scan(
 		&i.ID,

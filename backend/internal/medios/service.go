@@ -124,6 +124,11 @@ type Repository interface {
 	// ResolveDuplicatePair escribe las dos filas del par y su auditoría en UNA
 	// transacción (M2/FR-022).
 	ResolveDuplicatePair(ctx context.Context, actualizada, pareja Episodio, actions ...audit.Action) (Episodio, error)
+	// UpdateMediaItemAvailability y UpdateMediaItemJoin son las escrituras **por
+	// columnas** del sync (M3/SC-007): solo el eje que le compete a cada paso,
+	// nunca los campos del equipo.
+	UpdateMediaItemAvailability(ctx context.Context, id uuid.UUID, cambio CambioDisponibilidad) (Episodio, error)
+	UpdateMediaItemJoin(ctx context.Context, id uuid.UUID, titulo string, publicadoEn time.Time, origen OrigenMedio) (Episodio, error)
 	// UpdateMediaItemCoverIfNull copia la carátula al sitio solo si la ficha
 	// todavía no tiene (P9-9/default #10) y dice si la escribió.
 	UpdateMediaItemCoverIfNull(ctx context.Context, id uuid.UUID, archivo string) (Episodio, bool, error)

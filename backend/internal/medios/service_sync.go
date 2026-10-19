@@ -255,14 +255,27 @@ func (b *busqueda) revisarDisponibilidad(youtube, podcast lecturaFeed) error {
 			// Se quedó sin presupuesto o fuera del tope: la ficha no se toca.
 			continue
 		}
-		fuentes, err := b.servicio.repository.ListMediaItemSourcesByItem(b.ctx, item.ficha.ID)
+		// La ficha se relee **después** de las comprobaciones (que son la parte
+		// lenta de la búsqueda): la marca y la visibilidad se deciden sobre el
+		// estado vivo, no sobre la instantánea de la cola (M3/SC-007).
+		ficha, encontrada, err := b.fichaActual(item.ficha.ID)
+		if err != nil {
+			if b.presupuestoAgotado() {
+				return nil
+			}
+			return err
+		}
+		if !encontrada || ficha.UnidoAID != nil {
+			continue
+		}
+		fuentes, err := b.servicio.repository.ListMediaItemSourcesByItem(b.ctx, ficha.ID)
 		if err != nil {
 			if b.presupuestoAgotado() {
 				return nil
 			}
 			return fmt.Errorf("leer las fuentes del episodio: %w", err)
 		}
-		if err := b.aplicarDisponibilidad(item.ficha, resultado, todasFueraDeVentana(fuentes, ventanas), ahora); err != nil {
+		if err := b.aplicarDisponibilidad(ficha, resultado, todasFueraDeVentana(fuentes, ventanas), ahora); err != nil {
 			if b.presupuestoAgotado() {
 				return nil
 			}
@@ -384,32 +397,42 @@ func (b *busqueda) comprobarFuente(fuente FuenteEpisodio) (ResultadoDisponibilid
 //   - **alguna fuente sigue en su ventana** → no se marca nada (M2: decir «ya no
 //     aparece en el feed» sería falso); solo se guarda el dato de la comprobación.
 //
-// El eje de duplicados **no se toca** (es independiente: C1).
+// El eje de duplicados **no se toca** (es independiente: C1) y la escritura es
+// **por columnas** (M3): la descripción del equipo, el nombre, la fecha, la
+// carátula y su visibilidad —salvo la que impone una indisponibilidad
+// confirmada— quedan fuera del alcance de la búsqueda (FR-015/SC-007).
 func (b *busqueda) aplicarDisponibilidad(ficha Episodio, resultado ResultadoDisponibilidad, todasFuera bool, ahora time.Time) error {
-	actualizada := ficha
-	actualizada.DisponibilidadComprobadaEn = &ahora
-	actualizada.ResultadoDisponibilidad = &resultado
+	// Punto de partida: la ficha **viva** (recién leída) con su marca actual.
+	cambio := CambioDisponibilidad{
+		ComprobadaEn:    ahora,
+		Resultado:       resultado,
+		Marca:           ficha.MarcaDisponibilidad,
+		MarcaResueltaEn: ficha.MarcaDisponibilidadResueltaEn,
+	}
 
 	oculta := false
 	switch {
 	case resultado == DisponibilidadNoDisponible:
 		marca := MarcaDisponibilidadNoDisponible
-		actualizada.MarcaDisponibilidad = &marca
-		actualizada.MarcaDisponibilidadResueltaEn = nil
-		oculta = actualizada.Visibilidad != VisibilidadOculta
-		actualizada.Visibilidad = VisibilidadOculta
+		cambio.Marca = &marca
+		cambio.MarcaResueltaEn = nil
+		if ficha.Visibilidad != VisibilidadOculta {
+			oculta = true
+			visibilidad := VisibilidadOculta
+			cambio.Visibilidad = &visibilidad
+		}
 	case todasFuera:
-		yaResuelta := actualizada.MarcaDisponibilidad != nil &&
-			*actualizada.MarcaDisponibilidad == MarcaDisponibilidadFueraDelFeed &&
-			actualizada.MarcaDisponibilidadResueltaEn != nil
+		yaResuelta := ficha.MarcaDisponibilidad != nil &&
+			*ficha.MarcaDisponibilidad == MarcaDisponibilidadFueraDelFeed &&
+			ficha.MarcaDisponibilidadResueltaEn != nil
 		if !yaResuelta {
 			marca := MarcaDisponibilidadFueraDelFeed
-			actualizada.MarcaDisponibilidad = &marca
-			actualizada.MarcaDisponibilidadResueltaEn = nil
+			cambio.Marca = &marca
+			cambio.MarcaResueltaEn = nil
 		}
 	}
 
-	if _, err := b.servicio.repository.UpdateMediaItem(b.ctx, actualizada); err != nil {
+	if _, err := b.servicio.repository.UpdateMediaItemAvailability(b.ctx, ficha.ID, cambio); err != nil {
 		return fmt.Errorf("marcar la disponibilidad del episodio: %w", err)
 	}
 	if oculta {
@@ -726,15 +749,18 @@ func (b *busqueda) candidato(proveedor Proveedor, entrada EntradaFeed) (Episodio
 // **video**, su nombre y su fecha pasan a mandar (precisión 5/default #7). La
 // carátula la copia T921 si la consigue: mientras tanto se conserva la que la
 // ficha tuviera.
+//
+// La escritura es **por columnas** (M3): nombre, fecha y `origin`; la descripción
+// del equipo, su carátula y los dos ejes de marcas quedan fuera del alcance de la
+// búsqueda (FR-015/SC-007).
 func (b *busqueda) unirEntrada(proveedor Proveedor, entrada EntradaFeed, candidato Episodio) error {
-	resultante := candidato
+	titulo, publicadoEn := candidato.Titulo, candidato.PublicadoEn
 	if proveedor == ProveedorYouTube {
 		// La candidata es siempre del otro feed, así que un elemento de YouTube
 		// llega a una ficha del podcast: el video manda (precisión 5).
-		resultante.Titulo = recortarTitulo(entrada.Titulo)
-		resultante.PublicadoEn = entrada.Publicado
+		titulo = recortarTitulo(entrada.Titulo)
+		publicadoEn = entrada.Publicado
 	}
-	resultante.Origen = OrigenAmbos
 
 	if _, ok, err := b.insertarFuente(proveedor, entrada, candidato.ID); err != nil {
 		return err
@@ -743,7 +769,7 @@ func (b *busqueda) unirEntrada(proveedor Proveedor, entrada EntradaFeed, candida
 		// esta búsqueda no toca nada (R9-11/default #12).
 		return nil
 	}
-	if _, err := b.servicio.repository.UpdateMediaItem(b.ctx, resultante); err != nil {
+	if _, err := b.servicio.repository.UpdateMediaItemJoin(b.ctx, candidato.ID, titulo, publicadoEn, OrigenAmbos); err != nil {
 		return fmt.Errorf("actualizar el episodio unido: %w", err)
 	}
 	b.reclamadas[candidato.ID] = true
