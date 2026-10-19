@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (PR **[#13](https://github.com/orestesmedina/simiente-santa-webside/pull/13)** abierto; pendiente tu aprobación y el merge) |
+| Fase | 9/9 · Entregar (PR **[#13](https://github.com/orestesmedina/simiente-santa-webside/pull/13)** **aprobado**; pendiente tu **merge**) |
 | Ciclo de corrección | 2/3 · **cerrado**: QA y seguridad **APRUEBAN**; código **APRUEBA CON CAMBIOS** con **todos** los hallazgos resueltos y confirmados |
-| Próximo paso | Revisar y **aprobar el PR #13**; al aprobarlo, cierro el costo (`make costos CERRAR=1`) y lo dejo commiteado en la rama; después el **merge (squash)** y marco F9 terminada |
-| Bloqueado por | — (nada técnico: el PR está abierto) |
+| Próximo paso | **Merge (squash) del PR #13** por el humano → marcar F9 **terminada** en el roadmap y cerrar. Después quedan los dos criterios manuales post-despliegue (SC-008 y SC-012) |
+| Bloqueado por | — |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -28,7 +28,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano (cliente) | 2026-10-17 | "Apruebo la spec v2" |
 | Plan | aprobado | humano (cliente) | 2026-10-17 | "Aplica las 5 y apruebo el plan" |
-| PR / merge | abierto (pendiente de tu revisión y aprobación) | — | 2026-10-19 | PR [#13](https://github.com/orestesmedina/simiente-santa-webside/pull/13) abierto por el humano |
+| PR / merge | **aprobado** (pendiente el merge) | humano (cliente) | 2026-10-19 | "Apruebo el PR #13" |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -64,6 +64,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-19 — **Puerta 3: PR #13 APROBADO** por el humano («Apruebo el PR #13»). Costo de la tarea **cerrado** en la rama antes del merge. **Pendiente: el merge (squash)** y, al confirmarlo, F9 pasa a **terminada**.
 - 2026-10-19 — **PR #13 abierto** por el humano (91 commits contra `main`), roadmap → **en revisión**. ⚠️ El PR se creó **sin descripción** y con el título de la rama: falta pegar el cuerpo de `specs/009-medios-predicas-y-podcasts/pr.md` (que ya incluye la validación de las tres rondas y la evidencia de cierre).
 - 2026-10-19 — **Cierre documental.** CHANGELOG (0.8.0) con el resultado real de la validación (tres rondas, 14 commits de corrección) y una sección «Conocido»; `pr.md` reescrito y **listo para pegar**; limitación del tercer elemento dudoso documentada en `spec.md`, `data-model.md` y las notas de entrega. **Fase 7 cerrada**: lista para la **puerta 3**.
 - 2026-10-18/19 — **Ciclos 2 y 3 de corrección: cerrados.** (a) **N1** resuelto (`32a9619`): la unión automática segura vuelve a funcionar contra una ficha de par **resuelto** (antes el mismo sermón podía verse dos veces) y la exclusión queda **solo** en la rama dudosa, con la pareja recíproca intacta; de paso se cerraron **N2** (la marca de disponibilidad ya no puede devolverse ni barrer una resolución) y **N3** (la carátula huérfana se retira solo si no está en uso). (b) La revalidación encontró **N4**: el doble de pruebas **no soportaba concurrencia** y **`go test -race` falla**, que es justo la puerta del CI (`.github/workflows/ci.yml` línea 112) → arreglado (`b69571d`, mutex en el doble, sin relajar aserciones) y **`-race` en verde en los 22 paquetes del backend**, más **S1** (`7dbd8b2`: no re-escribir una marca de la misma clase). Quedan **dos cosas**: la decisión del **borde de spec** (tercer elemento dudoso) y la **puerta 3** (PR).

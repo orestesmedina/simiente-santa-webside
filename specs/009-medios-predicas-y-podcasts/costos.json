@@ -1,8 +1,8 @@
 {
   "rama": "009-medios-predicas-y-podcasts",
-  "estado": "abierto",
+  "estado": "cerrado",
   "inicio": "2026-10-17T21:19:14Z",
-  "cerrado": null,
+  "cerrado": "2026-10-19T23:01:50Z",
   "moneda": "USD",
   "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
   "precios": [
@@ -1055,6 +1055,62 @@
         }
       ],
       "hasta_ms": 1792448786261
+    },
+    {
+      "id": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "padre": null,
+      "titulo": "Requisitos para arrancar F9",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-19T23:01:49Z",
+      "desde": "2026-10-19T22:27:03Z",
+      "hasta": "2026-10-19T23:01:29Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 19,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 517923,
+            "output": 10715,
+            "reasoning": 5203,
+            "cache_read": 8662272,
+            "cache_write": 0
+          },
+          "costo": 0.113226,
+          "costo_opencode": 0.113226
+        }
+      ],
+      "hasta_ms": 1792450889807
+    },
+    {
+      "id": "ses_ea9b322abffeT1yRKSEykPCuzw",
+      "padre": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "titulo": "Cierre documental y PR de F9",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-19T23:01:49Z",
+      "desde": "2026-10-19T22:34:00Z",
+      "hasta": "2026-10-19T22:43:09Z",
+      "consumo": [
+        {
+          "agente": "documentador",
+          "modelo": "opencode-go/mimo-v2.6-flash",
+          "respuestas": 16,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 117694,
+            "output": 14144,
+            "reasoning": 9055,
+            "cache_read": 1312768,
+            "cache_write": 0
+          },
+          "costo": 0.026649,
+          "costo_opencode": 0.026649
+        }
+      ],
+      "hasta_ms": 1792449789791
     }
   ],
   "totales": {
@@ -1122,16 +1178,16 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 190,
+        "respuestas": 209,
         "tokens": {
-          "input": 2352952,
-          "output": 106427,
-          "reasoning": 85410,
-          "cache_read": 56628736,
+          "input": 2870875,
+          "output": 117142,
+          "reasoning": 90613,
+          "cache_read": 65291008,
           "cache_write": 0
         },
-        "costo": 0.737097,
-        "costo_opencode": 0.637932,
+        "costo": 0.850323,
+        "costo_opencode": 0.751158,
         "sin_precio": false
       },
       {
@@ -1197,16 +1253,16 @@
       {
         "agente": "documentador",
         "modelo": "opencode-go/mimo-v2.6-flash",
-        "respuestas": 42,
+        "respuestas": 58,
         "tokens": {
-          "input": 158365,
-          "output": 23229,
-          "reasoning": 14087,
-          "cache_read": 4249472,
+          "input": 276059,
+          "output": 37373,
+          "reasoning": 23142,
+          "cache_read": 5562240,
           "cache_write": 0
         },
-        "costo": 0.044518,
-        "costo_opencode": 0.044518,
+        "costo": 0.071167,
+        "costo_opencode": 0.071167,
         "sin_precio": false
       },
       {
@@ -1225,8 +1281,8 @@
         "sin_precio": false
       }
     ],
-    "tokens": 532051427,
-    "costo": 9.473682,
-    "costo_opencode": 8.926974
+    "tokens": 542701201,
+    "costo": 9.613557,
+    "costo_opencode": 9.066849
   }
 }
