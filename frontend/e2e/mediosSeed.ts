@@ -629,7 +629,7 @@ function noPublicables(): MedioFixture[] {
     {
       key: 'par-mixto-otra',
       id: IDS.parMixtoOtra,
-      title: 'Sermón con las dos marcas (adicional)',
+      title: 'Entrada adicional del par mixto',
       publishedAt: '2026-09-19T18:00:00Z',
       descriptionEs: 'La adicional del par mixto.',
       descriptionEn: null,
@@ -641,7 +641,7 @@ function noPublicables(): MedioFixture[] {
         {
           provider: 'podcast',
           externalId: 'e2e-guid-mixto',
-          feedTitle: 'Sermón con las dos marcas (adicional)',
+          feedTitle: 'Entrada adicional del par mixto',
           url: podcastUrl('sermon-con-las-dos-marcas-adicional-e2e007'),
         },
       ],
@@ -856,8 +856,11 @@ function ocultarLoAjeno(): void {
 export function resetMedios(): void {
   const ids = sqlUuidArray(catalogoIds());
   psql(`DELETE FROM media_episode_sources WHERE item_id = ANY(${ids}::uuid[]);`);
+  // Se despejan **los dos** ejes antes de borrar: el puntero recíproco del par y
+  // su fecha de resolución se referencian entre sí (`CHECK` de coherencia) y el
+  // `DELETE` está protegido por la FK `ON DELETE RESTRICT`.
   psql(
-    `UPDATE media_items SET duplicate_of_id = NULL, merged_into_id = NULL WHERE id = ANY(${ids}::uuid[]);`,
+    `UPDATE media_items SET duplicate_of_id = NULL, duplicate_mark_resolved_at = NULL, merged_into_id = NULL WHERE id = ANY(${ids}::uuid[]);`,
   );
   psql(`DELETE FROM media_items WHERE id = ANY(${ids}::uuid[]);`);
   restaurarOcultadas();
