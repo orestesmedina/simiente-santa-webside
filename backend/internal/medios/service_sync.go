@@ -402,20 +402,19 @@ func (b *busqueda) comprobarFuente(fuente FuenteEpisodio) (ResultadoDisponibilid
 // carátula y su visibilidad —salvo la que impone una indisponibilidad
 // confirmada— quedan fuera del alcance de la búsqueda (FR-015/SC-007).
 func (b *busqueda) aplicarDisponibilidad(ficha Episodio, resultado ResultadoDisponibilidad, todasFuera bool, ahora time.Time) error {
-	// Punto de partida: la ficha **viva** (recién leída) con su marca actual.
+	// Punto de partida: la ficha **viva** (recién leída). El eje de la marca se
+	// escribe solo si la decisión de abajo lo cambia: así la búsqueda no devuelve
+	// a la fila la marca que leyó (N2).
 	cambio := CambioDisponibilidad{
-		ComprobadaEn:    ahora,
-		Resultado:       resultado,
-		Marca:           ficha.MarcaDisponibilidad,
-		MarcaResueltaEn: ficha.MarcaDisponibilidadResueltaEn,
+		ComprobadaEn: ahora,
+		Resultado:    resultado,
 	}
 
 	oculta := false
 	switch {
 	case resultado == DisponibilidadNoDisponible:
 		marca := MarcaDisponibilidadNoDisponible
-		cambio.Marca = &marca
-		cambio.MarcaResueltaEn = nil
+		cambio.MarcaNueva = &marca
 		if ficha.Visibilidad != VisibilidadOculta {
 			oculta = true
 			visibilidad := VisibilidadOculta
@@ -427,8 +426,7 @@ func (b *busqueda) aplicarDisponibilidad(ficha Episodio, resultado ResultadoDisp
 			ficha.MarcaDisponibilidadResueltaEn != nil
 		if !yaResuelta {
 			marca := MarcaDisponibilidadFueraDelFeed
-			cambio.Marca = &marca
-			cambio.MarcaResueltaEn = nil
+			cambio.MarcaNueva = &marca
 		}
 	}
 
@@ -577,6 +575,14 @@ func (b *busqueda) copiarCaratula(tarea caratulaPendiente) error {
 	}
 
 	if _, aplicada, err := b.servicio.repository.UpdateMediaItemCoverIfNull(b.ctx, tarea.episodioID, archivo); err != nil {
+		// El `UPDATE` falló: si la escritura no llegó a aplicarse, la copia recién
+		// descargada queda sin referencia en el almacén (N3). Se retira solo si la
+		// fila viva confirma que **no** la usa: cuando el error es de respuesta
+		// (la escritura sí se aplicó) el archivo está en uso y se conserva.
+		if viva, encontrada, errLectura := b.servicio.repository.GetMediaItemByID(b.ctx, tarea.episodioID); errLectura == nil &&
+			encontrada && (viva.Caratula == nil || *viva.Caratula != archivo) {
+			b.servicio.borrarCaratulasSinUso(b.ctx, nil, &archivo)
+		}
 		return fmt.Errorf("guardar la carátula del episodio: %w", err)
 	} else if !aplicada {
 		// Otra búsqueda simultánea se adelantó: su copia es la que sirve el sitio.
@@ -708,9 +714,11 @@ func (b *busqueda) importarEntrada(proveedor Proveedor, entrada EntradaFeed) err
 // (FR-013): `seguro` cuando el título normalizado coincide **y** es el mismo día
 // en la zona de la iglesia —sin margen—; `dudoso` cuando solo coincide una de las
 // dos cosas (FR-014: entradas separadas y marcadas). Una ficha absorbida, una que
-// ya tiene fuente de este proveedor, una ya reclamada en esta búsqueda y una que
-// **ya tiene pareja** (par abierto o resuelto: la pareja recíproca es de dos, M1)
-// no son candidatas.
+// ya tiene fuente de este proveedor y una ya reclamada en esta búsqueda no son
+// candidatas. Una que **ya tiene pareja** (par abierto o resuelto) tampoco puede
+// entrar en un par **nuevo** (la pareja recíproca es de dos, M1), pero sí puede
+// recibir la unión automática segura: `unirEntrada` no toca `duplicate_of_id`
+// (FR-013/N1).
 func (b *busqueda) candidato(proveedor Proveedor, entrada EntradaFeed) (Episodio, bool, bool, error) {
 	otro := proveedorContrario(proveedor)
 	llave := normalizarTitulo(entrada.Titulo)
@@ -725,15 +733,21 @@ func (b *busqueda) candidato(proveedor Proveedor, entrada EntradaFeed) (Episodio
 		if err != nil {
 			return Episodio{}, false, false, err
 		}
-		if !encontrada || ficha.UnidoAID != nil || ficha.DuplicadoDeID != nil {
+		if !encontrada || ficha.UnidoAID != nil {
 			continue
 		}
 		mismoTitulo := normalizarTitulo(ficha.Titulo) == llave
 		mismoDia := diaEnLugar(ficha.PublicadoEn, b.servicio.zona()).Equal(dia)
 		switch {
 		case mismoTitulo && mismoDia:
+			// La unión segura es inocua para la pareja recíproca (no escribe el
+			// eje de duplicados): también vale para una ficha emparejada, y así el
+			// mismo sermón no queda visible dos veces (FR-013/SC-003, N1).
 			return ficha, true, false, nil
-		case (mismoTitulo || mismoDia) && dudoso.ID == uuid.Nil:
+		case (mismoTitulo || mismoDia) && dudoso.ID == uuid.Nil && ficha.DuplicadoDeID == nil:
+			// La rama dudosa sí escribe el puntero recíproco: necesita un
+			// candidato libre (la marca del par escribe con
+			// `duplicate_of_id IS NULL`, M1).
 			dudoso = ficha
 		}
 	}

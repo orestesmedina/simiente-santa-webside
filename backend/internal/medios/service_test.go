@@ -585,6 +585,15 @@ type fakeRepository struct {
 	// antesDeInsertar es un gancho de las pruebas (p. ej. para cortar el
 	// presupuesto de la búsqueda a mitad de la importación).
 	antesDeInsertar func()
+	// antesDeEscribirDisponibilidad es un gancho de las pruebas: corre dentro de
+	// la escritura del eje de disponibilidad, entre la lectura de la ficha y el
+	// `UPDATE` (la ventana de N2).
+	antesDeEscribirDisponibilidad func()
+	// coverErr fuerza el fallo de la escritura condicional de la carátula y
+	// antesDeCover corre justo antes de ella (N3: el error de respuesta de una
+	// escritura que sí se aplicó).
+	coverErr     error
+	antesDeCover func()
 
 	// Observaciones.
 	publicParams     []paginate.Params
@@ -917,6 +926,9 @@ func (f *fakeRepository) altaConFuente(episodio Episodio, fuente FuenteEpisodio)
 // descripción del equipo, el nombre, la fecha y el eje de duplicados siguen
 // intactos.
 func (f *fakeRepository) UpdateMediaItemAvailability(_ context.Context, id uuid.UUID, cambio CambioDisponibilidad) (Episodio, error) {
+	if f.antesDeEscribirDisponibilidad != nil {
+		f.antesDeEscribirDisponibilidad()
+	}
 	if f.mutationErr != nil {
 		return Episodio{}, f.mutationErr
 	}
@@ -928,8 +940,14 @@ func (f *fakeRepository) UpdateMediaItemAvailability(_ context.Context, id uuid.
 	resultado := cambio.Resultado
 	f.episodios[i].DisponibilidadComprobadaEn = &comprobada
 	f.episodios[i].ResultadoDisponibilidad = &resultado
-	f.episodios[i].MarcaDisponibilidad = cambio.Marca
-	f.episodios[i].MarcaDisponibilidadResueltaEn = cambio.MarcaResueltaEn
+	// El eje de la marca se escribe **solo** cuando la búsqueda decide una marca
+	// nueva, y entra abierta (N2): sin decisión, la fila conserva la marca y la
+	// resolución que tenga en ese momento.
+	if cambio.MarcaNueva != nil {
+		marca := *cambio.MarcaNueva
+		f.episodios[i].MarcaDisponibilidad = &marca
+		f.episodios[i].MarcaDisponibilidadResueltaEn = nil
+	}
 	if cambio.Visibilidad != nil {
 		f.episodios[i].Visibilidad = *cambio.Visibilidad
 	}
@@ -989,7 +1007,17 @@ func (f *fakeRepository) ResolveDuplicatePair(_ context.Context, actualizada, pa
 // UpdateMediaItemCoverIfNull imita la escritura condicional del repository real:
 // escribe la carátula **solo** si la ficha todavía no tiene (y solo ese campo: lo
 // demás del equipo queda intacto) y devuelve false cuando ya había carátula.
+//
+// `coverErr` fuerza el fallo de esa escritura (N3) y `antesDeCover` corre justo
+// antes: las pruebas lo usan para simular un error de **respuesta** de una
+// escritura que sí se aplicó.
 func (f *fakeRepository) UpdateMediaItemCoverIfNull(_ context.Context, id uuid.UUID, archivo string) (Episodio, bool, error) {
+	if f.antesDeCover != nil {
+		f.antesDeCover()
+	}
+	if f.coverErr != nil {
+		return Episodio{}, false, f.coverErr
+	}
 	if f.mutationErr != nil {
 		return Episodio{}, false, f.mutationErr
 	}

@@ -2,6 +2,7 @@ package medios
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -471,9 +472,14 @@ func TestBuscarNuevosDuplicadoDudoso(t *testing.T) {
 
 // TestBuscarNuevosParejaReciprocaUnica fija la invariante de la pareja recíproca
 // (data-model.md/M1): una ficha que **ya tiene pareja** —abierta o resuelta— no
-// vuelve a ser candidata de nadie, ni dentro de la misma búsqueda (dos elementos
+// vuelve a entrar en un par nuevo, ni dentro de la misma búsqueda (dos elementos
 // del mismo feed no se marcan contra el mismo candidato) ni entre búsquedas
 // simultáneas (la marca del par escribe con `duplicate_of_id IS NULL`).
+//
+// La exclusión vale **solo para la rama dudosa** —la que escribe el puntero
+// recíproco—: la unión automática segura no toca `duplicate_of_id` y sigue
+// disponible para una ficha emparejada (FR-013/N1), que es lo que evita que el
+// mismo sermón quede visible dos veces (SC-003).
 func TestBuscarNuevosParejaReciprocaUnica(t *testing.T) {
 	fecha := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
 
@@ -519,19 +525,25 @@ func TestBuscarNuevosParejaReciprocaUnica(t *testing.T) {
 		}
 	})
 
-	t.Run("una ficha con par no es candidata de la unión", func(t *testing.T) {
+	t.Run("un match seguro con una ficha emparejada se une (FR-013/N1)", func(t *testing.T) {
 		repo := newFakeRepository()
 		repo.seed(
 			Episodio{Titulo: "Sermón del domingo", PublicadoEn: fecha, Origen: OrigenVideo},
-			Episodio{Titulo: "Su pareja", PublicadoEn: fecha, Origen: OrigenAudio},
+			Episodio{Titulo: "Otro sermón del mismo día", PublicadoEn: fecha, Origen: OrigenAudio},
 		)
-		// Un par ya existente (resuelto): cada miembro apunta al otro.
+		// Un par ya existente **resuelto** («no son el mismo sermón»): cada
+		// miembro conserva el puntero (default #6) y sigue siendo publicable.
+		resuelto := fecha.AddDate(0, 0, 1)
 		repo.episodios[0].DuplicadoDeID = ptrUUID(repo.episodios[1].ID)
+		repo.episodios[0].MarcaDuplicadoResueltaEn = &resuelto
 		repo.episodios[1].DuplicadoDeID = ptrUUID(repo.episodios[0].ID)
+		repo.episodios[1].MarcaDuplicadoResueltaEn = &resuelto
 		repo.seedFuentes(FuenteEpisodio{
 			EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
 			TituloFeed: "Sermón del domingo", Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
 		})
+		// El podcast publica (o re-publica) el audio del **mismo** sermón: título
+		// normalizado y día coinciden, así que la correspondencia es segura.
 		entrada := entradaDePrueba(ProveedorPodcast, "guid-01", "Sermón del domingo", fecha, "Del podcast")
 		service := servicioConDoblesYProbador(t, repo,
 			&fakeFeedSource{podcast: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, &fakeProbador{}, &fakeCaratulas{})
@@ -540,8 +552,59 @@ func TestBuscarNuevosParejaReciprocaUnica(t *testing.T) {
 		if err != nil {
 			t.Fatalf("BuscarNuevos devolvió %v", err)
 		}
+		if resumen.Unidos != 1 || resumen.Marcados != 0 {
+			t.Errorf("el match seguro debe unirse sin marcar: %+v", resumen)
+		}
+		if len(repo.episodios) != 2 {
+			t.Fatalf("fichas = %d, la unión no puede crear una ficha aparte (SC-003)", len(repo.episodios))
+		}
+		unida := repo.episodios[0]
+		if len(fuentesDe(repo, unida.ID)) != 2 {
+			t.Errorf("la ficha unida debe tener los dos enlaces: %d fuentes", len(fuentesDe(repo, unida.ID)))
+		}
+		if unida.Origen != OrigenAmbos {
+			t.Errorf("origin = %q, se esperaba both", unida.Origen)
+		}
+		// La unión es inocua para la pareja recíproca: no la rompe ni la reabre.
+		if unida.DuplicadoDeID == nil || *unida.DuplicadoDeID != repo.episodios[1].ID {
+			t.Errorf("la unión pisó el puntero de la pareja: %v", unida.DuplicadoDeID)
+		}
+		if repo.episodios[1].DuplicadoDeID == nil || *repo.episodios[1].DuplicadoDeID != unida.ID {
+			t.Errorf("la pareja recíproca se rompió: %v", repo.episodios[1].DuplicadoDeID)
+		}
+		if unida.MarcaDuplicadoResueltaEn == nil || repo.episodios[1].MarcaDuplicadoResueltaEn == nil {
+			t.Error("la unión reabrió la resolución del par")
+		}
+	})
+
+	t.Run("un match solo por título no roba el puntero de una ficha emparejada", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(
+			Episodio{Titulo: "Sermón del domingo", PublicadoEn: fecha, Origen: OrigenVideo},
+			Episodio{Titulo: "Su pareja", PublicadoEn: fecha, Origen: OrigenAudio},
+		)
+		// Un par ya existente (resuelto): cada miembro apunta al otro.
+		resuelto := fecha.AddDate(0, 0, 1)
+		repo.episodios[0].DuplicadoDeID = ptrUUID(repo.episodios[1].ID)
+		repo.episodios[0].MarcaDuplicadoResueltaEn = &resuelto
+		repo.episodios[1].DuplicadoDeID = ptrUUID(repo.episodios[0].ID)
+		repo.episodios[1].MarcaDuplicadoResueltaEn = &resuelto
+		repo.seedFuentes(FuenteEpisodio{
+			EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+			TituloFeed: "Sermón del domingo", Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
+		})
+		// Mismo título y **otro día**: la correspondencia no es segura y la rama
+		// dudosa necesita candidato libre (M1): el elemento entra suelto.
+		entrada := entradaDePrueba(ProveedorPodcast, "guid-01", "Sermón del domingo", fecha.AddDate(0, 0, 3), "Del podcast")
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{podcast: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, &fakeProbador{}, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
 		if resumen.Unidos != 0 || resumen.Marcados != 0 {
-			t.Errorf("una ficha con par no se une ni se marca: %+v", resumen)
+			t.Errorf("una ficha con par no entra en un par nuevo: %+v", resumen)
 		}
 		if len(repo.episodios) != 3 {
 			t.Fatalf("fichas = %d, se esperaba una entrada suelta nueva", len(repo.episodios))
@@ -549,6 +612,9 @@ func TestBuscarNuevosParejaReciprocaUnica(t *testing.T) {
 		nueva := repo.episodios[2]
 		if nueva.DuplicadoDeID != nil || nueva.Visibilidad != VisibilidadVisible {
 			t.Errorf("la entrada suelta nace visible y sin marca: %+v", nueva)
+		}
+		if repo.episodios[0].DuplicadoDeID == nil || *repo.episodios[0].DuplicadoDeID != repo.episodios[1].ID {
+			t.Errorf("la ficha emparejada no puede perder su pareja: %v", repo.episodios[0].DuplicadoDeID)
 		}
 		if len(fuentesDe(repo, repo.episodios[0].ID)) != 1 {
 			t.Error("la ficha con par no debe recibir la fuente del elemento nuevo")
@@ -684,6 +750,56 @@ func TestBuscarNuevosNoPisaLoDelEquipo(t *testing.T) {
 	absorbida := repo2.episodios[0]
 	if absorbida.UnidoAID == nil || *absorbida.UnidoAID != resultante.ID {
 		t.Errorf("la absorbida perdió su puntero: %+v", absorbida.UnidoAID)
+	}
+}
+
+// TestBuscarNuevosNoRevierteUnaResolucionDeMarca fija el residuo del eje de
+// disponibilidad (N2/M3): la búsqueda escribe la marca **solo cuando decide una
+// nueva**. Si el equipo resuelve la marca entre la lectura de la ficha y la
+// escritura del sync —una ventana de milisegundos—, la resolución sobrevive; el
+// sync sigue guardando el resultado de su comprobación.
+func TestBuscarNuevosNoRevierteUnaResolucionDeMarca(t *testing.T) {
+	base := time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC)
+	repo := newFakeRepository()
+	marca := MarcaDisponibilidadFueraDelFeed
+	repo.seed(Episodio{
+		Titulo: "Marcado y a medio salir", PublicadoEn: base, Origen: OrigenAmbos,
+		MarcaDisponibilidad: &marca,
+	})
+	repo.seedFuentes(
+		// El video salió de su ventana (su enlace se comprueba); el podcast
+		// sigue en la suya, así que la ficha no se vuelve a marcar.
+		FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+			TituloFeed: "Marcado y a medio salir", Enlace: "https://www.youtube.com/watch?v=SimienteAA1"},
+		FuenteEpisodio{EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorPodcast, IDExterno: "guid-01",
+			TituloFeed: "Marcado y a medio salir", Enlace: "https://podcasters.spotify.com/pod/show/simiente/episodes/guid-01"},
+	)
+	feedPodcast := ResultadoFeed{Entradas: []EntradaFeed{entradaDePrueba(ProveedorPodcast, "guid-01",
+		"Marcado y a medio salir", base, "Descripción")}}
+	probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": DisponibilidadDisponible}}
+
+	// El equipo resuelve la marca justo entre la lectura de la ficha y la
+	// escritura del sync (el gancho corre dentro de esa escritura).
+	resuelto := base.Add(time.Hour)
+	repo.antesDeEscribirDisponibilidad = func() {
+		repo.episodios[0].MarcaDisponibilidadResueltaEn = &resuelto
+	}
+
+	service := servicioConDoblesYProbador(t, repo, &fakeFeedSource{podcast: feedPodcast}, probador, &fakeCaratulas{})
+	if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+		t.Fatalf("BuscarNuevos devolvió %v", err)
+	}
+
+	ficha := repo.episodios[0]
+	if ficha.MarcaDisponibilidadResueltaEn == nil || !ficha.MarcaDisponibilidadResueltaEn.Equal(resuelto) {
+		t.Errorf("la resolución del equipo se revirtió: %v", ficha.MarcaDisponibilidadResueltaEn)
+	}
+	if !mismoMarca(ficha.MarcaDisponibilidad, &marca) {
+		t.Errorf("la marca del equipo se pisó: %v", ficha.MarcaDisponibilidad)
+	}
+	if ficha.DisponibilidadComprobadaEn == nil || ficha.ResultadoDisponibilidad == nil ||
+		*ficha.ResultadoDisponibilidad != DisponibilidadDisponible {
+		t.Errorf("el sync debe guardar su comprobación: %+v", ficha)
 	}
 }
 
@@ -1317,6 +1433,62 @@ func TestBuscarNuevosNoPisaLaCaratula(t *testing.T) {
 		}
 		if ficha := repo.episodios[0]; ficha.Caratula == nil || *ficha.Caratula != "img_33333333-3333-3333-3333-333333333333.jpg" {
 			t.Errorf("la ficha debe quedarse con la carátula del video: %v", ficha.Caratula)
+		}
+	})
+}
+
+// TestBuscarNuevosNoDejaCaratulasHuerfanas fija N3: cuando la escritura
+// condicional de la carátula falla, la copia recién descargada se retira del
+// almacén **solo si la fila viva confirma que no la usa**. Un error de respuesta
+// de una escritura que sí se aplicó no puede borrar la carátula que el sitio
+// está sirviendo.
+func TestBuscarNuevosNoDejaCaratulasHuerfanas(t *testing.T) {
+	fecha := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+	archivo := "img_77777777-7777-7777-7777-777777777777.jpg"
+
+	preparar := func(repo *fakeRepository, almacen *fakeAlmacen) *service {
+		entrada := entradaDePrueba(ProveedorYouTube, "SimienteAA1", "Con carátula", fecha, "Descripción")
+		entrada.CaratulaURL = caratulaYouTube
+		return NewService(ServiceDeps{
+			Repository:         repo,
+			FeedSource:         &fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{entrada}}},
+			AvailabilityProber: &fakeProbador{},
+			CoverFetcher:       &fakeCaratulas{archivo: archivo},
+			Store:              almacen,
+			Location:           zonaDePrueba(t),
+		})
+	}
+
+	t.Run("la escritura que no se aplicó retira su copia", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.coverErr = errors.New("no se pudo guardar la carátula")
+		almacen := &fakeAlmacen{}
+		service := preparar(repo, almacen)
+
+		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err == nil {
+			t.Fatal("el fallo de la escritura de la carátula debe propagarse")
+		}
+		if len(almacen.borrados) != 1 || almacen.borrados[0] != archivo {
+			t.Errorf("la copia sin uso debe retirarse del almacén: %v", almacen.borrados)
+		}
+	})
+
+	t.Run("un error de respuesta no borra la carátula que sí se guardó", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.coverErr = errors.New("respuesta perdida")
+		// La escritura sí llegó a la base: la fila viva usa ese archivo.
+		repo.antesDeCover = func() { repo.episodios[0].Caratula = &archivo }
+		almacen := &fakeAlmacen{}
+		service := preparar(repo, almacen)
+
+		if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err == nil {
+			t.Fatal("el error de la escritura debe propagarse")
+		}
+		if len(almacen.borrados) != 0 {
+			t.Errorf("el archivo en uso no se puede borrar: %v", almacen.borrados)
+		}
+		if repo.episodios[0].Caratula == nil || *repo.episodios[0].Caratula != archivo {
+			t.Errorf("la ficha conserva su carátula: %v", repo.episodios[0].Caratula)
 		}
 	})
 }

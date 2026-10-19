@@ -1165,7 +1165,7 @@ func TestIntegrationSyncWritesOnlyItsColumns(t *testing.T) {
 	guardada, err := repo.UpdateMediaItemAvailability(ctx, ficha, CambioDisponibilidad{
 		ComprobadaEn: ahora,
 		Resultado:    DisponibilidadNoDisponible,
-		Marca:        &marca,
+		MarcaNueva:   &marca,
 		Visibilidad:  &oculta,
 	})
 	if err != nil {
@@ -1212,6 +1212,59 @@ func TestIntegrationSyncWritesOnlyItsColumns(t *testing.T) {
 	}
 	if unida.MarcaDisponibilidad == nil || *unida.MarcaDisponibilidad != MarcaDisponibilidadNoDisponible {
 		t.Errorf("la unión pisó el eje de disponibilidad: %+v", unida.MarcaDisponibilidad)
+	}
+}
+
+// TestIntegrationMarcaDeDisponibilidadNoSeDevuelve fija N2 contra PostgreSQL
+// real: `UpdateMediaItemAvailability` escribe el eje de la marca **solo** cuando
+// la búsqueda decide una marca nueva. Sin decisión (`MarcaNueva` nil) la fila
+// conserva la marca y la resolución que el equipo haya dejado en ese momento —
+// antes la consulta devolvía a la fila la marca leída y revertía su resolución—.
+func TestIntegrationMarcaDeDisponibilidadNoSeDevuelve(t *testing.T) {
+	repo := newMediosRepo(t)
+	pool := repo.pool
+	ctx := context.Background()
+
+	resuelta := time.Now().UTC().Add(-time.Hour).Truncate(time.Millisecond)
+	ficha := seedFicha(t, pool, map[string]any{
+		"title":                         "Marcado y ya resuelto",
+		"availability_mark":             string(MarcaDisponibilidadFueraDelFeed),
+		"availability_mark_resolved_at": resuelta,
+	})
+
+	// Sin marca nueva: el eje no se toca (la resolución del equipo sobrevive).
+	guardada, err := repo.UpdateMediaItemAvailability(ctx, ficha, CambioDisponibilidad{
+		ComprobadaEn: time.Now().UTC().Truncate(time.Millisecond),
+		Resultado:    DisponibilidadDisponible,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMediaItemAvailability: %v", err)
+	}
+	if guardada.MarcaDisponibilidad == nil || *guardada.MarcaDisponibilidad != MarcaDisponibilidadFueraDelFeed {
+		t.Errorf("la marca del equipo se pisó: %v", guardada.MarcaDisponibilidad)
+	}
+	if guardada.MarcaDisponibilidadResueltaEn == nil || !guardada.MarcaDisponibilidadResueltaEn.Equal(resuelta) {
+		t.Errorf("la resolución del equipo se revirtió: %v", guardada.MarcaDisponibilidadResueltaEn)
+	}
+	if guardada.ResultadoDisponibilidad == nil || *guardada.ResultadoDisponibilidad != DisponibilidadDisponible {
+		t.Errorf("el sync debe guardar su comprobación: %v", guardada.ResultadoDisponibilidad)
+	}
+
+	// Con marca nueva: se escribe y entra abierta (la resolución se limpia).
+	marca := MarcaDisponibilidadNoDisponible
+	nueva, err := repo.UpdateMediaItemAvailability(ctx, ficha, CambioDisponibilidad{
+		ComprobadaEn: time.Now().UTC().Truncate(time.Millisecond),
+		Resultado:    DisponibilidadNoDisponible,
+		MarcaNueva:   &marca,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMediaItemAvailability(marca nueva): %v", err)
+	}
+	if nueva.MarcaDisponibilidad == nil || *nueva.MarcaDisponibilidad != MarcaDisponibilidadNoDisponible {
+		t.Errorf("la marca nueva no se escribió: %v", nueva.MarcaDisponibilidad)
+	}
+	if nueva.MarcaDisponibilidadResueltaEn != nil {
+		t.Errorf("la marca nueva entra abierta: %v", nueva.MarcaDisponibilidadResueltaEn)
 	}
 }
 

@@ -286,11 +286,20 @@ RETURNING id, title, published_at, description_es, description_en, description_e
 -- carátula y el eje de duplicados quedan fuera del alcance de la búsqueda
 -- (FR-015/SC-007). `visibility` viaja como `narg`: NULL conserva la que el equipo
 -- haya decidido mientras la búsqueda corría.
+--
+-- El eje de la marca también viaja como `narg` (N2): NULL = la búsqueda **no**
+-- toca ese eje y la fila conserva la marca y la resolución que tenga en ese
+-- momento, de modo que una resolución del equipo hecha entre la lectura y esta
+-- escritura no se revierte. Una marca nueva (no NULL) entra siempre **abierta**:
+-- escribir la marca limpia su resolución.
 UPDATE media_items
 SET availability_checked_at = sqlc.arg('availability_checked_at'),
     availability_result = sqlc.arg('availability_result'),
-    availability_mark = sqlc.narg('availability_mark'),
-    availability_mark_resolved_at = sqlc.narg('availability_mark_resolved_at'),
+    availability_mark = COALESCE(sqlc.narg('availability_mark'), availability_mark),
+    availability_mark_resolved_at = CASE
+        WHEN sqlc.narg('availability_mark') IS NOT NULL THEN NULL
+        ELSE availability_mark_resolved_at
+    END,
     visibility = COALESCE(sqlc.narg('visibility'), visibility),
     updated_at = now()
 WHERE id = sqlc.arg('id')

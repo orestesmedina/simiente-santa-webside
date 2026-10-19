@@ -785,11 +785,14 @@ const updateMediaItemAvailability = `-- name: UpdateMediaItemAvailability :one
 UPDATE media_items
 SET availability_checked_at = $1,
     availability_result = $2,
-    availability_mark = $3,
-    availability_mark_resolved_at = $4,
-    visibility = COALESCE($5, visibility),
+    availability_mark = COALESCE($3, availability_mark),
+    availability_mark_resolved_at = CASE
+        WHEN $3 IS NOT NULL THEN NULL
+        ELSE availability_mark_resolved_at
+    END,
+    visibility = COALESCE($4, visibility),
     updated_at = now()
-WHERE id = $6
+WHERE id = $5
 RETURNING id, title, published_at, description_es, description_en, description_edited,
           cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
           availability_checked_at, availability_result, availability_mark,
@@ -797,12 +800,11 @@ RETURNING id, title, published_at, description_es, description_en, description_e
 `
 
 type UpdateMediaItemAvailabilityParams struct {
-	AvailabilityCheckedAt      pgtype.Timestamptz
-	AvailabilityResult         pgtype.Text
-	AvailabilityMark           pgtype.Text
-	AvailabilityMarkResolvedAt pgtype.Timestamptz
-	Visibility                 pgtype.Text
-	ID                         pgtype.UUID
+	AvailabilityCheckedAt pgtype.Timestamptz
+	AvailabilityResult    pgtype.Text
+	AvailabilityMark      pgtype.Text
+	Visibility            pgtype.Text
+	ID                    pgtype.UUID
 }
 
 // El resultado agregado de la comprobación de disponibilidad de una ficha
@@ -812,12 +814,17 @@ type UpdateMediaItemAvailabilityParams struct {
 // carátula y el eje de duplicados quedan fuera del alcance de la búsqueda
 // (FR-015/SC-007). `visibility` viaja como `narg`: NULL conserva la que el equipo
 // haya decidido mientras la búsqueda corría.
+//
+// El eje de la marca también viaja como `narg` (N2): NULL = la búsqueda **no**
+// toca ese eje y la fila conserva la marca y la resolución que tenga en ese
+// momento, de modo que una resolución del equipo hecha entre la lectura y esta
+// escritura no se revierte. Una marca nueva (no NULL) entra siempre **abierta**:
+// escribir la marca limpia su resolución.
 func (q *Queries) UpdateMediaItemAvailability(ctx context.Context, arg UpdateMediaItemAvailabilityParams) (MediaItem, error) {
 	row := q.db.QueryRow(ctx, updateMediaItemAvailability,
 		arg.AvailabilityCheckedAt,
 		arg.AvailabilityResult,
 		arg.AvailabilityMark,
-		arg.AvailabilityMarkResolvedAt,
 		arg.Visibility,
 		arg.ID,
 	)
