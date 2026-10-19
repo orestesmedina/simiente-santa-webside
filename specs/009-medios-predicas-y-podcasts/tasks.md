@@ -1576,7 +1576,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
 
 ## Fase 10 — Cierre
 
-- [ ] T944 · Verificación de cierre · `[infra]`
+- [X] T944 · Verificación de cierre · `[infra]`
 
   - **Archivos**: ninguno (evidencia en el PR). *No se toca* `.github/workflows/ci.yml` ni ningún
     archivo del kit. `docker-compose.yml`, `Makefile` y `proyecto.mk`: **sin cambios** (F9 no añade
@@ -1627,7 +1627,7 @@ renumerar T908–T945; se ejecuta al inicio de la Fase 4, antes de T908–T910).
     evidencia.
   - **Commit sugerido**: — (sin cambios de código)
 
-- [ ] T945 · Documentación y PR · `[infra]`
+- [X] T945 · Documentación y PR · `[infra]`
 
   - **Archivos**: `README.md`, `CHANGELOG.md` (o notas de entrega) y `docs/` (EDITADOS por
     `documentador`); PR en GitHub (creado por `devops`).

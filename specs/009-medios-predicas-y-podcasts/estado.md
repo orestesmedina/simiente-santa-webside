@@ -13,10 +13,10 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 6/9 · Implementar (**45/47** tareas: solo falta el cierre) |
+| Fase | 7/9 · Validar (**47/47** tareas hechas; **validación en curso**) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | **T944** (verificación de cierre) y **T945** (documentación). Antes hay que resolver **dos interacciones con specs de F3/F6** y el solapamiento de tandas (ver *Hallazgos abiertos*) |
-| Bloqueado por | — (el navegador de Playwright ya funciona: el humano instaló las 5 librerías) |
+| Próximo paso | Fase 7: `qa-tester`, `revisor-codigo` y `seguridad` **en paralelo** sobre el cambio completo → consolidado en `revision-<fecha>.md`; después la **puerta 3** (PR) |
+| Bloqueado por | — (la implementación está cerrada y la verificación de cierre quedó **toda en verde**) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
 
@@ -35,10 +35,8 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 
 Bloqueantes de la última validación que aún no se corrigen (ver `revision-<fecha>.md`).
 
-- **A1 — Dos specs de accesibilidad anteriores fallan por el bloque de medios (F3 y F6).** El bloque de la portada añade ~11 elementos enfocables (5 fichas × 1–2 enlaces + «Ver todo»), así que el recorrido por teclado de `portada-accesibilidad.spec.ts` (tope **30** pasos) y de `ministerios-accesibilidad.spec.ts` (tope **45**) ya no cierra el ciclo. **Es un tope de esas pruebas, no un defecto del sitio** (el ciclo se recorre entero, solo que con más pasos). **Propuesta**: subir los topes y dejar constancia en el PR.
-- **A2 — El marcador neutro de carátula lleva `alt=""` y la spec de F3 exige «alt no vacío» en todas las imágenes de `main`.** El marcador es **decoración** (el nombre del episodio va justo debajo) y va dentro de un contenedor `aria-hidden="true"`, así que `alt=""` es **la opción correcta** según WCAG. **Propuesta**: refinar la aserción de F3 para que omita los subárboles `aria-hidden` (en vez de darle al marcador un `alt` inventado).
-- **A3 — Solapamiento de tandas e2e**: el patrón `portada-` de la tanda 3 ahora también captura `portada-medios.spec.ts` (nombre fijado por la ficha T943). **Propuesta**: excluirlo o usar lista explícita de archivos en T944.
-- **A4 (entorno, no código)**: las **9 carátulas** de los episodios reales **no existen en el volumen de subidas** (la importación de prueba se hizo con la API en modo manual, con otro `UPLOAD_DIR`, y quedaron en `/tmp`), así que el sitio muestra **marcadores neutros**. Se arregla limpiando las tablas de medios y volviendo a pulsar «Buscar episodios nuevos» con el stack levantado.
+- (ninguno: **A1, A2 y A3 resueltos** antes del cierre — topes de teclado de F3/F6 ajustados, aserción de `alt` refinada para decoración y solapamiento de tandas corregido; **A4** era de entorno, no de código)
+- **Defecto conocido (preexistente, ajeno a F9)**: una aserción de tamaño de toque de F3 (`portada-accesibilidad.spec.ts`, el CTA del hero) falla de vez en cuando por el redondeo interno de Chromium (44 px medidos como 43,98) y **pasa al relanzar**. No se corrigió.
 
 ## Decisiones y aclaraciones
 
