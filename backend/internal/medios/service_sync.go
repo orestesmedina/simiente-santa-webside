@@ -393,7 +393,8 @@ func (b *busqueda) comprobarFuente(fuente FuenteEpisodio) (ResultadoDisponibilid
 //     marca anterior fuera de otra clase (cambiar de clase resetea la resolución).
 //   - **todas sus fuentes fuera de ventana** y sin confirmación de muerte → marca
 //     «ya no aparece en el feed» y la ficha **sigue visible**. Si la misma clase
-//     ya estaba **resuelta**, no se reabre (default #6).
+//     ya estaba puesta —resuelta **o** abierta— no se reescribe (default #6/S1):
+//     el valor no cambiaría y una resolución recién hecha se perdería.
 //   - **alguna fuente sigue en su ventana** → no se marca nada (M2: decir «ya no
 //     aparece en el feed» sería falso); solo se guarda el dato de la comprobación.
 //
@@ -421,10 +422,11 @@ func (b *busqueda) aplicarDisponibilidad(ficha Episodio, resultado ResultadoDisp
 			cambio.Visibilidad = &visibilidad
 		}
 	case todasFuera:
-		yaResuelta := ficha.MarcaDisponibilidad != nil &&
-			*ficha.MarcaDisponibilidad == MarcaDisponibilidadFueraDelFeed &&
-			ficha.MarcaDisponibilidadResueltaEn != nil
-		if !yaResuelta {
+		// La marca se escribe **solo** si la clase cambia (S1): con la misma clase
+		// ya puesta —abierta o resuelta— el valor no cambia, y reescribirlo
+		// limpiaría una resolución que el equipo acabe de hacer entre la lectura y
+		// este `UPDATE`.
+		if ficha.MarcaDisponibilidad == nil || *ficha.MarcaDisponibilidad != MarcaDisponibilidadFueraDelFeed {
 			marca := MarcaDisponibilidadFueraDelFeed
 			cambio.MarcaNueva = &marca
 		}

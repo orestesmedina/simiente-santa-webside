@@ -805,6 +805,56 @@ func TestBuscarNuevosNoRevierteUnaResolucionDeMarca(t *testing.T) {
 	}
 }
 
+// TestBuscarNuevosNoReescribeLaMarcaDeLaMismaClase fija S1: cuando la ficha ya
+// tiene **la misma clase** de marca (abierta) y todas sus fuentes salieron de su
+// ventana, la búsqueda no reescribe el eje de la marca. El valor no cambiaría y
+// reescribirlo limpiaría la resolución que el equipo acabe de hacer entre la
+// lectura de la ficha y el `UPDATE` (la micro-ventana de N2).
+func TestBuscarNuevosNoReescribeLaMarcaDeLaMismaClase(t *testing.T) {
+	base := time.Date(2026, 4, 13, 16, 0, 0, 0, time.UTC)
+	repo := newFakeRepository()
+	marca := MarcaDisponibilidadFueraDelFeed
+	repo.seed(Episodio{
+		Titulo: "Ya marcado y fuera del feed", PublicadoEn: base, Origen: OrigenVideo,
+		MarcaDisponibilidad: &marca,
+	})
+	id := repo.episodios[0].ID
+	repo.seedFuentes(FuenteEpisodio{EpisodioID: id, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+		TituloFeed: "Ya marcado y fuera del feed", Enlace: "https://www.youtube.com/watch?v=SimienteAA1"})
+	// El feed responde, pero ya no trae ese elemento: todas sus fuentes quedaron
+	// fuera de su ventana (FR-017) y la marca de la misma clase ya está puesta.
+	probador := &fakeProbador{youtube: map[string]ResultadoDisponibilidad{"SimienteAA1": DisponibilidadDisponible}}
+
+	// El equipo resuelve la marca justo entre la lectura de la ficha y la
+	// escritura del sync (el gancho corre dentro de esa escritura).
+	resuelto := base.Add(time.Hour)
+	repo.antesDeEscribirDisponibilidad = func() {
+		repo.mutarFicha(id, func(ficha *Episodio) { ficha.MarcaDisponibilidadResueltaEn = &resuelto })
+	}
+
+	service := servicioConDoblesYProbador(t, repo,
+		&fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{}}}, probador, &fakeCaratulas{})
+	if _, err := service.BuscarNuevos(context.Background(), uuid.New()); err != nil {
+		t.Fatalf("BuscarNuevos devolvió %v", err)
+	}
+
+	ficha := repo.episodios[0]
+	if ficha.MarcaDisponibilidadResueltaEn == nil || !ficha.MarcaDisponibilidadResueltaEn.Equal(resuelto) {
+		t.Errorf("la misma clase no se reescribe: la resolución del equipo debe sobrevivir (S1): %v",
+			ficha.MarcaDisponibilidadResueltaEn)
+	}
+	if !mismoMarca(ficha.MarcaDisponibilidad, &marca) {
+		t.Errorf("la clase de la marca se conserva: %v", ficha.MarcaDisponibilidad)
+	}
+	if ficha.Visibilidad != VisibilidadVisible {
+		t.Errorf("«ya no aparece en el feed» no oculta la ficha: %q", ficha.Visibilidad)
+	}
+	if ficha.DisponibilidadComprobadaEn == nil || ficha.ResultadoDisponibilidad == nil ||
+		*ficha.ResultadoDisponibilidad != DisponibilidadDisponible {
+		t.Errorf("el sync guarda igual su comprobación: %+v", ficha)
+	}
+}
+
 // probadorQueEdita es el doble del probador que, al comprobar el enlace, simula
 // una **edición del equipo** (la descripción corta) hecha mientras la búsqueda
 // corría: es la carrera de SC-007/M3 (la ventana de la búsqueda llega a los 90 s).
