@@ -13,9 +13,9 @@ de aprobación, en cada ciclo de corrección y al cerrar la sesión.
 |---|---|
 | Rama | 009-medios-predicas-y-podcasts |
 | Flujo | equipo-feature |
-| Fase | 9/9 · Entregar (PR **[#13](https://github.com/orestesmedina/simiente-santa-webside/pull/13)** **aprobado**; pendiente tu **merge**) |
+| Fase | 9/9 · **Terminada** (PR **[#13](https://github.com/orestesmedina/simiente-santa-webside/pull/13)** **fusionado en `main`** el 2026-10-19, squash) |
 | Ciclo de corrección | 2/3 · **cerrado**: QA y seguridad **APRUEBAN**; código **APRUEBA CON CAMBIOS** con **todos** los hallazgos resueltos y confirmados |
-| Próximo paso | **Merge (squash) del PR #13** por el humano → marcar F9 **terminada** en el roadmap y cerrar. Después quedan los dos criterios manuales post-despliegue (SC-008 y SC-012) |
+| Próximo paso | Nada para F9. **Post-despliegue**: SC-008 (lector de pantalla real) y SC-012 (usabilidad con personas), con el protocolo en `pruebas-usabilidad-SC-012.md`. Siguiente funcionalidad del roadmap: **F5 (grupos de conexión)** |
 | Bloqueado por | — |
 | Bloqueado por | — |
 | Actualizado | 2026-10-17 |
@@ -28,7 +28,7 @@ Solo se marca "aprobado" cuando el humano lo dijo explícitamente; se anota qui�
 |---|---|---|---|---|
 | Spec | aprobado | humano (cliente) | 2026-10-17 | "Apruebo la spec v2" |
 | Plan | aprobado | humano (cliente) | 2026-10-17 | "Aplica las 5 y apruebo el plan" |
-| PR / merge | **aprobado** (pendiente el merge) | humano (cliente) | 2026-10-19 | "Apruebo el PR #13" |
+| PR / merge | **aprobado y fusionado** | humano (cliente) | 2026-10-19 | "Apruebo el PR #13" · fusionado en `main` (`cc9cd42`, squash) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -64,6 +64,7 @@ Lo que se decidió en el chat y no está en spec.md ni plan.md (con fecha y qui�
 
 Una línea por sesión o hito, la más reciente arriba.
 
+- 2026-10-19 — **F9 TERMINADA**: PR **#13 fusionado** en `main` (`cc9cd42`, squash) y rama pendiente de borrar. Costo de la tarea **congelado** en **542,7 M ≈ $9,61**. Roadmap → **terminada** (8/11). Quedan los dos criterios manuales **post-despliegue** (SC-008 y SC-012) y el **próximo pendiente: F5**.
 - 2026-10-19 — **Puerta 3: PR #13 APROBADO** por el humano («Apruebo el PR #13»). Costo de la tarea **cerrado** en la rama antes del merge. **Pendiente: el merge (squash)** y, al confirmarlo, F9 pasa a **terminada**.
 - 2026-10-19 — **PR #13 abierto** por el humano (91 commits contra `main`), roadmap → **en revisión**. ⚠️ El PR se creó **sin descripción** y con el título de la rama: falta pegar el cuerpo de `specs/009-medios-predicas-y-podcasts/pr.md` (que ya incluye la validación de las tres rondas y la evidencia de cierre).
 - 2026-10-19 — **Cierre documental.** CHANGELOG (0.8.0) con el resultado real de la validación (tres rondas, 14 commits de corrección) y una sección «Conocido»; `pr.md` reescrito y **listo para pegar**; limitación del tercer elemento dudoso documentada en `spec.md`, `data-model.md` y las notas de entrega. **Fase 7 cerrada**: lista para la **puerta 3**.
