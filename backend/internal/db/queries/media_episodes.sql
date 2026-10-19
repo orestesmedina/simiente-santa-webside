@@ -198,15 +198,19 @@ LEFT JOIN media_episode_sources vp
 WHERE m.id = sqlc.arg('id');
 
 -- name: InsertMediaItem :one
--- Alta al importar (FR-011/FR-012): solo los datos que trae el feed —título,
--- fecha, descripción corta ya recortada y carátula ya copiada— más `origin` y
+-- Alta al importar (FR-011/FR-012): los datos que trae el feed —título, fecha,
+-- descripción corta ya recortada y carátula ya copiada— más `origin` y
 -- `visibility`, que calcula el service en la misma transacción que las fuentes
--- (FR-014: la entrada adicional de un par dudoso nace `hidden`). Los ejes de
--- marcas y `merged_into_id` nacen en NULL y `description_edited` en `false`
--- (DEFAULT de la tabla: la descripción es del feed hasta que el equipo la ajuste,
--- FR-015).
+-- (FR-014: la entrada adicional de un par dudoso nace `hidden`). La entrada
+-- adicional de un par dudoso nace además con su puntero (`duplicate_of_id`, que
+-- escribe el service): el otro sentido de la pareja lo cierra la misma
+-- transacción (`MarkMediaItemDuplicate`), de modo que el par es recíproco desde
+-- el primer instante. `duplicate_mark_resolved_at` nace NULL (marca abierta),
+-- `merged_into_id` en NULL y `description_edited` en `false` (DEFAULT de la
+-- tabla: la descripción es del feed hasta que el equipo la ajuste, FR-015).
 INSERT INTO media_items (
-    title, published_at, description_es, description_en, cover_file, origin, visibility
+    title, published_at, description_es, description_en, cover_file, origin, visibility,
+    duplicate_of_id
 ) VALUES (
     sqlc.arg('title'),
     sqlc.arg('published_at'),
@@ -214,7 +218,8 @@ INSERT INTO media_items (
     sqlc.narg('description_en'),
     sqlc.narg('cover_file'),
     sqlc.arg('origin'),
-    sqlc.arg('visibility')
+    sqlc.arg('visibility'),
+    sqlc.narg('duplicate_of_id')
 )
 RETURNING id, title, published_at, description_es, description_en, description_edited,
           cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
@@ -268,6 +273,24 @@ SET cover_file = sqlc.arg('cover_file'),
     updated_at = now()
 WHERE id = sqlc.arg('id')
   AND cover_file IS NULL
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at;
+
+-- name: MarkMediaItemDuplicate :one
+-- Marca el par recíproco de «posible duplicado» (FR-014/P9-19): el candidato
+-- apunta a la ficha nueva y su marca queda **abierta** (resolución NULL). Escribe
+-- SOLO las dos columnas del eje de duplicados: la visibilidad, la descripción y
+-- las decisiones que el equipo tomó mientras la búsqueda corría siguen intactas
+-- (FR-015/SC-007). La ficha nueva lleva su puntero en el alta; esta consulta
+-- cierra el otro sentido de la pareja dentro de la MISMA transacción del alta
+-- (`MarkDuplicatePair`), de modo que la pareja nunca queda a medias.
+UPDATE media_items
+SET duplicate_of_id = sqlc.arg('duplicate_of_id'),
+    duplicate_mark_resolved_at = NULL,
+    updated_at = now()
+WHERE id = sqlc.arg('id')
 RETURNING id, title, published_at, description_es, description_en, description_edited,
           cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
           availability_checked_at, availability_result, availability_mark,

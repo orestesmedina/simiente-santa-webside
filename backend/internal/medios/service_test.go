@@ -844,6 +844,61 @@ func (f *fakeRepository) UpdateMediaItem(_ context.Context, episodio Episodio, a
 	return episodio, nil
 }
 
+// InsertMediaItemWithSource imita el alta atómica del repository real (H3): la
+// ficha solo queda escrita si su fuente entra, así que un conflicto de fuente no
+// deja ninguna ficha huérfana.
+func (f *fakeRepository) InsertMediaItemWithSource(_ context.Context, episodio Episodio, fuente FuenteEpisodio) (Episodio, FuenteEpisodio, bool, error) {
+	return f.altaConFuente(episodio, fuente)
+}
+
+// MarkDuplicatePair imita la transacción del par dudoso (FR-014/H3): o queda la
+// ficha adicional con su fuente y la pareja recíproca, o no queda nada.
+func (f *fakeRepository) MarkDuplicatePair(_ context.Context, nueva Episodio, fuente FuenteEpisodio, candidatoID uuid.UUID) (Episodio, FuenteEpisodio, bool, error) {
+	if _, ok := f.buscar(candidatoID); !ok {
+		return Episodio{}, FuenteEpisodio{}, false, apperr.NotFound(messageEpisodioNoExiste)
+	}
+	creada, insertada, ok, err := f.altaConFuente(nueva, fuente)
+	if err != nil || !ok {
+		return Episodio{}, FuenteEpisodio{}, false, err
+	}
+	i, _ := f.buscar(candidatoID)
+	f.episodios[i].DuplicadoDeID = &creada.ID
+	f.episodios[i].MarcaDuplicadoResueltaEn = nil
+	f.episodios[i].ActualizadoEn = time.Now()
+	return creada, insertada, true, nil
+}
+
+// altaConFuente es el doble de la transacción del alta (ficha + fuente): el
+// conflicto de la fuente (`ON CONFLICT DO NOTHING` sin fila) **no** escribe la
+// ficha, igual que la transacción real revertida.
+func (f *fakeRepository) altaConFuente(episodio Episodio, fuente FuenteEpisodio) (Episodio, FuenteEpisodio, bool, error) {
+	if f.antesDeInsertar != nil {
+		f.antesDeInsertar()
+	}
+	if f.mutationErr != nil {
+		return Episodio{}, FuenteEpisodio{}, false, f.mutationErr
+	}
+	if f.sourceErr != nil {
+		return Episodio{}, FuenteEpisodio{}, false, f.sourceErr
+	}
+	f.sourceLookups = append(f.sourceLookups, string(fuente.Proveedor)+"/"+fuente.IDExterno)
+	for _, guardada := range f.fuentes {
+		if guardada.Proveedor == fuente.Proveedor && guardada.IDExterno == fuente.IDExterno {
+			// `ON CONFLICT (provider, external_id) DO NOTHING`: la transacción
+			// entera se revierte (la ficha recién creada desaparece).
+			return Episodio{}, FuenteEpisodio{}, false, nil
+		}
+	}
+	episodio.ID = uuid.New()
+	episodio.CreadoEn, episodio.ActualizadoEn = time.Now(), time.Now()
+	fuente.ID = uuid.New()
+	fuente.EpisodioID = episodio.ID
+	f.episodios = append(f.episodios, episodio)
+	f.fuentes = append(f.fuentes, fuente)
+	f.sourcesInserted = append(f.sourcesInserted, fuente)
+	return episodio, fuente, true, nil
+}
+
 // UpdateMediaItemCoverIfNull imita la escritura condicional del repository real:
 // escribe la carátula **solo** si la ficha todavía no tiene (y solo ese campo: lo
 // demás del equipo queda intacto) y devuelve false cuando ya había carátula.

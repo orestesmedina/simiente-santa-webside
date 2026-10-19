@@ -109,6 +109,13 @@ type Repository interface {
 
 	// Mutaciones de fichas (FR-012/FR-015/FR-019/FR-022).
 	InsertMediaItem(ctx context.Context, episodio Episodio, actions ...audit.Action) (Episodio, error)
+	// InsertMediaItemWithSource da de alta una ficha con su fuente en UNA
+	// transacción: si la fuente conflictúa no queda ninguna ficha huérfana
+	// (H3/SC-003) y el segundo valor es false.
+	InsertMediaItemWithSource(ctx context.Context, episodio Episodio, fuente FuenteEpisodio) (Episodio, FuenteEpisodio, bool, error)
+	// MarkDuplicatePair crea la ficha adicional de un par dudoso con su fuente y
+	// escribe la pareja recíproca en UNA transacción (FR-014/H3).
+	MarkDuplicatePair(ctx context.Context, nueva Episodio, fuente FuenteEpisodio, candidatoID uuid.UUID) (Episodio, FuenteEpisodio, bool, error)
 	UpdateMediaItem(ctx context.Context, episodio Episodio, actions ...audit.Action) (Episodio, error)
 	// RepointMediaItemSources aplica la unión por puntero en UNA transacción:
 	// repunta las fuentes de la absorbida, escribe las dos filas y registra la

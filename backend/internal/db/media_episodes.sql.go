@@ -143,7 +143,8 @@ func (q *Queries) GetMediaItemByID(ctx context.Context, id pgtype.UUID) (GetMedi
 
 const insertMediaItem = `-- name: InsertMediaItem :one
 INSERT INTO media_items (
-    title, published_at, description_es, description_en, cover_file, origin, visibility
+    title, published_at, description_es, description_en, cover_file, origin, visibility,
+    duplicate_of_id
 ) VALUES (
     $1,
     $2,
@@ -151,7 +152,8 @@ INSERT INTO media_items (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8
 )
 RETURNING id, title, published_at, description_es, description_en, description_edited,
           cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
@@ -167,15 +169,19 @@ type InsertMediaItemParams struct {
 	CoverFile     pgtype.Text
 	Origin        string
 	Visibility    string
+	DuplicateOfID pgtype.UUID
 }
 
-// Alta al importar (FR-011/FR-012): solo los datos que trae el feed —título,
-// fecha, descripción corta ya recortada y carátula ya copiada— más `origin` y
+// Alta al importar (FR-011/FR-012): los datos que trae el feed —título, fecha,
+// descripción corta ya recortada y carátula ya copiada— más `origin` y
 // `visibility`, que calcula el service en la misma transacción que las fuentes
-// (FR-014: la entrada adicional de un par dudoso nace `hidden`). Los ejes de
-// marcas y `merged_into_id` nacen en NULL y `description_edited` en `false`
-// (DEFAULT de la tabla: la descripción es del feed hasta que el equipo la ajuste,
-// FR-015).
+// (FR-014: la entrada adicional de un par dudoso nace `hidden`). La entrada
+// adicional de un par dudoso nace además con su puntero (`duplicate_of_id`, que
+// escribe el service): el otro sentido de la pareja lo cierra la misma
+// transacción (`MarkMediaItemDuplicate`), de modo que el par es recíproco desde
+// el primer instante. `duplicate_mark_resolved_at` nace NULL (marca abierta),
+// `merged_into_id` en NULL y `description_edited` en `false` (DEFAULT de la
+// tabla: la descripción es del feed hasta que el equipo la ajuste, FR-015).
 func (q *Queries) InsertMediaItem(ctx context.Context, arg InsertMediaItemParams) (MediaItem, error) {
 	row := q.db.QueryRow(ctx, insertMediaItem,
 		arg.Title,
@@ -185,6 +191,7 @@ func (q *Queries) InsertMediaItem(ctx context.Context, arg InsertMediaItemParams
 		arg.CoverFile,
 		arg.Origin,
 		arg.Visibility,
+		arg.DuplicateOfID,
 	)
 	var i MediaItem
 	err := row.Scan(
@@ -575,6 +582,56 @@ func (q *Queries) ListPublishedMediaItems(ctx context.Context, arg ListPublished
 		return nil, err
 	}
 	return items, nil
+}
+
+const markMediaItemDuplicate = `-- name: MarkMediaItemDuplicate :one
+UPDATE media_items
+SET duplicate_of_id = $1,
+    duplicate_mark_resolved_at = NULL,
+    updated_at = now()
+WHERE id = $2
+RETURNING id, title, published_at, description_es, description_en, description_edited,
+          cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
+          availability_checked_at, availability_result, availability_mark,
+          availability_mark_resolved_at, merged_into_id, created_at, updated_at
+`
+
+type MarkMediaItemDuplicateParams struct {
+	DuplicateOfID pgtype.UUID
+	ID            pgtype.UUID
+}
+
+// Marca el par recíproco de «posible duplicado» (FR-014/P9-19): el candidato
+// apunta a la ficha nueva y su marca queda **abierta** (resolución NULL). Escribe
+// SOLO las dos columnas del eje de duplicados: la visibilidad, la descripción y
+// las decisiones que el equipo tomó mientras la búsqueda corría siguen intactas
+// (FR-015/SC-007). La ficha nueva lleva su puntero en el alta; esta consulta
+// cierra el otro sentido de la pareja dentro de la MISMA transacción del alta
+// (`MarkDuplicatePair`), de modo que la pareja nunca queda a medias.
+func (q *Queries) MarkMediaItemDuplicate(ctx context.Context, arg MarkMediaItemDuplicateParams) (MediaItem, error) {
+	row := q.db.QueryRow(ctx, markMediaItemDuplicate, arg.DuplicateOfID, arg.ID)
+	var i MediaItem
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.PublishedAt,
+		&i.DescriptionEs,
+		&i.DescriptionEn,
+		&i.DescriptionEdited,
+		&i.CoverFile,
+		&i.Origin,
+		&i.Visibility,
+		&i.DuplicateOfID,
+		&i.DuplicateMarkResolvedAt,
+		&i.AvailabilityCheckedAt,
+		&i.AvailabilityResult,
+		&i.AvailabilityMark,
+		&i.AvailabilityMarkResolvedAt,
+		&i.MergedIntoID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const repointMediaItemSources = `-- name: RepointMediaItemSources :many

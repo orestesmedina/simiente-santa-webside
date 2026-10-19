@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -847,5 +848,167 @@ func TestIntegrationRepointMediaItemSourcesMovesSources(t *testing.T) {
 	}
 	if total != 2 || enResultante != 2 {
 		t.Errorf("fuentes = %d (en la resultante %d), se esperaban 2 y 2", total, enResultante)
+	}
+}
+
+// TestIntegrationInsertMediaItemWithSourceEsAtomico fija H3/SC-003 contra
+// PostgreSQL real: el alta de un elemento (ficha + fuente) es UNA transacción, así
+// que dos búsquedas simultáneas del mismo elemento dejan **una** ficha con su
+// fuente —la que gana la carrera— y **ninguna ficha huérfana** sin enlaces (la
+// perdedora se revierte entera).
+func TestIntegrationInsertMediaItemWithSourceEsAtomico(t *testing.T) {
+	repo := newMediosRepo(t)
+	pool := repo.pool
+	ctx := context.Background()
+
+	enlace := "https://www.youtube.com/watch?v=abcdefghijk"
+	ficha := Episodio{
+		Titulo:      "Sermón simultáneo",
+		PublicadoEn: time.Now().UTC().Truncate(time.Millisecond),
+		Origen:      OrigenVideo,
+		Visibilidad: VisibilidadVisible,
+	}
+	fuente := FuenteEpisodio{
+		Proveedor:  ProveedorYouTube,
+		IDExterno:  "abcdefghijk",
+		TituloFeed: "Sermón simultáneo",
+		Enlace:     enlace,
+	}
+
+	var (
+		wg         sync.WaitGroup
+		resultados [2]bool
+		errores    [2]error
+	)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, _, ok, err := repo.InsertMediaItemWithSource(ctx, ficha, fuente)
+			resultados[i], errores[i] = ok, err
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errores {
+		if err != nil {
+			t.Fatalf("alta %d: %v", i, err)
+		}
+	}
+	if resultados[0] == resultados[1] {
+		t.Fatalf("exactamente una alta debía ganar la carrera: %v", resultados)
+	}
+
+	// Una sola ficha (ninguna huérfana) y con su fuente.
+	var fichas, fuentes int
+	if err := pool.QueryRow(ctx,
+		`SELECT (SELECT count(*) FROM media_items), (SELECT count(*) FROM media_episode_sources)`).
+		Scan(&fichas, &fuentes); err != nil {
+		t.Fatalf("contar fichas y fuentes: %v", err)
+	}
+	if fichas != 1 || fuentes != 1 {
+		t.Fatalf("fichas = %d, fuentes = %d; se esperaba 1 y 1 (sin ficha huérfana)", fichas, fuentes)
+	}
+
+	// Y la ficha que quedó tiene su enlace (no quedó «visible sin enlaces»).
+	listado, err := repo.ListMediaItems(ctx, FiltroPanel{}, paginate.Params{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListMediaItems: %v", err)
+	}
+	if len(listado) != 1 || listado[0].VideoURL != enlace {
+		t.Fatalf("listado = %+v, se esperaba la ficha con su enlace", listado)
+	}
+}
+
+// TestIntegrationMarkDuplicatePairEsAtomico fija la pareja recíproca de un par
+// dudoso (FR-014/M1) en UNA transacción: la adicional nace oculta apuntando al
+// candidato y el candidato apunta a la nueva —con su visibilidad y su descripción
+// intactas (la marca se escribe por columnas)—. Si la fuente conflictúa no queda
+// nada: ni ficha oculta sin enlaces ni pareja a medias.
+func TestIntegrationMarkDuplicatePairEsAtomico(t *testing.T) {
+	repo := newMediosRepo(t)
+	pool := repo.pool
+	ctx := context.Background()
+
+	candidato := seedFicha(t, pool, map[string]any{
+		"title":              "Candidato",
+		"description_es":     "Descripción del equipo",
+		"description_edited": true,
+		"origin":             "audio",
+	})
+	seedFuente(t, pool, candidato, "podcast", "guid-01", "https://podcasters.spotify.com/pod/show/x/episodes/1")
+
+	adicional := Episodio{
+		Titulo:        "Adicional",
+		PublicadoEn:   time.Now().UTC().Truncate(time.Millisecond),
+		Origen:        OrigenVideo,
+		Visibilidad:   VisibilidadOculta,
+		DuplicadoDeID: &candidato,
+	}
+	creada, fuente, ok, err := repo.MarkDuplicatePair(ctx, adicional, FuenteEpisodio{
+		Proveedor:  ProveedorYouTube,
+		IDExterno:  "abcdefghijk",
+		TituloFeed: "Adicional",
+		Enlace:     "https://www.youtube.com/watch?v=abcdefghijk",
+	}, candidato)
+	if err != nil || !ok {
+		t.Fatalf("MarkDuplicatePair = (ok %v, err %v)", ok, err)
+	}
+	if fuente.EpisodioID != creada.ID {
+		t.Errorf("la fuente debe colgar de la ficha nueva: %+v", fuente)
+	}
+
+	nueva, found, err := repo.GetMediaItemByID(ctx, creada.ID)
+	if err != nil || !found {
+		t.Fatalf("GetMediaItemByID(adicional) = (%v, %v)", found, err)
+	}
+	if nueva.DuplicadoDeID == nil || *nueva.DuplicadoDeID != candidato {
+		t.Errorf("la adicional debe apuntar al candidato: %+v", nueva.DuplicadoDeID)
+	}
+	if nueva.Visibilidad != VisibilidadOculta {
+		t.Errorf("la adicional nace oculta: %q", nueva.Visibilidad)
+	}
+	primera, found, err := repo.GetMediaItemByID(ctx, candidato)
+	if err != nil || !found {
+		t.Fatalf("GetMediaItemByID(candidato) = (%v, %v)", found, err)
+	}
+	if primera.DuplicadoDeID == nil || *primera.DuplicadoDeID != creada.ID {
+		t.Errorf("el candidato debe apuntar de vuelta (pareja recíproca): %+v", primera.DuplicadoDeID)
+	}
+	if primera.MarcaDuplicadoResueltaEn != nil {
+		t.Errorf("la marca del par nace abierta: %+v", primera.MarcaDuplicadoResueltaEn)
+	}
+	// La marca se escribe por columnas: ni la visibilidad ni la descripción del
+	// equipo se tocan (SC-007).
+	if primera.Visibilidad != VisibilidadVisible {
+		t.Errorf("la visibilidad del candidato no se toca: %q", primera.Visibilidad)
+	}
+	if primera.DescripcionEs == nil || *primera.DescripcionEs != "Descripción del equipo" || !primera.DescripcionEditada {
+		t.Errorf("la descripción del equipo sigue intacta: %+v", primera)
+	}
+
+	// Fuente conflictuada: la transacción se revierte y no queda nada.
+	otra := Episodio{
+		Titulo: "Otra adicional", PublicadoEn: time.Now().UTC().Truncate(time.Millisecond),
+		Origen: OrigenVideo, Visibilidad: VisibilidadOculta, DuplicadoDeID: &candidato,
+	}
+	_, _, ok, err = repo.MarkDuplicatePair(ctx, otra, FuenteEpisodio{
+		Proveedor:  ProveedorYouTube,
+		IDExterno:  "abcdefghijk",
+		TituloFeed: "Otra adicional",
+		Enlace:     "https://www.youtube.com/watch?v=abcdefghijk",
+	}, candidato)
+	if err != nil {
+		t.Fatalf("MarkDuplicatePair (conflicto) = %v", err)
+	}
+	if ok {
+		t.Error("una fuente ya importada no puede dar de alta la ficha")
+	}
+	var fichas int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM media_items`).Scan(&fichas); err != nil {
+		t.Fatalf("contar fichas: %v", err)
+	}
+	if fichas != 2 {
+		t.Errorf("fichas = %d, se esperaban 2 (el candidato y la adicional de la primera llamada)", fichas)
 	}
 }

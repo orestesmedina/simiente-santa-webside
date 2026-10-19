@@ -23,19 +23,21 @@ import (
 // Ninguna de estas consultas escribe auditoría: el alta importada por la
 // búsqueda se registra **solo** con `media.sync` (P9-14).
 
+// errFuenteYaImportada es la señal INTERNA de la transacción del alta de un
+// elemento (H3): el `INSERT … ON CONFLICT DO NOTHING` de la fuente no devolvió
+// fila porque otra búsqueda ya había importado ese `(provider, external_id)`. No
+// es un error de negocio —la idempotencia es la esperada (R9-11)— pero sí obliga
+// a **revertir** la transacción para que la ficha recién creada no quede sin
+// enlaces (nunca sale de este paquete: el repository lo traduce a `ok=false`).
+var errFuenteYaImportada = errors.New("medios: la fuente ya estaba importada")
+
 // InsertMediaEpisodeSource importa un elemento de feed con
 // `ON CONFLICT (provider, external_id) DO NOTHING` (FR-012/R9-11): si el
 // elemento ya estaba importado la fila **no se duplica ni se actualiza** —la
 // instantánea se conserva— y el segundo valor es false (no es un error). Con dos
 // búsquedas simultáneas la base resuelve la carrera: exactamente una inserta.
 func (r *repository) InsertMediaEpisodeSource(ctx context.Context, fuente FuenteEpisodio) (FuenteEpisodio, bool, error) {
-	row, err := r.q.InsertMediaEpisodeSource(ctx, gendb.InsertMediaEpisodeSourceParams{
-		ItemID:     pgUUID(fuente.EpisodioID),
-		Provider:   string(fuente.Proveedor),
-		ExternalID: fuente.IDExterno,
-		FeedTitle:  fuente.TituloFeed,
-		Url:        fuente.Enlace,
-	})
+	row, err := r.q.InsertMediaEpisodeSource(ctx, insertFuenteParams(fuente))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// `DO NOTHING` sin fila devuelta: el elemento ya estaba importado.
@@ -44,6 +46,19 @@ func (r *repository) InsertMediaEpisodeSource(ctx context.Context, fuente Fuente
 		return FuenteEpisodio{}, false, wrap(err, "insert media episode source", "", messageFuenteDuplicada)
 	}
 	return mapFuenteEpisodio(row), true, nil
+}
+
+// insertFuenteParams traduce una fuente del dominio al alta de sqlc. Lo usan el
+// alta suelta (`InsertMediaEpisodeSource`) y la transacción del alta de un
+// elemento (ficha + fuente, `repository_episodios.go`).
+func insertFuenteParams(fuente FuenteEpisodio) gendb.InsertMediaEpisodeSourceParams {
+	return gendb.InsertMediaEpisodeSourceParams{
+		ItemID:     pgUUID(fuente.EpisodioID),
+		Provider:   string(fuente.Proveedor),
+		ExternalID: fuente.IDExterno,
+		FeedTitle:  fuente.TituloFeed,
+		Url:        fuente.Enlace,
+	}
 }
 
 // ListMediaEpisodeSourcesByProvider devuelve las fuentes importadas de un

@@ -1171,6 +1171,76 @@ func TestBuscarNuevosNoPisaLaCaratula(t *testing.T) {
 	})
 }
 
+// TestBuscarNuevosAltaAtomica fija H3/SC-003 y P9-11: el alta de un elemento
+// (ficha + fuente, y la pareja del par dudoso) es **una sola transacción**, así
+// que dos búsquedas simultáneas del mismo elemento no dejan ninguna ficha
+// huérfana sin enlaces junto a la duplicada: la que pierde la carrera no escribe
+// nada.
+func TestBuscarNuevosAltaAtomica(t *testing.T) {
+	fecha := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+
+	t.Run("el alta conflictuada no deja ficha huérfana", func(t *testing.T) {
+		repo := newFakeRepository()
+		entrada := entradaDePrueba(ProveedorYouTube, "SimienteAA1", "Sermón nuevo", fecha, "Descripción")
+		// Otra búsqueda simultánea importa el mismo elemento justo antes del alta:
+		// es la carrera real (la llave de idempotencia la resuelve la base).
+		repo.antesDeInsertar = func() {
+			repo.antesDeInsertar = nil
+			repo.seedFuentes(FuenteEpisodio{
+				EpisodioID: uuid.New(), Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+				TituloFeed: "Sermón nuevo", Enlace: entrada.Enlace,
+			})
+		}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, &fakeProbador{}, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if len(repo.episodios) != 0 {
+			t.Errorf("quedó una ficha sin enlaces de la búsqueda que perdió: %+v", repo.episodios)
+		}
+		if resumen.Importados != 0 {
+			t.Errorf("importados = %d, se esperaba 0 (nada se escribió)", resumen.Importados)
+		}
+	})
+
+	t.Run("el par dudoso conflictuado no deja pareja a medias", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Otro título del mismo día", PublicadoEn: fecha, Origen: OrigenAudio})
+		candidato := repo.episodios[0].ID
+		repo.seedFuentes(FuenteEpisodio{
+			EpisodioID: candidato, Proveedor: ProveedorPodcast, IDExterno: "guid-01",
+			TituloFeed: "Otro título del mismo día", Enlace: "https://podcasters.spotify.com/pod/show/x/episodes/1",
+		})
+		entrada := entradaDePrueba(ProveedorYouTube, "SimienteAA1", "Un título distinto", fecha, "Descripción")
+		repo.antesDeInsertar = func() {
+			repo.antesDeInsertar = nil
+			repo.seedFuentes(FuenteEpisodio{
+				EpisodioID: uuid.New(), Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+				TituloFeed: "Un título distinto", Enlace: entrada.Enlace,
+			})
+		}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{youtube: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, &fakeProbador{}, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if len(repo.episodios) != 1 {
+			t.Errorf("fichas = %d, se esperaba solo el candidato (sin la adicional revertida)", len(repo.episodios))
+		}
+		if repo.episodios[0].DuplicadoDeID != nil {
+			t.Errorf("el candidato no puede quedar marcado sin pareja: %+v", repo.episodios[0])
+		}
+		if resumen.Marcados != 0 {
+			t.Errorf("marcados = %d, se esperaba 0", resumen.Marcados)
+		}
+	})
+}
+
 // TestBuscarNuevosResumenYRegistro fija FR-018/FR-022: cada búsqueda deja **una**
 // fila en `media_sync_runs` con sus conteos y el estado de cada feed, y **una**
 // sola fila `media.sync` (nunca una por elemento), con el extracto del resumen en

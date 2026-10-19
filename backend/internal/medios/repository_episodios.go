@@ -212,6 +212,94 @@ func (r *repository) UpdateMediaItemCoverIfNull(ctx context.Context, id uuid.UUI
 	return mapEpisodio(row), true, nil
 }
 
+// InsertMediaItemWithSource da de alta **una ficha con su fuente** en UNA sola
+// transacción (H3/SC-003): es el alta de un elemento importado por la búsqueda
+// (`crearFicha`). Si la fuente conflictúa —otra búsqueda simultánea importó el
+// mismo `(provider, external_id)`— la transacción se **revierte** y no queda
+// ninguna ficha huérfana sin enlaces; el segundo valor es `false` y el service lo
+// cuenta como no importado (nada se escribió). Un fallo de la base aborta igual:
+// el alta de un elemento nunca deja datos a medias.
+func (r *repository) InsertMediaItemWithSource(ctx context.Context, episodio Episodio, fuente FuenteEpisodio) (Episodio, FuenteEpisodio, bool, error) {
+	var (
+		creada    Episodio
+		insertada FuenteEpisodio
+	)
+	err := r.withTx(ctx, func(tx *repository) error {
+		ficha, origen, err := altaFichaYFuente(ctx, tx, episodio, fuente)
+		if err != nil {
+			return err
+		}
+		creada, insertada = ficha, origen
+		return nil
+	})
+	return resultadoAlta(creada, insertada, err)
+}
+
+// MarkDuplicatePair crea la ficha **adicional** de un par dudoso con su fuente y
+// marca la **pareja recíproca** en UNA sola transacción (FR-014/H3/M1): la nueva
+// apunta al candidato (lo trae el service) y el candidato apunta a la nueva, de
+// modo que la invariante «cada miembro apunta al otro» no tiene ventana. Si la
+// fuente conflictúa, la transacción se revierte entera: ni ficha oculta sin
+// enlaces ni pareja a medias. La marca del candidato se escribe por columnas
+// (`MarkMediaItemDuplicate`): su visibilidad y la descripción del equipo quedan
+// fuera del alcance de la búsqueda (SC-007).
+func (r *repository) MarkDuplicatePair(ctx context.Context, nueva Episodio, fuente FuenteEpisodio, candidatoID uuid.UUID) (Episodio, FuenteEpisodio, bool, error) {
+	var (
+		creada    Episodio
+		insertada FuenteEpisodio
+	)
+	err := r.withTx(ctx, func(tx *repository) error {
+		ficha, origen, err := altaFichaYFuente(ctx, tx, nueva, fuente)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.q.MarkMediaItemDuplicate(ctx, gendb.MarkMediaItemDuplicateParams{
+			DuplicateOfID: pgUUID(ficha.ID),
+			ID:            pgUUID(candidatoID),
+		}); err != nil {
+			return wrap(err, "mark media item duplicate", messageEpisodioNoExiste, "")
+		}
+		creada, insertada = ficha, origen
+		return nil
+	})
+	return resultadoAlta(creada, insertada, err)
+}
+
+// altaFichaYFuente ejecuta el alta (ficha + fuente) dentro de la transacción
+// vigente: la fuente que conflictúa devuelve `errFuenteYaImportada`, que revierte
+// la transacción —la ficha recién creada desaparece con ella—.
+func altaFichaYFuente(ctx context.Context, tx *repository, episodio Episodio, fuente FuenteEpisodio) (Episodio, FuenteEpisodio, error) {
+	row, err := tx.q.InsertMediaItem(ctx, insertMediaItemParams(episodio))
+	if err != nil {
+		return Episodio{}, FuenteEpisodio{}, wrap(err, "insert media item", "", "")
+	}
+	creada := mapEpisodio(row)
+
+	fuente.EpisodioID = creada.ID
+	srow, err := tx.q.InsertMediaEpisodeSource(ctx, insertFuenteParams(fuente))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Episodio{}, FuenteEpisodio{}, errFuenteYaImportada
+		}
+		return Episodio{}, FuenteEpisodio{}, wrap(err, "insert media episode source", "", messageFuenteDuplicada)
+	}
+	return creada, mapFuenteEpisodio(srow), nil
+}
+
+// resultadoAlta traduce el resultado de una transacción de alta: el conflicto de
+// la fuente es `ok=false` (nada escrito, no es un error) y cualquier otro fallo
+// sube como error.
+func resultadoAlta(creada Episodio, insertada FuenteEpisodio, err error) (Episodio, FuenteEpisodio, bool, error) {
+	switch {
+	case errors.Is(err, errFuenteYaImportada):
+		return Episodio{}, FuenteEpisodio{}, false, nil
+	case err != nil:
+		return Episodio{}, FuenteEpisodio{}, false, err
+	default:
+		return creada, insertada, true, nil
+	}
+}
+
 // RepointMediaItemSources aplica la **unión por puntero** (R9-12/P9-10/FR-019)
 // en UNA sola transacción: mueve las fuentes de la ficha absorbida a la
 // resultante y escribe la fila completa ya fusionada de las dos —la absorbida
@@ -263,9 +351,12 @@ func pgBool(v bool) pgtype.Bool {
 	return pgtype.Bool{Bool: v, Valid: true}
 }
 
-// insertMediaItemParams traduce la ficha del dominio al alta de sqlc: solo los
-// datos que trae el feed (título, fecha, descripción corta ya recortada y
-// carátula ya copiada) más `origin` y `visibility`.
+// insertMediaItemParams traduce la ficha del dominio al alta de sqlc: los datos
+// que trae el feed (título, fecha, descripción corta ya recortada y carátula ya
+// copiada) más `origin` y `visibility` —que decide el service— y el puntero de
+// par de la entrada adicional de un par dudoso (FR-014: la pareja recíproca la
+// cierra la misma transacción, `MarkMediaItemDuplicate`). Los dos ejes de marcas,
+// `merged_into_id` y `description_edited` nacen en su DEFAULT.
 func insertMediaItemParams(episodio Episodio) gendb.InsertMediaItemParams {
 	return gendb.InsertMediaItemParams{
 		Title:         episodio.Titulo,
@@ -275,6 +366,7 @@ func insertMediaItemParams(episodio Episodio) gendb.InsertMediaItemParams {
 		CoverFile:     pgTextPtr(episodio.Caratula),
 		Origin:        string(episodio.Origen),
 		Visibility:    string(episodio.Visibilidad),
+		DuplicateOfID: pgUUIDPtr(episodio.DuplicadoDeID),
 	}
 }
 

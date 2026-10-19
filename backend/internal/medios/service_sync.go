@@ -755,30 +755,28 @@ func (b *busqueda) unirEntrada(proveedor Proveedor, entrada EntradaFeed, candida
 // la adicional nace **oculta** y **las dos** fichas quedan marcadas «posible
 // duplicado» con el par recíproco abierto, de modo que el visitante nunca ve el
 // mismo sermón dos veces (SC-003) y el equipo las une con un clic.
+//
+// El alta de la adicional, su fuente y el puntero de vuelta del candidato van en
+// **una sola transacción** (`MarkDuplicatePair`): si la fuente conflictúa (otra
+// búsqueda simultánea importó el mismo elemento) no queda nada escrito —ni una
+// ficha oculta sin enlaces ni una pareja a medias (H3)—.
 func (b *busqueda) marcarDudoso(proveedor Proveedor, entrada EntradaFeed, candidato Episodio) error {
 	nueva := fichaDe(entrada, proveedor, VisibilidadOculta)
 	nueva.DuplicadoDeID = &candidato.ID
 
-	creada, err := b.servicio.repository.InsertMediaItem(b.ctx, nueva)
+	_, fuente, ok, err := b.servicio.repository.MarkDuplicatePair(
+		b.ctx, nueva, fuenteDe(proveedor, entrada, uuid.Nil), candidato.ID)
 	if err != nil {
 		return fmt.Errorf("crear el episodio adicional: %w", err)
 	}
-	if _, ok, err := b.insertarFuente(proveedor, entrada, creada.ID); err != nil {
-		return err
-	} else if !ok {
+	if !ok {
+		// Otra búsqueda simultánea importó el elemento: la base ya decidió y esta
+		// búsqueda no toca nada (nada quedó escrito).
 		return nil
 	}
 
-	// La primera conserva su visibilidad y apunta de vuelta (pareja recíproca,
-	// invariante de service: la BD no la puede comprobar porque mira otra fila).
-	primera := candidato
-	primera.DuplicadoDeID = &creada.ID
-	primera.MarcaDuplicadoResueltaEn = nil
-	if _, err := b.servicio.repository.UpdateMediaItem(b.ctx, primera); err != nil {
-		return fmt.Errorf("marcar el episodio ya importado: %w", err)
-	}
-
-	b.reclamadas[creada.ID] = true
+	b.registrarFuente(fuente, entrada)
+	b.reclamadas[fuente.EpisodioID] = true
 	b.elementos++
 	b.resumen.Importados++
 	// `markedCount` cuenta las fichas marcadas «posible duplicado» nuevas de esta
@@ -790,58 +788,75 @@ func (b *busqueda) marcarDudoso(proveedor Proveedor, entrada EntradaFeed, candid
 // crearFicha importa el elemento como entrada independiente (US2 esc. 4): una
 // ficha visible, sin marca y con su único enlace. La descripción corta se recorta
 // al importar (P9-17) y el campo queda ausente si el feed no traía descripción.
+//
+// El alta (ficha + fuente) es **una sola transacción** (H3/SC-003): si la fuente
+// conflictúa —otra búsqueda simultánea importó el mismo elemento— la ficha se
+// revierte y **no queda ninguna ficha huérfana sin enlaces**; esta búsqueda lo
+// cuenta como no importado.
 func (b *busqueda) crearFicha(proveedor Proveedor, entrada EntradaFeed) error {
 	nueva := fichaDe(entrada, proveedor, VisibilidadVisible)
-	creada, err := b.servicio.repository.InsertMediaItem(b.ctx, nueva)
+	_, fuente, ok, err := b.servicio.repository.InsertMediaItemWithSource(
+		b.ctx, nueva, fuenteDe(proveedor, entrada, uuid.Nil))
 	if err != nil {
 		return fmt.Errorf("crear el episodio: %w", err)
 	}
-	if _, ok, err := b.insertarFuente(proveedor, entrada, creada.ID); err != nil {
-		return err
-	} else if !ok {
+	if !ok {
+		// Otra búsqueda simultánea importó el elemento (R9-11): nada quedó escrito.
 		return nil
 	}
+	b.registrarFuente(fuente, entrada)
 	b.elementos++
 	b.resumen.Importados++
 	return nil
 }
 
-// insertarFuente guarda la procedencia del elemento con `ON CONFLICT (provider,
-// external_id) DO NOTHING` (R9-11): el segundo valor es false cuando la base
-// decidió que el elemento ya estaba importado (dos búsquedas simultáneas), y
-// entonces esta búsqueda no toca la ficha. Un fallo de escritura sube como error:
-// el alta de una ficha son dos escrituras (la ficha y su fuente, porque el
-// `Repository` no expone un alta con fuentes), así que un fallo de la base a
-// mitad del elemento se informa en vez de dejar una ficha sin enlaces circulando
-// como si estuviera completa.
-func (b *busqueda) insertarFuente(proveedor Proveedor, entrada EntradaFeed, episodioID uuid.UUID) (FuenteEpisodio, bool, error) {
-	fuente := FuenteEpisodio{
+// registrarFuente anota en el estado de la búsqueda una fuente recién escrita: la
+// llave de idempotencia del proveedor, la ficha que ya tiene esa fuente y la
+// carátula pendiente (P9-7/SC-005).
+func (b *busqueda) registrarFuente(fuente FuenteEpisodio, entrada EntradaFeed) {
+	b.importados[fuente.Proveedor][fuente.IDExterno] = true
+	b.conFuente[fuente.Proveedor][fuente.EpisodioID] = true
+	// La lista de fuentes del proveedor se mantiene al día: el segundo feed de la
+	// búsqueda encuentra así las fichas que acaba de crear el primero.
+	b.fuentes[fuente.Proveedor] = append(b.fuentes[fuente.Proveedor], fuente)
+	if entrada.CaratulaURL != "" {
+		// La carátula se copia al sitio al importar (P9-7/SC-005): se encola con
+		// su proveedor y la elección por ficha (el video manda) la hace
+		// `caratulasPorFicha` (default #7).
+		b.caratulas = append(b.caratulas, caratulaPendiente{
+			episodioID:  fuente.EpisodioID,
+			proveedor:   fuente.Proveedor,
+			caratulaURL: entrada.CaratulaURL,
+		})
+	}
+}
+
+// fuenteDe arma la procedencia de un elemento de feed para su ficha (el id de la
+// ficha lo fija el alta, dentro de su transacción).
+func fuenteDe(proveedor Proveedor, entrada EntradaFeed, episodioID uuid.UUID) FuenteEpisodio {
+	return FuenteEpisodio{
 		EpisodioID: episodioID,
 		Proveedor:  proveedor,
 		IDExterno:  entrada.IDExterno,
 		TituloFeed: recortarTitulo(entrada.Titulo),
 		Enlace:     entrada.Enlace,
 	}
-	insertada, ok, err := b.servicio.repository.InsertMediaEpisodeSource(b.ctx, fuente)
+}
+
+// insertarFuente guarda la procedencia de un elemento que se **une** a una ficha
+// existente con `ON CONFLICT (provider, external_id) DO NOTHING` (R9-11): el
+// segundo valor es false cuando la base decidió que el elemento ya estaba
+// importado (dos búsquedas simultáneas), y entonces esta búsqueda no toca nada
+// (aquí no se escribió ninguna ficha que revertir). Un fallo de escritura sube
+// como error: el elemento no queda a medias.
+func (b *busqueda) insertarFuente(proveedor Proveedor, entrada EntradaFeed, episodioID uuid.UUID) (FuenteEpisodio, bool, error) {
+	insertada, ok, err := b.servicio.repository.InsertMediaEpisodeSource(
+		b.ctx, fuenteDe(proveedor, entrada, episodioID))
 	if err != nil {
 		return FuenteEpisodio{}, false, fmt.Errorf("importar la fuente del episodio: %w", err)
 	}
 	if ok {
-		b.importados[fuente.Proveedor][fuente.IDExterno] = true
-		b.conFuente[fuente.Proveedor][episodioID] = true
-		// La lista de fuentes del proveedor se mantiene al día: el segundo feed
-		// de la búsqueda encuentra así las fichas que acaba de crear el primero.
-		b.fuentes[fuente.Proveedor] = append(b.fuentes[fuente.Proveedor], insertada)
-		if entrada.CaratulaURL != "" {
-			// La carátula se copia al sitio al importar (P9-7/SC-005): se encola
-			// con su proveedor y la elección por ficha (el video manda) la hace
-			// `caratulasPorFicha` (default #7).
-			b.caratulas = append(b.caratulas, caratulaPendiente{
-				episodioID:  episodioID,
-				proveedor:   proveedor,
-				caratulaURL: entrada.CaratulaURL,
-			})
-		}
+		b.registrarFuente(insertada, entrada)
 	}
 	return insertada, ok, nil
 }
