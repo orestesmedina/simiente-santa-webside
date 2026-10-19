@@ -379,6 +379,13 @@ ALTER TABLE admin_actions ADD CONSTRAINT admin_actions_action_check CHECK (actio
   simetría contra la clase de marca era precisamente lo que impedía marcar disponibilidad sobre un
   par. Lo que sí exige la BD: `duplicate_mark_resolved_at` solo con par y
   `availability_mark_resolved_at` solo con marca.
+- **La pareja es de dos — limitación aceptada (decisión del humano, 2026-10-19)**: `duplicate_of_id`
+  modela **un par recíproco**, no grupos. Un tercer elemento **dudoso** (solo título o solo día)
+  contra una ficha que **ya tiene pareja** no puede entrar en un par nuevo (el candidato se excluye
+  en la rama dudosa) y **entra suelto y visible**, sin marca; solo es un problema si resulta ser el
+  mismo sermón —mitigación: el equipo lo oculta a mano—. La **unión automática segura** (título
+  normalizado + mismo día, FR-013) **sí** funciona contra una ficha emparejada. Sin cambios en el
+  modelo aprobado; **mejora futura** posible: extender el eje de duplicados a grupos.
 - **`availability_*` separados de las marcas**: la marca es para el equipo («revisa esto») y el
   resultado de disponibilidad es el **dato** que la motivó; así el panel puede mostrar «ya no
   aparece en el feed · última comprobación: inconclusa (12:03)» sin inventar marcas nuevas.

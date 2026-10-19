@@ -64,6 +64,7 @@ Dos reglas que conviene saber:
 
 ## Avisos y limitaciones conocidas
 
+- **Si en una misma semana aparece un tercer contenido que pueda ser el mismo sermón, el sistema no lo une solo: aparecerá como una ficha más y el equipo puede ocultarla** si resulta ser repetido. (La unión automática y la marca «posible duplicado» trabajan de a dos elementos; es un caso poco frecuente y quedó aceptado y documentado el 2026-10-19.)
 - **El feed de YouTube puede no responder desde un servidor**: desde una computadora normal responde bien, pero desde direcciones de servidor devuelve error. Si eso pasa en producción, **el resumen del botón dirá cuál falló**, se importará lo del otro feed y **no se oculta ni se marca nada** por esa causa. Conviene vigilar las primeras búsquedas.
 - **El podcast trae la misma carátula** (el arte del programa) para todos sus episodios de solo audio: es así en el origen, no es un error del sitio.
 - **Prueba local:** en el entorno de pruebas las carátulas de los episodios reales no estaban en la carpeta de imágenes, así que ahí se ven **marcadores neutros**. Se arregla limpiando las tablas de medios y volviendo a pulsar «Buscar episodios nuevos» con el sitio levantado.
