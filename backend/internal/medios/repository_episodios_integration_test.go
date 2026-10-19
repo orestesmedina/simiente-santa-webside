@@ -1004,11 +1004,40 @@ func TestIntegrationMarkDuplicatePairEsAtomico(t *testing.T) {
 	if ok {
 		t.Error("una fuente ya importada no puede dar de alta la ficha")
 	}
+
+	// Candidato ya tomado (M1): un elemento DISTINTO que intenta marcar al mismo
+	// candidato —otra búsqueda simultánea— tampoco escribe nada: la pareja
+	// recíproca no se rompe (la marca del par escribe con `duplicate_of_id IS
+	// NULL`).
+	tercera := Episodio{
+		Titulo: "Tercera adicional", PublicadoEn: time.Now().UTC().Truncate(time.Millisecond),
+		Origen: OrigenVideo, Visibilidad: VisibilidadOculta, DuplicadoDeID: &candidato,
+	}
+	_, _, ok, err = repo.MarkDuplicatePair(ctx, tercera, FuenteEpisodio{
+		Proveedor:  ProveedorYouTube,
+		IDExterno:  "lmnopqrstuv",
+		TituloFeed: "Tercera adicional",
+		Enlace:     "https://www.youtube.com/watch?v=lmnopqrstuv",
+	}, candidato)
+	if err != nil {
+		t.Fatalf("MarkDuplicatePair (candidato tomado) = %v", err)
+	}
+	if ok {
+		t.Error("un candidato que ya tiene pareja no puede entrar en otra")
+	}
 	var fichas int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM media_items`).Scan(&fichas); err != nil {
 		t.Fatalf("contar fichas: %v", err)
 	}
 	if fichas != 2 {
-		t.Errorf("fichas = %d, se esperaban 2 (el candidato y la adicional de la primera llamada)", fichas)
+		t.Errorf("fichas = %d, se esperaban 2 (el candidato y su única adicional)", fichas)
+	}
+	// La pareja sigue recíproca y apuntando a la primera adicional.
+	primeraFinal, found, err := repo.GetMediaItemByID(ctx, candidato)
+	if err != nil || !found {
+		t.Fatalf("GetMediaItemByID(candidato) = (%v, %v)", found, err)
+	}
+	if primeraFinal.DuplicadoDeID == nil || *primeraFinal.DuplicadoDeID != creada.ID {
+		t.Errorf("la pareja del candidato cambió: %+v", primeraFinal.DuplicadoDeID)
 	}
 }

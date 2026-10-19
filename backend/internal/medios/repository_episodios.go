@@ -257,6 +257,11 @@ func (r *repository) MarkDuplicatePair(ctx context.Context, nueva Episodio, fuen
 			DuplicateOfID: pgUUID(ficha.ID),
 			ID:            pgUUID(candidatoID),
 		}); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				// El candidato ya tiene pareja (otra búsqueda se adelantó): la
+				// transacción se revierte y no queda ni ficha ni pareja rota (M1).
+				return errCandidatoConPar
+			}
 			return wrap(err, "mark media item duplicate", messageEpisodioNoExiste, "")
 		}
 		creada, insertada = ficha, origen
@@ -286,12 +291,12 @@ func altaFichaYFuente(ctx context.Context, tx *repository, episodio Episodio, fu
 	return creada, mapFuenteEpisodio(srow), nil
 }
 
-// resultadoAlta traduce el resultado de una transacción de alta: el conflicto de
-// la fuente es `ok=false` (nada escrito, no es un error) y cualquier otro fallo
-// sube como error.
+// resultadoAlta traduce el resultado de una transacción de alta: la carrera
+// perdida —el elemento ya estaba importado o el candidato ya tiene pareja— es
+// `ok=false` (nada escrito, no es un error) y cualquier otro fallo sube como error.
 func resultadoAlta(creada Episodio, insertada FuenteEpisodio, err error) (Episodio, FuenteEpisodio, bool, error) {
 	switch {
-	case errors.Is(err, errFuenteYaImportada):
+	case errors.Is(err, errFuenteYaImportada), errors.Is(err, errCandidatoConPar):
 		return Episodio{}, FuenteEpisodio{}, false, nil
 	case err != nil:
 		return Episodio{}, FuenteEpisodio{}, false, err

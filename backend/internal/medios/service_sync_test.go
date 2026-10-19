@@ -469,6 +469,93 @@ func TestBuscarNuevosDuplicadoDudoso(t *testing.T) {
 	}
 }
 
+// TestBuscarNuevosParejaReciprocaUnica fija la invariante de la pareja recíproca
+// (data-model.md/M1): una ficha que **ya tiene pareja** —abierta o resuelta— no
+// vuelve a ser candidata de nadie, ni dentro de la misma búsqueda (dos elementos
+// del mismo feed no se marcan contra el mismo candidato) ni entre búsquedas
+// simultáneas (la marca del par escribe con `duplicate_of_id IS NULL`).
+func TestBuscarNuevosParejaReciprocaUnica(t *testing.T) {
+	fecha := time.Date(2026, 7, 2, 15, 0, 0, 0, time.UTC)
+
+	t.Run("dos elementos del mismo feed no comparten candidato", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(Episodio{Titulo: "Sermón del domingo", PublicadoEn: fecha, Origen: OrigenVideo})
+		candidato := repo.episodios[0].ID
+		repo.seedFuentes(FuenteEpisodio{
+			EpisodioID: candidato, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+			TituloFeed: "Sermón del domingo", Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
+		})
+		// Los dos elementos coinciden en título con el candidato y difieren en el
+		// día: cada uno sería «dudoso» contra él.
+		entradas := []EntradaFeed{
+			entradaDePrueba(ProveedorPodcast, "guid-01", "Sermón del domingo", fecha.AddDate(0, 0, 3), "Uno"),
+			entradaDePrueba(ProveedorPodcast, "guid-02", "Sermón del domingo", fecha.AddDate(0, 0, 4), "Dos"),
+		}
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{podcast: ResultadoFeed{Entradas: entradas}}, &fakeProbador{}, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if resumen.Marcados != 2 {
+			t.Errorf("marcados = %d, se esperaba un solo par (2 fichas)", resumen.Marcados)
+		}
+		if len(repo.episodios) != 3 {
+			t.Fatalf("fichas = %d, se esperaban el candidato, su par y una entrada suelta", len(repo.episodios))
+		}
+		primera, adicional := repo.episodios[1], repo.episodios[2]
+		if repo.episodios[0].DuplicadoDeID == nil || *repo.episodios[0].DuplicadoDeID != primera.ID {
+			t.Errorf("el candidato debe apuntar a la PRIMERA adicional: %v", repo.episodios[0].DuplicadoDeID)
+		}
+		if primera.DuplicadoDeID == nil || *primera.DuplicadoDeID != candidato {
+			t.Errorf("la primera adicional apunta al candidato: %v", primera.DuplicadoDeID)
+		}
+		if adicional.DuplicadoDeID != nil {
+			t.Errorf("el segundo elemento no puede entrar en el par ya tomado: %+v", adicional)
+		}
+		if adicional.Visibilidad != VisibilidadVisible {
+			t.Errorf("sin pareja el elemento entra visible: %q", adicional.Visibilidad)
+		}
+	})
+
+	t.Run("una ficha con par no es candidata de la unión", func(t *testing.T) {
+		repo := newFakeRepository()
+		repo.seed(
+			Episodio{Titulo: "Sermón del domingo", PublicadoEn: fecha, Origen: OrigenVideo},
+			Episodio{Titulo: "Su pareja", PublicadoEn: fecha, Origen: OrigenAudio},
+		)
+		// Un par ya existente (resuelto): cada miembro apunta al otro.
+		repo.episodios[0].DuplicadoDeID = ptrUUID(repo.episodios[1].ID)
+		repo.episodios[1].DuplicadoDeID = ptrUUID(repo.episodios[0].ID)
+		repo.seedFuentes(FuenteEpisodio{
+			EpisodioID: repo.episodios[0].ID, Proveedor: ProveedorYouTube, IDExterno: "SimienteAA1",
+			TituloFeed: "Sermón del domingo", Enlace: "https://www.youtube.com/watch?v=SimienteAA1",
+		})
+		entrada := entradaDePrueba(ProveedorPodcast, "guid-01", "Sermón del domingo", fecha, "Del podcast")
+		service := servicioConDoblesYProbador(t, repo,
+			&fakeFeedSource{podcast: ResultadoFeed{Entradas: []EntradaFeed{entrada}}}, &fakeProbador{}, &fakeCaratulas{})
+
+		resumen, err := service.BuscarNuevos(context.Background(), uuid.New())
+		if err != nil {
+			t.Fatalf("BuscarNuevos devolvió %v", err)
+		}
+		if resumen.Unidos != 0 || resumen.Marcados != 0 {
+			t.Errorf("una ficha con par no se une ni se marca: %+v", resumen)
+		}
+		if len(repo.episodios) != 3 {
+			t.Fatalf("fichas = %d, se esperaba una entrada suelta nueva", len(repo.episodios))
+		}
+		nueva := repo.episodios[2]
+		if nueva.DuplicadoDeID != nil || nueva.Visibilidad != VisibilidadVisible {
+			t.Errorf("la entrada suelta nace visible y sin marca: %+v", nueva)
+		}
+		if len(fuentesDe(repo, repo.episodios[0].ID)) != 1 {
+			t.Error("la ficha con par no debe recibir la fuente del elemento nuevo")
+		}
+	})
+}
+
 // TestBuscarNuevosSinCandidatura fija US2 esc. 4: un elemento que solo está en un
 // feed entra como entrada con **un solo enlace**, visible y sin marca.
 func TestBuscarNuevosSinCandidatura(t *testing.T) {

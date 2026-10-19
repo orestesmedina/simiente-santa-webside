@@ -590,6 +590,7 @@ SET duplicate_of_id = $1,
     duplicate_mark_resolved_at = NULL,
     updated_at = now()
 WHERE id = $2
+  AND duplicate_of_id IS NULL
 RETURNING id, title, published_at, description_es, description_en, description_edited,
           cover_file, origin, visibility, duplicate_of_id, duplicate_mark_resolved_at,
           availability_checked_at, availability_result, availability_mark,
@@ -608,6 +609,11 @@ type MarkMediaItemDuplicateParams struct {
 // (FR-015/SC-007). La ficha nueva lleva su puntero en el alta; esta consulta
 // cierra el otro sentido de la pareja dentro de la MISMA transacción del alta
 // (`MarkDuplicatePair`), de modo que la pareja nunca queda a medias.
+//
+// La condición `duplicate_of_id IS NULL` es la invariante de la pareja: una ficha
+// que ya tiene par —abierto o resuelto— **no** puede entrar en otra (M1). Sin fila
+// devuelta (otra búsqueda simultánea marcó al mismo candidato) el repository
+// revierte la transacción entera: no queda una pareja rota.
 func (q *Queries) MarkMediaItemDuplicate(ctx context.Context, arg MarkMediaItemDuplicateParams) (MediaItem, error) {
 	row := q.db.QueryRow(ctx, markMediaItemDuplicate, arg.DuplicateOfID, arg.ID)
 	var i MediaItem

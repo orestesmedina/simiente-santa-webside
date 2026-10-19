@@ -31,6 +31,13 @@ import (
 // enlaces (nunca sale de este paquete: el repository lo traduce a `ok=false`).
 var errFuenteYaImportada = errors.New("medios: la fuente ya estaba importada")
 
+// errCandidatoConPar es la señal INTERNA de la misma transacción cuando el
+// candidato de un par dudoso **ya tiene pareja** (otra búsqueda simultánea se le
+// adelantó): la marca del par escribe con `duplicate_of_id IS NULL`, así que sin
+// fila devuelta la transacción se revierte y la pareja recíproca no se rompe
+// (M1). Tampoco sale de este paquete.
+var errCandidatoConPar = errors.New("medios: el candidato del par ya tiene pareja")
+
 // InsertMediaEpisodeSource importa un elemento de feed con
 // `ON CONFLICT (provider, external_id) DO NOTHING` (FR-012/R9-11): si el
 // elemento ya estaba importado la fila **no se duplica ni se actualiza** —la

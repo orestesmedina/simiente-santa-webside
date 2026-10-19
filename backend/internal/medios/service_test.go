@@ -851,17 +851,24 @@ func (f *fakeRepository) InsertMediaItemWithSource(_ context.Context, episodio E
 	return f.altaConFuente(episodio, fuente)
 }
 
-// MarkDuplicatePair imita la transacción del par dudoso (FR-014/H3): o queda la
-// ficha adicional con su fuente y la pareja recíproca, o no queda nada.
+// MarkDuplicatePair imita la transacción del par dudoso (FR-014/H3/M1): o queda
+// la ficha adicional con su fuente y la pareja recíproca, o no queda nada —ni
+// cuando la fuente ya estaba importada ni cuando el candidato ya tiene pareja—.
 func (f *fakeRepository) MarkDuplicatePair(_ context.Context, nueva Episodio, fuente FuenteEpisodio, candidatoID uuid.UUID) (Episodio, FuenteEpisodio, bool, error) {
-	if _, ok := f.buscar(candidatoID); !ok {
+	i, ok := f.buscar(candidatoID)
+	if !ok {
 		return Episodio{}, FuenteEpisodio{}, false, apperr.NotFound(messageEpisodioNoExiste)
+	}
+	if f.episodios[i].DuplicadoDeID != nil {
+		// La marca del par escribe con `duplicate_of_id IS NULL`: el candidato ya
+		// tiene pareja y la transacción se revierte entera.
+		return Episodio{}, FuenteEpisodio{}, false, nil
 	}
 	creada, insertada, ok, err := f.altaConFuente(nueva, fuente)
 	if err != nil || !ok {
 		return Episodio{}, FuenteEpisodio{}, false, err
 	}
-	i, _ := f.buscar(candidatoID)
+	i, _ = f.buscar(candidatoID)
 	f.episodios[i].DuplicadoDeID = &creada.ID
 	f.episodios[i].MarcaDuplicadoResueltaEn = nil
 	f.episodios[i].ActualizadoEn = time.Now()

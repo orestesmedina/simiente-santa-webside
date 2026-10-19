@@ -685,8 +685,9 @@ func (b *busqueda) importarEntrada(proveedor Proveedor, entrada EntradaFeed) err
 // (FR-013): `seguro` cuando el título normalizado coincide **y** es el mismo día
 // en la zona de la iglesia —sin margen—; `dudoso` cuando solo coincide una de las
 // dos cosas (FR-014: entradas separadas y marcadas). Una ficha absorbida, una que
-// ya tiene fuente de este proveedor y una ya reclamada en esta búsqueda no son
-// candidatas.
+// ya tiene fuente de este proveedor, una ya reclamada en esta búsqueda y una que
+// **ya tiene pareja** (par abierto o resuelto: la pareja recíproca es de dos, M1)
+// no son candidatas.
 func (b *busqueda) candidato(proveedor Proveedor, entrada EntradaFeed) (Episodio, bool, bool, error) {
 	otro := proveedorContrario(proveedor)
 	llave := normalizarTitulo(entrada.Titulo)
@@ -701,7 +702,7 @@ func (b *busqueda) candidato(proveedor Proveedor, entrada EntradaFeed) (Episodio
 		if err != nil {
 			return Episodio{}, false, false, err
 		}
-		if !encontrada || ficha.UnidoAID != nil {
+		if !encontrada || ficha.UnidoAID != nil || ficha.DuplicadoDeID != nil {
 			continue
 		}
 		mismoTitulo := normalizarTitulo(ficha.Titulo) == llave
@@ -776,7 +777,15 @@ func (b *busqueda) marcarDudoso(proveedor Proveedor, entrada EntradaFeed, candid
 	}
 
 	b.registrarFuente(fuente, entrada)
+	// El candidato queda «reclamado» y su copia en la caché queda al día: ni esta
+	// búsqueda ni la siguiente lectura lo vuelven a ofrecer como candidato
+	// (invariante de la pareja recíproca, M1).
 	b.reclamadas[fuente.EpisodioID] = true
+	b.reclamadas[candidato.ID] = true
+	primera := candidato
+	primera.DuplicadoDeID = &fuente.EpisodioID
+	primera.MarcaDuplicadoResueltaEn = nil
+	b.fichas[candidato.ID] = primera
 	b.elementos++
 	b.resumen.Importados++
 	// `markedCount` cuenta las fichas marcadas «posible duplicado» nuevas de esta
