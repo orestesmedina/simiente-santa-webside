@@ -24,8 +24,9 @@ import (
 // Barreras, aplicadas por construcción a toda petición (también tras cada
 // redirect):
 //
-//  1. solo `https` y host de la allowlist DEL CONSUMIDOR (cada consumidor
-//     declara la suya: feeds, oEmbed/episodio y carátulas);
+//  1. solo `https`, host de la allowlist DEL CONSUMIDOR (cada consumidor
+//     declara la suya: feeds, oEmbed/episodio y carátulas) **y el puerto 443**
+//     (sin puerto, `https` implica el 443): una URL con `:8443` no sale;
 //  2. ninguna IP privada/loopback/link-local —incluido el servicio de metadatos
 //     `169.254.169.254`—: el dialer resuelve el DNS y rechaza el destino en
 //     CADA conexión, de modo que un feed comprometido no alcanza la red interna;
@@ -44,6 +45,7 @@ import (
 var (
 	errEsquemaNoPermitido      = errors.New("medios: la red saliente solo admite https")
 	errHostNoPermitido         = errors.New("medios: host fuera de la allowlist del consumidor")
+	errPuertoNoPermitido       = errors.New("medios: la red saliente solo admite el puerto 443")
 	errIPNoPermitida           = errors.New("medios: el destino resuelve a una dirección no pública")
 	errDemasiadasRedirecciones = errors.New("medios: demasiadas redirecciones")
 	errConfiguracionCliente    = errors.New("medios: configuración de la red saliente inválida")
@@ -57,6 +59,13 @@ const (
 	// maxRedirecciones es el tope de saltos que sigue el cliente (barrera 3);
 	// `net/http` tampoco sigue más de 10.
 	maxRedirecciones = 10
+
+	// puertoPermitido es el ÚNICO puerto por el que sale la red saliente (B2):
+	// la allowlist fija el host **y** el puerto, de modo que una carátula del
+	// feed con `https://i.ytimg.com:8443/x.jpg` no puede hacer que el backend
+	// conecte a un puerto arbitrario de un host permitido. Sin puerto en la URL,
+	// `https` implica el 443.
+	puertoPermitido = "443"
 
 	// Tiempos de espera del transporte (P9-3/P9-18: 10/10/5 s por petición,
 	// constantes revisables del dominio). El tiempo total por petición lo fija
@@ -174,9 +183,10 @@ func (c *clienteSaliente) transporteSeguro() *http.Transport {
 }
 
 // dialSeguro devuelve la barrera 2: en CADA conexión —también tras cada
-// redirect— se comprueba el host contra la allowlist, se resuelve su DNS y se
-// rechaza cualquier dirección que no sea pública. Solo entonces se conecta a la
-// IP resuelta (nunca al nombre).
+// redirect— se comprueba el host contra la allowlist, se exige el puerto
+// permitido, se resuelve su DNS y se rechaza cualquier dirección que no sea
+// pública. Solo entonces se conecta a la IP resuelta (nunca al nombre) y al
+// puerto permitido (nunca al que traiga la petición).
 func (c *clienteSaliente) dialSeguro() func(ctx context.Context, network, address string) (net.Conn, error) {
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, puerto, err := net.SplitHostPort(address)
@@ -185,6 +195,9 @@ func (c *clienteSaliente) dialSeguro() func(ctx context.Context, network, addres
 		}
 		if _, ok := c.hosts[strings.ToLower(host)]; !ok {
 			return nil, fmt.Errorf("%w: %q", errHostNoPermitido, host)
+		}
+		if puerto != puertoPermitido {
+			return nil, fmt.Errorf("%w: %q", errPuertoNoPermitido, puerto)
 		}
 		ips, err := c.verificarDestino(ctx, host)
 		if err != nil {
@@ -196,7 +209,7 @@ func (c *clienteSaliente) dialSeguro() func(ctx context.Context, network, addres
 			dialer := &net.Dialer{Timeout: tiempoEsperaConexion, KeepAlive: tiempoEsperaInactividad}
 			dial = dialer.DialContext
 		}
-		return dial(ctx, network, net.JoinHostPort(ips[0].String(), puerto))
+		return dial(ctx, network, net.JoinHostPort(ips[0].String(), puertoPermitido))
 	}
 }
 
@@ -252,8 +265,9 @@ func (c *clienteSaliente) checkRedirect(req *http.Request, via []*http.Request) 
 	return c.verificarURL(req.URL)
 }
 
-// verificarURL es la barrera 1: solo `https` y hosts de la allowlist del
-// consumidor.
+// verificarURL es la barrera 1: solo `https`, hosts de la allowlist del
+// consumidor y el puerto permitido (vacío o 443: la allowlist fija el host **y**
+// el puerto, B2).
 func (c *clienteSaliente) verificarURL(u *url.URL) error {
 	if u == nil {
 		return fmt.Errorf("%w: sin URL", errHostNoPermitido)
@@ -264,6 +278,9 @@ func (c *clienteSaliente) verificarURL(u *url.URL) error {
 	host := strings.ToLower(u.Hostname())
 	if _, ok := c.hosts[host]; !ok {
 		return fmt.Errorf("%w: %q", errHostNoPermitido, host)
+	}
+	if puerto := u.Port(); puerto != "" && puerto != puertoPermitido {
+		return fmt.Errorf("%w: %q", errPuertoNoPermitido, puerto)
 	}
 	return nil
 }

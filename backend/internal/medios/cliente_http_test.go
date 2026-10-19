@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -160,6 +161,37 @@ func ejecutarBarrerasCompartidas(t *testing.T, caso casoBarreras) {
 		}
 	})
 
+	t.Run(caso.nombre+"/puerto distinto de 443 rechazado (barrera 1)", func(t *testing.T) {
+		antes := len(caso.transporte.peticiones)
+		destino := conPuerto(t, caso.destinoPermitido, "8443")
+		if _, err := caso.cliente.obtener(context.Background(), destino); !errors.Is(err, errPuertoNoPermitido) {
+			t.Fatalf("obtener(%q) = %v, se esperaba %v", destino, err, errPuertoNoPermitido)
+		}
+		if len(caso.transporte.peticiones) != antes {
+			t.Errorf("se envió la petición a un puerto no permitido pese a rechazarla")
+		}
+
+		// El dialer también lo exige (defensa en profundidad: el transporte
+		// siempre trae puerto).
+		u, err := url.Parse(caso.destinoPermitido)
+		if err != nil {
+			t.Fatalf("url.Parse(%q): %v", caso.destinoPermitido, err)
+		}
+		dialContext := caso.cliente.dialSeguro()
+		if _, err := dialContext(context.Background(), "tcp", net.JoinHostPort(u.Hostname(), "8443")); !errors.Is(err, errPuertoNoPermitido) {
+			t.Errorf("dialSeguro(puerto ajeno) = %v, se esperaba %v", err, errPuertoNoPermitido)
+		}
+
+		// El 443 explícito sí sale (y el dialer conecta al 443, no al que traiga
+		// la petición).
+		caso.transporte.responder = func(*http.Request) (*http.Response, error) {
+			return respuestaFalsa(http.StatusOK, io.NopCloser(strings.NewReader("ok")), nil), nil
+		}
+		if _, err := caso.cliente.obtener(context.Background(), conPuerto(t, caso.destinoPermitido, "443")); err != nil {
+			t.Fatalf("obtener(https://…:443) = %v, se esperaba nil", err)
+		}
+	})
+
 	t.Run(caso.nombre+"/redirect a host ajeno rechazado (barrera 3)", func(t *testing.T) {
 		caso.transporte.responder = func(*http.Request) (*http.Response, error) {
 			return respuestaFalsa(http.StatusFound, nil, map[string]string{"Location": caso.destinoAjeno}), nil
@@ -233,6 +265,18 @@ func ejecutarBarrerasCompartidas(t *testing.T, caso casoBarreras) {
 			t.Errorf("la petición tardó %v: el tiempo de espera no se aplicó", transcurrido)
 		}
 	})
+}
+
+// conPuerto devuelve la misma URL con el puerto indicado (barrera 1: la allowlist
+// fija el host y el puerto).
+func conPuerto(t *testing.T, destino, puerto string) string {
+	t.Helper()
+	u, err := url.Parse(destino)
+	if err != nil {
+		t.Fatalf("url.Parse(%q): %v", destino, err)
+	}
+	u.Host = net.JoinHostPort(u.Hostname(), puerto)
+	return u.String()
 }
 
 // clienteDePrueba arma el consumidor sintético de la tabla compartida.
