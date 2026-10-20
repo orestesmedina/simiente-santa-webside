@@ -8,9 +8,9 @@
 |---|---|
 | Rama | fix/portada-movil |
 | Flujo | equipo-bug |
-| Fase | 4/4 · PR aprobado · pendiente merge |
-| Ciclo de corrección | 1/3 (iteración de diseño pedida por el humano) |
-| Próximo paso | Push del commit de cierre y merge del PR; después, registrar el merge en este estado |
+| Fase | Cerrado · **PR #14 fusionado en `main`** (`a40338a`, 2026-10-19) |
+| Ciclo de corrección | 1/3 · cerrado |
+| Próximo paso | Nada para este bug. Siguiente en el roadmap: **F5** (grupos de conexión) |
 | Bloqueado por | — |
 | Actualizado | 2026-10-19 |
 
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | Spec | n/a (bug) | | | |
 | Plan | n/a (bug) | | | |
-| PR / merge | aprobado · pendiente de merge | humano (cliente) | 2026-10-19 | «apruebo el PR» |
+| PR / merge | aprobado y fusionado | humano (cliente) | 2026-10-19 | «apruebo el PR» · PR #14 fusionado en `main` (`a40338a`) |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -51,13 +51,14 @@ El humano rechazó la primera versión del carrusel («básico, de programador j
 
 ## Decisiones y aclaraciones
 
-- 2026-10-19 (humano): **aprueba el PR** («apruebo el PR»); el merge lo hará el humano. El costo de la tarea queda cerrado antes del merge.
+- 2026-10-19 (humano): **aprueba y fusiona el PR #14** («apruebo el PR»; merge en `main` `a40338a`). Rama remota `fix/portada-movil` borrada en GitHub. Costo de la tarea cerrado antes del merge.
 - 2026-10-19 (humano): «Lo que viene», Ministerios y Medios pasan a **carrusel** con animación: **1 tarjeta en móvil y 3 en escritorio**. Ofrendas **no** lleva carrusel: todas las cuentas siempre visibles, en tarjetas rectangulares tipo *credit card*.
 - 2026-10-19 (humano): los tres arreglos van en una sola rama `fix/portada-movil`, con un commit por arreglo y validación de QA + revisión + seguridad antes del PR.
 - 2026-10-19 (humano): el primer carrusel es «básico, de programador junior, con un scroll horrible y flechas arriba». Se rehace como **rail moderno**: flechas a los costados y centradas, avance de **una tarjeta**, scrollbar oculta, degradados de borde, barra de progreso y hover/foco cuidado; en móvil, swipe + degradado + progreso.
 
 ## Bitácora
 
+- 2026-10-19 — **PR #14 fusionado en `main`** (`a40338a`); rama remota borrada en GitHub. Tarea **cerrada**. Costo **$1.42** · 53,8 M tokens (cerrado). Siguiente en el roadmap: **F5**.
 - 2026-10-19 — **PR aprobado** por el humano («apruebo el PR»). Costo cerrado: **53,8 M tokens · $1,42**. Pendiente push del commit de cierre y merge; después se registra el merge aquí.
 - 2026-10-19 — **Rediseño del carrusel** aprobado: flechas laterales, avance de una tarjeta, progreso, máscaras y foco en el contenedor; B1/B2 cerrados. Pendiente commit del rediseño, push y PR.
 - 2026-10-19 — **Commits locales**: `8a0fc5e` (bug 3), `a430bbe` (bug 2), `d7256c5` (bug 1), `2cda2bf` (estado y validación), `5159176` (costos). Pendiente push y PR.
