@@ -484,11 +484,18 @@ html[data-nav-open='true'] {
  * «Lo que viene», Ministerios y Medios muestran 1 tarjeta en móvil, 2 en
  * tableta (≥ 768 px) y 3 en escritorio (≥ 1024 px). El desplazamiento es nativo
  * (swipe/trackpad) y con *scroll snap* al inicio de cada tarjeta; las flechas
- * de `CardCarousel` desplazan una página completa. `grid-auto-flow: column`
- * mantiene la fila de tarjetas sin partir el ancho del documento: el desborde
- * vive dentro del propio carrusel (`overflow-x: auto`), nunca en la página.
+ * de `CardCarousel` avanzan **una tarjeta**. `grid-auto-flow: column` mantiene
+ * la fila sin partir el ancho del documento: el desborde vive dentro del propio
+ * carrusel (`overflow-x: auto`), nunca en la página.
+ *
+ * Acabado de rail moderno: sin barra de scroll visible, degradados de borde
+ * (`mask-image`) que solo aparecen cuando queda contenido en ese lado
+ * (`data-at-start`/`data-at-end`) y borde de tarjeta que se ilumina al hover
+ * (sin elevarla: solo el título es enlace).
  */
 .public-carousel {
+  --carousel-edge-fade: 24px;
+
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 100%;
@@ -499,15 +506,86 @@ html[data-nav-open='true'] {
   scroll-behavior: smooth;
   /* Deja aire bajo las tarjetas para que la sombra no quede recortada. */
   padding-block-end: 0.25rem;
+
+  /* Barra de scroll fuera: el rail se lee como una superficie limpia. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.public-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Foco del rail:
+ *  · Fallback (navegadores sin `:has()`): el anillo va en la propia `<ul>`. La
+ *    máscara puede recortarlo en los bordes, pero el foco nunca se pierde.
+ *  · Con `:has()`: el anillo vive en el contenedor `.carousel-rail`, que no
+ *    tiene máscara, y se anula el de la `<ul>` para no pintar dos.
+ * El radio replica el `rounded-2xl` del track (1rem).
+ */
+.public-carousel:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@supports selector(:has(*)) {
+  .public-carousel:focus-visible {
+    outline: none;
+  }
+
+  .carousel-rail:has(> .public-carousel:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 1rem;
+  }
 }
 
 .public-carousel > * {
   min-width: 0;
   scroll-snap-align: start;
+  transition: border-color var(--motion-duration-micro) var(--motion-ease-standard);
+}
+
+/* Solo en dispositivos con hover real: en táctil el borde no se queda pegado. */
+@media (hover: hover) {
+  .public-carousel > *:hover {
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+}
+
+/* Degradados de borde: fundido del contenido que queda fuera del rail. */
+.public-carousel[data-at-start='false'] {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--carousel-edge-fade));
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--carousel-edge-fade));
+}
+
+.public-carousel[data-at-end='false'] {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 var(--carousel-edge-fade));
+  mask-image: linear-gradient(to left, transparent 0, #000 var(--carousel-edge-fade));
+}
+
+.public-carousel[data-at-start='false'][data-at-end='false'] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--carousel-edge-fade),
+    #000 calc(100% - var(--carousel-edge-fade)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--carousel-edge-fade),
+    #000 calc(100% - var(--carousel-edge-fade)),
+    transparent 100%
+  );
 }
 
 @media (min-width: 768px) {
   .public-carousel {
+    --carousel-edge-fade: 32px;
+
     grid-auto-columns: calc((100% - var(--space-block)) / 2);
   }
 }
