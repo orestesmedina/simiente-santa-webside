@@ -13,7 +13,7 @@ Lanza **en paralelo** (o en secuencia si tu herramienta no permite paralelo):
 
 Consolida los tres reportes en uno:
 - **Veredicto global:** APROBADO solo si los tres aprueban.
-- **Bloqueantes** (deben corregirse antes del merge), con archivo, línea y responsable (`dev-backend` o `dev-frontend`).
+- **Bloqueantes** (deben corregirse antes del merge), con archivo, línea y responsable (el `dev-*` de la parte donde está el archivo).
 - **Mejoras sugeridas** (no bloquean).
 
 Guarda el reporte en `specs/<feature>/revision-<fecha>.md`. No modifiques código en este flujo.

@@ -1,4 +1,4 @@
-# >>> bowser-spec-kit-ai (gestionado por make instalar-kit; no editar este bloque)
+# >>> bowser-spec-kit-ai (gestionado por make install-kit; no editar este bloque)
 # Secretos
 .env
 .env.*
@@ -7,32 +7,32 @@ secrets/
 *.pem
 *.key
 
-# Go
-backend/bin/
-backend/coverage.out
-*.test
-
-# Node / React
-frontend/node_modules/
-frontend/dist/
-frontend/coverage/
-frontend/playwright-report/
-frontend/test-results/
-
 # Sistema y editores
 .DS_Store
 .idea/
+.obsidian/
 .vscode/*
 !.vscode/extensions.json
 
 # Claude Code (configuración personal)
 .claude/settings.local.json
 
-# Python
+# Scripts del kit (Python)
 __pycache__/
 
-# Respaldos de make instalar-kit
+# Respaldos de make install-kit
 .kit-respaldo/
 # <<< bowser-spec-kit-ai
+
+# Estas líneas venían en el bloque del kit; desde ahora son del proyecto: edítalas o bórralas.
+backend/bin/
+backend/coverage.out
+*.test
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
 # Proyecto (fuera del bloque del kit)
 .obsidian/

@@ -2,15 +2,6 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
-      "Bash(go test:*)",
-      "Bash(go vet:*)",
-      "Bash(go build:*)",
-      "Bash(gofmt:*)",
-      "Bash(golangci-lint:*)",
-      "Bash(govulncheck:*)",
-      "Bash(npm run:*)",
-      "Bash(npm test:*)",
-      "Bash(npx playwright test:*)",
       "Bash(make:*)",
       "Bash(docker compose:*)",
       "Bash(git status:*)",
@@ -29,23 +20,10 @@
       "Bash(docker compose down -v:*)"
     ],
     "ask": [
-      "Bash(git push:*)",
-      "Bash(npm install:*)",
-      "Bash(go get:*)"
+      "Bash(git push:*)"
     ]
   },
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/equipo/adaptadores/claude/hooks/formatear.sh"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",

@@ -16,10 +16,15 @@ case "$FILE" in
     ;;
 esac
 
-# 2. La constitución solo la cambia un humano
+# 2. La constitución solo la cambia un humano: ni sus dos fuentes (principios y reglas del proyecto) ni el
+#    archivo que se genera con ellas
 case "$FILE" in
+  */equipo/principios.md|*/equipo/reglas.md)
+    echo "Bloqueado: la constitución (principios y reglas del proyecto) solo se modifica con aprobación de la dirección técnica. Propón el texto para que una persona lo aplique." >&2
+    exit 2
+    ;;
   */.specify/memory/constitution.md)
-    echo "Bloqueado: la constitución solo se modifica con aprobación de la dirección técnica." >&2
+    echo "Bloqueado: la constitución se genera con equipo/principios.md y equipo/reglas.md, que solo se modifican con aprobación de la dirección técnica." >&2
     exit 2
     ;;
 esac
@@ -37,18 +42,20 @@ if [ -f "$RAIZ/.kit-manifest.json" ] && jq -e --arg p "$REL" '.archivos | has($p
   exit 2
 fi
 
-# 4. Migraciones ya versionadas en git no se editan (se crea una nueva)
-if [[ "$FILE" == */backend/migrations/*.sql ]] && [ -f "$FILE" ]; then
-  if git -C "$RAIZ" ls-files --error-unmatch "$FILE" >/dev/null 2>&1; then
-    echo "Bloqueado: '$FILE' ya está versionada. Crea una migración nueva en lugar de editarla." >&2
+# 4. Los archivos que el perfil del proyecto declara inmutables (ej. migraciones) no se editan una vez
+#    versionados en git: se crea uno nuevo. Un archivo que todavía no existe no puede estar versionado.
+if [ -f "$FILE" ] && [ -f "$RAIZ/scripts/verbos.py" ] && command -v python3 >/dev/null 2>&1; then
+  MOTIVO=$(cd "$RAIZ" && python3 scripts/verbos.py --inmutable "$REL" 2>&1 >/dev/null)
+  if [ $? -eq 1 ] && [ -n "$MOTIVO" ]; then
+    echo "Bloqueado: $MOTIVO" >&2
     exit 2
   fi
 fi
 
-# 5. costos.json lo escribe solo `make costos` (los agentes no lo editan a mano)
+# 5. costos.json lo escribe solo `make costs` (los agentes no lo editan a mano)
 case "$REL" in
   specs/*costos.json)
-    echo "Bloqueado: '$REL' lo genera 'make costos'; no se edita a mano." >&2
+    echo "Bloqueado: '$REL' lo genera 'make costs'; no se edita a mano." >&2
     exit 2
     ;;
 esac

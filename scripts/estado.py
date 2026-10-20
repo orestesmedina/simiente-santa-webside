@@ -9,7 +9,7 @@ Lee (no modifica nada):
   git                               rama actual, último commit, cambios sin commit
 
 Uso (desde la raíz del proyecto):
-  python3 scripts/estado.py          resumen completo   (make estado)
+  python3 scripts/estado.py          resumen completo   (make status)
   python3 scripts/estado.py --todo   incluye también las funcionalidades terminadas del roadmap
 """
 from __future__ import annotations
@@ -269,7 +269,7 @@ def main() -> int:
                 c = json.loads(costos_json.read_text(encoding="utf-8"))
                 tot = c.get("totales") or {}
                 print(f"  Costo IA:      ${tot.get('costo', 0):,.2f} equivalente · {tot.get('tokens', 0) / 1e6:.1f} M tokens"
-                      f" ({c.get('estado', '?')}) · detalle: make costos")
+                      f" ({c.get('estado', '?')}) · detalle: make costs")
             except ValueError:
                 pass
         revisiones = sorted(carpeta_actual.glob("revision-*.md"))
@@ -361,7 +361,7 @@ def main() -> int:
         print("TRABAJO EN OTRAS RAMAS")
         print("\n".join(lineas_ramas))
         if rama in ("main", "master"):
-            print("  Para retomar: git checkout <rama> && make estado")
+            print("  Para retomar: git checkout <rama> && make status")
 
     if sucios:
         avisos.append(f"{len(sucios)} archivo(s) con cambios sin commit (git status).")

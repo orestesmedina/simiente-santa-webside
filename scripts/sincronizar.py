@@ -4,14 +4,19 @@
 Fuente única (lo que el equipo edita):
   AGENTS.md                 instrucciones del proyecto
   equipo/agentes/*.md       definición neutral de cada subagente
-  .agents/skills/           skills compartidas (estándar SKILL.md)
+  equipo/perfil.json        perfil del proyecto: de ahí salen la sección «Este proyecto» de cada rol y sus skills
+  equipo/comandos/*.md      comandos que la persona escribe dentro de la herramienta (/bowser-status)
+  .agents/skills/           skills compartidas (estándar SKILL.md); las de tecnología llegan del catálogo del kit
   equipo/config.json        herramientas activas y modelos (por nivel, por agente y del orquestador)
   equipo/adaptadores/       archivos propios de cada herramienta (ej. permisos y hooks de Claude Code)
+  equipo/principios.md      la parte de la constitución que es del kit (igual en todos los proyectos)
+  equipo/reglas.md          la parte de la constitución que es del proyecto
 
 Salida (generada, no editar a mano):
-  Claude Code  -> CLAUDE.md, .claude/agents/, .claude/skills/, .claude/settings.json
-  Codex        -> .codex/agents/*.toml         (lee AGENTS.md y .agents/skills/ directamente)
-  OpenCode     -> .opencode/agents/*.md, opencode.json (si hay modelo de orquestador o adaptador)
+  Claude Code  -> CLAUDE.md, .claude/agents/, .claude/skills/ (skills y comandos), .claude/settings.json
+  Codex        -> .codex/agents/*.toml, .agents/skills/bowser-*/ (comandos; lee AGENTS.md y .agents/skills/ directamente)
+  OpenCode     -> .opencode/agents/*.md, .opencode/commands/*.md, opencode.json (si hay modelo de orquestador o adaptador)
+  Spec Kit     -> .specify/memory/constitution.md (los principios y, debajo, las reglas del proyecto)
 
 Uso:
   python3 scripts/sincronizar.py              genera los archivos
@@ -23,21 +28,41 @@ Solo usa la biblioteca estándar de Python 3.9+.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import perfil as perfil_proyecto
+
 RAIZ = Path(__file__).resolve().parent.parent
-AVISO = "GENERADO por scripts/sincronizar.py desde {fuente}. No editar: cambia la fuente y ejecuta `make sincronizar`."
+AVISO = "GENERADO por scripts/sincronizar.py desde {fuente}. No editar: cambia la fuente y ejecuta `make sync`."
+
+# Prefijo de los comandos dentro de la herramienta (/bowser-status). Si el kit cambia de nombre, se cambia solo aquí.
+PREFIJO_COMANDOS = "bowser-"
+# Codex solo lee skills de .agents/skills/, que es una carpeta de fuentes: sus comandos se generan ahí,
+# en carpetas con el prefijo. scripts/instalar_kit.py no las copia a los proyectos (se generan en cada uno).
+COMANDOS_CODEX = f".agents/skills/{PREFIJO_COMANDOS}"
 
 # Carpetas y archivos que este script controla por completo, por herramienta.
+# "dirs" admite comodines (*) en el último tramo.
 GESTIONADOS = {
     "claude": {"dirs": [".claude/agents", ".claude/skills"], "files": ["CLAUDE.md", ".claude/settings.json"]},
-    "codex": {"dirs": [".codex/agents"], "files": []},
-    "opencode": {"dirs": [".opencode/agents"], "files": ["opencode.json"]},
+    "codex": {"dirs": [".codex/agents", COMANDOS_CODEX + "*"], "files": []},
+    "opencode": {"dirs": [".opencode/agents", ".opencode/commands"], "files": ["opencode.json"]},
 }
-PREFIJOS = {"claude": (".claude", "CLAUDE"), "codex": (".codex",), "opencode": (".opencode", "opencode.json")}
+# Spec Kit deja sus comandos dentro de carpetas que este script controla (.claude/skills/speckit-*/ y
+# .opencode/commands/speckit.*.md; verificado con specify 1.0.12, 2026-10-09). Lo que empieza así no es del kit:
+# no se borra, no se copia de una herramienta a otra y no cuenta al verificar.
+DE_SPEC_KIT = "speckit"
+PREFIJOS = {"claude": (".claude", "CLAUDE"), "codex": (".codex", COMANDOS_CODEX), "opencode": (".opencode", "opencode.json")}
+
+# La constitución que leen Spec Kit y los agentes se genera con dos fuentes: los principios, que son del kit, y las
+# reglas, que son del proyecto. No depende de la herramienta: se genera siempre.
+PRINCIPIOS = "equipo/principios.md"
+REGLAS = "equipo/reglas.md"
+CONSTITUCION = ".specify/memory/constitution.md"
 
 ACCESOS = {"lectura", "documentos", "completo"}
 NIVELES = {"alto", "medio", "bajo"}
@@ -77,8 +102,15 @@ def leer_agente(ruta: Path) -> dict:
             raise ValueError(f"{ruta_txt}: temperatura debe estar entre 0 y 2")
 
     datos["web"] = datos.get("web", "no") == "si"
-    datos["skills"] = [s.strip() for s in datos.get("skills", "").split(",") if s.strip()]
+    # Skills fijas del rol, para los roles propios de un proyecto. Las de tecnología no van aquí: las asigna el
+    # perfil a cada parte (aplicar_perfil). Solo cuentan las que el proyecto tiene.
+    datos["skills"] = [s.strip() for s in datos.get("skills", "").split(",")
+                       if s.strip() and (RAIZ / ".agents/skills" / s.strip() / "SKILL.md").exists()]
     datos["fuente"] = ruta.relative_to(RAIZ).as_posix()
+    datos["proyecto"] = datos.get("proyecto", "")
+    if datos["proyecto"] not in VISTAS_DEL_PROYECTO:
+        raise ValueError(f"{ruta_txt}: proyecto debe ser 'partes' (trabaja las partes que el perfil le asigna), "
+                         "'mapa' (ve todas las partes) o no estar")
 
     instrucciones = cuerpo.strip()
     if datos["skills"]:
@@ -86,6 +118,170 @@ def leer_agente(ruta: Path) -> dict:
         instrucciones += f"\n\n## Skills que debes aplicar\n{lista} (en `.agents/skills/`)."
     datos["instrucciones"] = instrucciones
     return datos
+
+
+# ---------------------------------------------------------------- el proyecto, según su perfil
+
+VISTAS_DEL_PROYECTO = {"", "partes", "mapa"}
+
+
+def leer_perfil() -> tuple[dict | None, list[str]]:
+    """(perfil, errores). Sin perfil o con errores, el perfil es None."""
+    try:
+        perfil = perfil_proyecto.cargar(RAIZ)
+    except perfil_proyecto.ErrorPerfil as e:
+        return None, [str(e)]
+    if perfil is None:
+        return None, []
+    errores, _ = perfil_proyecto.validar(perfil, RAIZ)
+    return (None, [f"{perfil_proyecto.RUTA}: {e}" for e in errores]) if errores else (perfil, [])
+
+
+def instaladas(skills: list[str]) -> list[str]:
+    """De esas skills, las que el proyecto tiene: el perfil puede nombrar una que todavía no existe.
+    Primero el estándar y después las convenciones del proyecto."""
+    hay = [s for s in dict.fromkeys(skills) if (RAIZ / ".agents/skills" / s / "SKILL.md").exists()]
+    return sorted(hay, key=lambda s: s.startswith(perfil_proyecto.CONVENCIONES))
+
+
+def en_codigo(valores: list[str]) -> str:
+    return ", ".join(f"`{v}`" for v in valores)
+
+
+def dentro_de(parte: dict, rutas: list[str]) -> list[str]:
+    """Rutas de la parte, vistas desde la raíz del proyecto."""
+    carpeta = parte["carpeta"].replace("\\", "/").strip("/")
+    return [r if carpeta in ("", ".") else f"{carpeta}/{r}" for r in rutas]
+
+
+def aplicar_perfil(agente: dict, perfil: dict | None, con_errores: bool) -> None:
+    """Agrega a las instrucciones del rol la sección «Este proyecto» y le da las skills de sus partes.
+
+    Un rol con `proyecto: partes` ve las partes que el perfil le asigna; uno con `proyecto: mapa`, todas.
+    Así el rol no nombra carpetas, tecnologías ni comandos: salen del perfil al generar.
+    """
+    asignado = any(agente["nombre"] == r["rol"] for p in (perfil or {}).get("partes", []) for r in perfil_proyecto.roles_de(p))
+    if not agente["proyecto"] and not asignado:
+        return
+    lineas = ["## Este proyecto"]
+    if perfil is None:
+        if con_errores:
+            lineas.append(f"El perfil del proyecto (`{perfil_proyecto.RUTA}`) tiene errores y no se pudo leer. "
+                          "No supongas carpetas, tecnologías ni comandos: avisa al orquestador antes de trabajar.")
+        else:
+            lineas.append(f"El proyecto todavía no tiene perfil (`{perfil_proyecto.RUTA}`): no se sabe qué partes "
+                          "tiene, con qué tecnología ni cómo se prueba. No supongas carpetas, tecnologías ni comandos: "
+                          "avisa al orquestador antes de trabajar. El perfil se crea con el comando `bowser-profile`.")
+        agente["instrucciones"] += "\n\n" + "\n".join(lineas)
+        return
+
+    origen = f"Sale del perfil del proyecto (`{perfil_proyecto.RUTA}`), que no editas tú."
+    propias: list[str] = []
+    ajenas: list[str] = []
+    detalle: list[str] = []
+    for parte in perfil["partes"]:
+        roles = perfil_proyecto.roles_de(parte)
+        mio = next((r for r in roles if r["rol"] == agente["nombre"]), None)
+        otros = [r["rol"] for r in roles if r["rol"] != agente["nombre"]]
+        if mio is None and agente["proyecto"] != "mapa":
+            quien = f", de {en_codigo(otros)}" if otros else ""
+            ajenas.append(f"`{parte['nombre']}` (`{parte['carpeta']}`{quien})")
+            continue
+
+        titulo = f"- **{parte['nombre']}**, en `{parte['carpeta']}`"
+        if mio is not None and agente["proyecto"] == "mapa":
+            titulo += " (la trabajas tú)"
+        detalle.append(titulo + (f": {parte['descripcion']}" if parte.get("descripcion") else "."))
+        if mio is not None:
+            skills = instaladas(mio["skills"])
+            propias += skills
+            if skills:
+                detalle.append(f"  - Skills que debes aplicar: {en_codigo(skills)} (en `.agents/skills/`).")
+            if otros:
+                detalle.append(f"  - También la trabajan: {en_codigo(otros)}.")
+        else:
+            if roles:
+                detalle.append(f"  - La trabajan: {en_codigo([r['rol'] for r in roles])}.")
+            skills = instaladas([s for r in roles for s in r["skills"]] + parte.get("skills", []))
+            if skills:
+                detalle.append(f"  - Sus convenciones están en las skills {en_codigo(skills)} (en `.agents/skills/`).")
+
+        definidos, faltan = [], []
+        for verbos, orden in perfil_proyecto.MAKE_DE_VERBOS:
+            con_comando = [v for v in verbos if perfil_proyecto.comando_de(parte, v)]
+            if con_comando:
+                definidos.append(f"make {orden} PART={parte['nombre']}")
+            faltan += [v for v in verbos if v not in con_comando]
+        if definidos:
+            detalle.append(f"  - Comandos: {en_codigo(definidos)}.")
+        if faltan:
+            detalle.append(f"  - El proyecto todavía no tiene cómo: {', '.join(faltan)}. No inventes un comando: dilo en tu entrega.")
+        if parte.get("terceros"):
+            detalle.append(f"  - Código de terceros, que no se toca: {en_codigo(dentro_de(parte, parte['terceros']))}.")
+        if parte.get("inmutables"):
+            detalle.append("  - No se modifican una vez versionados (se crea un archivo nuevo): "
+                           f"{en_codigo(dentro_de(parte, parte['inmutables']))}.")
+
+    if agente["proyecto"] == "mapa":
+        lineas.append(f"{origen} Sus partes:")
+        lineas += ["", *detalle]
+    elif detalle:
+        lineas.append(f"{origen} Tus partes:")
+        lineas += ["", *detalle]
+        if ajenas:
+            lineas += ["", f"Las demás partes no son tuyas: {', '.join(ajenas)}."]
+    else:
+        lineas.append(f"{origen} Hoy no te asigna ninguna parte. Si te delegan una tarea, no supongas carpetas ni "
+                      "tecnologías: avisa al orquestador.")
+    agente["skills"] = list(dict.fromkeys(agente["skills"] + propias))
+    agente["instrucciones"] += "\n\n" + "\n".join(lineas)
+
+
+NOMBRE_COMANDO = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+
+
+def leer_comando(ruta: Path) -> dict:
+    """Un comando de equipo/comandos/: metadatos (nombre, descripcion, argumentos opcional) e instrucciones."""
+    texto = ruta.read_text(encoding="utf-8")
+    ruta_txt = ruta.relative_to(RAIZ).as_posix()
+    if not texto.startswith("---\n"):
+        raise ValueError(f"{ruta_txt}: falta el bloque de metadatos (---)")
+    _, cabecera, cuerpo = texto.split("---\n", 2)
+    datos = {}
+    for linea in cabecera.strip().splitlines():
+        clave, _, valor = linea.partition(":")
+        datos[clave.strip()] = valor.strip()
+
+    for campo in ("nombre", "descripcion"):
+        if not datos.get(campo):
+            raise ValueError(f"{ruta_txt}: falta el campo '{campo}'")
+    if datos["nombre"] != ruta.stem:
+        raise ValueError(f"{ruta_txt}: 'nombre' debe coincidir con el nombre del archivo")
+    if not NOMBRE_COMANDO.fullmatch(datos["nombre"]):
+        raise ValueError(f"{ruta_txt}: 'nombre' solo admite minúsculas, números y guiones (ej. update-kit)")
+    if not cuerpo.strip():
+        raise ValueError(f"{ruta_txt}: el comando no tiene instrucciones")
+    if "$ARGUMENTS" in cuerpo:
+        raise ValueError(f"{ruta_txt}: no escribas $ARGUMENTS; declara 'argumentos' y el generador lo agrega "
+                         "en las herramientas que lo admiten")
+    return {
+        "corto": datos["nombre"],
+        "nombre": PREFIJO_COMANDOS + datos["nombre"],
+        "descripcion": datos["descripcion"],
+        "argumentos": datos.get("argumentos", ""),
+        "instrucciones": cuerpo.strip(),
+        "fuente": ruta_txt,
+    }
+
+
+def cuerpo_comando(c: dict, herramienta: str) -> str:
+    """Instrucciones del comando con el aviso de generado y, si los declara, sus argumentos."""
+    texto = f"<!-- {AVISO.format(fuente=c['fuente'])} -->\n\n{c['instrucciones']}\n"
+    if not c["argumentos"]:
+        return texto
+    if herramienta == "codex":      # Codex no sustituye marcadores: los argumentos se leen de la conversación.
+        return texto + f"\nSi la persona escribió algo junto a `${c['nombre']}`, esos son los argumentos: {c['argumentos']}.\n"
+    return texto + f"\nArgumentos que escribió la persona junto al comando ({c['argumentos']}; puede venir vacío): $ARGUMENTS\n"
 
 
 def config_modelos(config: dict, herramienta: str) -> dict:
@@ -178,13 +374,27 @@ def json_bytes(datos: dict) -> bytes:
 
 # ---------------------------------------------------------------- generadores
 
+def es_generada(constitucion: str) -> bool:
+    """True si ese texto de la constitución lo escribió este script (y no una persona ni Spec Kit)."""
+    return constitucion.startswith("<!-- GENERADO")
+
+
+def generar_constitucion() -> dict[str, bytes]:
+    """Los principios del kit y, debajo, las reglas del proyecto. Sin principios no se genera nada."""
+    if not (RAIZ / PRINCIPIOS).exists():
+        return {}
+    partes = [(RAIZ / f).read_text(encoding="utf-8").strip() for f in (PRINCIPIOS, REGLAS) if (RAIZ / f).exists()]
+    aviso = AVISO.format(fuente=f"{PRINCIPIOS} y {REGLAS}")
+    return {CONSTITUCION: (f"<!-- {aviso} -->\n" + "\n\n".join(partes) + "\n").encode()}
+
+
 def es_repositorio_del_kit() -> bool:
     """True en el repositorio del kit (tiene el instalador y MANTENER-KIT.md, y no es un proyecto con el kit instalado)."""
     return ((RAIZ / "scripts/instalar_kit.py").exists() and (RAIZ / "MANTENER-KIT.md").exists()
             and not (RAIZ / ".kit-manifest.json").exists())
 
 
-def generar_claude(agentes: list[dict], config: dict) -> dict[str, bytes]:
+def generar_claude(agentes: list[dict], comandos: list[dict], config: dict) -> dict[str, bytes]:
     salida: dict[str, bytes] = {}
     modelos = config_modelos(config, "claude")
 
@@ -224,12 +434,21 @@ def generar_claude(agentes: list[dict], config: dict) -> dict[str, bytes]:
         texto = "\n".join(cab) + f"\n<!-- {AVISO.format(fuente=a['fuente'])} -->\n\n{a['instrucciones']}\n"
         salida[f".claude/agents/{a['nombre']}.md"] = texto.encode()
 
-    # Skills: copia de .agents/skills para Claude Code.
+    # Skills: copia de .agents/skills para Claude Code (sin los comandos generados ahí para Codex).
     origen = RAIZ / ".agents/skills"
     for archivo in sorted(origen.rglob("*")):
         if archivo.is_file():
             rel = archivo.relative_to(origen).as_posix()
-            salida[f".claude/skills/{rel}"] = archivo.read_bytes()
+            if not rel.startswith((PREFIJO_COMANDOS, DE_SPEC_KIT)):
+                salida[f".claude/skills/{rel}"] = archivo.read_bytes()
+
+    # Comandos: skills que solo se cargan cuando la persona las escribe (su descripción no ocupa contexto).
+    for c in comandos:
+        cab = ["---", f"name: {c['nombre']}", f"description: {yaml_texto(c['descripcion'])}", "disable-model-invocation: true"]
+        if c["argumentos"]:
+            cab.append(f"argument-hint: {yaml_texto(c['argumentos'])}")
+        cab.append("---")
+        salida[f".claude/skills/{c['nombre']}/SKILL.md"] = ("\n".join(cab) + "\n" + cuerpo_comando(c, "claude")).encode()
 
     ajustes_ruta = RAIZ / "equipo/adaptadores/claude/settings.json"
     ajustes = json.loads(ajustes_ruta.read_text(encoding="utf-8")) if ajustes_ruta.exists() else {}
@@ -240,7 +459,7 @@ def generar_claude(agentes: list[dict], config: dict) -> dict[str, bytes]:
     return salida
 
 
-def generar_codex(agentes: list[dict], config: dict) -> dict[str, bytes]:
+def generar_codex(agentes: list[dict], comandos: list[dict], config: dict) -> dict[str, bytes]:
     salida: dict[str, bytes] = {}
     modelos = config_modelos(config, "codex")
     esfuerzo = config.get("esfuerzo_codex", {})
@@ -260,10 +479,18 @@ def generar_codex(agentes: list[dict], config: dict) -> dict[str, bytes]:
         lineas.append("")
         lineas.append(f"developer_instructions = {toml_texto_multilinea(a['instrucciones'])}")
         salida[f".codex/agents/{a['nombre']}.toml"] = ("\n".join(lineas) + "\n").encode()
+
+    # Comandos: skills que se invocan con $nombre y que Codex no carga por su cuenta.
+    for c in comandos:
+        carpeta = COMANDOS_CODEX + c["corto"]
+        cab = ["---", f"name: {c['nombre']}", f"description: {yaml_texto(c['descripcion'])}", "---"]
+        salida[f"{carpeta}/SKILL.md"] = ("\n".join(cab) + "\n" + cuerpo_comando(c, "codex")).encode()
+        salida[f"{carpeta}/agents/openai.yaml"] = (
+            f"# {AVISO.format(fuente=c['fuente'])}\npolicy:\n  allow_implicit_invocation: false\n").encode()
     return salida
 
 
-def generar_opencode(agentes: list[dict], config: dict) -> dict[str, bytes]:
+def generar_opencode(agentes: list[dict], comandos: list[dict], config: dict) -> dict[str, bytes]:
     salida: dict[str, bytes] = {}
     modelos = config_modelos(config, "opencode")
     temp_cfg = config_temperatura(config, "opencode")
@@ -295,6 +522,10 @@ def generar_opencode(agentes: list[dict], config: dict) -> dict[str, bytes]:
         cuerpo = (RAIZ / principal["fuente"]).read_text(encoding="utf-8").strip()
         texto = "\n".join(cab) + f"\n<!-- {AVISO.format(fuente=principal['fuente'])} -->\n\n{cuerpo}\n"
         salida[f".opencode/agents/{principal['nombre']}.md"] = texto.encode()
+
+    for c in comandos:
+        cab = ["---", f"description: {yaml_texto(c['descripcion'])}", "---"]
+        salida[f".opencode/commands/{c['nombre']}.md"] = ("\n".join(cab) + "\n" + cuerpo_comando(c, "opencode")).encode()
 
     # opencode.json: modelos y agentes integrados ocultos, sobre la base del adaptador si existe.
     base_ruta = RAIZ / "equipo/adaptadores/opencode/opencode.json"
@@ -385,19 +616,30 @@ def informe_modelos(agentes: list[dict], config: dict, activas: list[str]) -> in
 
 # ---------------------------------------------------------------- escritura / verificación
 
+def carpetas_gestionadas(g: dict) -> list[Path]:
+    """Las carpetas de una herramienta que existen ahora, con los comodines resueltos."""
+    return [c for d in g["dirs"] for c in sorted(RAIZ.glob(d)) if c.is_dir()]
+
+
+def propios(base: Path) -> list[Path]:
+    """Lo que hay en una carpeta gestionada, sin lo que dejó Spec Kit."""
+    return [f for f in sorted(base.iterdir()) if not f.name.startswith(DE_SPEC_KIT)]
+
+
 def archivos_actuales() -> dict[str, bytes]:
     actuales: dict[str, bytes] = {}
     for g in GESTIONADOS.values():
-        for d in g["dirs"]:
-            base = RAIZ / d
-            if base.exists():
-                for f in base.rglob("*"):
+        for base in carpetas_gestionadas(g):
+            for propio in propios(base):
+                for f in [propio, *propio.rglob("*")]:
                     if f.is_file():
                         actuales[f.relative_to(RAIZ).as_posix()] = f.read_bytes()
         for f in g["files"]:
             p = RAIZ / f
             if p.exists():
                 actuales[f] = p.read_bytes()
+    if (RAIZ / PRINCIPIOS).exists() and (RAIZ / CONSTITUCION).exists():
+        actuales[CONSTITUCION] = (RAIZ / CONSTITUCION).read_bytes()
     return actuales
 
 
@@ -412,6 +654,7 @@ def main() -> int:
 
     try:
         agentes = [leer_agente(p) for p in sorted((RAIZ / "equipo/agentes").glob("*.md"))]
+        comandos = [leer_comando(p) for p in sorted((RAIZ / "equipo/comandos").glob("*.md"))]
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
@@ -420,6 +663,15 @@ def main() -> int:
         for e in errores:
             print(f"Error: {e}", file=sys.stderr)
         return 1
+
+    perfil, errores = leer_perfil()
+    for e in errores:
+        print(f"Aviso: {e}", file=sys.stderr)
+    if errores:
+        print("Aviso: con el perfil así, los roles se generan sin los datos del proyecto. Corrígelo (make profile) "
+              "y ejecuta `make sync`.", file=sys.stderr)
+    for a in agentes:
+        aplicar_perfil(a, perfil, bool(errores))
 
     if "--modelos" in args:
         return informe_modelos(agentes, config, activas)
@@ -437,9 +689,9 @@ def main() -> int:
             print("Aviso: opencode.json existente movido a equipo/adaptadores/opencode/opencode.json "
                   "(edítalo ahí; los modelos se toman de equipo/config.json).")
 
-    esperado: dict[str, bytes] = {}
+    esperado: dict[str, bytes] = generar_constitucion()
     for h in activas:
-        esperado.update(GENERADORES[h](agentes, config))
+        esperado.update(GENERADORES[h](agentes, comandos, config))
 
     if "--verificar" in args:
         actuales = archivos_actuales()
@@ -450,15 +702,21 @@ def main() -> int:
             for titulo, lista in (("Faltan", faltan), ("Sobran", sobran), ("Desactualizados", distintos)):
                 for k in lista:
                     print(f"  {titulo}: {k}", file=sys.stderr)
-            print("Los archivos generados no están al día. Ejecuta `make sincronizar`.", file=sys.stderr)
+            print("Los archivos generados no están al día. Ejecuta `make sync`.", file=sys.stderr)
             return 1
         print(f"OK: {len(esperado)} archivos generados al día ({', '.join(activas)}).")
         return 0
 
     # Limpia todo lo gestionado (también de herramientas desactivadas) y vuelve a escribir.
     for g in GESTIONADOS.values():
-        for d in g["dirs"]:
-            shutil.rmtree(RAIZ / d, ignore_errors=True)
+        for d in carpetas_gestionadas(g):
+            for f in propios(d):
+                if f.is_dir():
+                    shutil.rmtree(f, ignore_errors=True)
+                else:
+                    f.unlink(missing_ok=True)
+            if not any(d.iterdir()):
+                d.rmdir()
         for f in g["files"]:
             (RAIZ / f).unlink(missing_ok=True)
     for rel, contenido in esperado.items():
@@ -470,7 +728,7 @@ def main() -> int:
     for h in activas:
         n = sum(1 for k in esperado if k.startswith(PREFIJOS[h]))
         print(f"  {h}: {n} archivos")
-    print("Revisa qué modelo usa cada agente con: make modelos")
+    print("Revisa qué modelo usa cada agente con: make models")
     return 0
 
 

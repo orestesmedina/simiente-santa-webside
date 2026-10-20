@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Aplica al proyecto los modelos recomendados por la versión del kit instalada en el submódulo.
 
-equipo/config.json es del proyecto (semilla) y no cambia con `make actualizar-kit`. Este script
+equipo/config.json es del proyecto (semilla) y no cambia con `make update-kit`. Este script
 copia SOLO la asignación de modelos del config.json del kit al del proyecto:
     modelos.<herramienta>.orquestador, .ligero, .niveles, .agentes
 Todo lo demás (herramientas activas, agente_principal, temperatura, kit.excluir, esfuerzo_codex…)
@@ -70,7 +70,7 @@ def main() -> int:
         print(f"No encuentro el kit en {kit.relative_to(RAIZ)}/ (¿submódulo sin inicializar? git submodule update --init).", file=sys.stderr)
         return 1
     if not CONFIG_PROYECTO.exists():
-        print("No existe equipo/config.json en el proyecto. Ejecuta: make instalar-kit", file=sys.stderr)
+        print("No existe equipo/config.json en el proyecto. Ejecuta: make install-kit", file=sys.stderr)
         return 1
 
     cfg_kit = json.loads(config_kit.read_text(encoding="utf-8"))
@@ -81,7 +81,7 @@ def main() -> int:
         if cambios:
             n = sum(len(v) for v in cambios.values())
             print(f"Aviso: el kit recomienda modelos distintos a los de este proyecto ({n} diferencias). "
-                  "Revísalos con: make actualizar-modelos")
+                  "Revísalos con: make update-models")
         return 0
 
     if not cambios:

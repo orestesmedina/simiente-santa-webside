@@ -6,11 +6,11 @@ description: Flujo para corregir un bug con diagnóstico de causa raíz, prueba 
 
 El bug es el que describió el usuario en su mensaje.
 
-**Estado:** si el arreglo no se termina en la misma sesión, crea `specs/bugs/<AAAA-MM-DD>-<nombre>/estado.md` desde `docs/plantillas/estado.md` (Flujo `equipo-bug`, Rama la del arreglo, Fase con el paso de esta lista) y mantenlo como en `equipo-feature`, incluido `make costos` (se registra en la carpeta de ese `estado.md`). Si el bug es de una funcionalidad en curso, anótalo en el `estado.md` de esa funcionalidad.
+**Estado:** si el arreglo no se termina en la misma sesión, crea `specs/bugs/<AAAA-MM-DD>-<nombre>/estado.md` desde `docs/plantillas/estado.md` (Flujo `equipo-bug`, Rama la del arreglo, Fase con el paso de esta lista) y mantenlo como en `equipo-feature`, incluido `make costs` (se registra en la carpeta de ese `estado.md`). Si el bug es de una funcionalidad en curso, anótalo en el `estado.md` de esa funcionalidad.
 
 1. **Diagnóstico:** investiga la causa raíz leyendo el código y los logs. Explica la causa antes de tocar nada.
 2. **Reproducción:** pide a `qa-tester` una prueba automatizada que falle por este bug.
-3. **Arreglo:** delega en `dev-backend` o `dev-frontend` según la capa. Cambio mínimo que haga pasar la prueba sin romper otras.
+3. **Arreglo:** delega en el rol que el perfil asigna a la parte afectada (`dev-backend`, `dev-frontend` o `dev-dba`; `make profile`). Cambio mínimo que haga pasar la prueba sin romper otras.
 4. **Validación:** aplica la skill `equipo-revision` sobre el cambio.
 5. **Registro:** `documentador` agrega la entrada en CHANGELOG (sección Corregido).
 
