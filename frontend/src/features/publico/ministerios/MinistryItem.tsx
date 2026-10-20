@@ -35,7 +35,7 @@ export function MinistryItem({ item }: MinistryItemProps) {
           {badge}
         </span>
 
-        <h3 className="font-sans text-[1.0625rem] font-semibold leading-snug text-ink">
+        <h3 className="font-sans text-lg font-semibold leading-snug text-ink">
           {/* El enlace es el **único** elemento clicable de la tarjeta y cumple el
               objetivo táctil ≥ 44 px (FR-023): la caja es un `flex` de 44 px con
               el título —recortado a 2 líneas— centrado dentro. */}

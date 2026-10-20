@@ -1,0 +1,65 @@
+# Estado: 2026-10-19-portada-movil
+
+<!-- Bugs: portada con tarjetas demasiado pequeñas, pantalla en blanco al navegar en móvil y menú hamburguesa transparente que no cierra al tocar fuera. -->
+
+## Resumen
+
+| Campo | Valor |
+|---|---|
+| Rama | fix/portada-movil |
+| Flujo | equipo-bug |
+| Fase | 4/4 · PR aprobado · pendiente merge |
+| Ciclo de corrección | 1/3 (iteración de diseño pedida por el humano) |
+| Próximo paso | Push del commit de cierre y merge del PR; después, registrar el merge en este estado |
+| Bloqueado por | — |
+| Actualizado | 2026-10-19 |
+
+## Aprobaciones
+
+| Puerta | Estado | Quién | Fecha | Frase |
+|---|---|---|---|---|
+| Spec | n/a (bug) | | | |
+| Plan | n/a (bug) | | | |
+| PR / merge | aprobado · pendiente de merge | humano (cliente) | 2026-10-19 | «apruebo el PR» |
+| Despliegue | pendiente | | | |
+
+## Hallazgos abiertos
+
+- (ninguno) — los tres reportes se corrigieron y las validaciones de QA, revisión de código y seguridad aprueban (ver `revision-2026-10-19.md`).
+
+## Diagnóstico (causa raíz)
+
+- **Bug 1:** `GRID = '... lg:grid-cols-5'` en `ProximamenteBlock`, `MinisteriosBlock`, `MediosBlock` y `OfrendasBlock`. Con `max-w-6xl` y el padding de `Card`, a 1024–1440 px cada columna mide ~160–170 px.
+- **Bug 2:** `REVEAL_THRESHOLD = 0.15` en `useReveal.ts`. `MediosGrid` envuelve **toda** la lista (12 fichas) en un único `Reveal`; en 390×664 el bloque mide 5.234 px y la intersección máxima posible es ~11 %, por debajo del umbral. El observador reporta «no intersecta», cancela el salvavidas y el bloque queda en `opacity: 0` de forma permanente.
+- **Bug 3:** la cabecera con `data-scrolled='true'` aplica `backdrop-filter: blur(12px)`. Ese filtro crea un *containing block* para descendientes `fixed`: el scrim `inset: 0` se resuelve contra la cabecera (390×68 px) y no contra el viewport (390×844 px). Además `.public-nav-list[data-open]` usa `background: var(--surface-raised)` = `rgba(255 255 255 / 0.08)`.
+
+## Validación (2026-10-19)
+
+Reporte consolidado: `revision-2026-10-19.md`.
+
+- **QA (APRUEBA):** 958 pruebas unitarias, typecheck y lint limpios; `qa-portada-movil` 2/2; 40 e2e relacionados en verde. Breakpoints medidos: 1/2/3 tarjetas a 390/768/1280; Ofrendas 471×288 px (1,64:1) a 1280 y todas visibles; `pageOverflowX = 0`. Único fallo intermitente: `movimiento.spec.ts:167`, preexistente y no atribuible.
+- **Revisión de código (APRUEBA):** sin bloqueantes; semántica del umbral y apilamiento del portal verificados en Chromium real. Tres hallazgos importantes resueltos (JSDoc del e2e de Medios, nota de fragilidad del panel y este estado).
+- **Seguridad (APRUEBA):** sin secretos, HTML crudo, URLs no confiables ni dependencias nuevas; `npm audit` con 0 vulnerabilidades.
+
+### 2.ª iteración · rediseño del carrusel (2026-10-19)
+
+El humano rechazó la primera versión del carrusel («básico, de programador junior, scroll horrible, flechas arriba»). Se rehízo como rail moderno: flechas laterales superpuestas y centradas, avance de **una tarjeta**, barra de scroll oculta, degradados de borde condicionados, barra de progreso, hover/foco cuidado y swipe en móvil. La prueba de avance se corrigió para no ser tautológica (68 px de tarjeta+gap frente a 120 px de página) y el anillo de foco se movió a `.carousel-rail` para que la máscara no lo recorte, con fallback sin `:has`.
+
+- **QA (APRUEBA):** 960 unitarias, typecheck/lint, 14/14 e2e de los bloques y `portada-accesibilidad` 1/1 (ciclo de 35 pasos); avance real medido ≈ tarjeta+gap; progreso oculto sin desborde y coherente con desborde; sin scroll horizontal.
+- **Revisión de código (APRUEBA):** B1 (prueba tautológica) y B2 (e2e de accesibilidad por el anillo movido) cerrados; fallback de `:has`; sin bloqueantes.
+- **Seguridad (APRUEBA):** sin vectores nuevos; `npm audit` 0.
+
+## Decisiones y aclaraciones
+
+- 2026-10-19 (humano): **aprueba el PR** («apruebo el PR»); el merge lo hará el humano. El costo de la tarea queda cerrado antes del merge.
+- 2026-10-19 (humano): «Lo que viene», Ministerios y Medios pasan a **carrusel** con animación: **1 tarjeta en móvil y 3 en escritorio**. Ofrendas **no** lleva carrusel: todas las cuentas siempre visibles, en tarjetas rectangulares tipo *credit card*.
+- 2026-10-19 (humano): los tres arreglos van en una sola rama `fix/portada-movil`, con un commit por arreglo y validación de QA + revisión + seguridad antes del PR.
+- 2026-10-19 (humano): el primer carrusel es «básico, de programador junior, con un scroll horrible y flechas arriba». Se rehace como **rail moderno**: flechas a los costados y centradas, avance de **una tarjeta**, scrollbar oculta, degradados de borde, barra de progreso y hover/foco cuidado; en móvil, swipe + degradado + progreso.
+
+## Bitácora
+
+- 2026-10-19 — **PR aprobado** por el humano («apruebo el PR»). Costo cerrado: **53,8 M tokens · $1,42**. Pendiente push del commit de cierre y merge; después se registra el merge aquí.
+- 2026-10-19 — **Rediseño del carrusel** aprobado: flechas laterales, avance de una tarjeta, progreso, máscaras y foco en el contenedor; B1/B2 cerrados. Pendiente commit del rediseño, push y PR.
+- 2026-10-19 — **Commits locales**: `8a0fc5e` (bug 3), `a430bbe` (bug 2), `d7256c5` (bug 1), `2cda2bf` (estado y validación), `5159176` (costos). Pendiente push y PR.
+- 2026-10-19 — **Implementado y validado**: umbral 0 (bug 2), scrim en portal + panel opaco (bug 3), carrusel 1/2/3 para «Lo que viene», Ministerios y Medios y Ofrendas rectangulares a 2 columnas (bug 1). QA, revisión y seguridad **aprueban**. Pendiente commit y PR.
+- 2026-10-19 — Diagnóstico cerrado con reproducción real (iPhone 13 emulado): scrim de 390×68, panel `rgba(255,255,255,0.08)` y bloque de 5.234 px que nunca se revela. Rama `fix/portada-movil` creada.

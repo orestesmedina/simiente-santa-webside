@@ -261,7 +261,7 @@ test.describe('Bloque «Lo que viene» de la portada (US7)', () => {
     await page.locator('header').getByRole('radio', { name: 'Spanish' }).check();
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
 
-    // ── 320 px: columna apilada y sin desplazamiento horizontal (SC-007) ────
+    // ── 320 px: carrusel de una tarjeta por página, sin scroll lateral (SC-007) ─
     await page.setViewportSize({ width: 320, height: 900 });
     await page.reload();
     await expect(block(page).getByRole('listitem')).toHaveCount(2);
@@ -270,11 +270,25 @@ test.describe('Bloque «Lo que viene» de la portada (US7)', () => {
     const cajaSegunda = await segunda.boundingBox();
     expect(cajaPrimera).not.toBeNull();
     expect(cajaSegunda).not.toBeNull();
-    expect(Math.round(cajaSegunda!.y)).toBeGreaterThan(
-      Math.round(cajaPrimera!.y + cajaPrimera!.height),
+    // Las tarjetas van en la misma fila, una por página: la segunda queda a la
+    // derecha (dentro del carrusel), no apilada debajo.
+    expect(Math.round(cajaSegunda!.y)).toBe(Math.round(cajaPrimera!.y));
+    expect(cajaSegunda!.x).toBeGreaterThan(cajaPrimera!.x + cajaPrimera!.width);
+    const medidas = await block(page)
+      .locator('ul.public-carousel')
+      .evaluate((el) => {
+        const tarjeta = el.querySelector('li') as HTMLElement;
+        return {
+          visible: el.clientWidth,
+          tarjeta: tarjeta.getBoundingClientRect().width,
+          total: el.scrollWidth,
+        };
+      });
+    expect(Math.abs(medidas.tarjeta - medidas.visible), 'una tarjeta visible').toBeLessThanOrEqual(
+      2,
     );
-    expect(Math.abs(Math.round(cajaSegunda!.x) - Math.round(cajaPrimera!.x))).toBeLessThanOrEqual(
-      1,
+    expect(medidas.total, 'la segunda tarjeta vive dentro del carrusel').toBeGreaterThan(
+      medidas.visible,
     );
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),

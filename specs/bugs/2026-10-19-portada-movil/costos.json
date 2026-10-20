@@ -1,0 +1,498 @@
+{
+  "rama": "fix/portada-movil",
+  "estado": "cerrado",
+  "inicio": "2026-10-19T23:21:22Z",
+  "cerrado": "2026-10-20T04:29:26Z",
+  "moneda": "USD",
+  "nota": "Costo equivalente a precio de API (models.dev). Con suscripción, el gasto real es el % de la consola.",
+  "precios": [
+    {
+      "desde": "2026-10-20T01:44:35Z",
+      "modelos": {
+        "opencode-go/deepseek-v4.1-flash": {
+          "input": 0.15,
+          "output": 0.6,
+          "cache_read": 0.003,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3": {
+          "input": 1.4,
+          "output": 4.4,
+          "cache_read": 0.26,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/glm-5.3-flash": {
+          "input": 0.15,
+          "output": 0.5,
+          "cache_read": 0.03,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-flash": {
+          "input": 0.14,
+          "output": 0.28,
+          "cache_read": 0.0028,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        },
+        "opencode-go/mimo-v2.6-pro": {
+          "input": 0.435,
+          "output": 0.87,
+          "cache_read": 0.003625,
+          "cache_write": 0.0,
+          "fuente": "models.dev"
+        }
+      }
+    }
+  ],
+  "sesiones": [
+    {
+      "id": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "padre": null,
+      "titulo": "3 errores encontrados en el frontend",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T01:44:35Z",
+      "desde": "2026-10-19T23:25:24Z",
+      "hasta": "2026-10-20T01:44:07Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 94,
+          "respuestas_pico": 16,
+          "tokens": {
+            "input": 441547,
+            "output": 31977,
+            "reasoning": 52948,
+            "cache_read": 11207808,
+            "cache_write": 0
+          },
+          "costo": 0.170935,
+          "costo_opencode": 0.15081
+        }
+      ],
+      "hasta_ms": 1792460647781
+    },
+    {
+      "id": "ses_ea92d86edffeaUId4ChHPIQES2",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Auditoría de seguridad de la rama",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T01:44:35Z",
+      "desde": "2026-10-20T00:59:56Z",
+      "hasta": "2026-10-20T01:02:54Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 7,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 71403,
+            "output": 3299,
+            "reasoning": 5815,
+            "cache_read": 113785,
+            "cache_write": 0
+          },
+          "costo": 0.16965,
+          "costo_opencode": 0.16965
+        }
+      ],
+      "hasta_ms": 1792458174878
+    },
+    {
+      "id": "ses_ea92d86effferzO4vi8iexIySy",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Revisión de código de la rama",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T01:44:35Z",
+      "desde": "2026-10-20T00:59:56Z",
+      "hasta": "2026-10-20T01:30:05Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 27,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 98775,
+            "output": 8996,
+            "reasoning": 35368,
+            "cache_read": 1426944,
+            "cache_write": 0
+          },
+          "costo": 0.086736,
+          "costo_opencode": 0.086736
+        }
+      ],
+      "hasta_ms": 1792459805935
+    },
+    {
+      "id": "ses_ea92d86f0ffeSra7Ct63z4LZu1",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Validación QA de los 3 arreglos",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T01:44:35Z",
+      "desde": "2026-10-20T00:59:56Z",
+      "hasta": "2026-10-20T01:27:45Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 50,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 335891,
+            "output": 8026,
+            "reasoning": 6015,
+            "cache_read": 863360,
+            "cache_write": 0
+          },
+          "costo": 0.083305,
+          "costo_opencode": 0.083305
+        }
+      ],
+      "hasta_ms": 1792459665604
+    },
+    {
+      "id": "ses_ea963883cffeJZqRIB5WEuGdI8",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Arreglos portada y menú móvil",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T01:44:35Z",
+      "desde": "2026-10-20T00:00:57Z",
+      "hasta": "2026-10-20T01:42:03Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 124,
+          "respuestas_pico": 6,
+          "tokens": {
+            "input": 383840,
+            "output": 33656,
+            "reasoning": 43856,
+            "cache_read": 16203776,
+            "cache_write": 0
+          },
+          "costo": 0.159368,
+          "costo_opencode": 0.152695
+        }
+      ],
+      "hasta_ms": 1792460523557
+    },
+    {
+      "id": "ses_ea96b901bffe9M16y1dO9nzMGf",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Pruebas de regresión portada móvil",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T01:44:36Z",
+      "desde": "2026-10-19T23:52:11Z",
+      "hasta": "2026-10-19T23:59:38Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 23,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 214264,
+            "output": 5825,
+            "reasoning": 4837,
+            "cache_read": 968424,
+            "cache_write": 0
+          },
+          "costo": 0.066523,
+          "costo_opencode": 0.066523
+        }
+      ],
+      "hasta_ms": 1792454378714
+    },
+    {
+      "id": "ses_eb8dd8981ffeVU1NeftWYnr0Un",
+      "padre": null,
+      "titulo": "Requisitos para arrancar F9",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T01:44:36Z",
+      "desde": "2026-10-19T23:21:31Z",
+      "hasta": "2026-10-19T23:22:20Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 4,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 3521,
+            "output": 2031,
+            "reasoning": 638,
+            "cache_read": 2065024,
+            "cache_write": 0
+          },
+          "costo": 0.008325,
+          "costo_opencode": 0.008325
+        }
+      ],
+      "hasta_ms": 1792452140055
+    },
+    {
+      "id": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "padre": null,
+      "titulo": "3 errores encontrados en el frontend",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T01:44:17Z",
+      "hasta": "2026-10-20T04:04:29Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 32,
+          "respuestas_pico": 25,
+          "tokens": {
+            "input": 375249,
+            "output": 12235,
+            "reasoning": 20301,
+            "cache_read": 7638528,
+            "cache_write": 0
+          },
+          "costo": 0.189396,
+          "costo_opencode": 0.098725
+        }
+      ],
+      "hasta_ms": 1792469069646
+    },
+    {
+      "id": "ses_ea8d903a9ffenLxK41WZct2Lsb",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Seguridad del rediseño del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T02:32:15Z",
+      "hasta": "2026-10-20T03:33:44Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 7,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 66446,
+            "output": 2614,
+            "reasoning": 3458,
+            "cache_read": 59264,
+            "cache_write": 0
+          },
+          "costo": 0.13515,
+          "costo_opencode": 0.13515
+        }
+      ],
+      "hasta_ms": 1792467224606
+    },
+    {
+      "id": "ses_ea8d903abffe2q5V4PB0sws53F",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Revisión del rediseño del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T02:32:15Z",
+      "hasta": "2026-10-20T04:02:44Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 36,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 100054,
+            "output": 11159,
+            "reasoning": 41950,
+            "cache_read": 1879808,
+            "cache_write": 0
+          },
+          "costo": 0.096543,
+          "costo_opencode": 0.096543
+        }
+      ],
+      "hasta_ms": 1792468964222
+    },
+    {
+      "id": "ses_ea8d903b6ffe7q3m7UrFnVRBBW",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "QA del rediseño del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T02:32:15Z",
+      "hasta": "2026-10-20T03:42:07Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 43,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 266715,
+            "output": 10587,
+            "reasoning": 3209,
+            "cache_read": 967936,
+            "cache_write": 0
+          },
+          "costo": 0.075943,
+          "costo_opencode": 0.075943
+        }
+      ],
+      "hasta_ms": 1792467727460
+    },
+    {
+      "id": "ses_ea8f86957ffe4xO4jHDqd9fx2A",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Rediseño moderno del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T01:57:57Z",
+      "hasta": "2026-10-20T03:59:19Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 83,
+          "respuestas_pico": 83,
+          "tokens": {
+            "input": 249035,
+            "output": 26583,
+            "reasoning": 20671,
+            "cache_read": 5950848,
+            "cache_write": 0
+          },
+          "costo": 0.16712,
+          "costo_opencode": 0.08356
+        }
+      ],
+      "hasta_ms": 1792468759169
+    },
+    {
+      "id": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "padre": null,
+      "titulo": "3 errores encontrados en el frontend",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:29:26Z",
+      "desde": "2026-10-20T04:04:41Z",
+      "hasta": "2026-10-20T04:22:57Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 5,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 5437,
+            "output": 1912,
+            "reasoning": 3372,
+            "cache_read": 1408640,
+            "cache_write": 0
+          },
+          "costo": 0.008212,
+          "costo_opencode": 0.008212
+        }
+      ],
+      "hasta_ms": 1792470177525
+    }
+  ],
+  "totales": {
+    "por_agente_modelo": [
+      {
+        "agente": "orquestador",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 135,
+        "tokens": {
+          "input": 825754,
+          "output": 48155,
+          "reasoning": 77259,
+          "cache_read": 22320000,
+          "cache_write": 0
+        },
+        "costo": 0.376868,
+        "costo_opencode": 0.266072,
+        "sin_precio": false
+      },
+      {
+        "agente": "dev-frontend",
+        "modelo": "opencode-go/deepseek-v4.1-flash",
+        "respuestas": 207,
+        "tokens": {
+          "input": 632875,
+          "output": 60239,
+          "reasoning": 64527,
+          "cache_read": 22154624,
+          "cache_write": 0
+        },
+        "costo": 0.326488,
+        "costo_opencode": 0.236255,
+        "sin_precio": false
+      },
+      {
+        "agente": "seguridad",
+        "modelo": "opencode-go/glm-5.3",
+        "respuestas": 14,
+        "tokens": {
+          "input": 137849,
+          "output": 5913,
+          "reasoning": 9273,
+          "cache_read": 173049,
+          "cache_write": 0
+        },
+        "costo": 0.3048,
+        "costo_opencode": 0.3048,
+        "sin_precio": false
+      },
+      {
+        "agente": "qa-tester",
+        "modelo": "opencode-go/glm-5.3-flash",
+        "respuestas": 116,
+        "tokens": {
+          "input": 816870,
+          "output": 24438,
+          "reasoning": 14061,
+          "cache_read": 2799720,
+          "cache_write": 0
+        },
+        "costo": 0.225771,
+        "costo_opencode": 0.225771,
+        "sin_precio": false
+      },
+      {
+        "agente": "revisor-codigo",
+        "modelo": "opencode-go/mimo-v2.6-pro",
+        "respuestas": 63,
+        "tokens": {
+          "input": 198829,
+          "output": 20155,
+          "reasoning": 77318,
+          "cache_read": 3306752,
+          "cache_write": 0
+        },
+        "costo": 0.183279,
+        "costo_opencode": 0.183279,
+        "sin_precio": false
+      }
+    ],
+    "tokens": 53767660,
+    "costo": 1.417206,
+    "costo_opencode": 1.216177
+  }
+}

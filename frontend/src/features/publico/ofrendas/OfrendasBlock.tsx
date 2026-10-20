@@ -6,8 +6,8 @@ import { useLanguage } from '../i18n/useLanguage';
 import { OfrendasItem } from './OfrendasItem';
 import { usePortadaOfrendas } from './hooks/usePortadaOfrendas';
 
-/** Misma rejilla que la fila real (D-28): 1 columna, 2 en tableta, 5 en escritorio. */
-const GRID = 'grid grid-cols-1 gap-block md:grid-cols-2 lg:grid-cols-5';
+/** Rejilla de cuentas (2026-10-19): todas visibles, 1/2 columnas. Sin carrusel. */
+const GRID = 'grid grid-cols-1 gap-block md:grid-cols-2';
 
 /**
  * Esqueleto propio del bloque (ux.md §4.9): encabezado y una fila de fichas
@@ -39,8 +39,9 @@ function OfrendasSkeleton() {
 /**
  * Bloque «Ofrendas y diezmos» de la portada (`/`, US6/FR-022/SC-014, ux.md
  * §4.9): hasta **5** métodos publicados —tope firme resuelto en el servidor, sin
- * parámetro de límite— en el orden de la sección, en una fila de fichas
- * compactas de texto con el botón «Ver formas de ofrendar» hacia `/ofrendas`.
+ * parámetro de límite— en el orden de la sección, **todas visibles** en una
+ * rejilla de tarjetas rectangulares (1 columna en móvil, 2 desde `md`; sin
+ * carrusel) con el botón «Ver formas de ofrendar» hacia `/ofrendas`.
  *
  * **Sin métodos publicados el bloque devuelve `null`: no se dibuja** —sin título,
  * sin mensaje, sin hueco— (FR-022: **diferencia deliberada** con

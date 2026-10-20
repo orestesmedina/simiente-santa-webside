@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../i18n/useLanguage';
 import type { MobileMenuApi } from './useMobileMenu';
 
@@ -11,6 +12,13 @@ export interface MobileMenuProps {
  * icono ☰→✕ **decorativo**, más el scrim que cierra al tocar fuera. Va **dentro**
  * del `<nav>` (D14: el landmark permanece visible en todos los anchos; solo su
  * lista colapsa). No contiene el selector de idioma (D2).
+ *
+ * El scrim se monta en `document.body` con un portal (bug 3, 2026-10-19): la
+ * cabecera adquiere `backdrop-filter` al hacer scroll, lo que crea un
+ * *containing block* para sus descendientes `fixed` y reducía el scrim a la caja
+ * de la cabecera (~68 px). El panel `<ul>` **no** se portea: sigue dentro del
+ * `<nav>` y de su lista única (D15/C4); solo el fondo se escapa de ese containing
+ * block y queda bajo la cabecera/panel por `z-index`.
  */
 export function MobileMenu({ menu }: MobileMenuProps) {
   const { t } = useLanguage();
@@ -32,14 +40,16 @@ export function MobileMenu({ menu }: MobileMenuProps) {
         </span>
       </button>
 
-      {open && (
-        <div
-          aria-hidden="true"
-          data-testid="mobile-menu-scrim"
-          onClick={() => close()}
-          className="fixed inset-0 z-30 bg-black/55 min-[861px]:hidden"
-        />
-      )}
+      {open &&
+        createPortal(
+          <div
+            aria-hidden="true"
+            data-testid="mobile-menu-scrim"
+            onClick={() => close()}
+            className="fixed inset-0 z-30 bg-black/55 min-[861px]:hidden"
+          />,
+          document.body,
+        )}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { Card } from '../../../components/publico/Card';
+import { CardCarousel } from '../components/CardCarousel';
 import { PublicButton } from '../../../components/publico/PublicButton';
 import { SectionHeading } from '../../../components/publico/SectionHeading';
 import { Notice } from '../../../components/Notice';
@@ -6,8 +7,11 @@ import { useLanguage } from '../i18n/useLanguage';
 import { MinistryItem } from './MinistryItem';
 import { usePortadaMinisterios } from './hooks/usePortadaMinisterios';
 
-/** Misma rejilla que la fila real (D-28): 1 columna, 2 en tableta, 5 en escritorio. */
-const GRID = 'grid grid-cols-1 gap-block md:grid-cols-2 lg:grid-cols-5';
+/**
+ * Rejilla del **esqueleto** (1/2/3 columnas, igual que el carrusel real): al
+ * llegar el dato no hay brinco de layout y nunca quedan 5 columnas.
+ */
+const SKELETON_GRID = 'grid grid-cols-1 gap-block md:grid-cols-2 lg:grid-cols-3';
 
 /**
  * Esqueleto propio del bloque (ux.md §4.9, D-9): mismo encabezado y una fila de
@@ -21,7 +25,7 @@ function MinisteriosSkeleton() {
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-block">
       <span className="sr-only">{t('ministries.loading')}</span>
-      <ul aria-hidden="true" className={GRID}>
+      <ul aria-hidden="true" className={SKELETON_GRID}>
         {[0, 1, 2, 3, 4].map((index) => (
           <li
             key={index}
@@ -44,8 +48,8 @@ function MinisteriosSkeleton() {
  * Bloque «Ministerios» de la portada (`/`, US6/FR-027/FR-028, ux.md §4.9): hasta
  * **5** ministerios publicados —tope firme resuelto en el servidor, sin
  * parámetro de límite— en el orden manual del módulo (`sortOrder`, `id`), en una
- * fila de tarjetas compactas con el botón «Ver más ministerios» hacia
- * `/ministerios`.
+ * carrusel de tarjetas compactas (1/2/3 visibles según el ancho) con el botón
+ * «Ver más ministerios» hacia `/ministerios`.
  *
  * **Sin publicados el bloque devuelve `null`: no se dibuja** —sin título, sin
  * mensaje, sin hueco— (FR-028: regla general de «ocultar secciones vacías» de
@@ -99,11 +103,11 @@ export function MinisteriosBlock() {
 
           {query.isError && <Notice variant="warning">{t('error.partial')}</Notice>}
 
-          <ul aria-label={t('a11y.home.ministries.heading')} className={GRID}>
+          <CardCarousel label={t('a11y.home.ministries.heading')}>
             {items.map((item) => (
               <MinistryItem key={item.id} item={item} />
             ))}
-          </ul>
+          </CardCarousel>
 
           <div className="flex justify-end max-md:justify-stretch">
             <PublicButton href="/ministerios" variant="secondary">

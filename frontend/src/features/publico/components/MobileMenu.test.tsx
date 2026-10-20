@@ -174,8 +174,32 @@ describe('MobileMenu · patrón disclosure accesible (T1013/D17)', () => {
     expect(list).toHaveAttribute('data-open', 'false');
   });
 
+  it('el scrim se monta en <body> (fuera del containing block de la cabecera) y el panel sigue en el nav', async () => {
+    renderMenu();
+    const nav = screen.getByRole('navigation', { name: 'Secciones de la portada' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menú de secciones' }));
+    const scrim = screen.getByTestId('mobile-menu-scrim');
+
+    expect(document.body).toContainElement(scrim);
+    expect(nav).not.toContainElement(scrim);
+    expect(nav.querySelectorAll('ul')).toHaveLength(1);
+    expect(nav).toContainElement(document.querySelector('ul.public-nav-list'));
+  });
+
   it('el bloqueo del scroll de fondo existe en la hoja de estilos (T1013/FR-013)', () => {
     const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
     expect(css).toMatch(/html\[data-nav-open='true'\]\s*\{\s*overflow:\s*hidden;/);
+  });
+
+  it('el panel abierto es opaco y sin backdrop-filter (bug 3)', () => {
+    const css = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
+    const regla = (
+      /\.public-nav-list\[data-open='true'\]\s*\{([\s\S]*?)\}/.exec(css)?.[1] ?? ''
+    ).replace(/\/\*[\s\S]*?\*\//g, '');
+
+    expect(regla).toContain('background-color: var(--surface);');
+    expect(regla).not.toContain('backdrop-filter');
+    expect(regla).not.toContain('--surface-raised');
   });
 });

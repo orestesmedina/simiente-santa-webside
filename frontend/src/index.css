@@ -445,6 +445,15 @@ html[data-nav-open='true'] {
   .public-nav-list {
     display: none;
   }
+  /*
+   * Fragilidad conocida (bug 3, 2026-10-19): el panel sigue siendo
+   * `position: fixed` dentro de la cabecera. Con `data-scrolled='true'` el
+   * `backdrop-filter` de la cabecera crea un *containing block* y el `fixed` se
+   * resuelve contra ella: `top: var(--header-offset)` cae justo bajo la
+   * cabecera y funciona porque esta es `sticky top-0` y ocupa el ancho completo.
+   * **No portear el panel**: debe seguir dentro del `<nav>` (una sola lista,
+   * D15/C4); solo el scrim se monta en `document.body`.
+   */
   .public-nav-list[data-open='true'] {
     display: flex;
     flex-direction: column;
@@ -456,13 +465,139 @@ html[data-nav-open='true'] {
     max-height: calc(100dvh - var(--header-offset, 0px));
     overflow-y: auto;
     padding: 1rem 6vw 2rem;
-    background: var(--surface-raised);
-    backdrop-filter: blur(16px);
+    /* Opaco (bug 3, 2026-10-19): con `--surface-raised` (alfa 0.08) el panel
+       dejaba leer la página por debajo. Sin `backdrop-filter`: no aporta nada
+       sobre un fondo opaco y suma coste de composición. */
+    background-color: var(--surface);
+    box-shadow: var(--shadow);
     border-bottom: 1px solid var(--border);
   }
 
   html:not(.js) .public-nav-list {
     display: flex;
     flex-wrap: wrap;
+  }
+}
+
+/*
+ * ── Carrusel de tarjetas de la portada (2026-10-19) ─────────────────────────
+ * «Lo que viene», Ministerios y Medios muestran 1 tarjeta en móvil, 2 en
+ * tableta (≥ 768 px) y 3 en escritorio (≥ 1024 px). El desplazamiento es nativo
+ * (swipe/trackpad) y con *scroll snap* al inicio de cada tarjeta; las flechas
+ * de `CardCarousel` avanzan **una tarjeta**. `grid-auto-flow: column` mantiene
+ * la fila sin partir el ancho del documento: el desborde vive dentro del propio
+ * carrusel (`overflow-x: auto`), nunca en la página.
+ *
+ * Acabado de rail moderno: sin barra de scroll visible, degradados de borde
+ * (`mask-image`) que solo aparecen cuando queda contenido en ese lado
+ * (`data-at-start`/`data-at-end`) y borde de tarjeta que se ilumina al hover
+ * (sin elevarla: solo el título es enlace).
+ */
+.public-carousel {
+  --carousel-edge-fade: 24px;
+
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  gap: var(--space-block);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  /* Deja aire bajo las tarjetas para que la sombra no quede recortada. */
+  padding-block-end: 0.25rem;
+
+  /* Barra de scroll fuera: el rail se lee como una superficie limpia. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.public-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Foco del rail:
+ *  · Fallback (navegadores sin `:has()`): el anillo va en la propia `<ul>`. La
+ *    máscara puede recortarlo en los bordes, pero el foco nunca se pierde.
+ *  · Con `:has()`: el anillo vive en el contenedor `.carousel-rail`, que no
+ *    tiene máscara, y se anula el de la `<ul>` para no pintar dos.
+ * El radio replica el `rounded-2xl` del track (1rem).
+ */
+.public-carousel:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@supports selector(:has(*)) {
+  .public-carousel:focus-visible {
+    outline: none;
+  }
+
+  .carousel-rail:has(> .public-carousel:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 1rem;
+  }
+}
+
+.public-carousel > * {
+  min-width: 0;
+  scroll-snap-align: start;
+  transition: border-color var(--motion-duration-micro) var(--motion-ease-standard);
+}
+
+/* Solo en dispositivos con hover real: en táctil el borde no se queda pegado. */
+@media (hover: hover) {
+  .public-carousel > *:hover {
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+}
+
+/* Degradados de borde: fundido del contenido que queda fuera del rail. */
+.public-carousel[data-at-start='false'] {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--carousel-edge-fade));
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--carousel-edge-fade));
+}
+
+.public-carousel[data-at-end='false'] {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 var(--carousel-edge-fade));
+  mask-image: linear-gradient(to left, transparent 0, #000 var(--carousel-edge-fade));
+}
+
+.public-carousel[data-at-start='false'][data-at-end='false'] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--carousel-edge-fade),
+    #000 calc(100% - var(--carousel-edge-fade)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--carousel-edge-fade),
+    #000 calc(100% - var(--carousel-edge-fade)),
+    transparent 100%
+  );
+}
+
+@media (min-width: 768px) {
+  .public-carousel {
+    --carousel-edge-fade: 32px;
+
+    grid-auto-columns: calc((100% - var(--space-block)) / 2);
+  }
+}
+
+@media (min-width: 1024px) {
+  .public-carousel {
+    grid-auto-columns: calc((100% - 2 * var(--space-block)) / 3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-carousel {
+    scroll-behavior: auto;
   }
 }

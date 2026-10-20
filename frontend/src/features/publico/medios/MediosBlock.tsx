@@ -1,4 +1,5 @@
 import { Card } from '../../../components/publico/Card';
+import { CardCarousel } from '../components/CardCarousel';
 import { PublicButton } from '../../../components/publico/PublicButton';
 import { SectionHeading } from '../../../components/publico/SectionHeading';
 import { Notice } from '../../../components/Notice';
@@ -6,8 +7,11 @@ import { useLanguage } from '../i18n/useLanguage';
 import { MedioItem } from './MedioItem';
 import { usePortadaMedios } from './hooks/usePortadaMedios';
 
-/** Misma rejilla que la fila real (⟲ D-15): 1 columna, 2 en tableta, 5 en escritorio. */
-const GRID = 'grid grid-cols-1 gap-block md:grid-cols-2 lg:grid-cols-5';
+/**
+ * Rejilla del **esqueleto** (1/2/3 columnas, igual que el carrusel real): al
+ * llegar el dato no hay brinco de layout y nunca quedan 5 columnas.
+ */
+const SKELETON_GRID = 'grid grid-cols-1 gap-block md:grid-cols-2 lg:grid-cols-3';
 
 /**
  * Esqueleto propio del bloque (ux.md §4.9): mismo encabezado y una fila de
@@ -21,7 +25,7 @@ function MediosSkeleton() {
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-block">
       <span className="sr-only">{t('media.loading')}</span>
-      <ul aria-hidden="true" className={GRID}>
+      <ul aria-hidden="true" className={SKELETON_GRID}>
         {[0, 1, 2, 3, 4].map((index) => (
           <li
             key={index}
@@ -42,8 +46,9 @@ function MediosSkeleton() {
 /**
  * Bloque «Medios» de la portada (`/`, US6/FR-027/SC-015, ux.md §4.9): hasta **5**
  * fichas publicables —tope firme resuelto en el **servidor**, sin parámetro de
- * límite; el cliente no recorta— en el orden de la sección, en una fila de
- * fichas compactas con el botón «Ver todo» hacia `/medios`.
+ * límite; el cliente no recorta— en el orden de la sección, en un carrusel de
+ * fichas compactas (1/2/3 visibles según el ancho) con el botón «Ver todo» hacia
+ * `/medios`.
  *
  * **Sin publicables el bloque devuelve `null`: no se dibuja** —sin título, sin
  * mensaje, sin hueco— (FR-027; **diferencia deliberada** con `ProximamenteBlock`
@@ -96,11 +101,11 @@ export function MediosBlock() {
 
           {query.isError && <Notice variant="warning">{t('media.error.partial')}</Notice>}
 
-          <ul aria-label={t('a11y.home.media.heading')} className={GRID}>
+          <CardCarousel label={t('a11y.home.media.heading')}>
             {items.map((item) => (
               <MedioItem key={item.id} item={item} />
             ))}
-          </ul>
+          </CardCarousel>
 
           <div className="flex justify-end max-md:justify-stretch">
             <PublicButton href="/medios" variant="secondary">

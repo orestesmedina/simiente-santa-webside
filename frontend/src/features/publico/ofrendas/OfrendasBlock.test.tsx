@@ -52,6 +52,23 @@ describe('OfrendasBlock · bloque «Ofrendas y diezmos» de la portada (US6/FR-0
     );
   });
 
+  it('sin carrusel: todas las cuentas visibles en rejilla 1/2 y sin controles', async () => {
+    const items = Array.from({ length: 5 }, (_, index) => item('iban', `id-${index}`));
+    server.use(http.get(portadaUrl, () => HttpResponse.json({ lang: 'es', items })));
+
+    renderBlock();
+
+    const lista = await screen.findByRole('list', {
+      name: 'Ofrendas y diezmos: mira el resumen y entra a la sección completa',
+    });
+    expect(lista).not.toHaveClass('public-carousel');
+    expect(lista.className).toContain('grid-cols-1');
+    expect(lista.className).toContain('md:grid-cols-2');
+    expect(screen.getAllByRole('listitem')).toHaveLength(5);
+    expect(screen.queryByRole('button', { name: 'Anterior' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull();
+  });
+
   it('con 1 método muestra exactamente esa ficha (sin huecos ni marcadores)', async () => {
     server.use(
       http.get(portadaUrl, () => HttpResponse.json({ lang: 'es', items: [item('sinpe', 'uno')] })),

@@ -37,7 +37,7 @@ export function MedioItem({ item }: MedioItemProps) {
       />
 
       <div className="flex flex-1 flex-col gap-2 p-fluid">
-        <h3 className="line-clamp-2 font-sans text-[1.0625rem] font-semibold leading-snug text-ink">
+        <h3 className="line-clamp-2 font-sans text-lg font-semibold leading-snug text-ink">
           {item.title}
         </h3>
 

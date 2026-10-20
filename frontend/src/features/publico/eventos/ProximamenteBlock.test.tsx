@@ -125,6 +125,25 @@ describe('ProximamenteBlock · fila de tarjetas (FR-025/FR-026)', () => {
     expect(within(items[0] as HTMLElement).getByText('Templo central')).toBeVisible();
   });
 
+  it('la fila es un carrusel accesible (1/2/3 tarjetas) con controles ligados a la lista', async () => {
+    responder({ lang: 'es', items: cinco.slice(0, 2) });
+
+    renderBlock();
+
+    const lista = await screen.findByRole('list', {
+      name: 'Lo que viene: próximos eventos y actividades de la iglesia',
+    });
+    expect(lista).toHaveClass('public-carousel');
+    expect(screen.getByRole('button', { name: 'Anterior' })).toHaveAttribute(
+      'aria-controls',
+      lista.id,
+    );
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toHaveAttribute(
+      'aria-controls',
+      lista.id,
+    );
+  });
+
   it('con menos de 5 no deja huecos ni marcadores vacíos', async () => {
     responder({ lang: 'es', items: cinco.slice(0, 3) });
 

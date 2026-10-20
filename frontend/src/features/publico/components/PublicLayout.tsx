@@ -72,8 +72,18 @@ function PublicChrome() {
   useHashScrollOnArrival(pathname, hash, links);
 
   return (
-    <div className="relative isolate flex min-h-screen flex-col bg-surface font-sans text-ink">
-      <GradientBlobs />
+    <div className="relative flex min-h-screen flex-col bg-surface font-sans text-ink">
+      {/*
+        El aislamiento (contexto de apilamiento) se limita a la capa decorativa,
+        no a toda la página: si el contenedor exterior aislara, el scrim del menú
+        móvil (portal en `document.body`, z-30) quedaría por encima de la cabecera
+        (z-50) y del panel (z-40), que están dentro de ese contexto (bug 3). El
+        `isolate` propio de esta capa mantiene los blobs `-z-10` sobre el fondo
+        `bg-surface` y debajo del contenido.
+      */}
+      <div className="isolate">
+        <GradientBlobs />
+      </div>
 
       <a
         href="#contenido"

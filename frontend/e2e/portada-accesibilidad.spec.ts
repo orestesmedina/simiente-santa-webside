@@ -83,7 +83,18 @@ async function tabCycle(page: Page, maxSteps = MAX_TAB_STEPS): Promise<TabStep[]
     const info = await page.evaluate<StepInfo>(() => {
       const el = document.activeElement;
       if (!el || el === document.body) return { label: null, indicator: false };
-      const style = getComputedStyle(el);
+      const hasIndicator = (node: Element | null): boolean => {
+        if (!node) return false;
+        const style = getComputedStyle(node);
+        return (
+          (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) ||
+          style.boxShadow !== 'none'
+        );
+      };
+      // El rail moderno pinta el anillo de la lista en `.carousel-rail` para que
+      // el `mask-image` de los degradados no lo recorte: se acepta el indicador
+      // del propio elemento enfocado o el de su contenedor de rail.
+      const rail = el.closest('.carousel-rail');
       return {
         label: `${el.tagName.toLowerCase()} ${(
           (el as HTMLElement).innerText ||
@@ -92,9 +103,7 @@ async function tabCycle(page: Page, maxSteps = MAX_TAB_STEPS): Promise<TabStep[]
         )
           .trim()
           .slice(0, 40)}`,
-        indicator:
-          (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) ||
-          style.boxShadow !== 'none',
+        indicator: hasIndicator(el) || hasIndicator(rail),
       };
     });
     if (info.label === null) {
