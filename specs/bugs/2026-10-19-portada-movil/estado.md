@@ -8,10 +8,10 @@
 |---|---|
 | Rama | fix/portada-movil |
 | Flujo | equipo-bug |
-| Fase | 4/4 · Implementado y validado · **rediseño del carrusel** validado tras feedback del humano |
+| Fase | 4/4 · PR aprobado · pendiente merge |
 | Ciclo de corrección | 1/3 (iteración de diseño pedida por el humano) |
-| Próximo paso | Commit del rediseño y push de la rama; abrir el PR y aprobación humana del merge |
-| Bloqueado por | Aprobación humana del PR |
+| Próximo paso | Push del commit de cierre y merge del PR; después, registrar el merge en este estado |
+| Bloqueado por | — |
 | Actualizado | 2026-10-19 |
 
 ## Aprobaciones
@@ -20,7 +20,7 @@
 |---|---|---|---|---|
 | Spec | n/a (bug) | | | |
 | Plan | n/a (bug) | | | |
-| PR / merge | pendiente | | | |
+| PR / merge | aprobado · pendiente de merge | humano (cliente) | 2026-10-19 | «apruebo el PR» |
 | Despliegue | pendiente | | | |
 
 ## Hallazgos abiertos
@@ -51,12 +51,14 @@ El humano rechazó la primera versión del carrusel («básico, de programador j
 
 ## Decisiones y aclaraciones
 
+- 2026-10-19 (humano): **aprueba el PR** («apruebo el PR»); el merge lo hará el humano. El costo de la tarea queda cerrado antes del merge.
 - 2026-10-19 (humano): «Lo que viene», Ministerios y Medios pasan a **carrusel** con animación: **1 tarjeta en móvil y 3 en escritorio**. Ofrendas **no** lleva carrusel: todas las cuentas siempre visibles, en tarjetas rectangulares tipo *credit card*.
 - 2026-10-19 (humano): los tres arreglos van en una sola rama `fix/portada-movil`, con un commit por arreglo y validación de QA + revisión + seguridad antes del PR.
 - 2026-10-19 (humano): el primer carrusel es «básico, de programador junior, con un scroll horrible y flechas arriba». Se rehace como **rail moderno**: flechas a los costados y centradas, avance de **una tarjeta**, scrollbar oculta, degradados de borde, barra de progreso y hover/foco cuidado; en móvil, swipe + degradado + progreso.
 
 ## Bitácora
 
+- 2026-10-19 — **PR aprobado** por el humano («apruebo el PR»). Costo cerrado: **53,8 M tokens · $1,42**. Pendiente push del commit de cierre y merge; después se registra el merge aquí.
 - 2026-10-19 — **Rediseño del carrusel** aprobado: flechas laterales, avance de una tarjeta, progreso, máscaras y foco en el contenedor; B1/B2 cerrados. Pendiente commit del rediseño, push y PR.
 - 2026-10-19 — **Commits locales**: `8a0fc5e` (bug 3), `a430bbe` (bug 2), `d7256c5` (bug 1), `2cda2bf` (estado y validación), `5159176` (costos). Pendiente push y PR.
 - 2026-10-19 — **Implementado y validado**: umbral 0 (bug 2), scrim en portal + panel opaco (bug 3), carrusel 1/2/3 para «Lo que viene», Ministerios y Medios y Ofrendas rectangulares a 2 columnas (bug 1). QA, revisión y seguridad **aprueban**. Pendiente commit y PR.
