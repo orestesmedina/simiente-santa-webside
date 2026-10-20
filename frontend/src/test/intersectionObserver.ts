@@ -7,10 +7,13 @@ export class IntersectionObserverStub {
   static instances: IntersectionObserverStub[] = [];
 
   callback: IntersectionObserverCallback;
+  /** Opciones con las que se construyó el observador (`threshold`, `rootMargin`…). */
+  options: IntersectionObserverInit | undefined;
   targets = new Set<Element>();
 
-  constructor(callback: IntersectionObserverCallback) {
+  constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
     this.callback = callback;
+    this.options = options;
     IntersectionObserverStub.instances.push(this);
   }
 

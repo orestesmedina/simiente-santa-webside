@@ -214,6 +214,19 @@ describe('Reveal · revelado progresivo al scroll (FR-005/FR-009/SC-014)', () =>
     act(() => media.set(REDUCED_MOTION_QUERY, false));
     expect(block, 'el latch mantiene el bloque revelado').toHaveAttribute('data-reveal', 'in');
   });
+
+  it('el observador se construye con umbral 0: un bloque más alto que el viewport también se revela (bug portada móvil)', () => {
+    // Regresión (bug 2, 2026-10-19): en `/medios` la lista completa va envuelta
+    // en un único `Reveal`; en móvil el bloque mide varias veces el alto del
+    // viewport, así que la intersección máxima posible (~11 % con 390×664) nunca
+    // alcanza un umbral fraccional (0.15) y el bloque queda `opacity: 0`
+    // (pantalla en blanco). Con umbral 0 basta que un píxel entre en pantalla.
+    render(<Reveal from="left">lista completa</Reveal>);
+    const observador = IntersectionObserverStub.instances[0];
+    expect(observador.options?.threshold, 'umbral 0: revela aunque el bloque no quepa entero').toBe(
+      0,
+    );
+  });
 });
 
 describe('RevealGroup · entrada escalonada acotada (FR-005/SC-014)', () => {

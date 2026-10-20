@@ -12,9 +12,17 @@
  * —**intersecte o no**—, de modo que un bloque fuera del viewport **permanece
  * pendiente** hasta entrar en pantalla (el revelado al scroll es el núcleo de
  * FR-005/SC-014).
+ *
+ * Umbral **0** (bug 2, 2026-10-19): con un umbral fraccional (0.15) un bloque
+ * **más alto que el viewport** nunca puede alcanzarlo —la intersección máxima es
+ * `alto del viewport / alto del bloque`, p. ej. ≈ 11 % para la lista de
+ * `/medios` a 390×664 (5.234 px)— y se queda con `opacity: 0` para siempre.
+ * Con 0 el revelado ocurre en cuanto el borde superior cruza el **90 % del
+ * viewport** (el `rootMargin` inferior es −10 %), no cuando el bloque «entra en
+ * pantalla» por completo: es justo lo que pide el revelado progresivo.
  */
 
-const REVEAL_THRESHOLD = 0.15;
+const REVEAL_THRESHOLD = 0;
 const REVEAL_MARGIN = '0px 0px -10% 0px';
 
 /** Salvavidas: si el observer nunca reporta, el contenido se revela igualmente. */
