@@ -10,7 +10,7 @@
 | Flujo | equipo-bug |
 | Fase | 4/4 · Implementado y validado (QA, revisión y seguridad aprueban) |
 | Ciclo de corrección | 0/3 |
-| Próximo paso | Commits por arreglo y abrir el PR; falta la aprobación humana del merge |
+| Próximo paso | Push de la rama y abrir el PR; falta la aprobación humana del merge |
 | Bloqueado por | Aprobación humana del PR |
 | Actualizado | 2026-10-19 |
 
@@ -48,5 +48,6 @@ Reporte consolidado: `revision-2026-10-19.md`.
 
 ## Bitácora
 
+- 2026-10-19 — **Commits locales**: `8a0fc5e` (bug 3), `a430bbe` (bug 2), `d7256c5` (bug 1), `2cda2bf` (estado y validación), `5159176` (costos). Pendiente push y PR.
 - 2026-10-19 — **Implementado y validado**: umbral 0 (bug 2), scrim en portal + panel opaco (bug 3), carrusel 1/2/3 para «Lo que viene», Ministerios y Medios y Ofrendas rectangulares a 2 columnas (bug 1). QA, revisión y seguridad **aprueban**. Pendiente commit y PR.
 - 2026-10-19 — Diagnóstico cerrado con reproducción real (iPhone 13 emulado): scrim de 390×68, panel `rgba(255,255,255,0.08)` y bloque de 5.234 px que nunca se revela. Rama `fix/portada-movil` creada.
