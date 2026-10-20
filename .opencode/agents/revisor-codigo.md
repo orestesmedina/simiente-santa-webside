@@ -32,4 +32,16 @@ Hallazgos agrupados por severidad: **Bloqueante**, **Importante**, **Sugerencia*
 Veredicto final: APROBADO, APROBADO CON CAMBIOS MENORES o RECHAZADO.
 
 ## Este proyecto
-El proyecto todavía no tiene perfil (`equipo/perfil.json`): no se sabe qué partes tiene, con qué tecnología ni cómo se prueba. No supongas carpetas, tecnologías ni comandos: avisa al orquestador antes de trabajar. El perfil se crea con el comando `bowser-profile`.
+Sale del perfil del proyecto (`equipo/perfil.json`), que no editas tú. Sus partes:
+
+- **backend**, en `backend`: API REST en Go: dominio, autenticación y panel, sobre PostgreSQL (migraciones y sqlc) y Redis
+  - La trabajan: `dev-backend`, `dev-dba`.
+  - Sus convenciones están en las skills `go-backend`, `postgres-db` (en `.agents/skills/`).
+  - Comandos: `make lint PART=backend`, `make test PART=backend`, `make generate PART=backend`, `make security PART=backend`.
+  - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.
+  - No se modifican una vez versionados (se crea un archivo nuevo): `backend/migrations/*.sql`.
+- **frontend**, en `frontend`: Portada pública y panel de administración (React 19 + TypeScript + Vite; Vitest y e2e con Playwright)
+  - La trabajan: `dev-frontend`.
+  - Sus convenciones están en las skills `react-frontend` (en `.agents/skills/`).
+  - Comandos: `make lint PART=frontend`, `make test PART=frontend`, `make generate PART=frontend`, `make security PART=frontend`.
+  - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.

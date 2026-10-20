@@ -1,0 +1,50 @@
+{
+  "partes": [
+    {
+      "nombre": "backend",
+      "carpeta": "backend",
+      "descripcion": "API REST en Go: dominio, autenticación y panel, sobre PostgreSQL (migraciones y sqlc) y Redis",
+      "roles": [
+        {"rol": "dev-backend", "skills": ["go-backend"]},
+        {"rol": "dev-dba", "skills": ["postgres-db"]}
+      ],
+      "terceros": [],
+      "inmutables": ["migrations/*.sql"],
+      "verbos": {
+        "formato": "test -z \"$(gofmt -l .)\"",
+        "revisar": "go vet ./... && golangci-lint run",
+        "probar": "go test ./... && go test -tags=integration ./...",
+        "cobertura": null,
+        "auditar": "govulncheck ./...",
+        "generar": "sqlc generate"
+      }
+    },
+    {
+      "nombre": "frontend",
+      "carpeta": "frontend",
+      "descripcion": "Portada pública y panel de administración (React 19 + TypeScript + Vite; Vitest y e2e con Playwright)",
+      "roles": [
+        {"rol": "dev-frontend", "skills": ["react-frontend"]}
+      ],
+      "terceros": [],
+      "inmutables": [],
+      "verbos": {
+        "formato": "npx prettier --check . --ignore-path \"$PERFIL_RAIZ/.prettierignore\"",
+        "revisar": "npm run lint && npm run typecheck",
+        "probar": "npm test -- --run",
+        "cobertura": null,
+        "auditar": "npm audit --audit-level=high",
+        "generar": "npm run api:gen"
+      }
+    }
+  ],
+  "requisitos": [
+    {"comando": "go", "nombre": "Go", "minima": "1.27.2", "version": "go version"},
+    {"comando": "node", "nombre": "Node.js", "minima": "24"},
+    {"comando": "npm"},
+    {"comando": "golangci-lint", "minima": "2.14.0", "instalar": "go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0"},
+    {"comando": "govulncheck", "instalar": "go install golang.org/x/vuln/cmd/govulncheck@v1.8.0"},
+    {"comando": "sqlc", "minima": "1.31.1", "version": "sqlc version", "instalar": "go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1"},
+    {"comando": "migrate", "nombre": "golang-migrate", "opcional": true, "instalar": "go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.20.1"}
+  ]
+}

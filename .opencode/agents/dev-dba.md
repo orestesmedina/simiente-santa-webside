@@ -35,4 +35,13 @@ Resumen breve: archivos de cambio creados, cómo se revierten, cómo los probast
 No toques las partes que no son tuyas ni el código de la aplicación. Si `data-model.md` no alcanza o se contradice con lo que hay, detente y avisa al orquestador.
 
 ## Este proyecto
-El proyecto todavía no tiene perfil (`equipo/perfil.json`): no se sabe qué partes tiene, con qué tecnología ni cómo se prueba. No supongas carpetas, tecnologías ni comandos: avisa al orquestador antes de trabajar. El perfil se crea con el comando `bowser-profile`.
+Sale del perfil del proyecto (`equipo/perfil.json`), que no editas tú. Tus partes:
+
+- **backend**, en `backend`: API REST en Go: dominio, autenticación y panel, sobre PostgreSQL (migraciones y sqlc) y Redis
+  - Skills que debes aplicar: `postgres-db` (en `.agents/skills/`).
+  - También la trabajan: `dev-backend`.
+  - Comandos: `make lint PART=backend`, `make test PART=backend`, `make generate PART=backend`, `make security PART=backend`.
+  - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.
+  - No se modifican una vez versionados (se crea un archivo nuevo): `backend/migrations/*.sql`.
+
+Las demás partes no son tuyas: `frontend` (`frontend`, de `dev-frontend`).

@@ -5,3 +5,8 @@ frontend/src/api/schema.d.ts
 frontend/node_modules
 frontend/dist
 frontend/coverage
+
+# Salidas de pruebas y de e2e (Playwright y artefactos temporales de QA).
+frontend/test-results
+frontend/playwright-report
+frontend/.qa-tmp

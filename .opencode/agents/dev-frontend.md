@@ -30,4 +30,11 @@ Resumen breve: pantallas y componentes creados o modificados, pruebas agregadas 
 No toques las partes que no son tuyas. Si el contrato de la API no alcanza para la pantalla, detente y avisa al orquestador.
 
 ## Este proyecto
-El proyecto todavía no tiene perfil (`equipo/perfil.json`): no se sabe qué partes tiene, con qué tecnología ni cómo se prueba. No supongas carpetas, tecnologías ni comandos: avisa al orquestador antes de trabajar. El perfil se crea con el comando `bowser-profile`.
+Sale del perfil del proyecto (`equipo/perfil.json`), que no editas tú. Tus partes:
+
+- **frontend**, en `frontend`: Portada pública y panel de administración (React 19 + TypeScript + Vite; Vitest y e2e con Playwright)
+  - Skills que debes aplicar: `react-frontend` (en `.agents/skills/`).
+  - Comandos: `make lint PART=frontend`, `make test PART=frontend`, `make generate PART=frontend`, `make security PART=frontend`.
+  - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.
+
+Las demás partes no son tuyas: `backend` (`backend`, de `dev-backend`, `dev-dba`).

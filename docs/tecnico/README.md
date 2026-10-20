@@ -6,6 +6,8 @@ Guía de **cómo** se construye el proyecto (el **qué** vive en `specs/` y en `
   backend, la interfaz `httpserver.Registrar` que neutraliza el router, un ejemplo vertical completo
   del dominio `contacto`, el flujo de una petición, las pruebas por capa y la receta de 10 pasos
   para agregar un área de negocio.
+- [deudas.md](./deudas.md) — lo que el proyecto necesita y todavía no tiene (p. ej. `make db-migrate`
+  y el verbo de cobertura), con el rol que lo trabaja.
 - [decisiones.md](./decisiones.md) — registro de decisiones (ADR corto D-A1…D-A9): monorepo y
   contrato OpenAPI, plataforma interna, sqlc, router, Go 1.27, config/logs/DI, sesiones de F2
   *(propuesta pendiente)*, dependencias mínimas y diferidos, con las preguntas abiertas al final.
