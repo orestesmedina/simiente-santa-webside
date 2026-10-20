@@ -8,9 +8,9 @@
 |---|---|
 | Rama | fix/portada-movil |
 | Flujo | equipo-bug |
-| Fase | 4/4 · Implementado y validado (QA, revisión y seguridad aprueban) |
-| Ciclo de corrección | 0/3 |
-| Próximo paso | Push de la rama y abrir el PR; falta la aprobación humana del merge |
+| Fase | 4/4 · Implementado y validado · **rediseño del carrusel** validado tras feedback del humano |
+| Ciclo de corrección | 1/3 (iteración de diseño pedida por el humano) |
+| Próximo paso | Commit del rediseño y push de la rama; abrir el PR y aprobación humana del merge |
 | Bloqueado por | Aprobación humana del PR |
 | Actualizado | 2026-10-19 |
 
@@ -41,13 +41,23 @@ Reporte consolidado: `revision-2026-10-19.md`.
 - **Revisión de código (APRUEBA):** sin bloqueantes; semántica del umbral y apilamiento del portal verificados en Chromium real. Tres hallazgos importantes resueltos (JSDoc del e2e de Medios, nota de fragilidad del panel y este estado).
 - **Seguridad (APRUEBA):** sin secretos, HTML crudo, URLs no confiables ni dependencias nuevas; `npm audit` con 0 vulnerabilidades.
 
+### 2.ª iteración · rediseño del carrusel (2026-10-19)
+
+El humano rechazó la primera versión del carrusel («básico, de programador junior, scroll horrible, flechas arriba»). Se rehízo como rail moderno: flechas laterales superpuestas y centradas, avance de **una tarjeta**, barra de scroll oculta, degradados de borde condicionados, barra de progreso, hover/foco cuidado y swipe en móvil. La prueba de avance se corrigió para no ser tautológica (68 px de tarjeta+gap frente a 120 px de página) y el anillo de foco se movió a `.carousel-rail` para que la máscara no lo recorte, con fallback sin `:has`.
+
+- **QA (APRUEBA):** 960 unitarias, typecheck/lint, 14/14 e2e de los bloques y `portada-accesibilidad` 1/1 (ciclo de 35 pasos); avance real medido ≈ tarjeta+gap; progreso oculto sin desborde y coherente con desborde; sin scroll horizontal.
+- **Revisión de código (APRUEBA):** B1 (prueba tautológica) y B2 (e2e de accesibilidad por el anillo movido) cerrados; fallback de `:has`; sin bloqueantes.
+- **Seguridad (APRUEBA):** sin vectores nuevos; `npm audit` 0.
+
 ## Decisiones y aclaraciones
 
 - 2026-10-19 (humano): «Lo que viene», Ministerios y Medios pasan a **carrusel** con animación: **1 tarjeta en móvil y 3 en escritorio**. Ofrendas **no** lleva carrusel: todas las cuentas siempre visibles, en tarjetas rectangulares tipo *credit card*.
 - 2026-10-19 (humano): los tres arreglos van en una sola rama `fix/portada-movil`, con un commit por arreglo y validación de QA + revisión + seguridad antes del PR.
+- 2026-10-19 (humano): el primer carrusel es «básico, de programador junior, con un scroll horrible y flechas arriba». Se rehace como **rail moderno**: flechas a los costados y centradas, avance de **una tarjeta**, scrollbar oculta, degradados de borde, barra de progreso y hover/foco cuidado; en móvil, swipe + degradado + progreso.
 
 ## Bitácora
 
+- 2026-10-19 — **Rediseño del carrusel** aprobado: flechas laterales, avance de una tarjeta, progreso, máscaras y foco en el contenedor; B1/B2 cerrados. Pendiente commit del rediseño, push y PR.
 - 2026-10-19 — **Commits locales**: `8a0fc5e` (bug 3), `a430bbe` (bug 2), `d7256c5` (bug 1), `2cda2bf` (estado y validación), `5159176` (costos). Pendiente push y PR.
 - 2026-10-19 — **Implementado y validado**: umbral 0 (bug 2), scrim en portal + panel opaco (bug 3), carrusel 1/2/3 para «Lo que viene», Ministerios y Medios y Ofrendas rectangulares a 2 columnas (bug 1). QA, revisión y seguridad **aprueban**. Pendiente commit y PR.
 - 2026-10-19 — Diagnóstico cerrado con reproducción real (iPhone 13 emulado): scrim de 390×68, panel `rgba(255,255,255,0.08)` y bloque de 5.234 px que nunca se revela. Rama `fix/portada-movil` creada.

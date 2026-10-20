@@ -243,6 +243,146 @@
         }
       ],
       "hasta_ms": 1792452140055
+    },
+    {
+      "id": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "padre": null,
+      "titulo": "3 errores encontrados en el frontend",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T01:44:17Z",
+      "hasta": "2026-10-20T04:04:29Z",
+      "consumo": [
+        {
+          "agente": "orquestador",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 32,
+          "respuestas_pico": 25,
+          "tokens": {
+            "input": 375249,
+            "output": 12235,
+            "reasoning": 20301,
+            "cache_read": 7638528,
+            "cache_write": 0
+          },
+          "costo": 0.189396,
+          "costo_opencode": 0.098725
+        }
+      ],
+      "hasta_ms": 1792469069646
+    },
+    {
+      "id": "ses_ea8d903a9ffenLxK41WZct2Lsb",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Seguridad del rediseño del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T02:32:15Z",
+      "hasta": "2026-10-20T03:33:44Z",
+      "consumo": [
+        {
+          "agente": "seguridad",
+          "modelo": "opencode-go/glm-5.3",
+          "respuestas": 7,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 66446,
+            "output": 2614,
+            "reasoning": 3458,
+            "cache_read": 59264,
+            "cache_write": 0
+          },
+          "costo": 0.13515,
+          "costo_opencode": 0.13515
+        }
+      ],
+      "hasta_ms": 1792467224606
+    },
+    {
+      "id": "ses_ea8d903abffe2q5V4PB0sws53F",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Revisión del rediseño del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T02:32:15Z",
+      "hasta": "2026-10-20T04:02:44Z",
+      "consumo": [
+        {
+          "agente": "revisor-codigo",
+          "modelo": "opencode-go/mimo-v2.6-pro",
+          "respuestas": 36,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 100054,
+            "output": 11159,
+            "reasoning": 41950,
+            "cache_read": 1879808,
+            "cache_write": 0
+          },
+          "costo": 0.096543,
+          "costo_opencode": 0.096543
+        }
+      ],
+      "hasta_ms": 1792468964222
+    },
+    {
+      "id": "ses_ea8d903b6ffe7q3m7UrFnVRBBW",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "QA del rediseño del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T02:32:15Z",
+      "hasta": "2026-10-20T03:42:07Z",
+      "consumo": [
+        {
+          "agente": "qa-tester",
+          "modelo": "opencode-go/glm-5.3-flash",
+          "respuestas": 43,
+          "respuestas_pico": 0,
+          "tokens": {
+            "input": 266715,
+            "output": 10587,
+            "reasoning": 3209,
+            "cache_read": 967936,
+            "cache_write": 0
+          },
+          "costo": 0.075943,
+          "costo_opencode": 0.075943
+        }
+      ],
+      "hasta_ms": 1792467727460
+    },
+    {
+      "id": "ses_ea8f86957ffe4xO4jHDqd9fx2A",
+      "padre": "ses_ea98414bcfferXuxq5Qbjqkoa3",
+      "titulo": "Rediseño moderno del carrusel",
+      "herramienta": "opencode",
+      "usuario": "Orestes",
+      "registrado": "2026-10-20T04:04:52Z",
+      "desde": "2026-10-20T01:57:57Z",
+      "hasta": "2026-10-20T03:59:19Z",
+      "consumo": [
+        {
+          "agente": "dev-frontend",
+          "modelo": "opencode-go/deepseek-v4.1-flash",
+          "respuestas": 83,
+          "respuestas_pico": 83,
+          "tokens": {
+            "input": 249035,
+            "output": 26583,
+            "reasoning": 20671,
+            "cache_read": 5950848,
+            "cache_write": 0
+          },
+          "costo": 0.16712,
+          "costo_opencode": 0.08356
+        }
+      ],
+      "hasta_ms": 1792468759169
     }
   ],
   "totales": {
@@ -250,81 +390,81 @@
       {
         "agente": "orquestador",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 98,
+        "respuestas": 130,
         "tokens": {
-          "input": 445068,
-          "output": 34008,
-          "reasoning": 53586,
-          "cache_read": 13272832,
+          "input": 820317,
+          "output": 46243,
+          "reasoning": 73887,
+          "cache_read": 20911360,
           "cache_write": 0
         },
-        "costo": 0.17926,
-        "costo_opencode": 0.159135,
-        "sin_precio": false
-      },
-      {
-        "agente": "seguridad",
-        "modelo": "opencode-go/glm-5.3",
-        "respuestas": 7,
-        "tokens": {
-          "input": 71403,
-          "output": 3299,
-          "reasoning": 5815,
-          "cache_read": 113785,
-          "cache_write": 0
-        },
-        "costo": 0.16965,
-        "costo_opencode": 0.16965,
+        "costo": 0.368656,
+        "costo_opencode": 0.25786,
         "sin_precio": false
       },
       {
         "agente": "dev-frontend",
         "modelo": "opencode-go/deepseek-v4.1-flash",
-        "respuestas": 124,
+        "respuestas": 207,
         "tokens": {
-          "input": 383840,
-          "output": 33656,
-          "reasoning": 43856,
-          "cache_read": 16203776,
+          "input": 632875,
+          "output": 60239,
+          "reasoning": 64527,
+          "cache_read": 22154624,
           "cache_write": 0
         },
-        "costo": 0.159368,
-        "costo_opencode": 0.152695,
+        "costo": 0.326488,
+        "costo_opencode": 0.236255,
+        "sin_precio": false
+      },
+      {
+        "agente": "seguridad",
+        "modelo": "opencode-go/glm-5.3",
+        "respuestas": 14,
+        "tokens": {
+          "input": 137849,
+          "output": 5913,
+          "reasoning": 9273,
+          "cache_read": 173049,
+          "cache_write": 0
+        },
+        "costo": 0.3048,
+        "costo_opencode": 0.3048,
         "sin_precio": false
       },
       {
         "agente": "qa-tester",
         "modelo": "opencode-go/glm-5.3-flash",
-        "respuestas": 73,
+        "respuestas": 116,
         "tokens": {
-          "input": 550155,
-          "output": 13851,
-          "reasoning": 10852,
-          "cache_read": 1831784,
+          "input": 816870,
+          "output": 24438,
+          "reasoning": 14061,
+          "cache_read": 2799720,
           "cache_write": 0
         },
-        "costo": 0.149828,
-        "costo_opencode": 0.149828,
+        "costo": 0.225771,
+        "costo_opencode": 0.225771,
         "sin_precio": false
       },
       {
         "agente": "revisor-codigo",
         "modelo": "opencode-go/mimo-v2.6-pro",
-        "respuestas": 27,
+        "respuestas": 63,
         "tokens": {
-          "input": 98775,
-          "output": 8996,
-          "reasoning": 35368,
-          "cache_read": 1426944,
+          "input": 198829,
+          "output": 20155,
+          "reasoning": 77318,
+          "cache_read": 3306752,
           "cache_write": 0
         },
-        "costo": 0.086736,
-        "costo_opencode": 0.086736,
+        "costo": 0.183279,
+        "costo_opencode": 0.183279,
         "sin_precio": false
       }
     ],
-    "tokens": 34641649,
-    "costo": 0.744842,
-    "costo_opencode": 0.718044
+    "tokens": 52348299,
+    "costo": 1.408994,
+    "costo_opencode": 1.207965
   }
 }
