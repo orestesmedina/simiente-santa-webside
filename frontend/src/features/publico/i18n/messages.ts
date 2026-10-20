@@ -25,6 +25,10 @@ export const publicMessageKeys = [
   // se traducen (FR-026) y el fallback `en → es` de la descripción lo resuelve
   // el servidor (FR-025).
   'nav.sections.media',
+  // Carrusel de tarjetas de la portada (2026-10-19): nombres accesibles de los
+  // controles anterior/siguiente.
+  'carousel.prev',
+  'carousel.next',
   'home.upcoming.title',
   'home.upcoming.subtitle',
   'home.upcoming.seeAll',

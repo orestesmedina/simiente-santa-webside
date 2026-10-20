@@ -1,4 +1,5 @@
 import { Card } from '../../../components/publico/Card';
+import { CardCarousel } from '../components/CardCarousel';
 import { Notice } from '../../../components/Notice';
 import { PublicButton } from '../../../components/publico/PublicButton';
 import { SectionHeading } from '../../../components/publico/SectionHeading';
@@ -6,8 +7,11 @@ import { useLanguage } from '../i18n/useLanguage';
 import { UpcomingItem } from './UpcomingItem';
 import { usePortadaProximamente } from './hooks/usePortadaProximamente';
 
-/** Misma rejilla que la fila real (D-28): 1 columna, 2 en tableta, 5 en escritorio. */
-const GRID = 'grid grid-cols-1 gap-block md:grid-cols-2 lg:grid-cols-5';
+/**
+ * Rejilla del **esqueleto** (1/2/3 columnas, igual que el carrusel real): al
+ * llegar el dato no hay brinco de layout y nunca quedan 5 columnas.
+ */
+const SKELETON_GRID = 'grid grid-cols-1 gap-block md:grid-cols-2 lg:grid-cols-3';
 
 /**
  * Esqueleto propio del bloque (ux.md §4.10, D-28): el mismo encabezado y una
@@ -22,7 +26,7 @@ function ProximamenteSkeleton() {
   return (
     <div role="status" aria-busy="true" className="flex flex-col gap-block">
       <span className="sr-only">{t('events.loading')}</span>
-      <ul aria-hidden="true" className={GRID}>
+      <ul aria-hidden="true" className={SKELETON_GRID}>
         {[0, 1, 2, 3, 4].map((index) => (
           <li
             key={index}
@@ -45,8 +49,8 @@ function ProximamenteSkeleton() {
  * Bloque «Lo que viene» de la portada (`/`, US7/FR-025…FR-027, ux.md §4.10):
  * hasta **5** ítems próximos —eventos y actividades mezclados por cercanía, con
  * la ventana de 2 meses y su respaldo resueltos por el servidor (⟲ D-26/D-27)—
- * en una fila de tarjetas compactas, con el botón «Ver más eventos» hacia
- * `/eventos`.
+ * en un carrusel de tarjetas compactas (1/2/3 visibles según el ancho), con el
+ * botón «Ver más eventos» hacia `/eventos`.
  *
  * Es la **única excepción** al «ocultar secciones vacías» de F3: sin ningún
  * ítem el bloque **se muestra** con su mensaje («Por el momento no hay eventos
@@ -92,11 +96,11 @@ export function ProximamenteBlock() {
 
           {hasItems && (
             <>
-              <ul aria-label={t('a11y.home.upcoming.heading')} className={GRID}>
+              <CardCarousel label={t('a11y.home.upcoming.heading')}>
                 {items.map((item) => (
                   <UpcomingItem key={`${item.kind}-${item.id}`} item={item} />
                 ))}
-              </ul>
+              </CardCarousel>
               <div className="flex justify-end max-md:justify-stretch">
                 <PublicButton href="/eventos" variant="secondary">
                   {t('home.upcoming.seeAll')}

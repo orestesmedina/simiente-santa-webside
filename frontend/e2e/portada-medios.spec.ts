@@ -7,7 +7,8 @@ import { resetMedios, seedMedios, type MediosSeed } from './mediosSeed';
 /**
  * E2E del bloque «Medios» de la portada (US6/SC-015, quickstart §10): con **más
  * de 5** publicables muestra **exactamente los 5 más recientes** en el orden de la
- * sección (tope firme del servidor, sin paginación ni carrusel); con menos,
+ * sección (tope firme del servidor); el bloque de portada es un **carrusel de
+ * 1/2/3 tarjetas** según el ancho (móvil/tableta/escritorio); con menos,
  * **exactos los que hay, sin huecos ni marcadores vacíos**; con **0 publicables el
  * bloque no existe** —sin título, sin mensaje, sin reservar espacio— y la portada
  * queda coherente (FR-027); su **posición** es inmediatamente **después del
@@ -279,13 +280,24 @@ test.describe('Bloque «Medios» de la portada (US6, SC-015)', () => {
         true,
       );
 
-      // El bloque se apila en una columna a 320 px.
-      const columns = await page.evaluate(
-        () =>
-          getComputedStyle(document.querySelector('#medios ul[aria-label]') as HTMLElement)
-            .gridTemplateColumns,
+      // El carrusel muestra una tarjeta por página a 320 px y las demás quedan
+      // dentro del propio carrusel (el desborde nunca llega al documento).
+      const carrusel = await page.evaluate(() => {
+        const lista = document.querySelector('#medios ul.public-carousel') as HTMLElement;
+        const tarjeta = lista.querySelector('li') as HTMLElement;
+        return {
+          visible: lista.clientWidth,
+          tarjeta: tarjeta.getBoundingClientRect().width,
+          total: lista.scrollWidth,
+        };
+      });
+      expect(
+        Math.abs(carrusel.tarjeta - carrusel.visible),
+        'una tarjeta visible a 320 px',
+      ).toBeLessThanOrEqual(2);
+      expect(carrusel.total, 'las tarjetas restantes viven dentro del carrusel').toBeGreaterThan(
+        carrusel.visible,
       );
-      expect(columns.trim().split(/\s+/).length, 'una sola columna a 320 px').toBe(1);
 
       // Foco visible en el CTA del bloque.
       const cta = page.locator(BLOCK).getByRole('link', { name: CTA });
@@ -296,6 +308,10 @@ test.describe('Bloque «Medios» de la portada (US6, SC-015)', () => {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto('/');
       await waitForPortada(page);
+      // Espera a que el bloque (y su carrusel) estén montados antes de recorrer
+      // el orden de tabulación: si no, el foco puede pasar de largo mientras la
+      // consulta sigue en vuelo (el bloque se inserta detrás del foco).
+      await expect(page.getByRole('list', { name: BLOCK_LIST })).toBeVisible();
       const alcanzados: string[] = [];
       for (let step = 0; step < 120; step += 1) {
         await page.keyboard.press('Tab');

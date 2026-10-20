@@ -300,13 +300,24 @@ test.describe('Bloque «Ministerios» de la portada (US6, SC-016)', () => {
         true,
       );
 
-      // El bloque se apila en una columna a 320 px.
-      const columns = await page.evaluate(
-        () =>
-          getComputedStyle(document.querySelector('#ministerios ul') as HTMLElement)
-            .gridTemplateColumns,
+      // El carrusel muestra una tarjeta por página a 320 px y las demás quedan
+      // dentro del propio carrusel (el desborde nunca llega al documento).
+      const carrusel = await page.evaluate(() => {
+        const lista = document.querySelector('#ministerios ul.public-carousel') as HTMLElement;
+        const tarjeta = lista.querySelector('li') as HTMLElement;
+        return {
+          visible: lista.clientWidth,
+          tarjeta: tarjeta.getBoundingClientRect().width,
+          total: lista.scrollWidth,
+        };
+      });
+      expect(
+        Math.abs(carrusel.tarjeta - carrusel.visible),
+        'una tarjeta visible a 320 px',
+      ).toBeLessThanOrEqual(2);
+      expect(carrusel.total, 'las tarjetas restantes viven dentro del carrusel').toBeGreaterThan(
+        carrusel.visible,
       );
-      expect(columns.trim().split(/\s+/).length, 'una sola columna a 320 px').toBe(1);
 
       // Foco visible en el título-enlace y en el CTA del bloque.
       const titleLink = page

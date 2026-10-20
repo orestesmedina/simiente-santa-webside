@@ -75,6 +75,29 @@ describe('MediosBlock · bloque «Medios» de la portada (US6/FR-027/SC-015)', (
     expect(screen.getByRole('link', { name: 'Ver todo' })).toHaveAttribute('href', '/medios');
   });
 
+  it('la fila es un carrusel accesible con controles ligados a la lista', async () => {
+    server.use(
+      http.get(portadaUrl, () =>
+        HttpResponse.json({ lang: 'es', items: [item('uno'), item('dos')] }),
+      ),
+    );
+
+    renderBlock();
+
+    const lista = await screen.findByRole('list', {
+      name: 'Medios: mira los episodios recientes y entra a la sección completa',
+    });
+    expect(lista).toHaveClass('public-carousel');
+    expect(screen.getByRole('button', { name: 'Anterior' })).toHaveAttribute(
+      'aria-controls',
+      lista.id,
+    );
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toHaveAttribute(
+      'aria-controls',
+      lista.id,
+    );
+  });
+
   it('con menos de 5 muestra exactamente los que hay, sin huecos ni marcadores vacíos', async () => {
     server.use(
       http.get(portadaUrl, () =>

@@ -15,6 +15,8 @@ export const en: PublicMessages = {
   'nav.sections.ministries': 'Ministries',
   'nav.sections.offerings': 'Offerings & tithes',
   'nav.sections.media': 'Media',
+  'carousel.prev': 'Previous',
+  'carousel.next': 'Next',
   'home.upcoming.title': "What's coming",
   'home.upcoming.subtitle': 'The next dates in our agenda',
   'home.upcoming.seeAll': 'See more events',
