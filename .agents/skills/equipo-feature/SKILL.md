@@ -31,7 +31,7 @@ Si tu herramienta no puede lanzar subagentes, asume tú cada rol leyendo `equipo
    📍 Fase y próximo paso.
 
 ## Fase 4 — Implementación
-1. Ejecuta `implement`, delegando cada tarea según su capa: `[backend]`/`[db]` → `dev-backend`, `[frontend]` → `dev-frontend`, `[infra]` → `devops`.
+1. Ejecuta `implement`, delegando cada tarea en el rol que el perfil asigna a su parte (`[api]` → el `dev-*` de la parte `api`; `[api:dev-dba]` → ese rol; `[infra]` → `devops`). Sin perfil no se delega: pide a la persona que lo cree (`/bowser-profile`).
 2. Tareas `[P]` sin dependencias entre sí pueden ir en paralelo.
 3. Un commit por tarea terminada (Conventional Commits). Las tareas hechas quedan con `[X]` en `tasks.md`.
    📍 Al empezar la fase y al cerrar la sesión: próximo paso con el ID de la siguiente tarea.
@@ -49,6 +49,6 @@ Ejecuta `converge`. Si agrega tareas, vuelve a la Fase 4 solo para ellas.
 3. Abre un Pull Request con el resumen, las pruebas y los reportes de validación.
 4. **DETENTE.** El merge y el despliegue a producción los aprueba un humano.
    📍 Roadmap → `en revisión` con el enlace al PR.
-   📍 Cuando el humano **apruebe el PR**: Aprobaciones → PR `aprobado`, ejecuta `make costos CERRAR=1` y haz commit de `estado.md` y `costos.json` en la rama antes del merge. Cuando confirme el merge: roadmap → `terminada`.
+   📍 Cuando el humano **apruebe el PR**: Aprobaciones → PR `aprobado`, ejecuta `make costs CLOSE=1` y haz commit de `estado.md` y `costos.json` en la rama antes del merge. Cuando confirme el merge: roadmap → `terminada`.
 
-Termina con un resumen corto: qué se construyó, estado de las pruebas, riesgos abiertos, costo de IA (total y por agente, de `make costos`) y enlace al PR.
+Termina con un resumen corto: qué se construyó, estado de las pruebas, riesgos abiertos, costo de IA (total y por agente, de `make costs`) y enlace al PR.

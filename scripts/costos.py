@@ -477,7 +477,7 @@ def registrar(costos: dict, ruta: Path, rama: str) -> list[str]:
     # Sin ningún precio (models.dev caído y sin copia local) no se registra: el consumo quedaría guardado sin costo
     # para siempre. Las sesiones siguen pendientes y se registran en la próxima ejecución.
     if all(precio_en(costos, r["modelo"], r["ms"]) is None for _, r, _ in nuevas_resp):
-        avisos.append("NO se registró el consumo: no hay precio para ningún modelo usado. Vuelve a ejecutar 'make costos' "
+        avisos.append("NO se registró el consumo: no hay precio para ningún modelo usado. Vuelve a ejecutar 'make costs' "
                       "cuando models.dev responda (queda pendiente, no se pierde).")
         return avisos
 

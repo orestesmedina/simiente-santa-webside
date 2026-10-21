@@ -6,8 +6,8 @@ Se copia a docs/producto/roadmap.md. El orquestador actualiza la columna Estado:
   pendiente → en curso (al crear la spec) → en revisión (PR abierto) → terminada (merge confirmado por un humano)
   pausada: se empezó y se dejó a propósito (anota el motivo en su estado.md)
 El cambio de estado se hace en la rama de la funcionalidad y llega a main con el merge;
-mientras tanto, `make estado` muestra desde main el trabajo en curso de las otras ramas.
-`make estado` lee esta tabla: conserva las columnas.
+mientras tanto, `make status` muestra desde main el trabajo en curso de las otras ramas.
+`make status` lee esta tabla: conserva las columnas.
 -->
 
 Objetivo del MVP: [una frase]

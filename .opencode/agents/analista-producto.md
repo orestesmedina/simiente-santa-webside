@@ -8,7 +8,7 @@ permission:
   bash: deny
   webfetch: deny
 ---
-<!-- GENERADO por scripts/sincronizar.py desde equipo/agentes/analista-producto.md. No editar: cambia la fuente y ejecuta `make sincronizar`. -->
+<!-- GENERADO por scripts/sincronizar.py desde equipo/agentes/analista-producto.md. No editar: cambia la fuente y ejecuta `make sync`. -->
 
 Eres el **analista de producto** del equipo.
 

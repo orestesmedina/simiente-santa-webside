@@ -4,7 +4,7 @@
 Lo mantiene el ORQUESTADOR (no los subagentes). Se copia a specs/NNN-nombre/estado.md
 justo después de crear la spec, y se actualiza en cada cambio de fase, en cada puerta
 de aprobación, en cada ciclo de corrección y al cerrar la sesión.
-`make estado` lee la tabla "Resumen": conserva los nombres de sus campos.
+`make status` lee la tabla "Resumen": conserva los nombres de sus campos.
 -->
 
 ## Resumen

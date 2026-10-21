@@ -9,7 +9,7 @@ Este flujo **solo lee**; no cambia código. La única escritura permitida es cor
 
 ## Versión corta (al iniciar cada sesión)
 
-Ejecuta `make estado` y `make costos` (este último registra el consumo de sesiones anteriores y los cambios de precio) y abre la conversación con 2 a 4 líneas:
+Ejecuta `make status` y `make costs` (este último registra el consumo de sesiones anteriores y los cambios de precio) y abre la conversación con 2 a 4 líneas:
 
 ```
 Quedamos en: 003-registro-usuarios · Fase 6/9 (implementar) · 7/12 tareas
@@ -17,12 +17,12 @@ Aprobados: spec y plan · Hallazgos abiertos: 0
 Próximo paso: T008 [frontend] formulario de registro → dev-frontend. ¿Sigo?
 ```
 
-Si `make estado` muestra avisos (estado desactualizado, cambios sin commit, aprobaciones sin registrar), menciónalos en una línea. Si no hay trabajo en curso, dilo y sugiere la siguiente funcionalidad `pendiente` del roadmap.
+Si `make status` muestra avisos (estado desactualizado, cambios sin commit, aprobaciones sin registrar), menciónalos en una línea. Si no hay trabajo en curso, dilo y sugiere la siguiente funcionalidad `pendiente` del roadmap.
 
 ## Versión completa (cuando el usuario pide retomar o algo no cuadra)
 
 1. **Panorama del proyecto.** Lee `docs/producto/roadmap.md`: terminadas, en curso, en revisión, pausadas, y la siguiente pendiente.
-2. **Funcionalidad actual.** Rama actual (`git branch --show-current`). Si es `main`, `make estado` lista en "Trabajo en otras ramas" las funcionalidades en curso (el roadmap de main solo se actualiza con cada merge): pregunta en cuál seguir y cámbiate a esa rama (`git checkout <rama>` y `git submodule update`).
+2. **Funcionalidad actual.** Rama actual (`git branch --show-current`). Si es `main`, `make status` lista en "Trabajo en otras ramas" las funcionalidades en curso (el roadmap de main solo se actualiza con cada merge): pregunta en cuál seguir y cámbiate a esa rama (`git checkout <rama>` y `git submodule update`).
 3. **Contrasta el estado con la evidencia.** Lee `specs/<rama>/estado.md` y compáralo con:
    - Qué artefactos existen: `spec.md` (fase 1), `plan.md` (3), `tasks.md` (4), reportes `revision-*.md` (7).
    - Tareas `[X]` y pendientes en `tasks.md`.

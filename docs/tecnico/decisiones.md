@@ -167,6 +167,9 @@ registro**; las tres diferencias conocidas están en D-A3 (sqlc como capa de dat
     `govulncheck` v1.8.0 reportó con go1.27.1 y que go1.27.2 corrige: **GO-2026-6603, -6605, -6607,
     -6608, -6610, -6611, -6612, -6613 y -6617** (net/http, HTTP/2, net/textproto y crypto/tls). La
     rama sigue siendo 1.27; el escaneo sale en verde tras el cambio.
+  - > **2026-10-20** — Se sube a `go 1.27.3` (`backend/go.mod` y `golang:1.27.3` en
+    `backend/Dockerfile`) para cerrar **GO-2026-6809** (`crypto/x509`), que `govulncheck` v1.8.0
+    reportó con go1.27.2 al alcance de `media.Handler.GetMedia`. La rama sigue siendo 1.27.
 
 ## D-A6 · Config por entorno (stdlib), logs `slog` JSON, errores stdlib + `apperr`, DI manual
 

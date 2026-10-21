@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Imprime la ruta (relativa a la raíz del proyecto) del submódulo del kit.
-# Orden: 1) la guardada en .kit-manifest.json por `make instalar-kit`
+# Orden: 1) la guardada en .kit-manifest.json por `make install-kit`
 #        2) un submódulo de .gitmodules que contenga scripts/instalar_kit.py
 #        3) el nombre por defecto
 # Uso: RUTA_KIT=$(bash scripts/ruta-kit.sh)      (ejecutar desde la raíz del proyecto)

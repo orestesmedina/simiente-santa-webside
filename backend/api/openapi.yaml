@@ -23,7 +23,7 @@
 # ministerios publicados, R6-7). La prosa del catálogo de permisos de F2 **no**
 # cambia.
 #
-# Fusionado con `scripts/fusionar_f4_openapi.py` (fusión del delta de F4) y, para
+# Fusionado con `tools/fusionar_f4_openapi.py` (fusión del delta de F4) y, para
 # F6 y F7, con la misma fusión mecánica aditiva: el snapshot del delta trae
 # escalares sin entrecomillar con ": " que se entrecomillan al fundir para que
 # este documento sea YAML válido.
