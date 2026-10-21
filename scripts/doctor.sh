@@ -12,15 +12,36 @@ version_minima() { # $1 actual, $2 mínima
   [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
 }
 
+# Muchos instaladores dejan los programas en una carpeta bin/ de la carpeta personal (~/.local/bin y las de cada
+# tecnología), que puede no estar en el PATH. Imprime la carpeta donde está el programa, o nada.
+fuera_del_path() { # comando
+  local f; [ -n "${HOME:-}" ] || return 0
+  for f in "$HOME/bin/$1" "$HOME"/*/bin/"$1" "$HOME"/.[!.]*/bin/"$1" "$HOME"/.[!.]*/*/bin/"$1" "$HOME"/.[!.]*/*/*/bin/"$1"; do
+    [ -f "$f" ] && [ -x "$f" ] && { echo "${f%/*}"; return; }
+  done
+}
+
 requerido() { # nombre comando versión_mínima comando_versión [opcional: 1] [cómo se instala]
   local nombre=$1 cmd=$2 minima=$3 vcmd=$4 opcional=${5:-} instalar=${6:-}
   local falla=rojo pista=""
   [ -n "$opcional" ] && falla=ambar
   [ -n "$instalar" ] && pista=". Se instala con: $instalar"
   if ! command -v "$cmd" >/dev/null 2>&1; then
-    $falla "$nombre no está instalado${opcional:+ (recomendado)}$pista"; return
+    local carpeta; carpeta=$(fuera_del_path "$cmd")
+    if [ -n "$carpeta" ]; then
+      $falla "$nombre está en ${carpeta/#"$HOME"/\~}, pero esa carpeta no está en el PATH: agrega export PATH=\"${carpeta/#"$HOME"/\$HOME}:\$PATH\" al final de ~/.bashrc y abre otra terminal"
+    else
+      $falla "$nombre no está instalado${opcional:+ (recomendado)}$pista"
+    fi
+    return
   fi
-  local v; v=$(eval "$vcmd" </dev/null 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
+  # La versión es el primer número después del nombre del programa; si ninguna línea lo nombra, el primero que
+  # imprima. Hay programas que muestran antes otra versión (govulncheck -version empieza por la de Go).
+  local salida v; salida=$(eval "$vcmd" </dev/null 2>/dev/null)
+  v=$(printf '%s\n' "$salida" | awk -v c="$cmd" 'BEGIN { c = tolower(c) }
+        { i = index(tolower($0), c); if (i) { print substr($0, i + length(c)); exit } }' \
+      | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
+  [ -n "$v" ] || v=$(printf '%s\n' "$salida" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)
   if [ -n "$minima" ] && [ -n "$v" ] && ! version_minima "$v" "$minima"; then
     $falla "$nombre $v (se requiere $minima o superior)$pista"
   else

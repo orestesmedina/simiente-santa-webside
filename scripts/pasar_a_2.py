@@ -9,7 +9,8 @@ lista. Lo que tiene un solo arreglo posible lo hace él, después de mostrar los
     `FORZAR=1`, `APROBADO_PERFIL`), en los workflows del proyecto y en proyecto.mk;
   - los comandos retirados que tienen reemplazo (`make test-backend` → `make test PART=backend`, si esa parte existe);
   - los archivos de scripts/ que el kit dejó de traer y el proyecto conservó: se mueven a tools/ (scripts/ es del kit)
-    y se corrige quien los nombra (el perfil, proyecto.mk, los workflows).
+    y se corrige quien los nombra (el perfil, proyecto.mk, los workflows); si otro archivo los nombra (un comentario,
+    la documentación), se avisa con el archivo y la línea.
 
 Lo demás necesita criterio y lo resuelve un agente (/bowser-profile, /bowser-ci) o una persona. Nunca hace commit.
 
@@ -156,7 +157,40 @@ def arreglos(raiz: Path, perfil: dict | None, del_kit: dict) -> tuple[dict[Path,
             if retirado not in propios and re.search(rf"(\bmake\b|\$\(MAKE\))[^\n|;&#]*\s{retirado}\b", texto):
                 como = f"usa `make test PART=<parte>` o defínelo" if parte else "defínelo"
                 avisos.append(f"{nombre} usa `make {retirado}`, que se retiró en la 1.23.0: {como} en {PROYECTO_MK}.")
+    avisos += menciones_de_movidos(raiz, mover, del_kit)
     return nuevos, mover, avisos
+
+
+def menciones_de_movidos(raiz: Path, mover: dict[str, str], del_kit: dict) -> list[str]:
+    """Los demás archivos del proyecto que nombran un script de scripts/ que pasa a tools/: un comentario, la
+    documentación… No se corrigen solos, porque una mención puede ser historia (un CHANGELOG): se avisan. Solo antes
+    de moverlo: después, el aviso quedaría como pendiente para siempre."""
+    if not mover:
+        return []
+    try:
+        listado = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=raiz,
+                                 capture_output=True, text=True, check=True).stdout.splitlines()
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    corregidos = {r.relative_to(raiz).as_posix() for r in que_nombran(raiz, del_kit)}
+    submodulo = json.loads(leer(raiz / MANIFIESTO) or "{}").get("ruta_kit", ".bowser-spec-kit-ai").rstrip("/") + "/"
+    patrones = {o: re.compile(rf"(?<![\w-]){re.escape(o)}(?![\w.-])") for o in mover}
+    avisos = []
+    for rel in sorted(set(listado)):
+        ruta = raiz / rel
+        if (rel in del_kit or rel in corregidos or rel in mover or rel.startswith(("tools/", submodulo))
+                or not ruta.is_file()):
+            continue
+        try:
+            texto = ruta.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue                                                 # binario o ilegible: no se revisa
+        for origen, destino in mover.items():
+            lineas = [str(n) for n, l in enumerate(texto.splitlines(), 1) if patrones[origen].search(l)]
+            if lineas:
+                donde = f"línea {lineas[0]}" if len(lineas) == 1 else f"líneas {', '.join(lineas)}"
+                avisos.append(f"{rel} ({donde}) nombra {origen}, que pasa a {destino}: corrígelo a mano si hace falta.")
+    return avisos
 
 
 # ---------------------------------------------------------------- revisión
