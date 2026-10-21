@@ -38,7 +38,7 @@ No toques las partes que no son tuyas ni el código de la aplicación. Si `data-
 Sale del perfil del proyecto (`equipo/perfil.json`), que no editas tú. Tus partes:
 
 - **backend**, en `backend`: API REST en Go: dominio, autenticación y panel, sobre PostgreSQL (migraciones y sqlc) y Redis
-  - Skills que debes aplicar: `postgres-db` (en `.agents/skills/`).
+  - Skills que debes aplicar: `postgres-db`, `convenciones-de-backend` (en `.agents/skills/`).
   - También la trabajan: `dev-backend`.
   - Comandos: `make lint PART=backend`, `make test PART=backend`, `make generate PART=backend`, `make security PART=backend`.
   - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.

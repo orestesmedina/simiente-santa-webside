@@ -33,12 +33,12 @@ Sale del perfil del proyecto (`equipo/perfil.json`), que no editas tú. Sus part
 
 - **backend**, en `backend`: API REST en Go: dominio, autenticación y panel, sobre PostgreSQL (migraciones y sqlc) y Redis
   - La trabajan: `dev-backend`, `dev-dba`.
-  - Sus convenciones están en las skills `go-backend`, `postgres-db` (en `.agents/skills/`).
+  - Sus convenciones están en las skills `go-backend`, `postgres-db`, `convenciones-de-backend` (en `.agents/skills/`).
   - Comandos: `make lint PART=backend`, `make test PART=backend`, `make generate PART=backend`, `make security PART=backend`.
   - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.
   - No se modifican una vez versionados (se crea un archivo nuevo): `backend/migrations/*.sql`.
 - **frontend**, en `frontend`: Portada pública y panel de administración (React 19 + TypeScript + Vite; Vitest y e2e con Playwright)
   - La trabajan: `dev-frontend`.
-  - Sus convenciones están en las skills `react-frontend` (en `.agents/skills/`).
+  - Sus convenciones están en las skills `react-frontend`, `convenciones-de-frontend` (en `.agents/skills/`).
   - Comandos: `make lint PART=frontend`, `make test PART=frontend`, `make generate PART=frontend`, `make security PART=frontend`.
   - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.

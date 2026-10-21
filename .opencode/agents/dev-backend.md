@@ -35,7 +35,7 @@ No toques las partes que no son tuyas. Si una tarea exige cambiar el contrato de
 Sale del perfil del proyecto (`equipo/perfil.json`), que no editas tú. Tus partes:
 
 - **backend**, en `backend`: API REST en Go: dominio, autenticación y panel, sobre PostgreSQL (migraciones y sqlc) y Redis
-  - Skills que debes aplicar: `go-backend` (en `.agents/skills/`).
+  - Skills que debes aplicar: `go-backend`, `convenciones-de-backend` (en `.agents/skills/`).
   - También la trabajan: `dev-dba`.
   - Comandos: `make lint PART=backend`, `make test PART=backend`, `make generate PART=backend`, `make security PART=backend`.
   - El proyecto todavía no tiene cómo: cobertura. No inventes un comando: dilo en tu entrega.

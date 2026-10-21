@@ -8,6 +8,7 @@
         {"rol": "dev-backend", "skills": ["go-backend"]},
         {"rol": "dev-dba", "skills": ["postgres-db"]}
       ],
+      "skills": ["convenciones-de-backend"],
       "terceros": [],
       "inmutables": ["migrations/*.sql"],
       "verbos": {
@@ -26,6 +27,7 @@
       "roles": [
         {"rol": "dev-frontend", "skills": ["react-frontend"]}
       ],
+      "skills": ["convenciones-de-frontend"],
       "terceros": [],
       "inmutables": [],
       "verbos": {
