@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend (Go 1.27.2 · PostgreSQL 16)
+    name: Backend (Go 1.27.3 · PostgreSQL 16)
     runs-on: ubuntu-latest
     # Base de datos de pruebas, misma versión que el entorno local (postgres:16-alpine
     # en docker-compose.yml). Las credenciales nacen y mueren con el job: no son un
