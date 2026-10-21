@@ -23,7 +23,8 @@ __pycache__/
 # Respaldos de make install-kit
 .kit-respaldo/
 # <<< bowser-spec-kit-ai
-# Estas líneas venían en el bloque del kit; desde ahora son del proyecto: edítalas o bórralas.
+
+# Go y Node: compilación, dependencias y resultados de pruebas
 backend/bin/
 backend/coverage.out
 *.test

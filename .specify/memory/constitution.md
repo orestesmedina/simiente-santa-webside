@@ -53,30 +53,26 @@ Niveles: **DEBE** (obligatorio), **DEBERÍA** (recomendado), **PUEDE** (opcional
 
 Lo que este proyecto exige además de los principios: su arquitectura, sus mínimos de prueba, sus bibliotecas obligatorias. Son tan obligatorias como los principios.
 
-Estas reglas venían en la constitución que el kit instalaba antes (versión 1.0.0). Desde ahora son de este proyecto: conserva las que le sirven y borra las que no.
-
 ## Arquitectura
-- Monorepo con `backend/` (Go), `frontend/` (React + TypeScript) y `backend/migrations/` (PostgreSQL).
+- Monorepo con `backend/` (Go), `frontend/` (React + TypeScript) y las migraciones de PostgreSQL en `backend/migrations/`.
 - El backend DEBE seguir arquitectura por capas: `handler → service → repository`. Los handlers no acceden a la base de datos directamente.
-- La comunicación frontend-backend DEBE ser una API REST JSON documentada en OpenAPI (`backend/api/openapi.yaml`). El contrato se escribe antes que el código.
+- La comunicación frontend-backend DEBE ser una API REST JSON documentada en OpenAPI (`backend/api/openapi.yaml`).
 
 ## Pruebas
-- Backend: cobertura mínima DEBE ser 80% en `service/`. Pruebas de repositorio contra PostgreSQL real (testcontainers o el contenedor de CI).
-- Frontend: componentes con lógica DEBEN tener pruebas (Vitest + Testing Library). Flujos críticos DEBERÍAN tener pruebas end-to-end (Playwright).
+- Backend: la capa de servicio (los archivos `service*.go` de cada dominio en `backend/internal/`) DEBE tener al menos 80 % de cobertura. Todavía no se mide: ver `docs/tecnico/deudas.md`.
+- Backend: las pruebas de repositorio corren contra PostgreSQL real (testcontainers o el contenedor del CI).
+- Frontend: los componentes con lógica DEBEN tener pruebas (Vitest + Testing Library). Los flujos críticos DEBERÍAN tener pruebas end-to-end (Playwright).
 
 ## Seguridad
-- Las consultas parametrizadas se escriben con `pgx` / `sqlc`.
+- Las consultas se escriben con `sqlc` sobre `pgx`.
 - Nada de `dangerouslySetInnerHTML` sin sanitizar.
-- Dependencias DEBEN pasar `govulncheck` y `npm audit` sin vulnerabilidades altas o críticas.
 
 ## Calidad de código
-- Go: `gofmt`, `go vet` y `golangci-lint` sin errores. Errores envueltos con contexto (`fmt.Errorf("...: %w", err)`).
+- Go: errores envueltos con contexto (`fmt.Errorf("...: %w", err)`).
 - TypeScript en modo `strict`. Sin `any` salvo justificación.
-- Nombres en inglés dentro del código.
 
 ## Base de datos
-- Todo cambio de esquema DEBE hacerse con migraciones versionadas (up y down).
-- Tablas con `id`, `created_at`, `updated_at`. Claves foráneas e índices explícitos.
+- Tablas con `id`, `created_at` y `updated_at`. Claves foráneas e índices explícitos.
 
 ## Observabilidad y operación
 - El backend DEBE usar logs estructurados (`log/slog`) y exponer `/healthz`.
