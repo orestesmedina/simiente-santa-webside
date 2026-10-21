@@ -1,7 +1,7 @@
 {
   "_comentario": "Generado por make install-kit. Lista los archivos que vienen del kit (.bowser-spec-kit-ai/) y su hash.",
-  "version": "1.24.3",
-  "commit": "48b5f61",
+  "version": "2.0.0",
+  "commit": "234d5d2",
   "ruta_kit": ".bowser-spec-kit-ai",
   "archivos": {
     ".agents/skills/ci-proyecto/SKILL.md": "fe3e3f28e230895a0f391c7df3fe761049dc5f50e12bf7abed449a4c8276c2f0",
